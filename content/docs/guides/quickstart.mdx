@@ -1,0 +1,105 @@
+---
+title: Quickstart
+description: Run your first Lodol workflow via the Developer API in minutes.
+---
+
+## Quickstart
+
+This guide walks you through running your first workflow using the Lodol Developer API.
+
+### Prerequisites
+
+- A Lodol account on a Pro, Team, or Enterprise plan
+- A workflow created in the Lodol web dashboard
+- An API key with `workflows:read`, `workflows:execute`, and `executions:read` scopes
+
+### Step 1: Create an API Key
+
+Navigate to **Settings > API Keys** in the Lodol dashboard and create a new key. Copy the key — it is only shown once.
+
+```bash
+export SKIPFLOW_API_KEY="sk_live_your_api_key"
+```
+
+### Step 2: List Your Workflows
+
+```bash
+curl https://app.skipflow.com/api/v1/workflows \
+  -H "Authorization: Bearer $SKIPFLOW_API_KEY"
+```
+
+You should see a response listing your workflows:
+
+```json
+{
+  "workflows": [
+    {
+      "id": "665f1a2b3c4d5e6f7a8b9c0d",
+      "name": "Daily Report Generator",
+      "description": "Generates and emails daily sales reports",
+      "created_by": "665f1a2b3c4d5e6f7a8b9c0e",
+      "created_at": "2026-03-01T10:00:00+00:00",
+      "updated_at": "2026-03-10T15:30:00+00:00",
+      "last_run_at": "2026-03-17T08:00:00+00:00"
+    }
+  ]
+}
+```
+
+### Step 3: Run a Workflow
+
+Use the workflow ID from the previous step to start an asynchronous execution:
+
+```bash
+curl -X POST https://app.skipflow.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async \
+  -H "Authorization: Bearer $SKIPFLOW_API_KEY" \
+  -H "Idempotency-Key: my-first-run"
+```
+
+The API returns immediately with an execution ID:
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "status": "running",
+  "created_at": "2026-04-14T10:30:00+00:00"
+}
+```
+
+### Step 4: Check Execution Status
+
+Poll the execution endpoint until the status is no longer `running`:
+
+```bash
+curl https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f \
+  -H "Authorization: Bearer $SKIPFLOW_API_KEY"
+```
+
+Once completed, fetch the full results:
+
+```bash
+curl "https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?include_step_results=true" \
+  -H "Authorization: Bearer $SKIPFLOW_API_KEY"
+```
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "status": "success",
+  "started_at": "2026-04-14T10:30:00+00:00",
+  "completed_at": "2026-04-14T10:30:45+00:00",
+  "steps": [
+    { "index": 0, "status": "completed", "result": "..." },
+    { "index": 1, "status": "completed", "result": "..." }
+  ],
+  "error": null
+}
+```
+
+## Next Steps
+
+- Explore the [API Reference](/docs/api-reference) for all available endpoints
+- Learn about [Error Handling](/docs/guides/error-handling) for robust integrations
+- Review [Authentication](/docs/guides/authentication) for rate limits and scopes

@@ -1,0 +1,248 @@
+---
+title: Brex
+description: API actions for the Brex integration.
+---
+
+## Brex
+
+Manage Brex card spend, expenses, transactions, and virtual cards.
+
+---
+
+## Actions
+
+### List Brex expenses
+List card expenses with optional filters by user, budget, status, payment status, and purchase date range. Cursor-paginated.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `user_id` | array | No | Filter to expenses owned by these user IDs. Obtainable from list_users (items[].id). |
+| `budget_id` | array | No | Filter to expenses charged against these budget IDs. |
+| `parent_expense_id` | array | No | Filter to children of these parent expense IDs. |
+| `expense_status` | array | No | Filter by expense lifecycle status. Enum values: DRAFT, SUBMITTED, APPROVED, OUT_OF_POLICY, VOID, CANCELED, SPLIT, SETTLED. |
+| `payment_status` | array | No | Filter by payment status. Enum values: NOT_STARTED, PROCESSING, CANCELED, DECLINED, CLEARED, REFUNDING, REFUNDED, CASH_ADVANCE, CREDITED, AWAITING_PAYMENT, SCHEDULED. |
+| `purchased_at_start` | string | No | RFC 3339 lower bound on purchase time (e.g. 2026-04-01T00:00:00Z). |
+| `purchased_at_end` | string | No | RFC 3339 upper bound on purchase time. |
+| `expand` | array | No | Expansions to include in the response. Values: merchant, location, department, receipts.download_uris, user, budget, payment, spending_entity, policy. |
+| `cursor` | string | No | Pagination cursor returned by a previous call as next_cursor. |
+| `limit` | number | No | Page size, default 50, max 100. |
+
+**Response**
+
+```json
+{
+  "items": [
+    {
+      "id": "expense_abc123",
+      "memo": "Notion subscription",
+      "amount": {
+        "amount": 1800,
+        "currency": "USD"
+      },
+      "expense_status": "SETTLED",
+      "payment_status": "CLEARED"
+    }
+  ],
+  "next_cursor": null
+}
+```
+
+---
+
+### Get a Brex expense
+Fetch a single card expense by ID.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `expense_id` | string | Yes | The expense ID. Obtainable from list_expenses (items[].id) or from list_card_transactions (items[].expense_id). |
+| `expand` | array | No | Expansions to include. Values: merchant, location, department, receipts.download_uris, user, budget, payment, spending_entity, policy. |
+
+**Response**
+
+```json
+{
+  "id": "expense_abc123",
+  "memo": "Notion subscription",
+  "amount": {
+    "amount": 1800,
+    "currency": "USD"
+  }
+}
+```
+
+---
+
+### Update a Brex expense
+Update the memo on a card expense. The Brex API currently only supports updating the memo field via this endpoint.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `expense_id` | string | Yes | The expense ID. Obtainable from list_expenses (items[].id). |
+| `memo` | string | Yes | Replaces the existing memo. Pass an empty string to clear. |
+
+**Response**
+
+```json
+{
+  "id": "expense_abc123",
+  "memo": "Updated memo",
+  "updated_at": "2026-04-07T12:00:00Z"
+}
+```
+
+---
+
+### Upload a Brex receipt
+Upload a receipt file to Brex. If expense_id is provided, the receipt is attached directly. Otherwise Brex matches it to an expense by amount, merchant, and date.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `receipt_name` | string | Yes | Filename including extension (e.g. 'receipt-2026-04-07.pdf'). |
+| `file` | string | Yes | Upload a receipt file (PDF, PNG, JPG) or provide a local path. |
+| `expense_id` | string | No | Optional. If provided, attach the receipt directly to this expense. Obtainable from list_expenses (items[].id). If omitted, Brex auto-matches the receipt. |
+
+**Response**
+
+```json
+{
+  "id": "receipt_xyz789",
+  "matched_expense_id": "expense_abc123",
+  "status": "uploaded"
+}
+```
+
+---
+
+### List Brex card transactions
+List settled transactions on the primary card account. Only settled transactions are returned — pending spend requires the Webhooks API. Regular users may only fetch their own PURCHASE, REFUND, and CHARGEBACK transactions.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `user_ids` | array | No | Filter to transactions by these user IDs. Obtainable from list_users (items[].id). |
+| `posted_at_start` | string | No | RFC 3339 lower bound on posted_at_date. Example: 2026-04-01T00:00:00Z. |
+| `cursor` | string | No | Pagination cursor returned as next_cursor. |
+| `limit` | number | No | Page size, default 50, max 100. |
+
+**Response**
+
+```json
+{
+  "items": [
+    {
+      "id": "txn_abc123",
+      "description": "NOTION LABS INC",
+      "amount": {
+        "amount": 1800,
+        "currency": "USD"
+      },
+      "type": "PURCHASE"
+    }
+  ],
+  "next_cursor": null
+}
+```
+
+---
+
+### List Brex users
+List users in the Brex account. Supports filtering by email. The user IDs returned here are the entry point for chaining create_card, list_expenses (filtering by user), and list_cards (filtering by owner).
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `email` | string | No | Filter to a user by email address. |
+| `remote_display_id` | string | No | Filter by remote display ID (e.g. IDP/HR system identifier). |
+| `cursor` | string | No | Pagination cursor returned by a previous call as next_cursor. |
+| `limit` | number | No | Page size, default 50, max 100. |
+
+**Response**
+
+```json
+{
+  "items": [
+    {
+      "id": "user_abc123",
+      "first_name": "Alex",
+      "last_name": "Chen",
+      "email": "alex@example.com",
+      "status": "ACTIVE"
+    }
+  ],
+  "next_cursor": null
+}
+```
+
+---
+
+### List Brex cards
+List Brex cards, optionally filtered by user.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `user_id` | string | No | Filter to cards owned by this user. Obtainable from list_users (items[].id). |
+| `cursor` | string | No | Pagination cursor. |
+| `limit` | number | No | Page size, default 50, max 100. |
+
+**Response**
+
+```json
+{
+  "items": [
+    {
+      "id": "card_abc123",
+      "card_name": "AWS - Vendor",
+      "last_four": "4242",
+      "status": "ACTIVE",
+      "card_type": "VIRTUAL",
+      "limit_type": "CARD"
+    }
+  ],
+  "next_cursor": null
+}
+```
+
+---
+
+### Create a Brex card
+Create a new virtual or physical Brex card. For vendor cards, set limit_type=CARD with its own spend_controls. For user/employee cards, set limit_type=USER (uses the user's level limit).
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `owner_user_id` | string | Yes | The user the card is issued to. Obtainable from list_users (items[].id). The provider wraps this as &#123;owner: &#123;type: 'USER', user_id: ...&#125;&#125;. |
+| `card_name` | string | Yes | Display name for the card (e.g. 'AWS - Vendor'). |
+| `card_type` | string | Yes | Enum: VIRTUAL or PHYSICAL. Vendor cards must be VIRTUAL. |
+| `limit_type` | string | Yes | Enum: CARD (vendor card with its own limit) or USER (corporate card using user-level limit). When CARD, spend_limit_amount and spend_duration become required. |
+| `spend_limit_amount` | number | No | Required when limit_type=CARD. Integer in the smallest currency unit (e.g. cents for USD). |
+| `spend_limit_currency` | string | No | ISO 4217 currency code (default USD). |
+| `spend_duration` | string | No | Required when limit_type=CARD. Enum: MONTHLY, QUARTERLY, YEARLY, ONE_TIME. |
+| `reason` | string | No | Free-text reason for the spend limit. |
+| `lock_after_date` | string | No | yyyy-mm-dd. Card auto-locks after this date. |
+| `mailing_address` | object | No | Required when card_type=PHYSICAL. Object: &#123;address: &#123;line1, line2, city, state, postal_code, country&#125;, recipient_name, phone_number&#125;. |
+
+**Response**
+
+```json
+{
+  "id": "card_abc123",
+  "last_four": "4242",
+  "status": "ACTIVE",
+  "card_name": "AWS - Vendor",
+  "card_type": "VIRTUAL",
+  "limit_type": "CARD"
+}
+```

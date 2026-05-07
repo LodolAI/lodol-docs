@@ -1,0 +1,283 @@
+---
+title: Expressions & Statements
+description: Core AST node types for control flow, variables, and expressions in Lodol workflows.
+---
+
+## Expressions & Statements
+
+Lodol workflow programs are represented as a JSON AST. Every node has a `kind` discriminant that identifies its type. This page covers the fundamental statement and expression nodes used to build workflow logic.
+
+---
+
+## Statements
+
+Statements form the top-level body of a workflow program and do not produce values.
+
+### Let
+
+Declare a new variable in the current scope, optionally initialising it with an expression.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `kind` | `"LetStmt"` | Yes | Node discriminant |
+| `name` | string | Yes | Variable name |
+| `init` | expression | No | Initial value expression; variable is `null` if omitted |
+
+```json
+{
+  "kind": "LetStmt",
+  "name": "greeting",
+  "init": { "kind": "Literal", "value": "Hello, world!" }
+}
+```
+
+---
+
+### Assign
+
+Assign a new value to an existing variable.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `kind` | `"AssignStmt"` | Node discriminant |
+| `name` | string | Name of the variable to assign |
+| `value` | expression | New value expression |
+
+```json
+{
+  "kind": "AssignStmt",
+  "name": "count",
+  "value": {
+    "kind": "BinaryExpr",
+    "op": "+",
+    "left": { "kind": "VarRef", "name": "count" },
+    "right": { "kind": "Literal", "value": 1 }
+  }
+}
+```
+
+---
+
+### If
+
+Conditionally execute a branch. An optional `elseBranch` runs when the condition is falsy.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `kind` | `"IfStmt"` | Yes | Node discriminant |
+| `cond` | expression | Yes | Condition — any expression; truthy/falsy semantics |
+| `thenBranch` | statement | Yes | Statement executed when `cond` is truthy |
+| `elseBranch` | statement | No | Statement executed when `cond` is falsy |
+
+```json
+{
+  "kind": "IfStmt",
+  "cond": {
+    "kind": "BinaryExpr",
+    "op": ">",
+    "left": { "kind": "VarRef", "name": "score" },
+    "right": { "kind": "Literal", "value": 90 }
+  },
+  "thenBranch": {
+    "kind": "ExprStmt",
+    "expr": { "kind": "Literal", "value": "pass" }
+  },
+  "elseBranch": {
+    "kind": "ExprStmt",
+    "expr": { "kind": "Literal", "value": "fail" }
+  }
+}
+```
+
+---
+
+## Expressions
+
+Expressions are evaluated to produce a value. They can appear as the `init` of a `LetStmt`, the `value` of an `AssignStmt`, the `cond` of an `IfStmt`, arguments to built-ins, and anywhere else a value is expected.
+
+### Literal
+
+A constant JSON value embedded directly in the AST.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `kind` | `"Literal"` | Node discriminant |
+| `value` | any | A JSON-compatible value: `number`, `string`, `boolean`, `null`, `array`, or `object` |
+
+```json
+{ "kind": "Literal", "value": 42 }
+```
+
+```json
+{ "kind": "Literal", "value": "hello" }
+```
+
+```json
+{ "kind": "Literal", "value": true }
+```
+
+```json
+{ "kind": "Literal", "value": null }
+```
+
+```json
+{ "kind": "Literal", "value": [1, 2, 3] }
+```
+
+```json
+{ "kind": "Literal", "value": { "key": "value" } }
+```
+
+---
+
+### Var Ref
+
+Reference the current value of a variable by name.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `kind` | `"VarRef"` | Node discriminant |
+| `name` | string | Name of the variable to read |
+
+```json
+{ "kind": "VarRef", "name": "username" }
+```
+
+---
+
+### Member Expr
+
+Read a named property from an object.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `kind` | `"MemberExpr"` | Node discriminant |
+| `obj` | expression | Object expression to access |
+| `key` | string | Property name to read |
+
+```json
+{
+  "kind": "MemberExpr",
+  "obj": { "kind": "VarRef", "name": "user" },
+  "key": "email"
+}
+```
+
+Can be chained to reach nested properties:
+
+```json
+{
+  "kind": "MemberExpr",
+  "obj": {
+    "kind": "MemberExpr",
+    "obj": { "kind": "VarRef", "name": "response" },
+    "key": "data"
+  },
+  "key": "id"
+}
+```
+
+---
+
+### Index Expr
+
+Read an element from an array by a computed index expression.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `kind` | `"IndexExpr"` | Node discriminant |
+| `arr` | expression | Array expression to index into |
+| `idx` | expression | Index expression (should evaluate to a non-negative integer) |
+
+```json
+{
+  "kind": "IndexExpr",
+  "arr": { "kind": "VarRef", "name": "items" },
+  "idx": { "kind": "Literal", "value": 0 }
+}
+```
+
+---
+
+### Unary Expr
+
+Apply a unary operator to a single operand.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `kind` | `"UnaryExpr"` | Node discriminant |
+| `op` | `"-"` \| `"+"` \| `"!"` | Operator |
+| `right` | expression | Operand |
+
+| Operator | Description | Example |
+| --- | --- | --- |
+| `-` | Numeric negation | `-x` |
+| `+` | Numeric identity (no-op) | `+x` |
+| `!` | Logical NOT | `!isActive` |
+
+```json
+{
+  "kind": "UnaryExpr",
+  "op": "!",
+  "right": { "kind": "VarRef", "name": "isActive" }
+}
+```
+
+---
+
+### Binary Expr
+
+Apply a binary operator to two operands.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `kind` | `"BinaryExpr"` | Node discriminant |
+| `op` | string | Operator (see table below) |
+| `left` | expression | Left operand |
+| `right` | expression | Right operand |
+
+**Arithmetic operators**
+
+| Operator | Description |
+| --- | --- |
+| `+` | Addition (numbers) or string concatenation |
+| `-` | Subtraction |
+| `*` | Multiplication |
+| `/` | Division |
+
+**Comparison operators**
+
+| Operator | Description |
+| --- | --- |
+| `==` | Deep equality |
+| `!=` | Deep inequality |
+| `<` | Less than |
+| `<=` | Less than or equal |
+| `>` | Greater than |
+| `>=` | Greater than or equal |
+
+**Logical operators**
+
+| Operator | Description |
+| --- | --- |
+| `&&` | Logical AND (short-circuits) |
+| `\|\|` | Logical OR (short-circuits) |
+
+```json
+{
+  "kind": "BinaryExpr",
+  "op": "&&",
+  "left": {
+    "kind": "BinaryExpr",
+    "op": ">=",
+    "left": { "kind": "VarRef", "name": "age" },
+    "right": { "kind": "Literal", "value": 18 }
+  },
+  "right": {
+    "kind": "BinaryExpr",
+    "op": "==",
+    "left": { "kind": "VarRef", "name": "verified" },
+    "right": { "kind": "Literal", "value": true }
+  }
+}
+```

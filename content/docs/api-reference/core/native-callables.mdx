@@ -1,0 +1,229 @@
+---
+title: Native Callables
+description: Low-level callables for HTTP requests and human-in-the-loop approvals available in every Lodol workflow.
+---
+
+## Native Callables
+
+Native callables are low-level functions built into the workflow runtime. They are invoked like regular functions in the workflow [AST](/docs/api-reference/workflows) and do not map to REST endpoints — they run directly inside the execution engine.
+
+Two namespaces are currently available:
+
+- **`api.*`** — make authenticated HTTP requests from within a workflow.
+- **`human.*`** — create human-in-the-loop review tasks and wait for decisions.
+
+---
+
+## api
+
+### api.request
+
+Make an authenticated HTTP request to the Lodol API or any relative path. The workflow's `workflow_id` and `teamId` are automatically injected into the request body if not already set.
+
+**Signature**
+
+```
+api.request(method, path, payload?)
+```
+
+**Arguments**
+
+| Argument | Type | Required | Description |
+| --- | --- | --- | --- |
+| `method` | string | Yes | HTTP method — `"GET"`, `"POST"`, `"PUT"`, `"PATCH"`, `"DELETE"` |
+| `path` | string | Yes | Relative path, e.g. `"/actions/library/gmail/send"` |
+| `payload` | object | No | JSON body to send with the request |
+
+**Returns**
+
+The parsed JSON response body. Primitive responses (`string`, `number`, `boolean`, `null`) are returned as-is. Non-JSON responses are coerced to string.
+
+**Example**
+
+```json
+{
+  "kind": "CallExpr",
+  "callee": "api.request",
+  "args": [
+    { "kind": "Literal", "value": "POST" },
+    { "kind": "Literal", "value": "/actions/library/gmail/send" },
+    {
+      "kind": "Literal",
+      "value": {
+        "to": "alice@example.com",
+        "subject": "Hello",
+        "body": "World"
+      }
+    }
+  ]
+}
+```
+
+---
+
+## human
+
+The `human.*` callables implement the human-in-the-loop pattern: a workflow creates a review task, waits for a human decision, then reads the result and branches accordingly.
+
+Typical usage follows three steps:
+
+```
+execId = human.create(content, actionId?, steps?, decisionConfig?)
+human.wait()
+result  = human.result(execId)
+```
+
+---
+
+### human.create
+
+Create a human review execution. The reviewer sees `content` along with any optional execution steps. Returns an `execId` string used to retrieve the decision later.
+
+**Signature**
+
+```
+human.create(content, actionId?, steps?, decisionConfig?)
+```
+
+**Arguments**
+
+| Argument | Type | Required | Description |
+| --- | --- | --- | --- |
+| `content` | string | Yes | Markdown or plain-text description shown to the reviewer |
+| `actionId` | string | No | Identifier for the action being reviewed |
+| `steps` | array | No | List of `{ step_number, text, status }` objects describing workflow progress |
+| `decisionConfig` | object | No | Decision configuration; defaults to `{ "type": "boolean" }` (approve / reject) |
+
+**Returns**
+
+A string `execId` representing the created execution record.
+
+**Example**
+
+```json
+{
+  "kind": "CallExpr",
+  "callee": "human.create",
+  "args": [
+    { "kind": "Literal", "value": "Please review the draft email before it is sent." }
+  ]
+}
+```
+
+---
+
+### human.wait
+
+Pause workflow execution until a human has responded to the current review task. Internally polls the Chrome runtime every second until the trigger fires.
+
+**Signature**
+
+```
+human.wait()
+```
+
+**Arguments**
+
+None.
+
+**Returns**
+
+`null` — execution resumes once the human has responded.
+
+**Example**
+
+```json
+{ "kind": "CallExpr", "callee": "human.wait", "args": [] }
+```
+
+---
+
+### human.result
+
+Fetch the decision made by the reviewer for a given execution ID.
+
+**Signature**
+
+```
+human.result(execId)
+```
+
+**Arguments**
+
+| Argument | Type | Required | Description |
+| --- | --- | --- | --- |
+| `execId` | string | Yes | Execution ID returned by `human.create` |
+
+**Returns**
+
+An object with the following fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `decision` | string | Human-readable decision — `"Approved"`, `"Rejected"`, or a custom string |
+| `comment` | string | Optional comment left by the reviewer |
+| `approved` | boolean \| null | `true` if approved, `false` if rejected, `null` if indeterminate |
+
+**Example**
+
+```json
+{
+  "kind": "CallExpr",
+  "callee": "human.result",
+  "args": [
+    { "kind": "VarRef", "name": "execId" }
+  ]
+}
+```
+
+---
+
+## End-to-end example
+
+The snippet below shows a complete human-in-the-loop check: create a review task, wait for the decision, then branch on the result.
+
+```json
+[
+  {
+    "kind": "LetStmt",
+    "name": "execId",
+    "init": {
+      "kind": "CallExpr",
+      "callee": "human.create",
+      "args": [
+        { "kind": "Literal", "value": "Should we send the invoice?" }
+      ]
+    }
+  },
+  { "kind": "ExprStmt", "expr": { "kind": "CallExpr", "callee": "human.wait", "args": [] } },
+  {
+    "kind": "LetStmt",
+    "name": "result",
+    "init": {
+      "kind": "CallExpr",
+      "callee": "human.result",
+      "args": [{ "kind": "VarRef", "name": "execId" }]
+    }
+  },
+  {
+    "kind": "IfStmt",
+    "cond": {
+      "kind": "MemberExpr",
+      "obj": { "kind": "VarRef", "name": "result" },
+      "key": "approved"
+    },
+    "thenBranch": {
+      "kind": "ExprStmt",
+      "expr": {
+        "kind": "CallExpr",
+        "callee": "api.request",
+        "args": [
+          { "kind": "Literal", "value": "POST" },
+          { "kind": "Literal", "value": "/actions/library/gmail/send" },
+          { "kind": "Literal", "value": { "to": "client@example.com", "subject": "Invoice", "body": "Please find attached." } }
+        ]
+      }
+    }
+  }
+]
+```

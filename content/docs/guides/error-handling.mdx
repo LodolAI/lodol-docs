@@ -1,0 +1,128 @@
+---
+title: Error Handling
+description: Handle errors from the Lodol Developer API gracefully in your applications.
+---
+
+## Error Handling
+
+The Lodol API uses standard HTTP status codes to indicate the success or failure of a request.
+
+### HTTP Status Codes
+
+| Status | Description |
+| --- | --- |
+| `200` | Request succeeded |
+| `202` | Accepted — workflow execution started (returned by run-async) |
+| `400` | Bad request — check your parameters |
+| `401` | Unauthorized — missing or invalid API key |
+| `402` | Payment required — insufficient credits for the operation |
+| `403` | Forbidden — API key lacks the required scope, or feature not available on your plan |
+| `404` | Resource not found |
+| `409` | Conflict — a request with this Idempotency-Key is already being processed |
+| `429` | Rate limit or concurrent execution limit exceeded |
+| `500` | Internal server error |
+
+### Error Response Format
+
+All error responses return a JSON body with an `error` field:
+
+```json
+{
+  "error": "The error message describing what went wrong."
+}
+```
+
+### Common Error Scenarios
+
+**Invalid or missing API key (401)**
+
+```json
+{
+  "error": "Missing or malformed Authorization header"
+}
+```
+
+**Insufficient scope (403)**
+
+```json
+{
+  "error": "API key lacks required scope(s)"
+}
+```
+
+**Insufficient credits (402)**
+
+```json
+{
+  "error": "Insufficient credits. Please upgrade your plan or purchase more credits."
+}
+```
+
+**Rate limit exceeded (429)**
+
+The response includes a `Retry-After` header with the number of seconds to wait:
+
+```json
+{
+  "error": "Rate limit exceeded. Please wait before trying again."
+}
+```
+
+**Concurrent execution limit (429)**
+
+```json
+{
+  "error": "Concurrent execution limit reached. Your plan allows 5 concurrent executions via the API."
+}
+```
+
+**Idempotency conflict (409)**
+
+Returned when another request with the same `Idempotency-Key` is currently being processed. The response includes a `Retry-After: 5` header:
+
+```json
+{
+  "error": "A request with this Idempotency-Key is currently being processed. Please retry later."
+}
+```
+
+### Retry Strategy
+
+For transient errors (`429` and `5xx` status codes), implement exponential backoff:
+
+```python
+import time
+import requests
+
+def api_request_with_retry(method, url, headers, max_retries=3, **kwargs):
+    for attempt in range(max_retries + 1):
+        response = requests.request(method, url, headers=headers, **kwargs)
+
+        if response.status_code == 429:
+            retry_after = int(response.headers.get("Retry-After", 2 ** attempt))
+            time.sleep(retry_after)
+            continue
+
+        if response.status_code >= 500 and attempt < max_retries:
+            time.sleep(2 ** attempt)
+            continue
+
+        return response
+
+    return response
+```
+
+### Idempotency
+
+POST endpoints (`run-async`, `stop`) support an optional `Idempotency-Key` header to prevent duplicate operations when retrying failed requests:
+
+```bash
+curl -X POST https://app.skipflow.com/api/v1/workflows/665f.../run-async \
+  -H "Authorization: Bearer sk_live_your_api_key" \
+  -H "Idempotency-Key: unique-request-id-123"
+```
+
+- Keys can be up to 256 characters
+- Responses are cached for 24 hours
+- Replayed responses include an `X-Idempotent-Replayed: true` header
+- If a request with the same key is still in flight, you'll receive a `409 Conflict`

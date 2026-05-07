@@ -1,0 +1,78 @@
+---
+title: Authentication
+description: Learn how to authenticate with the Lodol Developer API using API keys.
+---
+
+## Authentication
+
+All Developer API requests must be authenticated using an API key passed in the `Authorization` header as a Bearer token.
+
+```bash
+curl -X GET https://app.skipflow.com/api/v1/workflows \
+  -H "Authorization: Bearer sk_live_your_api_key"
+```
+
+### Creating API Keys
+
+API keys are created and managed from the Lodol web dashboard under **Settings > API Keys**. Only workspace owners and admins can create or revoke keys.
+
+API keys are scoped to a workspace — all requests authenticated with a key operate within that workspace's data and billing.
+
+The full key is shown **once** at creation time. Only a prefix and SHA-256 hash are stored, so the key cannot be retrieved later.
+
+### Key Format
+
+API keys use the format `sk_live_<random>`, where the random portion provides 256 bits of entropy.
+
+### Scopes
+
+Each API key is assigned one or more scopes that control which endpoints it can access:
+
+| Scope | Description |
+| --- | --- |
+| `workflows:read` | List workflows, get workflow details |
+| `workflows:execute` | Run workflows, stop executions |
+| `executions:read` | List and view execution details |
+
+Scopes are additive. A key with `workflows:read` and `workflows:execute` can list and run workflows, but cannot view execution history without `executions:read`.
+
+### API Key Limits
+
+The number of API keys per workspace depends on your plan:
+
+| Plan | API Keys |
+| --- | --- |
+| Free | Not available |
+| Pro | 3 |
+| Team | 10 |
+| Enterprise | 20 |
+
+The Developer API is not available on the Free plan.
+
+### Security Best Practices
+
+- **Never** expose your API key in client-side code
+- Store API keys in environment variables or a secrets manager
+- Use the minimum scopes necessary for your integration
+- Revoke keys that are no longer in use
+- Set an expiration when creating keys (optional `expires_in_days` parameter)
+
+### Rate Limits
+
+API requests are rate-limited per workspace (shared across all API keys in the workspace) based on your plan:
+
+| Plan | Requests/minute | Concurrent executions |
+| --- | --- | --- |
+| Pro | 15 | 5 |
+| Team | 25 | 10 |
+| Enterprise | 50 | 25 |
+
+Rate limit information is included in response headers:
+
+| Header | Description |
+| --- | --- |
+| `X-RateLimit-Limit` | Maximum requests allowed per minute |
+| `X-RateLimit-Remaining` | Requests remaining in the current window |
+| `X-RateLimit-Reset` | Seconds until the rate limit window resets |
+
+When you exceed the rate limit, the API returns `429 Too Many Requests` with a `Retry-After` header indicating how long to wait before retrying.

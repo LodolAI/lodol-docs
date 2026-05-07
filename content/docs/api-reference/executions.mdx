@@ -1,0 +1,207 @@
+---
+title: Executions
+description: API endpoints for running workflows and tracking executions.
+---
+
+## Executions
+
+An execution represents a single run of a workflow. Workflows are run asynchronously — you start an execution and then poll for its status.
+
+### The Execution Object
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "workflow_name": "Welcome Email Workflow",
+  "status": "success",
+  "started_at": "2026-01-15T10:30:00+00:00",
+  "completed_at": "2026-01-15T10:30:03+00:00"
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `execution_id` | string | Unique identifier for this execution |
+| `workflow_id` | string | ID of the workflow that was executed |
+| `workflow_name` | string | Name of the workflow (included in list view) |
+| `status` | string | Current status: `running`, `success`, `failed`, `stopped` |
+| `started_at` | string | ISO 8601 timestamp when execution started |
+| `completed_at` | string \| null | ISO 8601 timestamp when execution finished |
+
+---
+
+### Run a Workflow
+
+```
+POST /api/v1/workflows/:id/run-async
+```
+
+Starts a workflow execution in the background. Returns immediately with an `execution_id` that you can poll via the [Get Execution](#get-an-execution) endpoint.
+
+**Required scope:** `workflows:execute`
+
+Costs **1 credit** per execution. Returns `402 Payment Required` if the workspace has insufficient credits.
+
+**Headers**
+
+| Header | Required | Description |
+| --- | --- | --- |
+| `Idempotency-Key` | No | Prevents duplicate executions on retry (max 256 characters). Cached for 24 hours. |
+
+**Example**
+
+```bash
+curl -X POST https://app.skipflow.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async \
+  -H "Authorization: Bearer sk_live_your_api_key" \
+  -H "Idempotency-Key: unique-request-id-123"
+```
+
+**Response (202)**
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "status": "running",
+  "created_at": "2026-01-15T10:30:00+00:00"
+}
+```
+
+---
+
+### List Executions
+
+```
+GET /api/v1/executions
+```
+
+Returns a list of executions for the workspace, with optional filtering and cursor-based pagination.
+
+**Required scope:** `executions:read`
+
+**Query Parameters**
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `workflow_id` | string | Filter executions by workflow ID |
+| `limit` | integer | Max results to return (1-100, default 20) |
+| `after` | string | Cursor: the `execution_id` of the last item from the previous page |
+
+**Example**
+
+```bash
+curl "https://app.skipflow.com/api/v1/executions?workflow_id=665f1a2b3c4d5e6f7a8b9c0d&limit=10" \
+  -H "Authorization: Bearer sk_live_your_api_key"
+```
+
+**Response (200)**
+
+```json
+{
+  "executions": [
+    {
+      "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+      "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+      "workflow_name": "Welcome Email Workflow",
+      "status": "success",
+      "started_at": "2026-01-15T10:30:00+00:00",
+      "completed_at": "2026-01-15T10:30:03+00:00"
+    }
+  ]
+}
+```
+
+---
+
+### Get an Execution
+
+```
+GET /api/v1/executions/:id
+```
+
+Retrieves a single execution by its ID. By default, step results are omitted to keep polling lightweight.
+
+**Required scope:** `executions:read`
+
+**Query Parameters**
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `include_step_results` | string | Set to `true` to include step-level results in the response |
+
+**Example**
+
+```bash
+# Poll for status (lightweight)
+curl https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f \
+  -H "Authorization: Bearer sk_live_your_api_key"
+
+# Fetch full results after completion
+curl "https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?include_step_results=true" \
+  -H "Authorization: Bearer sk_live_your_api_key"
+```
+
+**Default Response (200)**
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "status": "running",
+  "started_at": "2026-01-15T10:30:00+00:00",
+  "completed_at": null,
+  "error": null
+}
+```
+
+**Response with `include_step_results=true` (200)**
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "status": "success",
+  "started_at": "2026-01-15T10:30:00+00:00",
+  "completed_at": "2026-01-15T10:30:03+00:00",
+  "steps": [
+    { "index": 0, "status": "completed", "result": "..." },
+    { "index": 1, "status": "completed", "result": "..." }
+  ],
+  "error": null
+}
+```
+
+---
+
+### Stop an Execution
+
+```
+POST /api/v1/executions/:id/stop
+```
+
+Stops a running execution. Steps that have already completed will not be rolled back. Returns `400 Bad Request` if the execution is already in a terminal state (`success`, `failed`, or `stopped`).
+
+**Required scope:** `workflows:execute`
+
+**Headers**
+
+| Header | Required | Description |
+| --- | --- | --- |
+| `Idempotency-Key` | No | Prevents duplicate stop requests on retry |
+
+**Example**
+
+```bash
+curl -X POST https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f/stop \
+  -H "Authorization: Bearer sk_live_your_api_key"
+```
+
+**Response (200)**
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "status": "stopped"
+}
+```
