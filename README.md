@@ -41,6 +41,12 @@ If you run into certificate issues:
 - `npm run lint` — Run ESLint
 - `npm run generate-actions` — Regenerate the per-provider action MDX
   files from the server's integrations library
+- `npm test` — Run the Jest suite (TypeScript / React)
+- `npm run test:watch` — Re-run tests on file change
+- `npm run test:coverage` — Generate a coverage report
+- `npm run test:python` — Run the Python tests for the actions docs
+  generator script (uses the standard-library `unittest` runner — no
+  extra Python dependencies required)
 
 ## Project Structure
 
@@ -49,8 +55,21 @@ content/         — MDX documentation pages
 app/             — Next.js app router pages and layouts
 lib/             — Shared utilities and configuration
 scripts/         — Build-time generators (e.g. actions API reference)
+tests/ts/        — Jest tests for TypeScript code
+tests/python/    — unittest tests for the actions docs generator
 source.config.ts — Fumadocs MDX source configuration
 ```
+
+## Testing
+
+The TypeScript layer is covered by Jest + ts-jest with the `jsdom`
+environment and React Testing Library. Tests live in `tests/ts/` and
+run via `npm test`.
+
+The Python `scripts/generate-actions-docs.py` script is covered by
+`unittest` tests in `tests/python/`. They run with the standard
+library only — no extra Python dependencies — and can be invoked with
+`npm run test:python`.
 
 ## Auto-generated API reference
 
