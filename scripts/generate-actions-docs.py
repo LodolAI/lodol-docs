@@ -11,6 +11,7 @@ Usage:
 import ast
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -24,21 +25,28 @@ SERVER_ROOT = DOCS_ROOT.parent / "server"
 PROVIDERS_DIR = SERVER_ROOT / "src" / "skipflow" / "integrations" / "providers"
 OUTPUT_DIR = DOCS_ROOT / "content" / "docs" / "api-reference" / "actions"
 
-# ---------------------------------------------------------------------------
-# Target providers: all providers with triggers + specifically requested ones
-# ---------------------------------------------------------------------------
-TRIGGER_PROVIDERS = [
-    "airparser", "airtable", "box", "calendly", "canva", "clickup",
-    "coda", "discord", "dropbox", "eventbrite", "gmail", "google_calendar",
-    "google_docs", "google_drive", "google_sheets", "linear", "notion",
-    "paypal", "slack", "stripe", "telegram", "todoist", "trello", "twitter",
-]
 
-ADDITIONAL_PROVIDERS = [
-    "anthropic", "whatsapp", "openai", "google_translate", "youtube",
-]
+def discover_providers() -> list[str]:
+    """Discover every provider directory containing a provider.py file.
 
-TARGET_PROVIDERS = sorted(set(TRIGGER_PROVIDERS + ADDITIONAL_PROVIDERS))
+    The docs are auto-generated from the live integrations library, so the
+    set of documented providers is derived from the filesystem rather than a
+    hardcoded list.
+    """
+    if not PROVIDERS_DIR.exists():
+        print(
+            f"warning: providers directory not found at {PROVIDERS_DIR}; "
+            "no action docs will be generated. Is projects/server checked out?",
+            file=sys.stderr,
+        )
+        return []
+    return sorted(
+        p.name
+        for p in PROVIDERS_DIR.iterdir()
+        if p.is_dir()
+        and not p.name.startswith("_")
+        and (p / "provider.py").exists()
+    )
 
 # ---------------------------------------------------------------------------
 # ParameterType enum → display string
@@ -328,6 +336,40 @@ def _mock_to_json(mock: Any) -> str:
         return json.dumps(str(mock))
 
 
+def _escape_mdx(text: Any) -> str:
+    """Escape characters that MDX would otherwise interpret as JSX.
+
+    `{` and `}` are treated as JSX expression delimiters; `<` opens a JSX
+    tag. We replace them with HTML entities so the MDX compiler renders
+    them as literal characters in prose. Provider descriptions in the
+    integrations library are written for humans and routinely contain
+    literal `{...}` shapes (e.g. ``{owner: {type: 'USER'}}``).
+    """
+    if text is None:
+        return ""
+    s = str(text)
+    return (
+        s.replace("{", "&#123;")
+        .replace("}", "&#125;")
+        .replace("<", "&lt;")
+    )
+
+
+def _escape_mdx_cell(text: Any) -> str:
+    """Escape MDX prose plus markdown-table-specific characters."""
+    return (
+        _escape_mdx(text)
+        .replace("|", "\\|")
+        .replace("\n", " ")
+    )
+
+
+def _yaml_quote(text: Any) -> str:
+    """Quote a string for safe use as a YAML scalar in frontmatter."""
+    s = "" if text is None else str(text)
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
 def generate_action_section(action_name: str, action: dict) -> str:
     """Return MDX for one action."""
     display = action.get("display_name", action_name.replace("_", " ").title())
@@ -340,11 +382,11 @@ def generate_action_section(action_name: str, action: dict) -> str:
     lines: list[str] = []
 
     # Header + endpoint
-    lines.append(f"### {display}")
+    lines.append(f"### {_escape_mdx(display)}")
     lines.append("")
     lines.append(f"```\n{method} {path}\n```")
     lines.append("")
-    lines.append(desc)
+    lines.append(_escape_mdx(desc))
     lines.append("")
 
     # Params table
@@ -359,7 +401,7 @@ def generate_action_section(action_name: str, action: dict) -> str:
             pname = p.get("name", "")
             ptype = _param_type(p.get("type", "string"))
             req = "Yes" if p.get("required") else "No"
-            pdesc = p.get("description", "")
+            pdesc = _escape_mdx_cell(p.get("description", ""))
             lines.append(f"| `{pname}` | {ptype} | {req} | {pdesc} |")
         lines.append("")
 
@@ -399,13 +441,15 @@ def generate_provider_mdx(provider: dict) -> str:
 
     parts: list[str] = []
     parts.append(f"---")
-    parts.append(f"title: {display}")
-    parts.append(f"description: API actions for the {display} integration.")
+    parts.append(f"title: {_yaml_quote(display)}")
+    parts.append(
+        f"description: {_yaml_quote(f'API actions for the {display} integration.')}"
+    )
     parts.append(f"---")
     parts.append("")
-    parts.append(f"## {display}")
+    parts.append(f"## {_escape_mdx(display)}")
     parts.append("")
-    parts.append(desc)
+    parts.append(_escape_mdx(desc))
     parts.append("")
 
     for action_name, action_data in provider["actions"].items():
@@ -510,14 +554,15 @@ def generate_meta_json(providers: list[dict]) -> str:
 # ===================================================================
 
 def main() -> None:
+    targets = discover_providers()
     print(f"Generating actions documentation...")
     print(f"  Providers dir : {PROVIDERS_DIR}")
     print(f"  Output dir    : {OUTPUT_DIR}")
-    print(f"  Targets       : {len(TARGET_PROVIDERS)}")
+    print(f"  Targets       : {len(targets)} (auto-discovered)")
     print()
 
     providers: list[dict] = []
-    for pid in TARGET_PROVIDERS:
+    for pid in targets:
         info = parse_provider(pid)
         if info:
             action_count = len([a for a in info["actions"].values() if isinstance(a, dict)])
@@ -528,7 +573,11 @@ def main() -> None:
 
     print(f"\n  Total: {len(providers)} providers")
 
-    # Ensure output dir exists
+    # Recreate output dir from scratch so removed providers disappear.
+    if OUTPUT_DIR.exists():
+        for existing in OUTPUT_DIR.iterdir():
+            if existing.is_file():
+                existing.unlink()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Write meta.json

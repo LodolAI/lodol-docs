@@ -6,6 +6,7 @@ Documentation site for Lodol, built with [Next.js](https://nextjs.org/) and [Fum
 
 - Node.js 18+
 - npm
+- Python 3 (used by the actions API reference generator)
 
 ## Getting Started
 
@@ -38,12 +39,27 @@ If you run into certificate issues:
 - `npm run build` — Build for production
 - `npm run start` — Start the production server
 - `npm run lint` — Run ESLint
+- `npm run generate-actions` — Regenerate the per-provider action MDX
+  files from the server's integrations library
 
 ## Project Structure
 
 ```
-content/       — MDX documentation pages
-app/           — Next.js app router pages and layouts
-lib/           — Shared utilities and configuration
+content/         — MDX documentation pages
+app/             — Next.js app router pages and layouts
+lib/             — Shared utilities and configuration
+scripts/         — Build-time generators (e.g. actions API reference)
 source.config.ts — Fumadocs MDX source configuration
 ```
+
+## Auto-generated API reference
+
+The `content/docs/api-reference/actions/` directory is regenerated on
+every build by `scripts/generate-actions-docs.py`. It walks
+`projects/server/src/skipflow/integrations/providers/` and emits one MDX
+page per provider from each provider's `action_specs`, plus an index and
+`meta.json`. The directory is `.gitignore`d — do not edit those files by
+hand. To change what shows up in the docs, update the relevant provider's
+`action_specs` in the server; the docs will pick up the change on the
+next deploy. The generator runs automatically via the `predev` and
+`prebuild` npm hooks.
