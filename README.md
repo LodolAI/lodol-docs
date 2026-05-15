@@ -6,7 +6,7 @@ Documentation site for Lodol, built with [Next.js](https://nextjs.org/) and [Fum
 
 - Node.js 18+
 - npm
-- Python 3 (used by the actions API reference generator)
+- Python 3 (used by the actions API reference renderer)
 
 ## Getting Started
 
@@ -40,23 +40,26 @@ If you run into certificate issues:
 - `npm run start` — Start the production server
 - `npm run lint` — Run ESLint
 - `npm run generate-actions` — Regenerate the per-provider action MDX
-  files from the server's integrations library
+  files from `data/actions.json`
 - `npm test` — Run the Jest suite (TypeScript / React)
 - `npm run test:watch` — Re-run tests on file change
 - `npm run test:coverage` — Generate a coverage report
 - `npm run test:python` — Run the Python tests for the actions docs
-  generator script (uses the standard-library `unittest` runner — no
-  extra Python dependencies required)
+  renderer (uses the standard-library `unittest` runner — no extra
+  Python dependencies required)
 
 ## Project Structure
 
 ```
 content/         — MDX documentation pages
 app/             — Next.js app router pages and layouts
+data/            — Generated/published data consumed at build time
+                   (e.g. data/actions.json — see below)
 lib/             — Shared utilities and configuration
-scripts/         — Build-time generators (e.g. actions API reference)
+scripts/         — Build-time generators
+                   (e.g. scripts/render-actions-docs.py)
 tests/ts/        — Jest tests for TypeScript code
-tests/python/    — unittest tests for the actions docs generator
+tests/python/    — unittest tests for the actions docs renderer
 source.config.ts — Fumadocs MDX source configuration
 ```
 
@@ -66,7 +69,7 @@ The TypeScript layer is covered by Jest + ts-jest with the `jsdom`
 environment and React Testing Library. Tests live in `tests/ts/` and
 run via `npm test`.
 
-The Python `scripts/generate-actions-docs.py` script is covered by
+The Python `scripts/render-actions-docs.py` script is covered by
 `unittest` tests in `tests/python/`. They run with the standard
 library only — no extra Python dependencies — and can be invoked with
 `npm run test:python`.
@@ -74,11 +77,24 @@ library only — no extra Python dependencies — and can be invoked with
 ## Auto-generated API reference
 
 The `content/docs/api-reference/actions/` directory is regenerated on
-every build by `scripts/generate-actions-docs.py`. It walks
-`projects/server/src/skipflow/integrations/providers/` and emits one MDX
-page per provider from each provider's `action_specs`, plus an index and
-`meta.json`. The directory is `.gitignore`d — do not edit those files by
-hand. To change what shows up in the docs, update the relevant provider's
-`action_specs` in the server; the docs will pick up the change on the
-next deploy. The generator runs automatically via the `predev` and
-`prebuild` npm hooks.
+every build by `scripts/render-actions-docs.py`. The renderer reads
+`data/actions.json` and emits one MDX page per provider plus an index
+and `meta.json`. The directory is `.gitignore`d — do not edit those
+files by hand.
+
+`data/actions.json` is the public contract between the Lodol server
+(closed-source) and these docs (open-source). It is published into
+this repo as an automated pull request by the
+`publish-action-specs` workflow in `lodolai/lodol` whenever the
+server's provider library changes. To change what shows up in the
+docs:
+
+1. Update the relevant provider's `action_specs` in
+   `lodolai/lodol`'s `projects/server/src/skipflow/integrations/providers/`.
+2. Wait for the auto-PR to land here (or trigger
+   `publish-action-specs` manually via workflow dispatch).
+3. The next docs build picks up the change via the `predev` /
+   `prebuild` npm hooks.
+
+To preview locally with the current `data/actions.json`, just run
+`npm run dev` or `npm run generate-actions` directly.
