@@ -1,0 +1,49 @@
+name: Deploy Docs
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "**"
+      - ".github/workflows/deploy-docs.yml"
+
+env:
+  REGION: us-west1
+  SERVICE: docs
+  IMAGE: us-west1-docker.pkg.dev/skipflow/docs-repo/docs
+  PORT: 3000
+
+jobs:
+  deploy-docs:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Auth with GCP
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker us-west1-docker.pkg.dev --quiet
+
+      - name: Build & push Docker image
+        run: |
+          docker build -t $IMAGE .
+          docker push $IMAGE
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy $SERVICE \
+            --image $IMAGE \
+            --region $REGION \
+            --platform managed \
+            --port $PORT \
+            --service-account=941033595490-compute@developer.gserviceaccount.com \
+            --allow-unauthenticated \
+            --quiet
