@@ -1,6 +1,7 @@
 import { source } from '@/lib/source';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import { baseOptions } from '@/lib/layout.shared';
+import { ThemeSwitch } from 'fumadocs-ui/layouts/shared/slots/theme-switch';
 import type { ReactNode } from 'react';
 
 function GlobeIcon() {
@@ -31,7 +32,7 @@ function SidebarFooterLinks() {
         className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-fd-muted-foreground hover:bg-fd-accent hover:text-fd-accent-foreground transition-colors"
       >
         <GlobeIcon />
-        skipflow.com
+        Go to website
       </a>
       <a
         href="https://github.com/LodolAI/lodol-docs"
@@ -40,15 +41,23 @@ function SidebarFooterLinks() {
         className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-fd-muted-foreground hover:bg-fd-accent hover:text-fd-accent-foreground transition-colors"
       >
         <GitHubIcon />
-        GitHub
+        Go to GitHub
       </a>
+      <div className="pt-1">
+        <ThemeSwitch />
+      </div>
     </div>
   );
 }
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <DocsLayout tree={source.pageTree} {...baseOptions()} sidebar={{ footer: <SidebarFooterLinks /> }}>
+    <DocsLayout
+      tree={source.pageTree}
+      {...baseOptions()}
+      themeSwitch={{ enabled: false }}
+      sidebar={{ footer: <SidebarFooterLinks /> }}
+    >
       {children}
     </DocsLayout>
   );

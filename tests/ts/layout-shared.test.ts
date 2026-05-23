@@ -9,15 +9,21 @@ describe('baseOptions', () => {
 
   it('has a website button linking to skipflow.com in the topbar', () => {
     const opts = baseOptions();
-    const links = (opts.links ?? []) as Array<{ url?: string; external?: boolean }>;
+    const links = (opts.links ?? []) as Array<{ url?: string; external?: boolean; on?: string }>;
     const websiteLink = links.find(l => l.url === 'https://www.skipflow.com/');
     expect(websiteLink).toBeDefined();
     expect(websiteLink?.external).toBe(true);
+    expect(websiteLink?.on).toBe('nav');
   });
 
-  it('has a GitHub URL for the topbar GitHub icon button', () => {
+  it('has a GitHub icon button linking to the docs repo in the topbar', () => {
     const opts = baseOptions();
-    expect(opts.githubUrl).toBe('https://github.com/LodolAI/lodol-docs');
+    const links = (opts.links ?? []) as Array<{ type?: string; url?: string; external?: boolean; on?: string }>;
+    const githubLink = links.find(l => l.url === 'https://github.com/LodolAI/lodol-docs');
+    expect(githubLink).toBeDefined();
+    expect(githubLink?.type).toBe('icon');
+    expect(githubLink?.external).toBe(true);
+    expect(githubLink?.on).toBe('nav');
   });
 
   it('returns a fresh options object on every call', () => {
