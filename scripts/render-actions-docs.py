@@ -194,16 +194,12 @@ def _yaml_quote(text: Any) -> str:
 def generate_action_section(action_name: str, action: dict) -> str:
     display = action.get("display_name", action_name.replace("_", " ").title())
     desc = action.get("description", "")
-    path = action.get("path", f"/actions/library/unknown/{action_name}")
-    method = action.get("method", "POST")
     raw_params = action.get("parameters", [])
     mock = action.get("mock_response")
 
     lines: list[str] = []
 
     lines.append(f"### {_escape_mdx(display)}")
-    lines.append("")
-    lines.append(f"```\n{method} {path}\n```")
     lines.append("")
     lines.append(_escape_mdx(desc))
     lines.append("")
@@ -222,18 +218,6 @@ def generate_action_section(action_name: str, action: dict) -> str:
             pdesc = _escape_mdx_cell(p.get("description", ""))
             lines.append(f"| `{pname}` | {ptype} | {req} | {pdesc} |")
         lines.append("")
-
-    body = _json_body_example(param_list)
-    body_json = json.dumps(body, indent=4)
-    lines.append("**Example**")
-    lines.append("")
-    lines.append("```bash")
-    lines.append(f"curl -X POST https://api.skipflow.com/v1{path} \\")
-    lines.append('  -H "Authorization: Bearer sk_live_your_api_key" \\')
-    lines.append('  -H "Content-Type: application/json" \\')
-    lines.append(f"  -d '{body_json}'")
-    lines.append("```")
-    lines.append("")
 
     returns = action.get("returns", {})
     if mock is not None:
@@ -298,52 +282,12 @@ def generate_index_mdx(providers: list[dict]) -> str:
     lines = [
         "---",
         "title: Actions",
-        "description: API endpoints for executing provider actions in your workflows.",
+        "description: Browse available integrations and their actions.",
         "---",
         "",
         "## Actions",
         "",
         "Actions are the building blocks of Lodol workflows. Each action connects to a third-party service and performs a specific operation — sending a message, creating a record, translating text, querying data, and more.",
-        "",
-        "Use the Lodol API to call actions directly and build powerful automated workflows.",
-        "",
-        "### Endpoint Format",
-        "",
-        "All action endpoints follow the same pattern:",
-        "",
-        "```",
-        "POST /v1/actions/library/{provider}/{action}",
-        "```",
-        "",
-        "### Request Format",
-        "",
-        "All action requests must include:",
-        "",
-        "- `Authorization` header with your API key",
-        "- `Content-Type: application/json`",
-        "- Action-specific parameters in the JSON body",
-        "",
-        "```bash",
-        "curl -X POST https://api.skipflow.com/v1/actions/library/slack/send-message \\",
-        '  -H "Authorization: Bearer sk_live_your_api_key" \\',
-        '  -H "Content-Type: application/json" \\',
-        "  -d '{",
-        '    \"channel_id\": \"C123456\",',
-        '    \"text\": \"Hello from Lodol!\"',
-        "  }'",
-        "```",
-        "",
-        "### Response Format",
-        "",
-        'All action responses return JSON. Successful responses typically include a `status` field set to `"success"` along with action-specific data.',
-        "",
-        "```json",
-        "{",
-        '  "status": "success",',
-        '  "channel": "C123456",',
-        '  "ts": "1705312200.000100"',
-        "}",
-        "```",
         "",
         "### Available Providers",
         "",

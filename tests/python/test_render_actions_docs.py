@@ -276,26 +276,21 @@ class GenerateActionSectionTests(unittest.TestCase):
         base.update(overrides)
         return base
 
-    def test_includes_header_and_endpoint(self):
+    def test_includes_header_and_description(self):
         out = ren.generate_action_section("send_message", self._action())
         self.assertIn("### Send Message", out)
-        self.assertIn("POST /actions/library/slack/send-message", out)
         self.assertIn("Sends a chat message.", out)
+
+    def test_does_not_include_endpoint_or_curl(self):
+        out = ren.generate_action_section("send_message", self._action())
+        self.assertNotIn("POST /actions/library/slack/send-message", out)
+        self.assertNotIn("curl", out)
 
     def test_includes_parameter_table(self):
         out = ren.generate_action_section("send_message", self._action())
         self.assertIn("**Parameters**", out)
         self.assertIn("| `channel` | string | Yes |", out)
         self.assertIn("| `thread` | string | No |", out)
-
-    def test_curl_example_uses_only_required_params(self):
-        out = ren.generate_action_section("send_message", self._action())
-        self.assertIn(
-            "curl -X POST https://api.skipflow.com/v1/actions/library/slack/send-message",
-            out,
-        )
-        self.assertIn('"channel": "your_channel"', out)
-        self.assertNotIn('"thread"', out)
 
     def test_uses_mock_response_when_present(self):
         out = ren.generate_action_section("send_message", self._action())
@@ -321,11 +316,11 @@ class GenerateActionSectionTests(unittest.TestCase):
         out = ren.generate_action_section("my_action_name", action)
         self.assertIn("### My Action Name", out)
 
-    def test_uses_default_method_post_when_missing(self):
+    def test_renders_without_method_field(self):
         action = self._action()
         del action["method"]
         out = ren.generate_action_section("send_message", action)
-        self.assertIn("POST ", out)
+        self.assertIn("### Send Message", out)
 
     def test_escapes_jsx_characters_in_description(self):
         out = ren.generate_action_section(
@@ -420,6 +415,14 @@ class GenerateIndexMdxTests(unittest.TestCase):
         ]
         out = ren.generate_index_mdx(providers)
         self.assertIn('description="1 action available"', out)
+
+    def test_does_not_reference_direct_api_calls(self):
+        providers = [{"id": "slack", "display_name": "Slack", "actions": {}}]
+        out = ren.generate_index_mdx(providers)
+        self.assertNotIn("call actions directly", out)
+        self.assertNotIn("curl", out)
+        self.assertNotIn("Endpoint Format", out)
+        self.assertNotIn("Request Format", out)
 
 
 class GenerateMetaJsonTests(unittest.TestCase):

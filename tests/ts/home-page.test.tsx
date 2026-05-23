@@ -45,8 +45,24 @@ describe('HomePage', () => {
     expect(link).toHaveAttribute('href', '/docs/api-reference');
   });
 
-  it('exposes both primary calls to action', () => {
+  it('exposes feature card links alongside the primary CTAs', () => {
     render(<HomePage />);
-    expect(screen.getAllByRole('link')).toHaveLength(2);
+    const links = screen.getAllByRole('link');
+    expect(links.length).toBeGreaterThan(2);
+  });
+
+  it('links "Quickstart" to the quickstart guide', () => {
+    render(<HomePage />);
+    const link = screen.getByRole('link', { name: /Quickstart/i });
+    expect(link).toHaveAttribute('href', '/docs/guides/quickstart');
+  });
+
+  it('links "Integrations" card to the actions reference', () => {
+    render(<HomePage />);
+    const links = screen.getAllByRole('link');
+    const integrationsLink = links.find(
+      (l) => l.getAttribute('href') === '/docs/api-reference/actions',
+    );
+    expect(integrationsLink).toBeDefined();
   });
 });
