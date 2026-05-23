@@ -7,15 +7,9 @@ describe('baseOptions', () => {
     expect(opts.nav?.title).toBe('Lodol Docs');
   });
 
-  it('exposes a link to the API Reference section', () => {
+  it('does not add extra navigation links above the page tree', () => {
     const opts = baseOptions();
-    expect(Array.isArray(opts.links)).toBe(true);
-    expect(opts.links).toHaveLength(1);
-    const link = opts.links?.[0];
-    expect(link).toMatchObject({
-      text: 'API Reference',
-      url: '/docs/api-reference',
-    });
+    expect(!opts.links || (opts.links as unknown[]).length === 0).toBe(true);
   });
 
   it('returns a fresh options object on every call', () => {
@@ -25,14 +19,5 @@ describe('baseOptions', () => {
     const a = baseOptions();
     const b = baseOptions();
     expect(a).not.toBe(b);
-    expect(a.links).not.toBe(b.links);
-  });
-
-  it('API Reference link points to an internal docs path', () => {
-    const link = baseOptions().links?.[0] as { url?: string } | undefined;
-    const url = link?.url ?? '';
-    expect(typeof url).toBe('string');
-    expect(url.startsWith('/')).toBe(true);
-    expect(url).not.toMatch(/^https?:/);
   });
 });

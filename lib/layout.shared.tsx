@@ -5,11 +5,5 @@ export function baseOptions(): BaseLayoutProps {
     nav: {
       title: 'Lodol Docs',
     },
-    links: [
-      {
-        text: 'API Reference',
-        url: '/docs/api-reference',
-      },
-    ],
   };
 }

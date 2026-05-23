@@ -29,7 +29,7 @@ describe('HomePage', () => {
   it('shows the introductory copy describing the API', () => {
     render(<HomePage />);
     expect(
-      screen.getByText(/Build powerful integrations with the Lodol API/i),
+      screen.getByText(/Build and automate workflows with the Lodol API/i),
     ).toBeInTheDocument();
   });
 

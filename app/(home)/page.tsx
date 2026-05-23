@@ -85,7 +85,7 @@ export default function HomePage() {
           Lodol Developer API
         </h1>
         <p className="text-fd-muted-foreground mb-8 text-lg">
-          Build powerful integrations with the Lodol API. Explore our guides,
+          Build and automate workflows with the Lodol API. Explore our guides,
           API reference, and examples to get started.
         </p>
         <div className="flex gap-4 justify-center">
@@ -139,7 +139,7 @@ export default function HomePage() {
           />
           <FeatureCard
             title="Error Handling"
-            description="Understand API errors and learn how to build resilient integrations."
+            description="Understand API errors and learn how to build resilient workflows."
             href="/docs/guides/error-handling"
             icon={<ShieldIcon />}
           />
