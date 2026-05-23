@@ -7,12 +7,11 @@ describe('baseOptions', () => {
     expect(opts.nav?.title).toBe('Lodol Docs');
   });
 
-  it('has a website button linking to skipflow.com in the topbar', () => {
+  it('has a custom secondary website link in the topbar', () => {
     const opts = baseOptions();
-    const links = (opts.links ?? []) as Array<{ url?: string; external?: boolean; on?: string }>;
-    const websiteLink = links.find(l => l.url === 'https://www.skipflow.com/');
+    const links = (opts.links ?? []) as Array<{ type?: string; secondary?: boolean; on?: string }>;
+    const websiteLink = links.find(l => l.type === 'custom' && l.secondary === true);
     expect(websiteLink).toBeDefined();
-    expect(websiteLink?.external).toBe(true);
     expect(websiteLink?.on).toBe('nav');
   });
 
@@ -24,6 +23,15 @@ describe('baseOptions', () => {
     expect(githubLink?.type).toBe('icon');
     expect(githubLink?.external).toBe(true);
     expect(githubLink?.on).toBe('nav');
+  });
+
+  it('renders the GitHub icon button before the website link so website appears to the right', () => {
+    const opts = baseOptions();
+    const links = (opts.links ?? []) as Array<{ type?: string; url?: string }>;
+    const githubIndex = links.findIndex(l => l.url === 'https://github.com/LodolAI/lodol-docs');
+    const websiteIndex = links.findIndex(l => l.type === 'custom');
+    expect(githubIndex).toBeGreaterThanOrEqual(0);
+    expect(websiteIndex).toBeGreaterThan(githubIndex);
   });
 
   it('returns a fresh options object on every call', () => {
