@@ -533,6 +533,22 @@ class RenderIntegrationTests(unittest.TestCase):
             self.assertIn("### Send", provider_mdx)
             self.assertIn("Sends a message.", provider_mdx)
 
+    def test_writes_provider_files_as_utf8(self):
+        providers = [
+            {
+                "id": "limits",
+                "display_name": "Limits",
+                "description": "Only values \u2264 10 are accepted.",
+                "actions": {},
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "out"
+            ren.render(providers, output_dir)
+
+            provider_mdx = (output_dir / "limits.mdx").read_text(encoding="utf-8")
+            self.assertIn("Only values \u2264 10 are accepted.", provider_mdx)
+
     def test_recreates_output_dir_files_from_scratch(self):
         """A stale file from a previous run is removed."""
         with tempfile.TemporaryDirectory() as tmp:
