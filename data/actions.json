@@ -21641,6 +21641,181 @@
     },
     {
       "actions": {
+        "enrich_profile": {
+          "description": "Visit one profile and extract details for ICP scoring: name, headline, bio, location, recent posts, and best-effort emails/phones (often unavailable on the platform).",
+          "display_name": "Enrich a profile",
+          "display_str_template": "Enrich {platform} profile",
+          "handler": "actions.enrich_profile",
+          "id": "hyperbrowser_enrich_profile",
+          "method": "POST",
+          "mock_response": {
+            "bio": "Building tools for go-to-market teams.",
+            "emails": [],
+            "headline": "Founder at Acme",
+            "location": "San Francisco, CA",
+            "name": "Jane Doe",
+            "phones": [],
+            "profile_url": "https://www.linkedin.com/in/jane-doe",
+            "recent_posts": [
+              "Hiring two AEs this quarter!"
+            ]
+          },
+          "name": "enrich_profile",
+          "output_formatter": "actions.format_enrich_profile_output",
+          "parameters": [
+            "_PLATFORM_PARAM",
+            {
+              "description": "Profile URL from list_followers (followers[].profile_url).",
+              "name": "profile_url",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/hyperbrowser/enrich-profile",
+          "result_str_template": "Profile enriched.",
+          "returns": {
+            "properties": {
+              "bio": {
+                "type": "string"
+              },
+              "emails": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "headline": {
+                "type": "string"
+              },
+              "location": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "phones": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "profile_url": {
+                "type": "string"
+              },
+              "recent_posts": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_followers": {
+          "description": "Pull one page of the connected account's own friends/followers list. Cursor-paginated: pass next_cursor to fetch the next page. Keep limit small so each call stays within the action time budget.",
+          "display_name": "List followers/connections",
+          "display_str_template": "List {platform} followers",
+          "handler": "actions.list_followers",
+          "id": "hyperbrowser_list_followers",
+          "method": "POST",
+          "mock_response": {
+            "followers": [
+              {
+                "headline": "Founder at Acme",
+                "name": "Jane Doe",
+                "profile_url": "https://www.linkedin.com/in/jane-doe"
+              }
+            ],
+            "next_cursor": null
+          },
+          "name": "list_followers",
+          "output_formatter": "actions.format_list_followers_output",
+          "parameters": [
+            "_PLATFORM_PARAM",
+            {
+              "default": 25,
+              "description": "Max entries to return this page (keep small; default 25).",
+              "name": "limit",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Pagination cursor returned by a previous call as next_cursor.",
+              "name": "cursor",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/hyperbrowser/list-followers",
+          "result_str_template": "Followers listed.",
+          "returns": {
+            "properties": {
+              "followers": {
+                "description": "Follower/connection references.",
+                "items": {
+                  "properties": {
+                    "headline": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "profile_url": {
+                      "description": "Canonical profile URL \u2014 pass to enrich_profile.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "next_cursor": {
+                "description": "Cursor for the next page; null when no more pages.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "verify_login": {
+          "description": "Check whether the connected Hyperbrowser Profile is still logged into the platform (saved logins decay over time). Returns a boolean.",
+          "display_name": "Verify social login",
+          "display_str_template": "Verify {platform} login",
+          "handler": "actions.verify_login",
+          "id": "hyperbrowser_verify_login",
+          "method": "POST",
+          "mock_response": {
+            "authenticated": true,
+            "platform": "linkedin"
+          },
+          "name": "verify_login",
+          "output_formatter": "actions.format_verify_login_output",
+          "parameters": [
+            "_PLATFORM_PARAM"
+          ],
+          "path": "/actions/library/hyperbrowser/verify-login",
+          "result_str_template": "Login checked.",
+          "returns": {
+            "properties": {
+              "authenticated": {
+                "description": "True if the Profile is still logged in.",
+                "type": "boolean"
+              },
+              "platform": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Acquire a customer's own social connections and enrich profiles via a Hyperbrowser-driven browser (LinkedIn first).",
+      "display_name": "Hyperbrowser",
+      "id": "hyperbrowser"
+    },
+    {
+      "actions": {
         "search_title": {
           "description": "Opens IMDb and searches for a movie, show, or person by name.",
           "display_name": "Search for a title on IMDb",
@@ -40297,6 +40472,35 @@
           ],
           "result_str_template": "{is_url,result}"
         },
+        "join": {
+          "description": "Collapse a list of values into a single string, inserting a separator between elements. The inverse of Split. Strings are used as-is; numbers and booleans are converted to text; empty (null) elements become empty strings. Useful for turning a list like emails or phone numbers into one comma-separated cell.",
+          "display_name": "Join list",
+          "display_str_template": "Join {0} with {1}",
+          "handler": "join_list",
+          "id": "skipflow_text_join",
+          "name": "join",
+          "parameters": [
+            {
+              "description": "The list of values to join into a string.",
+              "name": "items",
+              "required": true,
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "description": "The string inserted between elements (e.g. a comma or comma-space). Use \"\" for plain concatenation.",
+              "examples": [
+                {
+                  "label": "Comma-separated",
+                  "value": ", "
+                }
+              ],
+              "name": "separator",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "result_str_template": "{join,result}"
+        },
         "lowercase": {
           "description": "Convert all characters in text to lowercase.",
           "display_name": "To lowercase",
@@ -40313,6 +40517,68 @@
             }
           ],
           "result_str_template": "{lowercase,result}"
+        },
+        "match_keywords": {
+          "description": "Score how strongly text matches tiered keyword lists (strong=3, medium=2, weak=1) and return pass/fail, the score, and the matched terms. Deterministic, no AI. Matching is case-insensitive and uses whole-word matching for plain words (so 5k won't match 5kg) and substring matching for emoji or hashtags. Each distinct listed term that appears adds its tier weight; overlapping terms each count.",
+          "display_name": "Match keywords",
+          "display_str_template": "Match keywords in {0}",
+          "handler": "match_keywords",
+          "id": "skipflow_text_match_keywords",
+          "name": "match_keywords",
+          "parameters": [
+            {
+              "description": "The text to scan.",
+              "name": "text",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Highest-weight terms (3 points each).",
+              "examples": [
+                {
+                  "label": "Hiring intent",
+                  "value": "[\"we're hiring\", \"open role\", \"#hiring\"]"
+                }
+              ],
+              "name": "strong_terms",
+              "required": true,
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "default": [],
+              "description": "Medium-weight terms (2 points each). Optional.",
+              "examples": [
+                {
+                  "label": "Hiring intent",
+                  "value": "[\"recruiting\", \"join our team\"]"
+                }
+              ],
+              "name": "medium_terms",
+              "required": false,
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "default": [],
+              "description": "Lowest-weight terms (1 point each). Optional.",
+              "examples": [
+                {
+                  "label": "Hiring intent",
+                  "value": "[\"growing\", \"team\", \"careers\"]"
+                }
+              ],
+              "name": "weak_terms",
+              "required": false,
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "default": "DEFAULT_THRESHOLD",
+              "description": "Pass when the total score is at least this value. Defaults to 3 (one strong term passes).",
+              "name": "threshold",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "result_str_template": "Match: {match_keywords,is_match}\nScore: {match_keywords,score}\nMatched: {match_keywords,matched_terms}"
         },
         "replace": {
           "description": "Replace occurrences of a pattern within a string.",
