@@ -61,7 +61,7 @@ export function formatCitationLabel(citation: Citation): string {
 export function citationHref(citation: Citation): string {
   try {
     const url = new URL(citation.url);
-    return url.pathname + url.hash;
+    return url.pathname + url.search + url.hash;
   } catch {
     return citation.url;
   }

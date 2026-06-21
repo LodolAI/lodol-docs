@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import {
   type ChatMessage,
   citationHref,
@@ -11,8 +12,9 @@ import {
 // The docs site has a single deployment talking to one backend, so the prod
 // build falls back to api-dev (no per-env build wiring needed). The env var is
 // only an override for local dev (point at the proxy / a local server).
-const API_BASE =
-  process.env.NEXT_PUBLIC_LODOL_API_BASE ?? 'https://api-dev.lodol.com';
+const API_BASE = (
+  process.env.NEXT_PUBLIC_LODOL_API_BASE ?? 'https://api-dev.lodol.com'
+).replace(/\/+$/, '');
 // Client-side caps matching the server (chat_route.py DOCS_CHAT_* constants):
 // query/message char limits mirror the server exactly; history is a tighter
 // cap than the server's accepted max (50) since it keeps only the last 10 turns.
@@ -54,9 +56,20 @@ export function AskLodolWidget() {
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Skip the focus effect on the initial (closed) mount so we don't steal
+  // focus on page load; only act on actual open/close transitions.
+  const interacted = useRef(false);
 
   useEffect(() => {
-    if (open) textareaRef.current?.focus();
+    if (open) {
+      textareaRef.current?.focus();
+    } else if (interacted.current) {
+      // Return focus to the trigger when the dialog closes so keyboard and
+      // screen-reader users aren't left on a detached element.
+      triggerRef.current?.focus();
+    }
+    interacted.current = true;
   }, [open]);
 
   useEffect(() => {
@@ -132,14 +145,15 @@ export function AskLodolWidget() {
         fail('Something went wrong. Please try again.');
         return;
       }
+      const hasEnoughContext = data.has_enough_context === true;
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           content: data.answer,
-          hasEnoughContext: data.has_enough_context === true,
+          hasEnoughContext,
           citation:
-            data.has_enough_context && data.citations?.length > 0
+            hasEnoughContext && data.citations?.length > 0
               ? data.citations[0]
               : null,
         },
@@ -155,6 +169,7 @@ export function AskLodolWidget() {
     <>
       {!open && (
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Ask Lodol"
@@ -200,12 +215,12 @@ export function AskLodolWidget() {
                   {message.citation && (
                     <p className="mt-1 px-1 text-xs text-fd-muted-foreground">
                       Source:{' '}
-                      <a
+                      <Link
                         href={citationHref(message.citation)}
                         className="underline hover:text-fd-accent-foreground"
                       >
                         {formatCitationLabel(message.citation)}
-                      </a>
+                      </Link>
                     </p>
                   )}
                 </div>
