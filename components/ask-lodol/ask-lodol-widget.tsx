@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   type ChatMessage,
+  type Citation,
   citationHref,
   formatCitationLabel,
   stripCitationMarkers,
 } from '@/components/ask-lodol/citation';
+import { createSseDecoder } from '@/components/ask-lodol/stream';
 
 // The docs site has a single deployment talking to one backend, so the prod
 // build falls back to api-dev (no per-env build wiring needed). The env var is
@@ -106,18 +108,46 @@ export function AskLodolWidget() {
     setError(null);
     setPending(true);
 
-    // On failure, drop the optimistic user turn so it doesn't linger as an
-    // orphan in history, and restore the input so the question can be retried.
+    // Whether the streaming assistant bubble has been added yet — decides how
+    // far a failure rolls back (assistant + user turn, or just the user turn).
+    let assistantStarted = false;
+
+    // On failure, drop the optimistic turn(s) so they don't linger as orphans
+    // in history, and restore the input so the question can be retried.
     const fail = (message: string) => {
-      setMessages((prev) => prev.slice(0, -1));
+      setMessages((prev) => prev.slice(0, assistantStarted ? -2 : -1));
       setInput(query);
       setError(message);
     };
 
+    // Add the assistant bubble on the first token, then update it in place.
+    const upsertAssistant = (
+      patch: Partial<Extract<ChatMessage, { role: 'assistant' }>>,
+    ) =>
+      setMessages((prev) => {
+        const next = prev.slice();
+        const last = next[next.length - 1];
+        if (last?.role === 'assistant') {
+          next[next.length - 1] = { ...last, ...patch };
+        } else {
+          next.push({
+            role: 'assistant',
+            content: '',
+            citation: null,
+            hasEnoughContext: true,
+            ...patch,
+          });
+        }
+        return next;
+      });
+
     try {
-      const res = await fetch(`${API_BASE}/docs/chat`, {
+      const res = await fetch(`${API_BASE}/docs/chat/stream`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
         body: JSON.stringify({ query, history }),
       });
       if (res.status === 429) {
@@ -140,24 +170,47 @@ export function AskLodolWidget() {
         fail(message);
         return;
       }
-      const data = await res.json();
-      if (typeof data.answer !== 'string') {
+
+      const reader = res.body?.getReader();
+      if (!reader) {
         fail('Something went wrong. Please try again.');
         return;
       }
-      const hasEnoughContext = data.has_enough_context === true;
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: data.answer,
-          hasEnoughContext,
-          citation:
-            hasEnoughContext && data.citations?.length > 0
-              ? data.citations[0]
-              : null,
-        },
-      ]);
+
+      const decoder = new TextDecoder();
+      const sse = createSseDecoder();
+      let answer = '';
+      let citation: Citation | null = null;
+      let hasEnoughContext = true;
+      let failed = false;
+
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        for (const event of sse.push(decoder.decode(value, { stream: true }))) {
+          if (event.type === 'token') {
+            answer += event.text;
+            assistantStarted = true;
+            upsertAssistant({ content: answer });
+          } else if (event.type === 'done') {
+            hasEnoughContext = event.hasEnoughContext;
+            citation = event.citation;
+          } else {
+            failed = true;
+            fail(event.error);
+          }
+        }
+        if (failed) break;
+      }
+      if (failed) return;
+
+      if (!assistantStarted) {
+        // Every path streams at least the canned reply, so an empty stream
+        // means something went wrong upstream.
+        fail('Something went wrong. Please try again.');
+        return;
+      }
+      upsertAssistant({ content: answer, citation, hasEnoughContext });
     } catch {
       fail('Could not reach the Lodol API. Please try again.');
     } finally {
@@ -226,7 +279,7 @@ export function AskLodolWidget() {
                 </div>
               ),
             )}
-            {pending && (
+            {pending && messages[messages.length - 1]?.role === 'user' && (
               <div className="mr-8 self-start rounded-lg bg-fd-muted px-3 py-2 text-sm text-fd-muted-foreground">
                 Thinking…
               </div>
