@@ -346,11 +346,20 @@ def render(providers: list[dict], output_dir: Path) -> None:
                 existing.unlink()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    (output_dir / "meta.json").write_text(generate_meta_json(providers))
-    (output_dir / "index.mdx").write_text(generate_index_mdx(providers))
+    (output_dir / "meta.json").write_text(
+        generate_meta_json(providers),
+        encoding="utf-8",
+    )
+    (output_dir / "index.mdx").write_text(
+        generate_index_mdx(providers),
+        encoding="utf-8",
+    )
     for p in providers:
         slug = provider_id_to_slug(p["id"])
-        (output_dir / f"{slug}.mdx").write_text(generate_provider_mdx(p))
+        (output_dir / f"{slug}.mdx").write_text(
+            generate_provider_mdx(p),
+            encoding="utf-8",
+        )
 
 
 def main(argv: list[str] | None = None) -> int:
