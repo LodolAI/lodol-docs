@@ -39,7 +39,7 @@ export function baseOptions(): BaseLayoutProps {
         on: 'nav',
         children: (
           <a
-            href="https://www.skipflow.com/"
+            href="https://www.lodol.com/"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-fd-muted-foreground hover:bg-fd-accent hover:text-fd-accent-foreground transition-colors"

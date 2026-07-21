@@ -1,78 +1,86 @@
 ---
 title: Authentication
-description: Learn how to authenticate with the Lodol Developer API using API keys.
+description: Authenticate with the Lodol Developer API using API keys, and understand scopes, plan limits, and rate limits.
 ---
 
 ## Authentication
 
-All Developer API requests must be authenticated using an API key passed in the `Authorization` header as a Bearer token.
+Every Developer API request is authenticated with an API key, sent as a bearer token in the `Authorization` header.
 
 ```bash
-curl -X GET https://app.skipflow.com/api/v1/workflows \
-  -H "Authorization: Bearer sk_live_your_api_key"
+curl https://api-prod.lodol.com/api/v1/workflows \
+  -H "Authorization: Bearer sk_live_..."
 ```
 
-### Creating API Keys
+The Python SDK sends this header for you. It reads `LODOL_API_KEY` from the environment, or you can pass the key directly:
 
-API keys are created and managed from the Lodol web dashboard under **Settings > API Keys**. Only workspace owners and admins can create or revoke keys.
+```python
+from lodol import Lodol
 
-API keys are scoped to a workspace — all requests authenticated with a key operate within that workspace's data and billing.
+client = Lodol()                       # reads LODOL_API_KEY
+client = Lodol(api_key="sk_live_...")  # or pass it in
+```
 
-The full key is shown **once** at creation time. Only a prefix and SHA-256 hash are stored, so the key cannot be retrieved later.
+### Create and manage keys
 
-### Key Format
+Keys are created and revoked in the dashboard under **Settings > API Keys**. Creating or revoking a key requires the manage-API-keys permission, which workspace owners and admins have by default.
 
-API keys use the format `sk_live_<random>`, where the random portion provides 256 bits of entropy.
+A key belongs to one workspace. Every request made with it reads and writes that workspace's data and bills to that workspace. The full key is shown once at creation; Lodol stores only a prefix and a SHA-256 hash, so a lost key cannot be recovered and has to be replaced.
+
+You can set an optional expiration when you create a key by passing `expires_in_days`. After that many days, the key stops working.
+
+### Key format
+
+Keys look like `sk_live_` followed by a random string with 256 bits of entropy. The `sk_live_` prefix is how the API recognizes a Developer API key, so send the whole value, prefix included.
 
 ### Scopes
 
-Each API key is assigned one or more scopes that control which endpoints it can access:
+Each key carries one or more scopes. A request to an endpoint the key is not scoped for returns `403`.
 
-| Scope | Description |
+| Scope | Grants |
 | --- | --- |
-| `workflows:read` | List workflows, get workflow details |
-| `workflows:execute` | Run workflows, stop executions |
-| `executions:read` | List and view execution details |
+| `workflows:read` | List and read workflows |
+| `workflows:execute` | Run workflows and stop executions |
+| `executions:read` | List and read executions |
 
-Scopes are additive. A key with `workflows:read` and `workflows:execute` can list and run workflows, but cannot view execution history without `executions:read`.
+Scopes are additive. A key with `workflows:read` and `workflows:execute` can list and run workflows, but it cannot read execution history until you add `executions:read`.
 
-### API Key Limits
+### Plan limits
 
-The number of API keys per workspace depends on your plan:
+How many keys a workspace can hold depends on its plan.
 
-| Plan | API Keys |
+| Plan | API keys |
 | --- | --- |
-| Free | Not available |
-| Pro | 3 |
-| Team | 10 |
-| Enterprise | 20 |
+| Free | 1 |
+| Builder | 3 |
+| Pro | 10 |
+| Business | 20 |
 
-The Developer API is not available on the Free plan.
+### Rate limits
 
-### Security Best Practices
+Requests are rate limited per workspace, per minute, and the limit is shared across every key in the workspace, so adding keys does not raise the ceiling. There is also a cap on how many executions can run at once.
 
-- **Never** expose your API key in client-side code
-- Store API keys in environment variables or a secrets manager
-- Use the minimum scopes necessary for your integration
-- Revoke keys that are no longer in use
-- Set an expiration when creating keys (optional `expires_in_days` parameter)
-
-### Rate Limits
-
-API requests are rate-limited per workspace (shared across all API keys in the workspace) based on your plan:
-
-| Plan | Requests/minute | Concurrent executions |
+| Plan | Requests / minute | Concurrent executions |
 | --- | --- | --- |
-| Pro | 15 | 5 |
-| Team | 25 | 10 |
-| Enterprise | 50 | 25 |
+| Free | 3 | 2 |
+| Builder | 15 | 4 |
+| Pro | 25 | 10 |
+| Business | 50 | Custom |
 
-Rate limit information is included in response headers:
+Every response reports your standing in three headers:
 
-| Header | Description |
+| Header | Meaning |
 | --- | --- |
-| `X-RateLimit-Limit` | Maximum requests allowed per minute |
-| `X-RateLimit-Remaining` | Requests remaining in the current window |
-| `X-RateLimit-Reset` | Seconds until the rate limit window resets |
+| `X-RateLimit-Limit` | Requests allowed per minute on your plan |
+| `X-RateLimit-Remaining` | Requests left in the current window |
+| `X-RateLimit-Reset` | Seconds until the window resets |
 
-When you exceed the rate limit, the API returns `429 Too Many Requests` with a `Retry-After` header indicating how long to wait before retrying.
+Cross the request limit and the API returns `429` with a `Retry-After` header. Start more executions than your plan allows at once and the run endpoint returns `429` naming your concurrent limit. The SDK retries `429` for you and honors `Retry-After`.
+
+### Keep keys safe
+
+- Keep keys out of client-side code, browsers, and mobile apps.
+- Store them in environment variables or a secrets manager, never in source control.
+- Give each key the narrowest set of scopes it needs.
+- Set an expiration on keys that are only meant to be temporary.
+- Revoke any key you no longer use, or that may have leaked.

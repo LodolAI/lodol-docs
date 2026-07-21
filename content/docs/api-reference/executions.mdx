@@ -1,13 +1,13 @@
 ---
 title: Executions
-description: API endpoints for running workflows and tracking executions.
+description: Run workflows and track their executions.
 ---
 
 ## Executions
 
-An execution represents a single run of a workflow. Workflows are run asynchronously — you start an execution and then poll for its status.
+An execution is a single run of a workflow. Runs are asynchronous: you start one, get an execution ID back right away, and poll until it finishes.
 
-### The Execution Object
+### The execution object
 
 ```json
 {
@@ -15,47 +15,64 @@ An execution represents a single run of a workflow. Workflows are run asynchrono
   "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
   "workflow_name": "Welcome Email Workflow",
   "status": "success",
+  "created_at": "2026-01-15T10:30:00+00:00",
   "started_at": "2026-01-15T10:30:00+00:00",
-  "completed_at": "2026-01-15T10:30:03+00:00"
+  "completed_at": "2026-01-15T10:30:03+00:00",
+  "error": null
 }
 ```
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `execution_id` | string | Unique identifier for this execution |
-| `workflow_id` | string | ID of the workflow that was executed |
-| `workflow_name` | string | Name of the workflow (included in list view) |
-| `status` | string | Current status: `running`, `success`, `failed`, `stopped` |
-| `started_at` | string | ISO 8601 timestamp when execution started |
-| `completed_at` | string \| null | ISO 8601 timestamp when execution finished |
+| `execution_id` | string | Unique identifier for this run |
+| `workflow_id` | string | ID of the workflow that ran |
+| `workflow_name` | string | Name of the workflow (included in list results) |
+| `status` | string | See the status values below |
+| `created_at` | string \| null | ISO 8601 timestamp when the run was accepted |
+| `started_at` | string \| null | ISO 8601 timestamp when execution began |
+| `completed_at` | string \| null | ISO 8601 timestamp when it finished, or null |
+| `error` | string \| null | Error message when the run failed, otherwise null |
+| `steps` | array | Per-step results, only with `include_step_results=true` |
+
+A run starts `queued`, moves to `running`, and ends in one of `success`, `failed`, or `stopped`. Workflows that pause for a person report `paused`, `awaiting_review`, or `awaiting_input` until someone acts. The terminal statuses are `success`, `failed`, and `stopped`.
 
 ---
 
-### Run a Workflow
+### Run a workflow
 
 ```
 POST /api/v1/workflows/:id/run-async
 ```
 
-Starts a workflow execution in the background. Returns immediately with an `execution_id` that you can poll via the [Get Execution](#get-an-execution) endpoint.
+Starts a run in the background and returns immediately with an `execution_id` to poll. The endpoint takes no request body; the workflow runs as it is published.
 
 **Required scope:** `workflows:execute`
 
-Costs **1 credit** per execution. Returns `402 Payment Required` if the workspace has insufficient credits.
+Each run costs 1 credit. If the workspace is out of credits, the call returns `402`.
 
 **Headers**
 
 | Header | Required | Description |
 | --- | --- | --- |
-| `Idempotency-Key` | No | Prevents duplicate executions on retry (max 256 characters). Cached for 24 hours. |
+| `Idempotency-Key` | No | Makes retries safe. Up to 256 characters, cached for 24 hours. See [Error Handling](/docs/guides/error-handling). |
 
-**Example**
+<Tabs items={['cURL', 'Python']}>
 
-```bash
-curl -X POST https://app.skipflow.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async \
-  -H "Authorization: Bearer sk_live_your_api_key" \
+```bash tab="cURL"
+curl -X POST \
+  https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async \
+  -H "Authorization: Bearer sk_live_..." \
   -H "Idempotency-Key: unique-request-id-123"
 ```
+
+```python tab="Python"
+# The SDK adds an idempotency key automatically.
+execution = client.workflows.run("665f1a2b3c4d5e6f7a8b9c0d")
+
+print(execution.id, execution.status)
+```
+
+</Tabs>
 
 **Response (202)**
 
@@ -63,37 +80,46 @@ curl -X POST https://app.skipflow.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/
 {
   "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
   "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
-  "status": "running",
+  "status": "queued",
   "created_at": "2026-01-15T10:30:00+00:00"
 }
 ```
 
 ---
 
-### List Executions
+### List executions
 
 ```
 GET /api/v1/executions
 ```
 
-Returns a list of executions for the workspace, with optional filtering and cursor-based pagination.
+Lists executions in the workspace, newest first, with optional filtering and cursor pagination.
 
 **Required scope:** `executions:read`
 
-**Query Parameters**
+**Query parameters**
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `workflow_id` | string | Filter executions by workflow ID |
-| `limit` | integer | Max results to return (1-100, default 20) |
-| `after` | string | Cursor: the `execution_id` of the last item from the previous page |
+| `workflow_id` | string | Only executions of this workflow |
+| `limit` | integer | Results per page, 1 to 100 (default 20) |
+| `after` | string | Cursor: the `execution_id` of the last item on the previous page |
 
-**Example**
+<Tabs items={['cURL', 'Python']}>
 
-```bash
-curl "https://app.skipflow.com/api/v1/executions?workflow_id=665f1a2b3c4d5e6f7a8b9c0d&limit=10" \
-  -H "Authorization: Bearer sk_live_your_api_key"
+```bash tab="cURL"
+curl "https://api-prod.lodol.com/api/v1/executions?workflow_id=665f1a2b3c4d5e6f7a8b9c0d&limit=10" \
+  -H "Authorization: Bearer sk_live_..."
 ```
+
+```python tab="Python"
+executions = client.executions.list(
+    workflow_id="665f1a2b3c4d5e6f7a8b9c0d",
+    limit=10,
+)
+```
+
+</Tabs>
 
 **Response (200)**
 
@@ -114,35 +140,45 @@ curl "https://app.skipflow.com/api/v1/executions?workflow_id=665f1a2b3c4d5e6f7a8
 
 ---
 
-### Get an Execution
+### Get an execution
 
 ```
 GET /api/v1/executions/:id
 ```
 
-Retrieves a single execution by its ID. By default, step results are omitted to keep polling lightweight.
+Reads one execution. Step results are left out by default to keep polling light; add `include_step_results=true` to include them.
 
 **Required scope:** `executions:read`
 
-**Query Parameters**
+**Query parameters**
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `include_step_results` | string | Set to `true` to include step-level results in the response |
+| `include_step_results` | string | Set to `true` to include per-step results |
 
-**Example**
+<Tabs items={['cURL', 'Python']}>
 
-```bash
-# Poll for status (lightweight)
-curl https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f \
-  -H "Authorization: Bearer sk_live_your_api_key"
+```bash tab="cURL"
+# Poll for status
+curl https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f \
+  -H "Authorization: Bearer sk_live_..."
 
-# Fetch full results after completion
-curl "https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?include_step_results=true" \
-  -H "Authorization: Bearer sk_live_your_api_key"
+# Include step results
+curl "https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?include_step_results=true" \
+  -H "Authorization: Bearer sk_live_..."
 ```
 
-**Default Response (200)**
+```python tab="Python"
+# Poll once
+execution = client.executions.retrieve("683b2c3d4e5f6a7b8c9d0e1f")
+
+# Or block until it finishes, with step results
+execution = client.executions.wait("683b2c3d4e5f6a7b8c9d0e1f", timeout=120)
+```
+
+</Tabs>
+
+**Response while running (200)**
 
 ```json
 {
@@ -174,13 +210,13 @@ curl "https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?includ
 
 ---
 
-### Stop an Execution
+### Stop an execution
 
 ```
 POST /api/v1/executions/:id/stop
 ```
 
-Stops a running execution. Steps that have already completed will not be rolled back. Returns `400 Bad Request` if the execution is already in a terminal state (`success`, `failed`, or `stopped`).
+Stops a running execution. Steps that already finished are not rolled back. Stopping a run that has already reached a terminal status returns `400`.
 
 **Required scope:** `workflows:execute`
 
@@ -188,14 +224,23 @@ Stops a running execution. Steps that have already completed will not be rolled 
 
 | Header | Required | Description |
 | --- | --- | --- |
-| `Idempotency-Key` | No | Prevents duplicate stop requests on retry |
+| `Idempotency-Key` | No | Makes retries safe |
 
-**Example**
+<Tabs items={['cURL', 'Python']}>
 
-```bash
-curl -X POST https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f/stop \
-  -H "Authorization: Bearer sk_live_your_api_key"
+```bash tab="cURL"
+curl -X POST \
+  https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f/stop \
+  -H "Authorization: Bearer sk_live_..."
 ```
+
+```python tab="Python"
+execution = client.executions.stop("683b2c3d4e5f6a7b8c9d0e1f")
+
+print(execution.status)   # stopped
+```
+
+</Tabs>
 
 **Response (200)**
 

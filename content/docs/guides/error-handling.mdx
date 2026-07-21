@@ -1,48 +1,30 @@
 ---
 title: Error Handling
-description: Handle errors from the Lodol Developer API gracefully in your applications.
+description: Handle Lodol Developer API errors, retries, and idempotency in your integration.
 ---
 
 ## Error Handling
 
-The Lodol API uses standard HTTP status codes to indicate the success or failure of a request.
+The API uses standard HTTP status codes. A `2xx` means the request succeeded; everything else carries a JSON body explaining what went wrong.
 
-### HTTP Status Codes
+### Status codes
 
-| Status | Description |
+| Status | Meaning |
 | --- | --- |
-| `200` | Request succeeded |
-| `202` | Accepted — workflow execution started (returned by run-async) |
-| `400` | Bad request — check your parameters |
-| `401` | Unauthorized — missing or invalid API key |
-| `402` | Payment required — insufficient credits for the operation |
-| `403` | Forbidden — API key lacks the required scope, or feature not available on your plan |
-| `404` | Resource not found |
-| `409` | Conflict — a request with this Idempotency-Key is already being processed |
-| `429` | Rate limit or concurrent execution limit exceeded |
-| `500` | Internal server error |
+| `200` | The request succeeded |
+| `202` | The run was accepted and queued (returned by run-async) |
+| `400` | The request was malformed, for example a bad cursor or limit |
+| `401` | The API key is missing, malformed, invalid, or expired |
+| `402` | The workspace is out of credits |
+| `403` | The key is missing a scope the route requires |
+| `404` | No workflow or execution with that ID exists in your workspace |
+| `409` | A request with the same idempotency key is still in flight |
+| `429` | A rate limit or the concurrency limit was reached |
+| `500` | Something went wrong on our side |
 
-### Error Response Format
+### Error format
 
-All error responses return a JSON body with an `error` field:
-
-```json
-{
-  "error": "The error message describing what went wrong."
-}
-```
-
-### Common Error Scenarios
-
-**Invalid or missing API key (401)**
-
-```json
-{
-  "error": "Missing or malformed Authorization header"
-}
-```
-
-**Insufficient scope (403)**
+Every error returns a JSON body with an `error` message. Some also include a stable `error_code` you can branch on.
 
 ```json
 {
@@ -50,79 +32,77 @@ All error responses return a JSON body with an `error` field:
 }
 ```
 
-**Insufficient credits (402)**
+A few common cases:
 
 ```json
-{
-  "error": "Insufficient credits. Please upgrade your plan or purchase more credits."
-}
+// 401: bad or missing key
+{ "error": "Missing or malformed Authorization header" }
+
+// 402: no credits
+{ "error": "Insufficient credits. Please upgrade your plan or purchase more credits." }
+
+// 429: too many executions at once
+{ "error": "Concurrent execution limit reached. Your plan allows 10 concurrent executions via the API." }
 ```
 
-**Rate limit exceeded (429)**
+### Typed errors in the SDK
 
-The response includes a `Retry-After` header with the number of seconds to wait:
+The Python SDK raises a specific exception per status code, so you can catch exactly the case you care about. `RateLimitError` carries the `Retry-After` value from the response.
 
-```json
-{
-  "error": "Rate limit exceeded. Please wait before trying again."
-}
+```python
+from lodol import Lodol, NotFoundError, RateLimitError
+
+client = Lodol()
+
+try:
+    client.workflows.retrieve("does-not-exist")
+except NotFoundError:
+    print("no such workflow")
+except RateLimitError as exc:
+    print("slow down, retry after", exc.retry_after)
 ```
 
-**Concurrent execution limit (429)**
+The exceptions are `BadRequestError`, `AuthenticationError`, `PaymentRequiredError`, `PermissionDeniedError`, `NotFoundError`, `ConflictError`, `RateLimitError`, and `InternalServerError`, all subclasses of `APIStatusError`.
 
-```json
-{
-  "error": "Concurrent execution limit reached. Your plan allows 5 concurrent executions via the API."
-}
-```
+### Retries
 
-**Idempotency conflict (409)**
+Some failures are worth retrying: `429` and `5xx`, plus dropped connections and timeouts. The SDK retries these for you (two attempts by default, with exponential backoff that honors `Retry-After`). Because a retried `POST` could otherwise run a workflow twice, the SDK only retries writes when an idempotency key is present, and it adds one to every run and stop automatically.
 
-Returned when another request with the same `Idempotency-Key` is currently being processed. The response includes a `Retry-After: 5` header:
-
-```json
-{
-  "error": "A request with this Idempotency-Key is currently being processed. Please retry later."
-}
-```
-
-### Retry Strategy
-
-For transient errors (`429` and `5xx` status codes), implement exponential backoff:
+If you call the API directly, back off on `429` and `5xx` yourself:
 
 ```python
 import time
 import requests
 
-def api_request_with_retry(method, url, headers, max_retries=3, **kwargs):
+def request_with_retry(method, url, headers, max_retries=3, **kwargs):
     for attempt in range(max_retries + 1):
         response = requests.request(method, url, headers=headers, **kwargs)
-
-        if response.status_code == 429:
-            retry_after = int(response.headers.get("Retry-After", 2 ** attempt))
-            time.sleep(retry_after)
+        if response.status_code in (429, 500, 502, 503) and attempt < max_retries:
+            wait = int(response.headers.get("Retry-After", 2 ** attempt))
+            time.sleep(wait)
             continue
-
-        if response.status_code >= 500 and attempt < max_retries:
-            time.sleep(2 ** attempt)
-            continue
-
         return response
-
     return response
 ```
 
 ### Idempotency
 
-POST endpoints (`run-async`, `stop`) support an optional `Idempotency-Key` header to prevent duplicate operations when retrying failed requests:
+The write endpoints, `run-async` and `stop`, accept an optional `Idempotency-Key` header. It makes retries safe: a repeat of the same key returns the first response instead of starting a second run.
 
 ```bash
-curl -X POST https://app.skipflow.com/api/v1/workflows/665f.../run-async \
-  -H "Authorization: Bearer sk_live_your_api_key" \
-  -H "Idempotency-Key: unique-request-id-123"
+curl -X POST \
+  https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async \
+  -H "Authorization: Bearer sk_live_..." \
+  -H "Idempotency-Key: invoice-8842"
 ```
 
-- Keys can be up to 256 characters
-- Responses are cached for 24 hours
-- Replayed responses include an `X-Idempotent-Replayed: true` header
-- If a request with the same key is still in flight, you'll receive a `409 Conflict`
+- Keys can be up to 256 characters, and are scoped to your workspace.
+- The first response is cached for 24 hours.
+- A replay returns that cached response with an `X-Idempotent-Replayed: true` header, and does not run the workflow again.
+- If the first request is still in flight, the retry gets a `409` with `Retry-After: 5`.
+
+The Python SDK adds an idempotency key to every run and stop, so those calls are safe to retry out of the box. Pass your own `idempotency_key` when you want a retry from a different process to collapse onto the same run:
+
+```python
+client.workflows.run("665f1a2b3c4d5e6f7a8b9c0d", idempotency_key="invoice-8842")
+```

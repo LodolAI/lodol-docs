@@ -66,7 +66,7 @@ function FeatureCard({ title, description, href, icon }: FeatureCardProps) {
   return (
     <Link
       href={href}
-      className="flex flex-col gap-3 rounded-lg border border-fd-border p-6 hover:bg-fd-accent hover:text-fd-accent-foreground transition-colors"
+      className="flex flex-col gap-3 rounded-xl border border-fd-border p-6 hover:border-fd-primary/40 hover:bg-fd-accent hover:text-fd-accent-foreground transition-colors"
     >
       <div className="flex items-center gap-3">
         <div className="text-fd-primary">{icon}</div>
@@ -80,24 +80,27 @@ function FeatureCard({ title, description, href, icon }: FeatureCardProps) {
 export default function HomePage() {
   return (
     <main className="flex flex-1 flex-col items-center px-4 py-16">
-      <div className="text-center max-w-2xl mb-16">
-        <h1 className="text-4xl font-bold mb-4 md:text-5xl">
+      <div className="text-center max-w-3xl mb-16">
+        <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-fd-primary">
+          Developer Platform
+        </p>
+        <h1 className="lodol-display mb-5 text-5xl md:text-7xl">
           Lodol Developer API
         </h1>
-        <p className="text-fd-muted-foreground mb-8 text-lg">
-          Build and automate workflows with the Lodol API. Explore our guides,
-          API reference, and examples to get started.
+        <p className="text-fd-muted-foreground mb-8 text-lg mx-auto max-w-xl">
+          Run and manage your Lodol workflows from your own code. List workflows,
+          start runs, and track executions over a REST API, or with the Python SDK.
         </p>
         <div className="flex gap-4 justify-center">
           <Link
             href="/docs"
-            className="inline-flex items-center justify-center rounded-md bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground shadow hover:bg-fd-primary/90 transition-colors"
+            className="inline-flex items-center justify-center rounded-full bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground shadow transition-opacity hover:opacity-90"
           >
             Get Started
           </Link>
           <Link
             href="/docs/api-reference"
-            className="inline-flex items-center justify-center rounded-md border border-fd-border px-6 py-3 text-sm font-medium hover:bg-fd-accent hover:text-fd-accent-foreground transition-colors"
+            className="inline-flex items-center justify-center rounded-full border border-fd-border px-6 py-3 text-sm font-medium hover:bg-fd-accent hover:text-fd-accent-foreground transition-colors"
           >
             API Reference
           </Link>

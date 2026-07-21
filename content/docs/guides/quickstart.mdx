@@ -1,34 +1,47 @@
 ---
 title: Quickstart
-description: Run your first Lodol workflow via the Developer API in minutes.
+description: Run your first Lodol workflow through the Developer API, with curl and the Python SDK.
 ---
 
 ## Quickstart
 
-This guide walks you through running your first workflow using the Lodol Developer API.
+This guide takes you from an API key to a finished run.
 
-### Prerequisites
+### Before you start
 
-- A Lodol account on a Pro, Team, or Enterprise plan
-- A workflow created in the Lodol web dashboard
-- An API key with `workflows:read`, `workflows:execute`, and `executions:read` scopes
+You need a Lodol account, a workflow built in the dashboard, and an API key with the `workflows:read`, `workflows:execute`, and `executions:read` scopes.
 
-### Step 1: Create an API Key
+### 1. Create an API key
 
-Navigate to **Settings > API Keys** in the Lodol dashboard and create a new key. Copy the key — it is only shown once.
+In the dashboard, go to **Settings > API Keys** and create a key. Copy it when it is shown, since you cannot see it again. Keep it in an environment variable rather than in your code.
 
 ```bash
-export SKIPFLOW_API_KEY="sk_live_your_api_key"
+export LODOL_API_KEY="sk_live_..."
 ```
 
-### Step 2: List Your Workflows
+The Python SDK reads `LODOL_API_KEY` on its own, so `Lodol()` picks it up with no arguments.
 
-```bash
-curl https://app.skipflow.com/api/v1/workflows \
-  -H "Authorization: Bearer $SKIPFLOW_API_KEY"
+### 2. List your workflows
+
+<Tabs items={['cURL', 'Python']}>
+
+```bash tab="cURL"
+curl https://api-prod.lodol.com/api/v1/workflows \
+  -H "Authorization: Bearer $LODOL_API_KEY"
 ```
 
-You should see a response listing your workflows:
+```python tab="Python"
+from lodol import Lodol
+
+client = Lodol()
+
+for workflow in client.workflows.list():
+    print(workflow.id, workflow.name)
+```
+
+</Tabs>
+
+The response lists the workflows in your workspace:
 
 ```json
 {
@@ -46,42 +59,61 @@ You should see a response listing your workflows:
 }
 ```
 
-### Step 3: Run a Workflow
+### 3. Run a workflow
 
-Use the workflow ID from the previous step to start an asynchronous execution:
+Use a workflow ID from the previous step to start a run.
 
-```bash
-curl -X POST https://app.skipflow.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async \
-  -H "Authorization: Bearer $SKIPFLOW_API_KEY" \
+<Tabs items={['cURL', 'Python']}>
+
+```bash tab="cURL"
+curl -X POST \
+  https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async \
+  -H "Authorization: Bearer $LODOL_API_KEY" \
   -H "Idempotency-Key: my-first-run"
 ```
 
-The API returns immediately with an execution ID:
+```python tab="Python"
+execution = client.workflows.run("665f1a2b3c4d5e6f7a8b9c0d")
+
+print(execution.id, execution.status)
+```
+
+</Tabs>
+
+The run is accepted and queued. The response comes back right away with an execution ID and a `queued` status:
 
 ```json
 {
   "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
   "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
-  "status": "running",
+  "status": "queued",
   "created_at": "2026-04-14T10:30:00+00:00"
 }
 ```
 
-### Step 4: Check Execution Status
+### 4. Wait for the result
 
-Poll the execution endpoint until the status is no longer `running`:
+Poll the execution until it reaches a terminal status: `success`, `failed`, or `stopped`. In Python, `wait()` does the polling for you. Over curl, read the execution and check `status` yourself.
 
-```bash
-curl https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f \
-  -H "Authorization: Bearer $SKIPFLOW_API_KEY"
+<Tabs items={['cURL', 'Python']}>
+
+```bash tab="cURL"
+curl "https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?include_step_results=true" \
+  -H "Authorization: Bearer $LODOL_API_KEY"
 ```
 
-Once completed, fetch the full results:
+```python tab="Python"
+execution = client.executions.wait("683b2c3d4e5f6a7b8c9d0e1f", timeout=120)
 
-```bash
-curl "https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?include_step_results=true" \
-  -H "Authorization: Bearer $SKIPFLOW_API_KEY"
+if execution.status == "success":
+    print("done", execution.steps)
+else:
+    print(execution.status, execution.error)
 ```
+
+</Tabs>
+
+Add `?include_step_results=true` to see the output of each step:
 
 ```json
 {
@@ -98,8 +130,14 @@ curl "https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?includ
 }
 ```
 
-## Next Steps
+You can also start a run and wait in one call:
 
-- Explore the [API Reference](/docs/api-reference) for all available endpoints
-- Learn about [Error Handling](/docs/guides/error-handling) for reliable workflows
-- Review [Authentication](/docs/guides/authentication) for rate limits and scopes
+```python
+execution = client.workflows.run("665f1a2b3c4d5e6f7a8b9c0d", wait=True, timeout=120)
+```
+
+### Next steps
+
+- Read the [API Reference](/docs/api-reference) for every endpoint and field
+- See [Authentication](/docs/guides/authentication) for scopes, plan limits, and rate limits
+- See [Error Handling](/docs/guides/error-handling) for retries and idempotency
