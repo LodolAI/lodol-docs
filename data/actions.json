@@ -2,6 +2,176 @@
   "providers": [
     {
       "actions": {
+        "get_current_conditions": {
+          "description": "Get the current weather conditions for a location.",
+          "display_name": "Get current conditions",
+          "display_str_template": "Get current conditions for location '{0}'.",
+          "handler": "actions.get_current_conditions",
+          "id": "accuweather_get_current_conditions",
+          "method": "POST",
+          "mock_response": {
+            "observed_at": "2026-01-15T13:00:00-05:00",
+            "temperature_celsius": 12.8,
+            "temperature_fahrenheit": 55.0,
+            "weather_text": "Mostly cloudy"
+          },
+          "name": "get_current_conditions",
+          "parameters": [
+            {
+              "description": "AccuWeather location key, from search-location.",
+              "name": "location_key",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/accuweather/get-current-conditions",
+          "result_str_template": "Retrieved current conditions.",
+          "returns": {
+            "properties": {
+              "observed_at": {
+                "description": "Timestamp the conditions were observed",
+                "type": "string"
+              },
+              "temperature_celsius": {
+                "description": "Current temperature in Celsius",
+                "type": "number"
+              },
+              "temperature_fahrenheit": {
+                "description": "Current temperature in Fahrenheit",
+                "type": "number"
+              },
+              "weather_text": {
+                "description": "Short conditions summary, for example 'Mostly cloudy'",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_daily_forecast": {
+          "description": "Get the 5-day weather forecast for a location.",
+          "display_name": "Get daily forecast",
+          "display_str_template": "Get 5-day forecast for location '{0}'.",
+          "handler": "actions.get_daily_forecast",
+          "id": "accuweather_get_daily_forecast",
+          "method": "POST",
+          "mock_response": {
+            "days": [
+              {
+                "date": "2026-01-15T07:00:00-05:00",
+                "day_summary": "Partly sunny",
+                "max_temperature": -2.8,
+                "min_temperature": -6.1,
+                "night_summary": "Partly cloudy"
+              }
+            ],
+            "headline": "Warmer temperatures expected this weekend",
+            "unit": "C"
+          },
+          "name": "get_daily_forecast",
+          "parameters": [
+            {
+              "description": "AccuWeather location key, from search-location.",
+              "name": "location_key",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": true,
+              "description": "Return temperatures in Celsius instead of Fahrenheit.",
+              "display_name": "Use metric units",
+              "name": "metric",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/accuweather/get-daily-forecast",
+          "result_str_template": "Retrieved the forecast.",
+          "returns": {
+            "properties": {
+              "days": {
+                "description": "One entry per forecast day",
+                "items": "_DAY_FORECAST_SCHEMA",
+                "type": "array"
+              },
+              "headline": {
+                "description": "AccuWeather's headline summary for the forecast period",
+                "type": "string"
+              },
+              "unit": {
+                "description": "Temperature unit used for min_temperature/max_temperature, 'C' or 'F'",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "search_location": {
+          "description": "Search for a city or place and get its AccuWeather location key.",
+          "display_name": "Search location",
+          "display_str_template": "Search AccuWeather locations for '{0}'.",
+          "handler": "actions.search_location",
+          "id": "accuweather_search_location",
+          "method": "POST",
+          "mock_response": {
+            "locations": [
+              {
+                "administrative_area": "Washington",
+                "country": "United States",
+                "location_key": "349727",
+                "name": "Seattle"
+              }
+            ]
+          },
+          "name": "search_location",
+          "parameters": [
+            {
+              "description": "City name or postal code to search for, for example 'Seattle' or 'London, UK'.",
+              "name": "query",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/accuweather/search-location",
+          "result_str_template": "Fetched matching locations.",
+          "returns": {
+            "properties": {
+              "locations": {
+                "description": "Matching locations",
+                "items": {
+                  "properties": {
+                    "administrative_area": {
+                      "description": "State or province name",
+                      "type": "string"
+                    },
+                    "country": {
+                      "description": "Country name",
+                      "type": "string"
+                    },
+                    "location_key": {
+                      "description": "Location key. Use with get-current-conditions and get-daily-forecast.",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "City name",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Connect your AccuWeather account to look up locations and check current conditions and forecasts.",
+      "display_name": "AccuWeather",
+      "id": "accuweather"
+    },
+    {
+      "actions": {
         "add_contact_to_list": {
           "description": "Subscribe an existing contact to an ActiveCampaign list.",
           "display_name": "Subscribe contact to list",
@@ -32592,18 +32762,23 @@
           "parameters": [
             {
               "description": "The database that contains the collection.",
+              "dynamic_source": "databases",
               "name": "database",
               "required": true,
               "type": "ParameterType.STRING"
             },
             {
               "description": "Collection containing the documents to delete.",
+              "dynamic_source": "collections",
+              "dynamic_source_depends_on": [
+                "database"
+              ],
               "name": "collection",
               "required": true,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "The fields and values that identify which documents to delete.",
+              "description": "A MongoDB query object identifying which documents to delete, e.g. {\"_id\": \"64b0000000000000000000aa\"}. Must be non-empty; to delete every document deliberately, use {\"_id\": {\"$exists\": true}}.",
               "name": "filter",
               "required": true,
               "type": "ParameterType.OBJECT"
@@ -32630,42 +32805,50 @@
           }
         },
         "find_documents": {
-          "description": "Find documents in a MongoDB collection.",
+          "description": "Find documents in a MongoDB collection, optionally filtered and limited.",
           "display_name": "Find documents",
           "display_str_template": "Find documents in {1}",
           "handler": "actions.find_documents",
           "id": "mongodb_find_documents",
           "method": "POST",
           "mock_response": {
+            "count": 1,
             "documents": [
               {
-                "_id": "123",
-                "name": "doc1"
+                "_id": "64b0000000000000000000aa",
+                "active": true,
+                "name": "Ada"
               }
             ]
           },
           "name": "find_documents",
           "parameters": [
             {
-              "description": "The database name.",
+              "description": "The database that contains the collection.",
+              "dynamic_source": "databases",
               "name": "database",
               "required": true,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "The collection name.",
+              "description": "The collection to read from.",
+              "dynamic_source": "collections",
+              "dynamic_source_depends_on": [
+                "database"
+              ],
               "name": "collection",
               "required": true,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "The fields and values that documents must match. Leave blank to return all documents.",
+              "description": "A MongoDB query object of the fields and values documents must match, e.g. {\"status\": \"active\"}. Leave blank to return every document. Query operators such as $gt, $in and $regex are supported.",
               "name": "filter",
               "required": false,
               "type": "ParameterType.OBJECT"
             },
             {
               "description": "The maximum number of documents to return.",
+              "minimum": 1,
               "name": "limit",
               "required": false,
               "type": "ParameterType.NUMBER"
@@ -32675,8 +32858,12 @@
           "result_str_template": "Documents found.",
           "returns": {
             "properties": {
+              "count": {
+                "description": "Number of documents returned.",
+                "type": "integer"
+              },
               "documents": {
-                "description": "List of documents.",
+                "description": "The matching documents. Each document's _id is returned as a string.",
                 "items": {
                   "type": "object"
                 },
@@ -32686,111 +32873,63 @@
             "type": "object"
           }
         },
-        "insert_document": {
-          "description": "Insert a document into a MongoDB collection.",
-          "display_name": "Insert document",
-          "display_str_template": "Insert document into {1}",
-          "handler": "actions.insert_document",
-          "id": "mongodb_insert_document",
+        "insert_documents": {
+          "description": "Insert one or more documents into a MongoDB collection.",
+          "display_name": "Insert documents",
+          "display_str_template": "Insert documents into {1}",
+          "handler": "actions.insert_documents",
+          "id": "mongodb_insert_documents",
           "method": "POST",
           "mock_response": {
-            "inserted_id": "abc123"
+            "inserted_count": 1,
+            "inserted_ids": [
+              "64b0000000000000000000bb"
+            ]
           },
-          "name": "insert_document",
+          "name": "insert_documents",
           "parameters": [
             {
-              "description": "The database name.",
+              "description": "The database that contains the collection.",
+              "dynamic_source": "databases",
               "name": "database",
               "required": true,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "The collection name.",
+              "description": "The collection to insert into. Pick an existing collection, or reference a name from an earlier step to create one on the fly (MongoDB creates the collection automatically on first insert).",
+              "dynamic_source": "collections",
+              "dynamic_source_depends_on": [
+                "database"
+              ],
               "name": "collection",
               "required": true,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "The fields and values of the document to add.",
-              "name": "document",
+              "description": "The documents to insert. Each item is an object of field names and values. Omit _id to let MongoDB generate one.",
+              "name": "documents",
               "required": true,
-              "type": "ParameterType.OBJECT"
-            }
-          ],
-          "path": "/actions/library/mongodb/insert-document",
-          "result_str_template": "Document inserted.",
-          "returns": {
-            "properties": {
-              "inserted_id": {
-                "description": "ID of inserted document.",
-                "type": "string"
-              }
-            },
-            "type": "object"
-          }
-        },
-        "list_collections": {
-          "description": "List all collections in a database.",
-          "display_name": "List collections",
-          "display_str_template": "List collections in database {0}",
-          "handler": "actions.list_collections",
-          "id": "mongodb_list_collections",
-          "method": "POST",
-          "mock_response": {
-            "collections": [
-              "users",
-              "orders"
-            ]
-          },
-          "name": "list_collections",
-          "parameters": [
-            {
-              "description": "The database name.",
-              "name": "database",
-              "required": true,
-              "type": "ParameterType.STRING"
-            }
-          ],
-          "path": "/actions/library/mongodb/list-collections",
-          "result_str_template": "Collections listed.",
-          "returns": {
-            "properties": {
-              "collections": {
-                "description": "List of collection names.",
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              }
-            },
-            "type": "object"
-          }
-        },
-        "list_databases": {
-          "description": "List all databases accessible with the connection.",
-          "display_name": "List databases",
-          "display_str_template": "List MongoDB databases",
-          "handler": "actions.list_databases",
-          "id": "mongodb_list_databases",
-          "method": "POST",
-          "mock_response": {
-            "databases": [
-              {
-                "name": "sample_db",
-                "sizeOnDisk": 1234
-              }
-            ]
-          },
-          "name": "list_databases",
-          "parameters": [],
-          "path": "/actions/library/mongodb/list-databases",
-          "result_str_template": "Databases listed.",
-          "returns": {
-            "properties": {
-              "databases": {
-                "description": "List of databases.",
+              "schema": {
                 "items": {
                   "type": "object"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            }
+          ],
+          "path": "/actions/library/mongodb/insert-documents",
+          "result_str_template": "Documents inserted.",
+          "returns": {
+            "properties": {
+              "inserted_count": {
+                "description": "Number of documents inserted.",
+                "type": "integer"
+              },
+              "inserted_ids": {
+                "description": "The _id of each inserted document, as strings.",
+                "items": {
+                  "type": "string"
                 },
                 "type": "array"
               }
@@ -32813,24 +32952,29 @@
           "parameters": [
             {
               "description": "The database that contains the collection.",
+              "dynamic_source": "databases",
               "name": "database",
               "required": true,
               "type": "ParameterType.STRING"
             },
             {
               "description": "Collection containing the documents to update.",
+              "dynamic_source": "collections",
+              "dynamic_source_depends_on": [
+                "database"
+              ],
               "name": "collection",
               "required": true,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "The fields and values that identify which documents to update.",
+              "description": "A MongoDB query object identifying which documents to update, e.g. {\"email\": \"ada@example.com\"}. Must be non-empty; to update every document deliberately, use {\"_id\": {\"$exists\": true}}.",
               "name": "filter",
               "required": true,
               "type": "ParameterType.OBJECT"
             },
             {
-              "description": "The fields and new values to save on the matching documents.",
+              "description": "The fields and new values to save on each matching document (applied with MongoDB's $set), e.g. {\"status\": \"archived\"}.",
               "name": "updates",
               "required": true,
               "type": "ParameterType.OBJECT"
@@ -32861,7 +33005,7 @@
           }
         }
       },
-      "description": "Work with MongoDB databases, collections, and documents.",
+      "description": "Find, insert, update, and delete documents in your MongoDB collections.",
       "display_name": "MongoDB",
       "id": "mongodb"
     },
@@ -37748,6 +37892,411 @@
       "description": "Connect to PagerDuty with an API token to manage incidents and services.",
       "display_name": "PagerDuty",
       "id": "pagerduty"
+    },
+    {
+      "actions": {
+        "get_identity": {
+          "description": "Get the profile of the connected Patreon account, including the ID of the campaign it runs as a creator.",
+          "display_name": "Get identity",
+          "display_str_template": "Get the connected Patreon account's profile.",
+          "handler": "actions.get_identity",
+          "id": "patreon_get_identity",
+          "method": "POST",
+          "mock_response": {
+            "about": "I make weekly illustration tutorials.",
+            "campaign_id": "12345678",
+            "email": "jamie@example.com",
+            "full_name": "Jamie Rivera",
+            "image_url": "https://c8.patreon.com/2/200/87654321",
+            "is_email_verified": true,
+            "url": "https://www.patreon.com/jamiecreates",
+            "user_id": "87654321",
+            "vanity": "jamiecreates"
+          },
+          "name": "get_identity",
+          "parameters": [],
+          "path": "/actions/library/patreon/get-identity",
+          "result_str_template": "Fetched the Patreon profile.",
+          "returns": {
+            "properties": {
+              "about": {
+                "description": "The account's about/bio text",
+                "type": "string"
+              },
+              "campaign_id": {
+                "description": "ID of the campaign this account runs as a creator (empty if none). Use with the member/post actions.",
+                "type": "string"
+              },
+              "email": {
+                "description": "The account's email address",
+                "type": "string"
+              },
+              "full_name": {
+                "description": "The account holder's name",
+                "type": "string"
+              },
+              "image_url": {
+                "description": "URL of the profile image",
+                "type": "string"
+              },
+              "is_email_verified": {
+                "description": "Whether the account's email is verified",
+                "type": "boolean"
+              },
+              "url": {
+                "description": "URL of the Patreon profile",
+                "type": "string"
+              },
+              "user_id": {
+                "description": "The account's user ID",
+                "type": "string"
+              },
+              "vanity": {
+                "description": "The account's vanity (custom URL) name, if set",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_member": {
+          "description": "Retrieve a single campaign member by ID, including their patron status, pledge amount, and entitled tiers.",
+          "display_name": "Get member",
+          "display_str_template": "Get Patreon member '{0}'.",
+          "handler": "actions.get_member",
+          "id": "patreon_get_member",
+          "method": "POST",
+          "mock_response": {
+            "currently_entitled_amount_cents": 500,
+            "email": "alex@example.com",
+            "full_name": "Alex Chen",
+            "id": "abcd1234-5678-90ef-ghij-klmnopqrstuv",
+            "last_charge_date": "2026-07-01T05:00:00.000+00:00",
+            "last_charge_status": "Paid",
+            "lifetime_support_cents": 4800,
+            "next_charge_date": "2026-08-01T05:00:00.000+00:00",
+            "patron_status": "active_patron",
+            "pledge_relationship_start": "2025-07-01T05:00:00.000+00:00",
+            "tiers": [
+              "Supporter"
+            ],
+            "user_id": "55554444"
+          },
+          "name": "get_member",
+          "parameters": [
+            {
+              "description": "ID of the member to retrieve (from 'List members').",
+              "display_name": "Member ID",
+              "name": "member_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/patreon/get-member",
+          "result_str_template": "Retrieved the member.",
+          "returns": {
+            "properties": {
+              "currently_entitled_amount_cents": {
+                "description": "The member's current pledge amount, in cents",
+                "type": "number"
+              },
+              "email": {
+                "description": "The member's email address",
+                "type": "string"
+              },
+              "full_name": {
+                "description": "The member's name",
+                "type": "string"
+              },
+              "id": {
+                "description": "Member ID",
+                "type": "string"
+              },
+              "last_charge_date": {
+                "description": "When the member was last charged (ISO 8601)",
+                "type": "string"
+              },
+              "last_charge_status": {
+                "description": "Status of the last charge (e.g. 'Paid', 'Declined')",
+                "type": "string"
+              },
+              "lifetime_support_cents": {
+                "description": "Total the member has ever paid this campaign, in cents",
+                "type": "number"
+              },
+              "next_charge_date": {
+                "description": "When the member is next scheduled to be charged (ISO 8601)",
+                "type": "string"
+              },
+              "patron_status": {
+                "description": "'active_patron', 'declined_patron', 'former_patron', or empty for a follower who has never pledged",
+                "type": "string"
+              },
+              "pledge_relationship_start": {
+                "description": "When the member first pledged (ISO 8601)",
+                "type": "string"
+              },
+              "tiers": {
+                "description": "Titles of the tiers the member is currently entitled to",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "user_id": {
+                "description": "The member's underlying Patreon user ID",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_campaigns": {
+          "description": "List the campaigns owned by the connected creator.",
+          "display_name": "List campaigns",
+          "display_str_template": "List Patreon campaigns.",
+          "handler": "actions.list_campaigns",
+          "id": "patreon_list_campaigns",
+          "method": "POST",
+          "mock_response": {
+            "campaigns": [
+              {
+                "creation_name": "illustration tutorials",
+                "id": "12345678",
+                "is_monthly": true,
+                "patron_count": 412,
+                "pledge_url": "/join/jamiecreates",
+                "published_at": "2024-03-01T10:00:00.000+00:00",
+                "summary": "Weekly step-by-step drawing lessons.",
+                "url": "https://www.patreon.com/jamiecreates",
+                "vanity": "jamiecreates"
+              }
+            ]
+          },
+          "name": "list_campaigns",
+          "parameters": [],
+          "path": "/actions/library/patreon/list-campaigns",
+          "result_str_template": "Fetched Patreon campaigns.",
+          "returns": {
+            "properties": {
+              "campaigns": {
+                "description": "The creator's campaigns",
+                "items": {
+                  "properties": {
+                    "creation_name": {
+                      "description": "What the creator is creating (e.g. 'illustration tutorials')",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Campaign ID. Use with the other actions.",
+                      "type": "string"
+                    },
+                    "is_monthly": {
+                      "description": "True if the campaign charges monthly, false if per-creation",
+                      "type": "boolean"
+                    },
+                    "patron_count": {
+                      "description": "Number of patrons on the campaign",
+                      "type": "number"
+                    },
+                    "pledge_url": {
+                      "description": "Relative URL of the campaign's join/pledge page",
+                      "type": "string"
+                    },
+                    "published_at": {
+                      "description": "When the campaign was published (ISO 8601), if published",
+                      "type": "string"
+                    },
+                    "summary": {
+                      "description": "The campaign's summary text",
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "URL of the campaign page",
+                      "type": "string"
+                    },
+                    "vanity": {
+                      "description": "The campaign's vanity (custom URL) name, if set",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_members": {
+          "description": "List a campaign's members (patrons and followers), including each member's patron status, pledge amount, and entitled tiers.",
+          "display_name": "List members",
+          "display_str_template": "List members of the Patreon campaign '{0}'.",
+          "handler": "actions.list_members",
+          "id": "patreon_list_members",
+          "method": "POST",
+          "mock_response": {
+            "members": [
+              {
+                "currently_entitled_amount_cents": 500,
+                "email": "alex@example.com",
+                "full_name": "Alex Chen",
+                "id": "abcd1234-5678-90ef-ghij-klmnopqrstuv",
+                "last_charge_date": "2026-07-01T05:00:00.000+00:00",
+                "last_charge_status": "Paid",
+                "lifetime_support_cents": 4800,
+                "next_charge_date": "2026-08-01T05:00:00.000+00:00",
+                "patron_status": "active_patron",
+                "pledge_relationship_start": "2025-07-01T05:00:00.000+00:00",
+                "tiers": [
+                  "Supporter"
+                ],
+                "user_id": "55554444"
+              }
+            ]
+          },
+          "name": "list_members",
+          "parameters": [
+            "_CAMPAIGN_ID_PARAM",
+            "_MAX_RESULTS_PARAM"
+          ],
+          "path": "/actions/library/patreon/list-members",
+          "result_str_template": "Fetched the campaign's members.",
+          "returns": {
+            "properties": {
+              "members": {
+                "description": "The campaign's members",
+                "items": {
+                  "properties": {
+                    "currently_entitled_amount_cents": {
+                      "description": "The member's current pledge amount, in cents",
+                      "type": "number"
+                    },
+                    "email": {
+                      "description": "The member's email address",
+                      "type": "string"
+                    },
+                    "full_name": {
+                      "description": "The member's name",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Member ID. Use with 'Get member'.",
+                      "type": "string"
+                    },
+                    "last_charge_date": {
+                      "description": "When the member was last charged (ISO 8601)",
+                      "type": "string"
+                    },
+                    "last_charge_status": {
+                      "description": "Status of the last charge (e.g. 'Paid', 'Declined')",
+                      "type": "string"
+                    },
+                    "lifetime_support_cents": {
+                      "description": "Total the member has ever paid this campaign, in cents",
+                      "type": "number"
+                    },
+                    "next_charge_date": {
+                      "description": "When the member is next scheduled to be charged (ISO 8601)",
+                      "type": "string"
+                    },
+                    "patron_status": {
+                      "description": "'active_patron', 'declined_patron', 'former_patron', or empty for a follower who has never pledged",
+                      "type": "string"
+                    },
+                    "pledge_relationship_start": {
+                      "description": "When the member first pledged (ISO 8601)",
+                      "type": "string"
+                    },
+                    "tiers": {
+                      "description": "Titles of the tiers the member is currently entitled to",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "user_id": {
+                      "description": "The member's underlying Patreon user ID",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_posts": {
+          "description": "List the posts published on a campaign.",
+          "display_name": "List posts",
+          "display_str_template": "List posts on the Patreon campaign '{0}'.",
+          "handler": "actions.list_posts",
+          "id": "patreon_list_posts",
+          "method": "POST",
+          "mock_response": {
+            "posts": [
+              {
+                "id": "104857623",
+                "is_paid": true,
+                "is_public": false,
+                "published_at": "2026-07-10T16:00:00.000+00:00",
+                "title": "July tutorial: watercolor skies",
+                "url": "https://www.patreon.com/posts/104857623"
+              }
+            ]
+          },
+          "name": "list_posts",
+          "parameters": [
+            "_CAMPAIGN_ID_PARAM",
+            "_MAX_RESULTS_PARAM"
+          ],
+          "path": "/actions/library/patreon/list-posts",
+          "result_str_template": "Fetched the campaign's posts.",
+          "returns": {
+            "properties": {
+              "posts": {
+                "description": "The campaign's posts",
+                "items": {
+                  "properties": {
+                    "id": {
+                      "description": "Post ID",
+                      "type": "string"
+                    },
+                    "is_paid": {
+                      "description": "Whether the post is behind a paid tier",
+                      "type": "boolean"
+                    },
+                    "is_public": {
+                      "description": "Whether the post is visible to the public (not patron-only)",
+                      "type": "boolean"
+                    },
+                    "published_at": {
+                      "description": "When the post was published (ISO 8601)",
+                      "type": "string"
+                    },
+                    "title": {
+                      "description": "The post's title",
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "URL of the post",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Connect your Patreon creator account to look up your profile and campaigns, list and inspect your members (patrons), and browse your campaign's posts.",
+      "display_name": "Patreon",
+      "id": "patreon"
     },
     {
       "actions": {
@@ -52818,6 +53367,285 @@
     },
     {
       "actions": {
+        "get_publication_info": {
+          "description": "Look up a Substack publication's public feed metadata: its title, description, homepage URL, author, cover image, language, and how many posts are currently in the feed. Useful for confirming a publication exists and grabbing its display details before pulling posts.",
+          "display_name": "Get Substack publication info",
+          "display_str_template": "Get Substack publication info for {0}.",
+          "handler": "actions.get_publication_info",
+          "id": "substack_get_publication_info",
+          "method": "POST",
+          "mock_response": {
+            "author": "Casey Newton",
+            "description": "Casey Newton on the intersection of tech and democracy.",
+            "feed_url": "https://www.platformer.news/feed",
+            "image_url": "https://substackcdn.com/image/fetch/platformer-logo.png",
+            "language": "en",
+            "last_build_date": "Wed, 15 Jul 2026 14:03:11 GMT",
+            "post_count_in_feed": 20,
+            "title": "Platformer",
+            "url": "https://www.platformer.news"
+          },
+          "name": "get_publication_info",
+          "output_formatter": "actions.format_publication_info_output",
+          "parameters": [
+            "_PUBLICATION_PARAM"
+          ],
+          "path": "/actions/library/substack/get-publication-info",
+          "result_str_template": "Retrieved Substack publication info.",
+          "returns": {
+            "description": "Channel-level metadata for the publication feed.",
+            "properties": {
+              "author": {
+                "description": "Publication author / managing editor. May be empty.",
+                "type": "string"
+              },
+              "description": {
+                "description": "Publication tagline / description.",
+                "type": "string"
+              },
+              "feed_url": {
+                "description": "The resolved RSS feed URL that was fetched.",
+                "type": "string"
+              },
+              "image_url": {
+                "description": "Publication cover/logo image URL. May be empty.",
+                "type": "string"
+              },
+              "language": {
+                "description": "Feed language code, e.g. 'en'. May be empty.",
+                "type": "string"
+              },
+              "last_build_date": {
+                "description": "When the feed was last built (RFC 822). May be empty.",
+                "type": "string"
+              },
+              "post_count_in_feed": {
+                "description": "Number of posts currently present in the feed.",
+                "type": "integer"
+              },
+              "title": {
+                "description": "Publication name.",
+                "type": "string"
+              },
+              "url": {
+                "description": "Publication homepage URL.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_podcast_episodes": {
+          "description": "List a Substack publication's most recent podcast episodes \u2014 the feed items that carry an audio file. Each episode includes its title, URL, publish date, summary, and audio details (direct file URL, MIME type, size, duration, and episode/season numbers). Useful for tracking a Substack podcast or pulling the latest episode's audio into a workflow.",
+          "display_name": "List Substack podcast episodes",
+          "display_str_template": "List Substack podcast episodes from {0}.",
+          "handler": "actions.list_podcast_episodes",
+          "id": "substack_list_podcast_episodes",
+          "method": "POST",
+          "mock_response": {
+            "count": 1,
+            "episodes": [
+              {
+                "audio": {
+                  "duration": "58:12",
+                  "episode": 123,
+                  "length_bytes": 48210432,
+                  "season": 4,
+                  "type": "audio/mpeg",
+                  "url": "https://api.substack.com/feed/podcast/ep123.mp3"
+                },
+                "author": "Ezra Klein",
+                "guid": "https://www.ezraklein.substack.com/p/ai-boom-workers",
+                "is_podcast": true,
+                "published": "Tue, 14 Jul 2026 09:00:00 GMT",
+                "summary": "A conversation about labor and automation.",
+                "title": "What the AI boom means for workers",
+                "url": "https://www.ezraklein.substack.com/ai-boom-workers"
+              }
+            ],
+            "feed_url": "https://www.ezraklein.substack.com/feed",
+            "publication": {
+              "title": "The Ezra Klein Show",
+              "url": "https://www.ezraklein.substack.com"
+            }
+          },
+          "name": "list_podcast_episodes",
+          "output_formatter": "actions.format_podcast_episodes_output",
+          "parameters": [
+            "_PUBLICATION_PARAM",
+            "_LIMIT_PARAM"
+          ],
+          "path": "/actions/library/substack/list-podcast-episodes",
+          "result_str_template": "Retrieved Substack podcast episodes.",
+          "returns": {
+            "description": "Recent podcast episodes (feed items with an audio enclosure), newest first.",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "episodes": {
+                "items": {
+                  "properties": "_POST_PROPERTIES",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "feed_url": {
+                "type": "string"
+              },
+              "publication": "_PUBLICATION_REF_SCHEMA"
+            },
+            "type": "object"
+          }
+        },
+        "list_recent_posts": {
+          "description": "List the most recent posts from a Substack publication, newest first, with each post's title, URL, author, publish date, summary, and full content (as both HTML and plain text). Use this to pull a newsletter's latest articles into a workflow \u2014 for example to summarize the newest post or repost it elsewhere.",
+          "display_name": "List recent Substack posts",
+          "display_str_template": "List recent Substack posts from {0}.",
+          "handler": "actions.list_recent_posts",
+          "id": "substack_list_recent_posts",
+          "method": "POST",
+          "mock_response": {
+            "count": 2,
+            "feed_url": "https://www.platformer.news/feed",
+            "posts": [
+              {
+                "author": "Casey Newton",
+                "content_html": "<p>This week, the first wave of truly autonomous agents shipped...</p>",
+                "content_text": "This week, the first wave of truly autonomous agents shipped...",
+                "guid": "https://www.platformer.news/p/ai-agent-reckoning",
+                "is_podcast": false,
+                "published": "Wed, 15 Jul 2026 14:03:11 GMT",
+                "summary": "What happens when agents start doing real work.",
+                "title": "The AI agent reckoning arrives",
+                "url": "https://www.platformer.news/ai-agent-reckoning"
+              },
+              {
+                "author": "Casey Newton",
+                "content_html": "<p>The major platforms unveiled...</p>",
+                "content_text": "The major platforms unveiled...",
+                "guid": "https://www.platformer.news/p/platforms-election",
+                "is_podcast": false,
+                "published": "Mon, 13 Jul 2026 13:00:00 GMT",
+                "summary": "New policies, familiar problems.",
+                "title": "How platforms handle the election",
+                "url": "https://www.platformer.news/platforms-election"
+              }
+            ],
+            "publication": {
+              "title": "Platformer",
+              "url": "https://www.platformer.news"
+            }
+          },
+          "name": "list_recent_posts",
+          "output_formatter": "actions.format_list_posts_output",
+          "parameters": [
+            "_PUBLICATION_PARAM",
+            "_LIMIT_PARAM"
+          ],
+          "path": "/actions/library/substack/list-recent-posts",
+          "result_str_template": "Retrieved recent Substack posts.",
+          "returns": {
+            "description": "Recent posts with full content, newest first. Paywalled posts include only their free preview in content_html/content_text.",
+            "properties": {
+              "count": {
+                "description": "Number of posts returned.",
+                "type": "integer"
+              },
+              "feed_url": {
+                "type": "string"
+              },
+              "posts": {
+                "items": {
+                  "properties": "_POST_WITH_CONTENT_PROPERTIES",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "publication": "_PUBLICATION_REF_SCHEMA"
+            },
+            "type": "object"
+          }
+        },
+        "search_posts": {
+          "description": "Search a Substack publication's recent posts for a keyword or phrase. Matches the title, summary, author, and full text of each post in the feed (case-insensitive) and returns the matching posts. Because Substack's feed only carries the most recent ~20 posts, this searches recent posts, not the full archive.",
+          "display_name": "Search Substack posts",
+          "display_str_template": "Search Substack posts in {0} for '{1}'.",
+          "handler": "actions.search_posts",
+          "id": "substack_search_posts",
+          "method": "POST",
+          "mock_response": {
+            "count": 1,
+            "feed_url": "https://www.platformer.news/feed",
+            "posts": [
+              {
+                "author": "Casey Newton",
+                "content_text": "This week, the first wave of truly autonomous agents shipped...",
+                "guid": "https://www.platformer.news/p/ai-agent-reckoning",
+                "is_podcast": false,
+                "published": "Wed, 15 Jul 2026 14:03:11 GMT",
+                "summary": "What happens when agents start doing real work.",
+                "title": "The AI agent reckoning arrives",
+                "url": "https://www.platformer.news/ai-agent-reckoning"
+              }
+            ],
+            "publication": {
+              "title": "Platformer",
+              "url": "https://www.platformer.news"
+            },
+            "query": "agent"
+          },
+          "name": "search_posts",
+          "output_formatter": "actions.format_search_posts_output",
+          "parameters": [
+            "_PUBLICATION_PARAM",
+            {
+              "description": "The keyword or phrase to look for across recent posts.",
+              "display_name": "Search query",
+              "name": "query",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            "_LIMIT_PARAM"
+          ],
+          "path": "/actions/library/substack/search-posts",
+          "result_str_template": "Searched Substack posts.",
+          "returns": {
+            "description": "Posts from the feed whose text contains the query. Heavy content_html is omitted from search hits; fetch it with 'List recent Substack posts' once the target post is known.",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "feed_url": {
+                "type": "string"
+              },
+              "posts": {
+                "items": {
+                  "properties": {
+                    "content_text": {
+                      "description": "Full post body as plain text.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "publication": "_PUBLICATION_REF_SCHEMA",
+              "query": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Read public Substack publications through their official RSS feeds. List and search recent posts (with full content), fetch publication metadata, and track podcast episodes. Read-only and keyless \u2014 no Substack account or API key is required.",
+      "display_name": "DISPLAY_NAME",
+      "id": "substack"
+    },
+    {
+      "actions": {
         "call_function": {
           "description": "Run one of your Supabase database functions (a saved routine you can call by name).",
           "display_name": "Call a database function",
@@ -53440,6 +54268,158 @@
       "description": "Explore your Tableau projects and workbooks, and refresh data extracts.",
       "display_name": "Tableau",
       "id": "tableau"
+    },
+    {
+      "actions": {
+        "get_form": {
+          "description": "Look up a form's name by ID.",
+          "display_name": "Get form",
+          "display_str_template": "Get Tally form '{0}'.",
+          "handler": "actions.get_form",
+          "id": "tally_get_form",
+          "method": "POST",
+          "mock_response": {
+            "id": "wgKq4o",
+            "name": "Customer Feedback"
+          },
+          "name": "get_form",
+          "parameters": [
+            {
+              "description": "ID of the form to look up.",
+              "name": "form_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/tally/get-form",
+          "result_str_template": "Retrieved the form.",
+          "returns": {
+            "properties": {
+              "id": {
+                "description": "Form ID",
+                "type": "string"
+              },
+              "name": {
+                "description": "Form name",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_forms": {
+          "description": "List the forms in your Tally account.",
+          "display_name": "List forms",
+          "display_str_template": "List Tally forms.",
+          "handler": "actions.list_forms",
+          "id": "tally_list_forms",
+          "method": "POST",
+          "mock_response": {
+            "forms": [
+              {
+                "id": "wgKq4o",
+                "name": "Customer Feedback"
+              }
+            ]
+          },
+          "name": "list_forms",
+          "parameters": [],
+          "path": "/actions/library/tally/list-forms",
+          "result_str_template": "Fetched Tally forms.",
+          "returns": {
+            "properties": {
+              "forms": {
+                "description": "List of forms in the account",
+                "items": {
+                  "properties": {
+                    "id": {
+                      "description": "Form ID. Use with the other actions.",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Form name",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_submissions": {
+          "description": "List the submissions received for a form.",
+          "display_name": "List submissions",
+          "display_str_template": "List submissions to Tally form '{0}'.",
+          "handler": "actions.list_submissions",
+          "id": "tally_list_submissions",
+          "method": "POST",
+          "mock_response": {
+            "submissions": [
+              {
+                "answers": [
+                  {
+                    "answer": "Very satisfied",
+                    "field_id": "question_1"
+                  }
+                ],
+                "id": "sub_1abc2def",
+                "submitted_at": "2026-01-15T10:00:00Z"
+              }
+            ]
+          },
+          "name": "list_submissions",
+          "parameters": [
+            {
+              "description": "ID of the form to list submissions for.",
+              "name": "form_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Maximum number of submissions to return (default 25).",
+              "display_name": "Maximum submissions",
+              "name": "max_results",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/tally/list-submissions",
+          "result_str_template": "Fetched Tally submissions.",
+          "returns": {
+            "properties": {
+              "submissions": {
+                "description": "List of submissions",
+                "items": {
+                  "properties": {
+                    "answers": {
+                      "description": "The respondent's answers, one per field answered",
+                      "items": "_ANSWER_SCHEMA",
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "Submission ID",
+                      "type": "string"
+                    },
+                    "submitted_at": {
+                      "description": "Timestamp the submission was made",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Connect your Tally account to browse forms and read their submissions.",
+      "display_name": "Tally",
+      "id": "tally"
     },
     {
       "actions": {
@@ -55440,6 +56420,217 @@
       "description": "Post, reply to, delete, like, and search tweets on your Twitter account.",
       "display_name": "Twitter",
       "id": "twitter"
+    },
+    {
+      "actions": {
+        "get_form": {
+          "description": "Look up a form's title and field count.",
+          "display_name": "Get form",
+          "display_str_template": "Get Typeform form '{0}'.",
+          "handler": "actions.get_form",
+          "id": "typeform_get_form",
+          "method": "POST",
+          "mock_response": {
+            "field_count": 8,
+            "id": "lT4Z3j",
+            "title": "Customer Feedback"
+          },
+          "name": "get_form",
+          "parameters": [
+            {
+              "description": "ID of the form to look up.",
+              "name": "form_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/typeform/get-form",
+          "result_str_template": "Retrieved the form.",
+          "returns": {
+            "properties": {
+              "field_count": {
+                "description": "Number of fields (questions) on the form",
+                "type": "number"
+              },
+              "id": {
+                "description": "Form ID",
+                "type": "string"
+              },
+              "title": {
+                "description": "Form title",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_form_fields": {
+          "description": "List the fields (questions) defined on a form.",
+          "display_name": "List form fields",
+          "display_str_template": "List fields on Typeform form '{0}'.",
+          "handler": "actions.list_form_fields",
+          "id": "typeform_list_form_fields",
+          "method": "POST",
+          "mock_response": {
+            "fields": [
+              {
+                "field_id": "DlXVaz2XM2cV",
+                "title": "How satisfied are you with our service?",
+                "type": "multiple_choice"
+              }
+            ]
+          },
+          "name": "list_form_fields",
+          "parameters": [
+            {
+              "description": "ID of the form to list fields for.",
+              "name": "form_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/typeform/list-form-fields",
+          "result_str_template": "Fetched the form's fields.",
+          "returns": {
+            "properties": {
+              "fields": {
+                "description": "List of fields on the form",
+                "items": {
+                  "properties": {
+                    "field_id": {
+                      "description": "Field ID, referenced by list-responses answers",
+                      "type": "string"
+                    },
+                    "title": {
+                      "description": "The field's question text",
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "Typeform field type, for example 'multiple_choice' or 'short_text'",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_forms": {
+          "description": "List the forms in your Typeform account.",
+          "display_name": "List forms",
+          "display_str_template": "List Typeform forms.",
+          "handler": "actions.list_forms",
+          "id": "typeform_list_forms",
+          "method": "POST",
+          "mock_response": {
+            "forms": [
+              {
+                "id": "lT4Z3j",
+                "title": "Customer Feedback"
+              }
+            ]
+          },
+          "name": "list_forms",
+          "parameters": [],
+          "path": "/actions/library/typeform/list-forms",
+          "result_str_template": "Fetched Typeform forms.",
+          "returns": {
+            "properties": {
+              "forms": {
+                "description": "List of forms in the account",
+                "items": {
+                  "properties": {
+                    "id": {
+                      "description": "Form ID. Use with the other actions.",
+                      "type": "string"
+                    },
+                    "title": {
+                      "description": "Form title",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_responses": {
+          "description": "List the responses submitted to a form.",
+          "display_name": "List responses",
+          "display_str_template": "List responses to Typeform form '{0}'.",
+          "handler": "actions.list_responses",
+          "id": "typeform_list_responses",
+          "method": "POST",
+          "mock_response": {
+            "responses": [
+              {
+                "answers": [
+                  {
+                    "answer": "Very satisfied",
+                    "field_id": "DlXVaz2XM2cV"
+                  }
+                ],
+                "id": "a3a12ec67cae7c1c78d19e3c1d8c92f5",
+                "submitted_at": "2026-01-15T10:00:00Z"
+              }
+            ]
+          },
+          "name": "list_responses",
+          "parameters": [
+            {
+              "description": "ID of the form to list responses for.",
+              "name": "form_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Maximum number of responses to return (default 25).",
+              "display_name": "Maximum responses",
+              "name": "max_results",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/typeform/list-responses",
+          "result_str_template": "Fetched Typeform responses.",
+          "returns": {
+            "properties": {
+              "responses": {
+                "description": "List of responses",
+                "items": {
+                  "properties": {
+                    "answers": {
+                      "description": "The respondent's answers, one per field answered",
+                      "items": "_ANSWER_SCHEMA",
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "Response ID",
+                      "type": "string"
+                    },
+                    "submitted_at": {
+                      "description": "Timestamp the response was submitted",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Connect your Typeform account to browse forms and read their responses.",
+      "display_name": "Typeform",
+      "id": "typeform"
     },
     {
       "actions": {
