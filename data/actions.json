@@ -11549,46 +11549,146 @@
     },
     {
       "actions": {
-        "list_clusters": {
-          "description": "List all Databricks clusters in the workspace.",
-          "display_name": "List clusters",
-          "display_str_template": "List Databricks clusters.",
-          "handler": "actions.list_clusters",
-          "id": "databricks_list_clusters",
+        "find_job": {
+          "description": "Look up a single Databricks job and its full definition by ID.",
+          "display_name": "Find job",
+          "display_str_template": "Find job {0}.",
+          "handler": "actions.find_job",
+          "id": "databricks_find_job",
           "method": "POST",
           "mock_response": {
-            "clusters": [
-              {
-                "cluster_id": "1234-567890-abcde123",
-                "cluster_name": "my-cluster",
-                "state": "RUNNING"
-              }
-            ],
-            "clusters_count": 1
+            "created_time": 1700000000000,
+            "creator_user_name": "user@example.com",
+            "job_id": 12345,
+            "settings": {
+              "name": "Nightly ETL",
+              "tasks": [
+                {
+                  "task_key": "ingest"
+                }
+              ]
+            }
           },
-          "name": "list_clusters",
-          "parameters": [],
-          "path": "/actions/library/databricks/list-clusters",
-          "result_str_template": "Clusters listed.",
+          "name": "find_job",
+          "parameters": [
+            "_JOB_ID_REQUIRED"
+          ],
+          "path": "/actions/library/databricks/find-job",
+          "result_str_template": "Retrieved job {0}.",
           "returns": {
             "properties": {
-              "clusters": {
-                "description": "List of clusters",
-                "items": {
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "clusters_count": {
-                "description": "Number of clusters returned",
+              "created_time": {
+                "description": "When the job was created (epoch ms)",
                 "type": "integer"
+              },
+              "job_id": {
+                "description": "The job's ID",
+                "type": "integer"
+              },
+              "settings": {
+                "description": "The job's settings",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "find_run": {
+          "description": "Look up a single job run and its current state by run ID.",
+          "display_name": "Find run",
+          "display_str_template": "Find run {0}.",
+          "handler": "actions.find_run",
+          "id": "databricks_find_run",
+          "method": "POST",
+          "mock_response": {
+            "job_id": 12345,
+            "run_id": 67890,
+            "run_name": "Nightly ETL",
+            "run_page_url": "https://dbc-1234.cloud.databricks.com/#job/12345/run/1",
+            "state": {
+              "life_cycle_state": "TERMINATED",
+              "result_state": "SUCCESS"
+            }
+          },
+          "name": "find_run",
+          "parameters": [
+            {
+              "description": "Pick a recent run, or enter its numeric ID.",
+              "display_name": "Run",
+              "dynamic_source": "runs",
+              "name": "run_id",
+              "required": true,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/databricks/find-run",
+          "result_str_template": "Retrieved run {0}.",
+          "returns": {
+            "properties": {
+              "job_id": {
+                "description": "The ID of the job this run belongs to",
+                "type": "integer"
+              },
+              "run_id": {
+                "description": "The run's ID",
+                "type": "integer"
+              },
+              "state": {
+                "description": "Life-cycle and result state of the run",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "find_sql_warehouse": {
+          "description": "Look up a single SQL warehouse's configuration and state by ID.",
+          "display_name": "Find SQL warehouse",
+          "display_str_template": "Find SQL warehouse '{0}'.",
+          "handler": "actions.find_sql_warehouse",
+          "id": "databricks_find_sql_warehouse",
+          "method": "POST",
+          "mock_response": {
+            "cluster_size": "Small",
+            "creator_name": "user@example.com",
+            "id": "0123456789abcdef",
+            "name": "Serverless Starter Warehouse",
+            "num_clusters": 1,
+            "state": "RUNNING"
+          },
+          "name": "find_sql_warehouse",
+          "parameters": [
+            {
+              "description": "Pick a SQL warehouse, or enter its ID.",
+              "display_name": "SQL warehouse",
+              "dynamic_source": "sql_warehouses",
+              "name": "warehouse_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/databricks/find-sql-warehouse",
+          "result_str_template": "Retrieved SQL warehouse '{0}'.",
+          "returns": {
+            "properties": {
+              "id": {
+                "description": "The SQL warehouse's ID",
+                "type": "string"
+              },
+              "name": {
+                "description": "The SQL warehouse's name",
+                "type": "string"
+              },
+              "state": {
+                "description": "Current state (e.g. RUNNING, STOPPED)",
+                "type": "string"
               }
             },
             "type": "object"
           }
         },
         "list_jobs": {
-          "description": "List the jobs in your Databricks workspace. If there are many, results come back a page at a time.",
+          "description": "List the jobs defined in your Databricks workspace. Results come back a page at a time when there are many.",
           "display_name": "List jobs",
           "display_str_template": "List Databricks jobs.",
           "handler": "actions.list_jobs",
@@ -11598,32 +11698,29 @@
             "has_more": false,
             "jobs": [
               {
+                "created_time": 1700000000000,
                 "job_id": 12345,
                 "settings": {
-                  "name": "my-job"
+                  "name": "Nightly ETL"
                 }
               }
             ],
+            "jobs_count": 1,
             "next_page_token": null
           },
           "name": "list_jobs",
           "parameters": [
+            "_LIMIT_PARAM",
+            "_PAGE_TOKEN_PARAM",
             {
-              "description": "Maximum number of jobs to return",
-              "name": "limit",
-              "required": false,
-              "type": "ParameterType.NUMBER"
-            },
-            {
-              "description": "To get the next page of results, enter the next page token from the previous run's results. Leave blank to start from the first page.",
-              "display_name": "Next page token",
-              "name": "page_token",
+              "description": "Only return jobs whose name matches this value exactly.",
+              "name": "name",
               "required": false,
               "type": "ParameterType.STRING"
             }
           ],
           "path": "/actions/library/databricks/list-jobs",
-          "result_str_template": "Jobs listed.",
+          "result_str_template": "Found {1} job(s).",
           "returns": {
             "properties": {
               "has_more": {
@@ -11637,6 +11734,10 @@
                 },
                 "type": "array"
               },
+              "jobs_count": {
+                "description": "Number of jobs returned on this page",
+                "type": "integer"
+              },
               "next_page_token": {
                 "description": "Token for fetching the next page",
                 "type": "string"
@@ -11645,34 +11746,137 @@
             "type": "object"
           }
         },
-        "run_job_now": {
-          "description": "Run a Databricks job right away.",
-          "display_name": "Run job now",
-          "display_str_template": "Run job '{0}' now.",
-          "handler": "actions.run_job_now",
-          "id": "databricks_run_job_now",
+        "list_runs": {
+          "description": "List job runs in your workspace. Optionally narrow to a single job or to only active or only completed runs.",
+          "display_name": "List runs",
+          "display_str_template": "List Databricks runs.",
+          "handler": "actions.list_runs",
+          "id": "databricks_list_runs",
+          "method": "POST",
+          "mock_response": {
+            "has_more": false,
+            "next_page_token": null,
+            "runs": [
+              {
+                "job_id": 12345,
+                "run_id": 67890,
+                "run_name": "Nightly ETL",
+                "state": {
+                  "life_cycle_state": "TERMINATED",
+                  "result_state": "SUCCESS"
+                }
+              }
+            ],
+            "runs_count": 1
+          },
+          "name": "list_runs",
+          "parameters": [
+            "_JOB_ID_OPTIONAL",
+            {
+              "description": "Only return runs that are currently active (in progress).",
+              "name": "active_only",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "description": "Only return runs that have already finished.",
+              "name": "completed_only",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            "_RUNS_LIMIT_PARAM",
+            "_PAGE_TOKEN_PARAM"
+          ],
+          "path": "/actions/library/databricks/list-runs",
+          "result_str_template": "Found {1} run(s).",
+          "returns": {
+            "properties": {
+              "has_more": {
+                "description": "Whether more results are available",
+                "type": "boolean"
+              },
+              "next_page_token": {
+                "description": "Token for fetching the next page",
+                "type": "string"
+              },
+              "runs": {
+                "description": "List of runs",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "runs_count": {
+                "description": "Number of runs returned on this page",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_sql_warehouses": {
+          "description": "List all SQL warehouses in the workspace. SQL warehouses are a separate compute type from clusters.",
+          "display_name": "List SQL warehouses",
+          "display_str_template": "List Databricks SQL warehouses.",
+          "handler": "actions.list_sql_warehouses",
+          "id": "databricks_list_sql_warehouses",
+          "method": "POST",
+          "mock_response": {
+            "warehouses": [
+              {
+                "cluster_size": "Small",
+                "id": "0123456789abcdef",
+                "name": "Serverless Starter Warehouse",
+                "state": "RUNNING"
+              }
+            ],
+            "warehouses_count": 1
+          },
+          "name": "list_sql_warehouses",
+          "parameters": [],
+          "path": "/actions/library/databricks/list-sql-warehouses",
+          "result_str_template": "Found {1} SQL warehouse(s).",
+          "returns": {
+            "properties": {
+              "warehouses": {
+                "description": "List of SQL warehouses",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "warehouses_count": {
+                "description": "Number of SQL warehouses returned",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "run_job": {
+          "description": "Trigger a single run of an existing Databricks job right away.",
+          "display_name": "Run job",
+          "display_str_template": "Run job {0} now.",
+          "handler": "actions.run_job",
+          "id": "databricks_run_job",
           "method": "POST",
           "mock_response": {
             "number_in_job": 1,
             "run_id": 67890
           },
-          "name": "run_job_now",
+          "name": "run_job",
           "parameters": [
+            "_JOB_ID_REQUIRED",
             {
-              "description": "The ID of the job to run",
-              "name": "job_id",
-              "required": true,
-              "type": "ParameterType.NUMBER"
-            },
-            {
-              "description": "Optional values to pass to the job's notebook when it runs, entered as names and values",
-              "name": "parameters",
+              "description": "Optional values to pass to the job's notebook when it runs, entered as names and values.",
+              "display_name": "Notebook parameters",
+              "name": "notebook_params",
               "required": false,
               "type": "ParameterType.OBJECT"
             }
           ],
-          "path": "/actions/library/databricks/run-job-now",
-          "result_str_template": "Started run {1} for job {0}.",
+          "path": "/actions/library/databricks/run-job",
+          "result_str_template": "Started run {0} for the job.",
           "returns": {
             "properties": {
               "number_in_job": {
@@ -11686,33 +11890,9 @@
             },
             "type": "object"
           }
-        },
-        "start_cluster": {
-          "description": "Start a Databricks cluster that is currently stopped.",
-          "display_name": "Start cluster",
-          "display_str_template": "Start cluster '{0}'.",
-          "handler": "actions.start_cluster",
-          "id": "databricks_start_cluster",
-          "method": "POST",
-          "mock_response": {},
-          "name": "start_cluster",
-          "parameters": [
-            {
-              "description": "The ID of the cluster to start",
-              "name": "cluster_id",
-              "required": true,
-              "type": "ParameterType.STRING"
-            }
-          ],
-          "path": "/actions/library/databricks/start-cluster",
-          "result_str_template": "Started cluster {0}.",
-          "returns": {
-            "properties": {},
-            "type": "object"
-          }
         }
       },
-      "description": "Manage clusters and run jobs in your Databricks workspace.",
+      "description": "List and run jobs, inspect runs, and view SQL warehouses in your Databricks workspace.",
       "display_name": "Databricks",
       "id": "databricks"
     },
@@ -13412,6 +13592,207 @@
       "description": "Look up and validate US Employer Identification Numbers (EINs) with EinTaxId.com.",
       "display_name": "EinTaxId.com",
       "id": "eintaxid"
+    },
+    {
+      "actions": {
+        "create_document": {
+          "description": "Add a new document to an index. Provide a Document ID to control the id (the action fails if that id already exists \u2014 use Update document to change an existing one), or leave it blank to let Elasticsearch generate one.",
+          "display_name": "Create document",
+          "display_str_template": "Create a document in the Elasticsearch index '{0}'.",
+          "handler": "actions.create_document",
+          "id": "elasticsearch_create_document",
+          "method": "POST",
+          "mock_response": {
+            "document_id": "1",
+            "index": "products",
+            "result": "created",
+            "version": 1
+          },
+          "name": "create_document",
+          "parameters": [
+            "_CREATE_INDEX_PARAM",
+            {
+              "description": "The document to store, as field/value pairs (for example, name: 'Wireless Headphones', price: 79.99).",
+              "display_name": "Document",
+              "name": "document",
+              "required": true,
+              "type": "ParameterType.OBJECT"
+            },
+            {
+              "description": "Optional unique id for the new document. When blank, Elasticsearch generates one and returns it.",
+              "display_name": "Document ID",
+              "name": "document_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/elasticsearch/create-document",
+          "result_str_template": "Created the document in Elasticsearch.",
+          "returns": {
+            "properties": {
+              "document_id": {
+                "description": "Id of the created document",
+                "type": "string"
+              },
+              "index": {
+                "description": "Index the document was written to",
+                "type": "string"
+              },
+              "result": {
+                "description": "Elasticsearch write result, e.g. 'created'",
+                "type": "string"
+              },
+              "version": {
+                "description": "Document version assigned by Elasticsearch",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "delete_document": {
+          "description": "Delete a document from an index by its Document ID.",
+          "display_name": "Delete document",
+          "display_str_template": "Delete document '{1}' from the Elasticsearch index '{0}'.",
+          "handler": "actions.delete_document",
+          "id": "elasticsearch_delete_document",
+          "method": "POST",
+          "mock_response": {
+            "document_id": "1",
+            "index": "products",
+            "result": "deleted"
+          },
+          "name": "delete_document",
+          "parameters": [
+            "_EXISTING_INDEX_PARAM",
+            "_DOCUMENT_ID_PARAM"
+          ],
+          "path": "/actions/library/elasticsearch/delete-document",
+          "result_str_template": "Deleted the document from Elasticsearch.",
+          "returns": {
+            "properties": {
+              "document_id": {
+                "description": "Id of the deleted document",
+                "type": "string"
+              },
+              "index": {
+                "description": "Index the document was deleted from",
+                "type": "string"
+              },
+              "result": {
+                "description": "Elasticsearch result, e.g. 'deleted'",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_document": {
+          "description": "Retrieve a single document from an index by its Document ID.",
+          "display_name": "Get document",
+          "display_str_template": "Get document '{1}' from the Elasticsearch index '{0}'.",
+          "handler": "actions.get_document",
+          "id": "elasticsearch_get_document",
+          "method": "POST",
+          "mock_response": {
+            "document": {
+              "name": "Wireless Headphones",
+              "price": 79.99
+            },
+            "document_id": "1",
+            "index": "products",
+            "version": 1
+          },
+          "name": "get_document",
+          "parameters": [
+            "_EXISTING_INDEX_PARAM",
+            "_DOCUMENT_ID_PARAM"
+          ],
+          "path": "/actions/library/elasticsearch/get-document",
+          "result_str_template": "Retrieved the document.",
+          "returns": {
+            "properties": {
+              "document": {
+                "description": "The document's stored fields (its _source)",
+                "type": "object"
+              },
+              "document_id": {
+                "description": "Id of the document",
+                "type": "string"
+              },
+              "index": {
+                "description": "Index the document belongs to",
+                "type": "string"
+              },
+              "version": {
+                "description": "Current document version",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "update_document": {
+          "description": "Update a document by its Document ID. The fields you provide are merged into the stored document, leaving its other fields unchanged.",
+          "display_name": "Update document",
+          "display_str_template": "Update document '{1}' in the Elasticsearch index '{0}'.",
+          "handler": "actions.update_document",
+          "id": "elasticsearch_update_document",
+          "method": "POST",
+          "mock_response": {
+            "document_id": "1",
+            "index": "products",
+            "result": "updated",
+            "version": 2
+          },
+          "name": "update_document",
+          "parameters": [
+            "_UPDATE_INDEX_PARAM",
+            "_DOCUMENT_ID_PARAM",
+            {
+              "description": "The fields to add or change, as field/value pairs (for example, price: 69.99). Fields you omit are left as they are.",
+              "display_name": "Fields to update",
+              "name": "document",
+              "required": true,
+              "type": "ParameterType.OBJECT"
+            },
+            {
+              "default": false,
+              "description": "When on, a document that does not exist yet is created from these fields instead of failing.",
+              "display_name": "Create if missing",
+              "name": "upsert",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/elasticsearch/update-document",
+          "result_str_template": "Updated the document in Elasticsearch.",
+          "returns": {
+            "properties": {
+              "document_id": {
+                "description": "Id of the updated document",
+                "type": "string"
+              },
+              "index": {
+                "description": "Index the document belongs to",
+                "type": "string"
+              },
+              "result": {
+                "description": "Elasticsearch write result, e.g. 'updated' or 'noop' when the fields already matched",
+                "type": "string"
+              },
+              "version": {
+                "description": "Document version after the update",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Create, read, update, and delete documents in your Elasticsearch indices.",
+      "display_name": "Elasticsearch",
+      "id": "elasticsearch"
     },
     {
       "actions": {
@@ -16366,6 +16747,380 @@
     },
     {
       "actions": {
+        "delete_file_comment": {
+          "description": "Delete a comment from a Figma file by its comment id. Only the comment's author (or a file admin) can delete it. Deleting a top-level comment also removes its replies. Useful for cleaning up automated or resolved comments.",
+          "display_name": "Delete Figma comment",
+          "display_str_template": "Delete comment {1} from Figma file {0}.",
+          "handler": "actions.delete_file_comment",
+          "id": "figma_delete_file_comment",
+          "method": "POST",
+          "mock_response": {},
+          "name": "delete_file_comment",
+          "output_formatter": "actions.format_delete_file_comment_output",
+          "parameters": [
+            {
+              "description": "The Figma file the comment is on. A file key or a full Figma file URL both work.",
+              "name": "file_key",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The id of the comment to delete (from 'List Figma comments' or the response of 'Post Figma comment').",
+              "name": "comment_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/figma/delete-file-comment",
+          "result_str_template": "Deleted the Figma comment.",
+          "returns": {
+            "description": "Empty object. Figma returns no content on a successful delete; the executor reports success.",
+            "properties": {
+              "status": {
+                "description": "Always 'success' when the delete succeeded.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_file": {
+          "description": "Get a Figma file's metadata and document tree by its file key. Returns the file name, the editor type (design, whiteboard, or slides), the last-modified timestamp, the current version id, a thumbnail URL, and the node tree (pages and their layers). Large files can return a lot of data \u2014 use 'depth' to fetch only the top levels of the tree. Useful for reading a file's structure, checking when it last changed, or grabbing its thumbnail.",
+          "display_name": "Get Figma file",
+          "display_str_template": "Get Figma file {0}.",
+          "handler": "actions.get_file",
+          "id": "figma_get_file",
+          "method": "POST",
+          "mock_response": {
+            "componentSets": {},
+            "components": {
+              "1:12": {
+                "description": "",
+                "key": "a1b2c3d4e5f6",
+                "name": "Button / Primary"
+              }
+            },
+            "document": {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "id": "1:2",
+                      "name": "Landing / Hero",
+                      "type": "FRAME"
+                    },
+                    {
+                      "id": "1:8",
+                      "name": "Landing / Pricing",
+                      "type": "FRAME"
+                    }
+                  ],
+                  "id": "0:1",
+                  "name": "Page 1",
+                  "type": "CANVAS"
+                },
+                {
+                  "children": [],
+                  "id": "0:2",
+                  "name": "Components",
+                  "type": "CANVAS"
+                }
+              ],
+              "id": "0:0",
+              "name": "Document",
+              "type": "DOCUMENT"
+            },
+            "editorType": "figma",
+            "lastModified": "2026-07-20T18:42:11Z",
+            "linkAccess": "view",
+            "name": "Marketing Site Redesign",
+            "role": "editor",
+            "schemaVersion": 0,
+            "styles": {
+              "1:20": {
+                "key": "f6e5d4c3b2a1",
+                "name": "Brand / Coral",
+                "styleType": "FILL"
+              }
+            },
+            "thumbnailUrl": "https://s3-alpha.figma.com/thumbnails/example.png",
+            "version": "5219384710"
+          },
+          "name": "get_file",
+          "output_formatter": "actions.format_get_file_output",
+          "parameters": [
+            {
+              "description": "The Figma file to read. Paste either the file key (the slug in a file URL) or a full Figma file URL such as https://www.figma.com/design/AbC123/My-File \u2014 the key is extracted automatically.",
+              "name": "file_key",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "How many levels of the document tree to return. 1 returns just the pages, 2 also returns each page's top-level layers, and so on. Leave blank to return the entire tree (which can be very large).",
+              "minimum": 1,
+              "name": "depth",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "A specific version id to fetch (from the file's version history). Leave blank for the current version.",
+              "name": "version",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Set to 'paths' to include vector geometry for each node. Leave blank to omit geometry (smaller response).",
+              "name": "geometry",
+              "options": [
+                {
+                  "label": "Include vector paths",
+                  "value": "paths"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Comma-separated node ids (e.g. '1:2,1:8') to return only those nodes, their children, and their ancestor chains instead of the whole document \u2014 much smaller when you care about a few frames. Top-level pages are always included. Leave blank to return the full tree (subject to 'depth').",
+              "display_name": "Node ids",
+              "name": "ids",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/figma/get-file",
+          "result_str_template": "Retrieved the Figma file.",
+          "returns": {
+            "description": "File metadata plus the document node tree. The 'document' node is the root; its children are the file's pages (CANVAS nodes).",
+            "properties": {
+              "branches": {
+                "description": "Present only when requested with branch_data: metadata for the file's branches. Each item is {key, name, thumbnail_url, last_modified, link_access} (note: snake_case, unlike the camelCase top-level fields).",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "componentSets": {
+                "description": "Map of node id -> component-set metadata.",
+                "type": "object"
+              },
+              "components": {
+                "description": "Map of node id -> component metadata, telling you which component each instance comes from.",
+                "type": "object"
+              },
+              "document": {
+                "description": "Root DOCUMENT node. Its 'children' are the pages (CANVAS nodes).",
+                "type": "object"
+              },
+              "editorType": {
+                "description": "Which editor the file uses: 'figma', 'figjam', or 'slides'.",
+                "type": "string"
+              },
+              "lastModified": {
+                "description": "ISO 8601 timestamp of the last edit.",
+                "type": "string"
+              },
+              "linkAccess": {
+                "description": "The file's share-link access level (e.g. 'view', 'edit', 'org_view', 'inherit').",
+                "type": "string"
+              },
+              "mainFileKey": {
+                "description": "Present only when the file is a branch (requires branch_data): the key of the main file.",
+                "type": "string"
+              },
+              "name": {
+                "description": "The file's name.",
+                "type": "string"
+              },
+              "role": {
+                "description": "The caller's role on the file: 'owner', 'editor', or 'viewer'.",
+                "type": "string"
+              },
+              "schemaVersion": {
+                "description": "Version of the response schema.",
+                "type": "integer"
+              },
+              "styles": {
+                "description": "Map of style id -> style metadata used in the file.",
+                "type": "object"
+              },
+              "thumbnailUrl": {
+                "description": "URL of a rendered thumbnail image of the file.",
+                "type": "string"
+              },
+              "version": {
+                "description": "The current version id of the file.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_file_comments": {
+          "description": "List the comments on a Figma file, including each comment's text, author, creation time, whether it has been resolved, and where it is pinned on the canvas. Replies are returned as their own comments with a 'parent_id' pointing at the thread's first comment. Useful for triaging design feedback or pulling open comments into a review.",
+          "display_name": "List Figma comments",
+          "display_str_template": "List comments on Figma file {0}.",
+          "handler": "actions.get_file_comments",
+          "id": "figma_get_file_comments",
+          "method": "POST",
+          "mock_response": {
+            "comments": [
+              {
+                "client_meta": {
+                  "node_id": "1:2",
+                  "node_offset": {
+                    "x": 120.0,
+                    "y": 64.0
+                  }
+                },
+                "created_at": "2026-07-19T14:03:52Z",
+                "file_key": "AbC123dEf456GhI789jkL0",
+                "id": "9481726354",
+                "message": "Can we bump the hero headline to 48px?",
+                "order_id": "1",
+                "parent_id": "",
+                "reactions": [],
+                "resolved_at": null,
+                "user": {
+                  "__args__": [
+                    "_MOCK_USER"
+                  ]
+                }
+              },
+              {
+                "client_meta": null,
+                "created_at": "2026-07-19T15:11:08Z",
+                "file_key": "AbC123dEf456GhI789jkL0",
+                "id": "9481726355",
+                "message": "Agreed \u2014 pushing that now.",
+                "order_id": "2",
+                "parent_id": "9481726354",
+                "reactions": [],
+                "resolved_at": null,
+                "user": {
+                  "handle": "Priya Nair",
+                  "id": "883910244501299887",
+                  "img_url": "https://s3-alpha.figma.com/profile/example2.png"
+                }
+              }
+            ]
+          },
+          "name": "get_file_comments",
+          "output_formatter": "actions.format_get_file_comments_output",
+          "parameters": [
+            {
+              "description": "The Figma file whose comments to list. A file key or a full Figma file URL both work.",
+              "name": "file_key",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Turn on to return each comment's text as its markdown equivalent where applicable. Leave off for plain text.",
+              "display_name": "As markdown",
+              "name": "as_md",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/figma/get-file-comments",
+          "result_str_template": "Retrieved Figma comments.",
+          "returns": {
+            "description": "The file's comments, newest activity first.",
+            "properties": {
+              "comments": {
+                "description": "Array of comment objects.",
+                "items": "_COMMENT_SCHEMA",
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_me": {
+          "description": "Get the Figma user that the connected access token belongs to, including their id, display handle, email, and avatar URL. Useful for confirming which account a workflow is acting as, or as a lightweight connection check.",
+          "display_name": "Get Figma user",
+          "display_str_template": "Get the connected Figma user.",
+          "handler": "actions.get_me",
+          "id": "figma_get_me",
+          "method": "POST",
+          "mock_response": {
+            "__args__": [
+              "_MOCK_USER"
+            ]
+          },
+          "name": "get_me",
+          "output_formatter": "actions.format_get_me_output",
+          "parameters": [],
+          "path": "/actions/library/figma/get-me",
+          "result_str_template": "Retrieved the Figma user.",
+          "returns": {
+            "description": "The authenticated Figma user.",
+            "properties": null,
+            "type": "object"
+          }
+        },
+        "post_file_comment": {
+          "description": "Post a comment on a Figma file, or reply to an existing comment. Provide the file and the message text; optionally reply within an existing thread by giving that comment's id. Returns the created comment, including its new id. Useful for leaving automated design feedback or notifying reviewers from a workflow.",
+          "display_name": "Post Figma comment",
+          "display_str_template": "Post a comment to Figma file {0}.",
+          "handler": "actions.post_file_comment",
+          "id": "figma_post_file_comment",
+          "method": "POST",
+          "mock_response": {
+            "client_meta": null,
+            "created_at": "2026-07-24T09:15:00Z",
+            "file_key": "AbC123dEf456GhI789jkL0",
+            "id": "9481726400",
+            "message": "Ship-ready \u2014 approving this frame.",
+            "order_id": "3",
+            "parent_id": "",
+            "reactions": [],
+            "resolved_at": null,
+            "user": {
+              "__args__": [
+                "_MOCK_USER"
+              ]
+            }
+          },
+          "name": "post_file_comment",
+          "output_formatter": "actions.format_post_file_comment_output",
+          "parameters": [
+            {
+              "description": "The Figma file to comment on. A file key or a full Figma file URL both work.",
+              "name": "file_key",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The comment text to post.",
+              "multiline": true,
+              "name": "message",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "To reply inside an existing thread, enter the id of the comment you are replying to. This must be a root comment (you cannot reply to a comment that is itself a reply). Leave blank to start a new top-level comment.",
+              "display_name": "Reply to comment",
+              "name": "comment_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/figma/post-file-comment",
+          "result_str_template": "Posted the Figma comment.",
+          "returns": {
+            "description": "The comment that was created.",
+            "properties": null,
+            "type": "object"
+          }
+        }
+      },
+      "description": "Collaborative interface design. Read a Figma file's structure and metadata, list and post comments for design review, and clean up comments \u2014 all with a personal access token.",
+      "display_name": "DISPLAY_NAME",
+      "id": "figma"
+    },
+    {
+      "actions": {
         "get_balance_sheet": {
           "description": "Get a balance sheet from Finta \u2014 assets, liabilities, equity, and retained earnings \u2014 as of a single date. Useful for checking cash on hand, total assets, equity, or month-end close summaries.",
           "display_name": "Get Finta balance sheet",
@@ -19133,23 +19888,26 @@
     },
     {
       "actions": {
-        "close_issue": {
-          "description": "Close an existing GitLab issue.",
-          "display_name": "Close issue",
-          "display_str_template": "Close issue #{1} in project {0}.",
-          "handler": "actions.close_issue",
-          "id": "gitlab_close_issue",
+        "create_branch": {
+          "description": "Create a new branch in a GitLab project from an existing branch or commit.",
+          "display_name": "Create branch",
+          "display_str_template": "Create branch '{1}' in project {0}.",
+          "handler": "actions.create_branch",
+          "id": "gitlab_create_branch",
           "method": "POST",
           "mock_response": {
-            "id": 456,
-            "iid": 1,
-            "state": "closed"
+            "commit_id": "b83d6e391c22777fca1ed3012fce84f633d7fed0",
+            "default": false,
+            "name": "feature/login",
+            "protected": false,
+            "web_url": "https://gitlab.com/user/project/-/tree/feature/login"
           },
-          "name": "close_issue",
+          "name": "create_branch",
           "parameters": [
             {
-              "description": "The project the issue belongs to. Enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
+              "description": "The project to act on. Pick one from the list, or enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
               "display_name": "Project",
+              "dynamic_source": "projects",
               "examples": [
                 {
                   "label": "Project path",
@@ -19165,46 +19923,64 @@
               "type": "ParameterType.STRING"
             },
             {
-              "description": "The number of the issue to close (for example, 5 for issue #5).",
-              "display_name": "Issue number",
-              "name": "issue_iid",
+              "description": "The name for the new branch (for example, 'feature/login').",
+              "display_name": "New branch name",
+              "name": "branch",
               "required": true,
-              "type": "ParameterType.NUMBER"
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The existing branch to create the new branch from (for example, 'main'). Pick one once you've chosen a project.",
+              "display_name": "Start from branch",
+              "dynamic_source": "branches",
+              "dynamic_source_depends_on": [
+                "project"
+              ],
+              "name": "ref",
+              "required": true,
+              "type": "ParameterType.STRING"
             }
           ],
-          "path": "/actions/library/gitlab/close-issue",
-          "result_str_template": "Closed issue #{0}.",
+          "path": "/actions/library/gitlab/create-branch",
+          "result_str_template": "Created branch '{0}'.",
           "returns": {
             "properties": {
-              "id": {
-                "type": "number"
+              "commit_id": {
+                "type": "string"
               },
-              "iid": {
-                "type": "number"
+              "default": {
+                "type": "boolean"
               },
-              "state": {
+              "name": {
+                "type": "string"
+              },
+              "protected": {
+                "type": "boolean"
+              },
+              "web_url": {
                 "type": "string"
               }
             },
             "type": "object"
           }
         },
-        "comment_on_issue": {
-          "description": "Add a comment to a GitLab issue.",
-          "display_name": "Comment on issue",
-          "display_str_template": "Comment on issue #{1} in project {0}.",
-          "handler": "actions.comment_on_issue",
-          "id": "gitlab_comment_on_issue",
+        "create_comment": {
+          "description": "Add a comment to a GitLab issue or merge request.",
+          "display_name": "Create comment",
+          "display_str_template": "Comment on {1} #{2} in project {0}.",
+          "handler": "actions.create_comment",
+          "id": "gitlab_create_comment",
           "method": "POST",
           "mock_response": {
             "body": "This is a comment.",
             "id": 101
           },
-          "name": "comment_on_issue",
+          "name": "create_comment",
           "parameters": [
             {
-              "description": "The project the issue belongs to. Enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
+              "description": "The project to act on. Pick one from the list, or enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
               "display_name": "Project",
+              "dynamic_source": "projects",
               "examples": [
                 {
                   "label": "Project path",
@@ -19220,9 +19996,32 @@
               "type": "ParameterType.STRING"
             },
             {
-              "description": "The issue number shown in GitLab (for example, 5 for issue #5).",
-              "display_name": "Issue number",
-              "name": "issue_iid",
+              "default": "issue",
+              "description": "Whether to comment on an issue or a merge request.",
+              "display_name": "Comment on",
+              "name": "target_type",
+              "options": [
+                {
+                  "label": "Issue",
+                  "value": "issue"
+                },
+                {
+                  "label": "Merge request",
+                  "value": "merge_request"
+                }
+              ],
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The issue or merge request to comment on. Pick one once you've chosen a project and whether it's an issue or a merge request, or enter its number (for example, 5).",
+              "display_name": "Issue or merge request",
+              "dynamic_source": "comment_targets",
+              "dynamic_source_depends_on": [
+                "project",
+                "target_type"
+              ],
+              "name": "target_iid",
               "required": true,
               "type": "ParameterType.NUMBER"
             },
@@ -19235,8 +20034,8 @@
               "type": "ParameterType.STRING"
             }
           ],
-          "path": "/actions/library/gitlab/comment-on-issue",
-          "result_str_template": "Added comment to issue.",
+          "path": "/actions/library/gitlab/create-comment",
+          "result_str_template": "Added comment.",
           "returns": {
             "properties": {
               "body": {
@@ -19259,14 +20058,16 @@
           "mock_response": {
             "id": 789,
             "iid": 2,
+            "state": "opened",
             "title": "New feature request",
             "web_url": "https://gitlab.com/user/project/-/issues/2"
           },
           "name": "create_issue",
           "parameters": [
             {
-              "description": "The project to create the issue in. Enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
+              "description": "The project to act on. Pick one from the list, or enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
               "display_name": "Project",
+              "dynamic_source": "projects",
               "examples": [
                 {
                   "label": "Project path",
@@ -19297,8 +20098,12 @@
               "type": "ParameterType.STRING"
             },
             {
-              "description": "Labels to add to the issue.",
+              "description": "Labels to add to the issue. Pick any number from the project's labels once you've chosen a project.",
               "display_name": "Labels",
+              "dynamic_source": "labels",
+              "dynamic_source_depends_on": [
+                "project"
+              ],
               "name": "labels",
               "required": false,
               "type": "ParameterType.ARRAY"
@@ -19314,6 +20119,9 @@
               "iid": {
                 "type": "number"
               },
+              "state": {
+                "type": "string"
+              },
               "title": {
                 "type": "string"
               },
@@ -19324,27 +20132,28 @@
             "type": "object"
           }
         },
-        "list_issues": {
-          "description": "List issues for a specific GitLab project.",
-          "display_name": "List issues",
-          "display_str_template": "List issues in project {0}.",
-          "handler": "actions.list_issues",
-          "id": "gitlab_list_issues",
+        "create_merge_request": {
+          "description": "Create a new merge request in a GitLab project.",
+          "display_name": "Create merge request",
+          "display_str_template": "Create merge request '{3}' in project {0}.",
+          "handler": "actions.create_merge_request",
+          "id": "gitlab_create_merge_request",
           "method": "POST",
-          "mock_response": [
-            {
-              "id": 456,
-              "iid": 1,
-              "state": "opened",
-              "title": "Bug report",
-              "web_url": "https://gitlab.com/user/project/-/issues/1"
-            }
-          ],
-          "name": "list_issues",
+          "mock_response": {
+            "id": 555,
+            "iid": 3,
+            "source_branch": "feature/login",
+            "state": "opened",
+            "target_branch": "main",
+            "title": "Add login page",
+            "web_url": "https://gitlab.com/user/project/-/merge_requests/3"
+          },
+          "name": "create_merge_request",
           "parameters": [
             {
-              "description": "The project to list issues from. Enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
+              "description": "The project to act on. Pick one from the list, or enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
               "display_name": "Project",
+              "dynamic_source": "projects",
               "examples": [
                 {
                   "label": "Project path",
@@ -19360,135 +20169,472 @@
               "type": "ParameterType.STRING"
             },
             {
-              "description": "Show issues that are open, closed, or both. Defaults to open issues.",
-              "display_name": "Status",
-              "name": "state",
-              "options": [
-                {
-                  "label": "Open",
-                  "value": "opened"
-                },
-                {
-                  "label": "Closed",
-                  "value": "closed"
-                },
-                {
-                  "label": "All",
-                  "value": "all"
-                }
+              "description": "The branch with the changes you want to merge. Pick one once you've chosen a project.",
+              "display_name": "Source branch",
+              "dynamic_source": "branches",
+              "dynamic_source_depends_on": [
+                "project"
               ],
-              "required": false,
+              "name": "source_branch",
+              "required": true,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "Show only issues that have all of these labels.",
-              "display_name": "Labels",
-              "name": "labels",
-              "required": false,
-              "type": "ParameterType.ARRAY"
+              "description": "The branch you want to merge the changes into (for example, 'main'). Pick one once you've chosen a project.",
+              "display_name": "Target branch",
+              "dynamic_source": "branches",
+              "dynamic_source_depends_on": [
+                "project"
+              ],
+              "name": "target_branch",
+              "required": true,
+              "type": "ParameterType.STRING"
             },
             {
-              "description": "How many issues to return (up to 100).",
-              "display_name": "Results per page",
-              "name": "per_page",
+              "description": "The title of the merge request.",
+              "display_name": "Title",
+              "name": "title",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The main text of the merge request.",
+              "display_name": "Description",
+              "multiline": true,
+              "name": "description",
               "required": false,
-              "type": "ParameterType.NUMBER"
+              "type": "ParameterType.STRING"
             }
           ],
-          "path": "/actions/library/gitlab/list-issues",
-          "result_str_template": "Found {0} issues.",
+          "path": "/actions/library/gitlab/create-merge-request",
+          "result_str_template": "Created merge request !{0}.",
           "returns": {
-            "items": {
-              "properties": {
-                "id": {
-                  "type": "number"
-                },
-                "iid": {
-                  "type": "number"
-                },
-                "state": {
-                  "type": "string"
-                },
-                "title": {
-                  "type": "string"
-                },
-                "web_url": {
-                  "type": "string"
-                }
+            "properties": {
+              "id": {
+                "type": "number"
               },
-              "type": "object"
+              "iid": {
+                "type": "number"
+              },
+              "source_branch": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "target_branch": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "web_url": {
+                "type": "string"
+              }
             },
-            "type": "array"
+            "type": "object"
           }
         },
-        "list_projects": {
-          "description": "List the GitLab projects your account can access.",
-          "display_name": "List projects",
-          "display_str_template": "List GitLab projects.",
-          "handler": "actions.list_projects",
-          "id": "gitlab_list_projects",
+        "delete_branch": {
+          "description": "Delete a branch from a GitLab project.",
+          "display_name": "Delete branch",
+          "display_str_template": "Delete branch '{1}' from project {0}.",
+          "handler": "actions.delete_branch",
+          "id": "gitlab_delete_branch",
           "method": "POST",
-          "mock_response": [
-            {
-              "id": 123,
-              "name": "my-project",
-              "path_with_namespace": "user/my-project",
-              "visibility": "private",
-              "web_url": "https://gitlab.com/user/my-project"
-            }
-          ],
-          "name": "list_projects",
+          "mock_response": {
+            "branch": "feature/login",
+            "deleted": true
+          },
+          "name": "delete_branch",
           "parameters": [
             {
-              "description": "Set to true to only show projects you are a member of.",
-              "display_name": "Only my projects",
-              "name": "membership",
-              "required": false,
-              "type": "ParameterType.BOOLEAN"
-            },
-            {
-              "description": "Show only projects whose name contains this text.",
-              "display_name": "Search",
-              "name": "search",
-              "required": false,
+              "description": "The project to act on. Pick one from the list, or enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
+              "display_name": "Project",
+              "dynamic_source": "projects",
+              "examples": [
+                {
+                  "label": "Project path",
+                  "value": "my-group/my-project"
+                },
+                {
+                  "label": "Project ID",
+                  "value": "123"
+                }
+              ],
+              "name": "project",
+              "required": true,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "How many projects to return (up to 100).",
-              "display_name": "Results per page",
-              "name": "per_page",
-              "required": false,
+              "description": "The branch to delete. Pick one once you've chosen a project.",
+              "display_name": "Branch",
+              "dynamic_source": "branches",
+              "dynamic_source_depends_on": [
+                "project"
+              ],
+              "name": "branch",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/gitlab/delete-branch",
+          "result_str_template": "Deleted branch '{0}'.",
+          "returns": {
+            "properties": {
+              "branch": {
+                "type": "string"
+              },
+              "deleted": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "delete_issue": {
+          "description": "Permanently delete an issue from a GitLab project.",
+          "display_name": "Delete issue",
+          "display_str_template": "Delete issue #{1} from project {0}.",
+          "handler": "actions.delete_issue",
+          "id": "gitlab_delete_issue",
+          "method": "POST",
+          "mock_response": {
+            "deleted": true,
+            "iid": 1
+          },
+          "name": "delete_issue",
+          "parameters": [
+            {
+              "description": "The project to act on. Pick one from the list, or enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
+              "display_name": "Project",
+              "dynamic_source": "projects",
+              "examples": [
+                {
+                  "label": "Project path",
+                  "value": "my-group/my-project"
+                },
+                {
+                  "label": "Project ID",
+                  "value": "123"
+                }
+              ],
+              "name": "project",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The issue to delete. Pick one once you've chosen a project, or enter its number (for example, 5 for #5).",
+              "display_name": "Issue",
+              "dynamic_source": "issues",
+              "dynamic_source_depends_on": [
+                "project"
+              ],
+              "name": "issue_iid",
+              "required": true,
               "type": "ParameterType.NUMBER"
             }
           ],
-          "path": "/actions/library/gitlab/list-projects",
-          "result_str_template": "Found {0} projects.",
+          "path": "/actions/library/gitlab/delete-issue",
+          "result_str_template": "Deleted issue #{0}.",
           "returns": {
-            "items": {
-              "properties": {
-                "id": {
-                  "type": "number"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "path_with_namespace": {
-                  "type": "string"
-                },
-                "visibility": {
-                  "type": "string"
-                },
-                "web_url": {
-                  "type": "string"
-                }
+            "properties": {
+              "deleted": {
+                "type": "boolean"
               },
-              "type": "object"
+              "iid": {
+                "type": "number"
+              }
             },
-            "type": "array"
+            "type": "object"
+          }
+        },
+        "delete_merge_request": {
+          "description": "Permanently delete a merge request from a GitLab project.",
+          "display_name": "Delete merge request",
+          "display_str_template": "Delete merge request !{1} from project {0}.",
+          "handler": "actions.delete_merge_request",
+          "id": "gitlab_delete_merge_request",
+          "method": "POST",
+          "mock_response": {
+            "deleted": true,
+            "iid": 3
+          },
+          "name": "delete_merge_request",
+          "parameters": [
+            {
+              "description": "The project to act on. Pick one from the list, or enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
+              "display_name": "Project",
+              "dynamic_source": "projects",
+              "examples": [
+                {
+                  "label": "Project path",
+                  "value": "my-group/my-project"
+                },
+                {
+                  "label": "Project ID",
+                  "value": "123"
+                }
+              ],
+              "name": "project",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The merge request to delete. Pick one once you've chosen a project, or enter its number (for example, 3 for !3).",
+              "display_name": "Merge request",
+              "dynamic_source": "merge_requests",
+              "dynamic_source_depends_on": [
+                "project"
+              ],
+              "name": "merge_request_iid",
+              "required": true,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/gitlab/delete-merge-request",
+          "result_str_template": "Deleted merge request !{0}.",
+          "returns": {
+            "properties": {
+              "deleted": {
+                "type": "boolean"
+              },
+              "iid": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_branch": {
+          "description": "Get details of a single branch in a GitLab project.",
+          "display_name": "Get branch",
+          "display_str_template": "Get branch '{1}' from project {0}.",
+          "handler": "actions.get_branch",
+          "id": "gitlab_get_branch",
+          "method": "POST",
+          "mock_response": {
+            "commit_id": "b83d6e391c22777fca1ed3012fce84f633d7fed0",
+            "default": true,
+            "merged": false,
+            "name": "main",
+            "protected": true,
+            "web_url": "https://gitlab.com/user/project/-/tree/main"
+          },
+          "name": "get_branch",
+          "parameters": [
+            {
+              "description": "The project to act on. Pick one from the list, or enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
+              "display_name": "Project",
+              "dynamic_source": "projects",
+              "examples": [
+                {
+                  "label": "Project path",
+                  "value": "my-group/my-project"
+                },
+                {
+                  "label": "Project ID",
+                  "value": "123"
+                }
+              ],
+              "name": "project",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The branch to look up. Pick one once you've chosen a project.",
+              "display_name": "Branch",
+              "dynamic_source": "branches",
+              "dynamic_source_depends_on": [
+                "project"
+              ],
+              "name": "branch",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/gitlab/get-branch",
+          "result_str_template": "Retrieved branch '{0}'.",
+          "returns": {
+            "properties": {
+              "commit_id": {
+                "type": "string"
+              },
+              "default": {
+                "type": "boolean"
+              },
+              "merged": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              },
+              "protected": {
+                "type": "boolean"
+              },
+              "web_url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_issue": {
+          "description": "Get details of a specific issue in a GitLab project.",
+          "display_name": "Get issue",
+          "display_str_template": "Get issue #{1} from project {0}.",
+          "handler": "actions.get_issue",
+          "id": "gitlab_get_issue",
+          "method": "POST",
+          "mock_response": {
+            "description": "Steps to reproduce the bug.",
+            "id": 456,
+            "iid": 1,
+            "state": "opened",
+            "title": "Bug report",
+            "web_url": "https://gitlab.com/user/project/-/issues/1"
+          },
+          "name": "get_issue",
+          "parameters": [
+            {
+              "description": "The project to act on. Pick one from the list, or enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
+              "display_name": "Project",
+              "dynamic_source": "projects",
+              "examples": [
+                {
+                  "label": "Project path",
+                  "value": "my-group/my-project"
+                },
+                {
+                  "label": "Project ID",
+                  "value": "123"
+                }
+              ],
+              "name": "project",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The issue to look up. Pick one once you've chosen a project, or enter its number (for example, 5 for #5).",
+              "display_name": "Issue",
+              "dynamic_source": "issues",
+              "dynamic_source_depends_on": [
+                "project"
+              ],
+              "name": "issue_iid",
+              "required": true,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/gitlab/get-issue",
+          "result_str_template": "Retrieved issue #{0}.",
+          "returns": {
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "id": {
+                "type": "number"
+              },
+              "iid": {
+                "type": "number"
+              },
+              "state": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "web_url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_merge_request": {
+          "description": "Get details of a specific merge request in a GitLab project.",
+          "display_name": "Get merge request",
+          "display_str_template": "Get merge request !{1} from project {0}.",
+          "handler": "actions.get_merge_request",
+          "id": "gitlab_get_merge_request",
+          "method": "POST",
+          "mock_response": {
+            "id": 555,
+            "iid": 3,
+            "merge_status": "can_be_merged",
+            "source_branch": "feature/login",
+            "state": "opened",
+            "target_branch": "main",
+            "title": "Add login page",
+            "web_url": "https://gitlab.com/user/project/-/merge_requests/3"
+          },
+          "name": "get_merge_request",
+          "parameters": [
+            {
+              "description": "The project to act on. Pick one from the list, or enter the project path shown in its web address (for example, 'my-group/my-project') or its numeric project ID.",
+              "display_name": "Project",
+              "dynamic_source": "projects",
+              "examples": [
+                {
+                  "label": "Project path",
+                  "value": "my-group/my-project"
+                },
+                {
+                  "label": "Project ID",
+                  "value": "123"
+                }
+              ],
+              "name": "project",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The merge request to look up. Pick one once you've chosen a project, or enter its number (for example, 3 for !3).",
+              "display_name": "Merge request",
+              "dynamic_source": "merge_requests",
+              "dynamic_source_depends_on": [
+                "project"
+              ],
+              "name": "merge_request_iid",
+              "required": true,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/gitlab/get-merge-request",
+          "result_str_template": "Retrieved merge request !{0}.",
+          "returns": {
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "iid": {
+                "type": "number"
+              },
+              "merge_status": {
+                "type": "string"
+              },
+              "source_branch": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "target_branch": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "web_url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
           }
         }
       },
-      "description": "Manage GitLab projects and issues with a personal access token.",
+      "description": "Manage GitLab branches, issues, and merge requests with a personal access token.",
       "display_name": "GitLab",
       "id": "gitlab"
     },
@@ -46987,7 +48133,9 @@
           "id": "sendgrid_add_contact_to_list",
           "method": "POST",
           "mock_response": {
-            "job_id": "job_987"
+            "result": {
+              "job_id": "job_987"
+            }
           },
           "name": "add_contact_to_list",
           "parameters": [
@@ -47008,9 +48156,14 @@
           "result_str_template": "Contact added to list.",
           "returns": {
             "properties": {
-              "job_id": {
-                "description": "SendGrid job ID for the import.",
-                "type": "string"
+              "result": {
+                "properties": {
+                  "job_id": {
+                    "description": "SendGrid job ID for the import.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               }
             },
             "type": "object"
@@ -47024,9 +48177,11 @@
           "id": "sendgrid_create_list",
           "method": "POST",
           "mock_response": {
-            "contact_count": 0,
-            "id": "list_789",
-            "name": "My List"
+            "result": {
+              "contact_count": 0,
+              "id": "list_789",
+              "name": "My List"
+            }
           },
           "name": "create_list",
           "parameters": [
@@ -47041,17 +48196,22 @@
           "result_str_template": "List created.",
           "returns": {
             "properties": {
-              "contact_count": {
-                "description": "Number of contacts in the list.",
-                "type": "integer"
-              },
-              "id": {
-                "description": "Created list ID.",
-                "type": "string"
-              },
-              "name": {
-                "description": "List name.",
-                "type": "string"
+              "result": {
+                "properties": {
+                  "contact_count": {
+                    "description": "Number of contacts in the list.",
+                    "type": "integer"
+                  },
+                  "id": {
+                    "description": "Created list ID.",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "List name.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               }
             },
             "type": "object"
@@ -47065,21 +48225,23 @@
           "id": "sendgrid_get_stats",
           "method": "POST",
           "mock_response": {
-            "stats": [
-              {
-                "date": "2024-01-01",
-                "stats": [
-                  {
-                    "metrics": {
-                      "clicks": 10,
-                      "delivered": 95,
-                      "opens": 50,
-                      "requests": 100
+            "result": {
+              "stats": [
+                {
+                  "date": "2024-01-01",
+                  "stats": [
+                    {
+                      "metrics": {
+                        "clicks": 10,
+                        "delivered": 95,
+                        "opens": 50,
+                        "requests": 100
+                      }
                     }
-                  }
-                ]
-              }
-            ]
+                  ]
+                }
+              ]
+            }
           },
           "name": "get_stats",
           "parameters": [
@@ -47100,49 +48262,54 @@
           "result_str_template": "Stats retrieved.",
           "returns": {
             "properties": {
-              "stats": {
-                "description": "Stats for the date range.",
-                "items": {
-                  "properties": {
-                    "date": {
-                      "description": "Date.",
-                      "type": "string"
-                    },
-                    "stats": {
-                      "description": "Metrics for this date.",
-                      "items": {
-                        "properties": {
-                          "metrics": {
-                            "description": "Email metrics.",
+              "result": {
+                "properties": {
+                  "stats": {
+                    "description": "Stats for the date range.",
+                    "items": {
+                      "properties": {
+                        "date": {
+                          "description": "Date.",
+                          "type": "string"
+                        },
+                        "stats": {
+                          "description": "Metrics for this date.",
+                          "items": {
                             "properties": {
-                              "clicks": {
-                                "description": "Click count.",
-                                "type": "integer"
-                              },
-                              "delivered": {
-                                "description": "Delivered emails.",
-                                "type": "integer"
-                              },
-                              "opens": {
-                                "description": "Open count.",
-                                "type": "integer"
-                              },
-                              "requests": {
-                                "description": "Total requests.",
-                                "type": "integer"
+                              "metrics": {
+                                "description": "Email metrics.",
+                                "properties": {
+                                  "clicks": {
+                                    "description": "Click count.",
+                                    "type": "integer"
+                                  },
+                                  "delivered": {
+                                    "description": "Delivered emails.",
+                                    "type": "integer"
+                                  },
+                                  "opens": {
+                                    "description": "Open count.",
+                                    "type": "integer"
+                                  },
+                                  "requests": {
+                                    "description": "Total requests.",
+                                    "type": "integer"
+                                  }
+                                },
+                                "type": "object"
                               }
                             },
                             "type": "object"
-                          }
-                        },
-                        "type": "object"
+                          },
+                          "type": "array"
+                        }
                       },
-                      "type": "array"
-                    }
-                  },
-                  "type": "object"
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
                 },
-                "type": "array"
+                "type": "object"
               }
             },
             "type": "object"
@@ -47156,12 +48323,14 @@
           "id": "sendgrid_list_templates",
           "method": "POST",
           "mock_response": {
-            "result": [
-              {
-                "id": "tmpl_123",
-                "name": "Welcome Email"
-              }
-            ]
+            "result": {
+              "result": [
+                {
+                  "id": "tmpl_123",
+                  "name": "Welcome Email"
+                }
+              ]
+            }
           },
           "name": "list_templates",
           "parameters": [],
@@ -47170,21 +48339,26 @@
           "returns": {
             "properties": {
               "result": {
-                "description": "List of templates.",
-                "items": {
-                  "properties": {
-                    "id": {
-                      "description": "Template ID.",
-                      "type": "string"
+                "properties": {
+                  "result": {
+                    "description": "List of templates.",
+                    "items": {
+                      "properties": {
+                        "id": {
+                          "description": "Template ID.",
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "Template name.",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
                     },
-                    "name": {
-                      "description": "Template name.",
-                      "type": "string"
-                    }
-                  },
-                  "type": "object"
+                    "type": "array"
+                  }
                 },
-                "type": "array"
+                "type": "object"
               }
             },
             "type": "object"
@@ -47198,7 +48372,9 @@
           "id": "sendgrid_send_email",
           "method": "POST",
           "mock_response": {
-            "status_code": 202
+            "result": {
+              "status_code": 202
+            }
           },
           "name": "send_email",
           "parameters": [
@@ -47251,9 +48427,14 @@
           "result_str_template": "Email sent.",
           "returns": {
             "properties": {
-              "status_code": {
-                "description": "HTTP status code (202 on success).",
-                "type": "integer"
+              "result": {
+                "properties": {
+                  "status_code": {
+                    "description": "HTTP status code (202 on success).",
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
               }
             },
             "type": "object"
@@ -47267,7 +48448,9 @@
           "id": "sendgrid_send_template_email",
           "method": "POST",
           "mock_response": {
-            "status_code": 202
+            "result": {
+              "status_code": 202
+            }
           },
           "name": "send_template_email",
           "parameters": [
@@ -47301,9 +48484,14 @@
           "result_str_template": "Template email sent.",
           "returns": {
             "properties": {
-              "status_code": {
-                "description": "HTTP status code (202 on success).",
-                "type": "integer"
+              "result": {
+                "properties": {
+                  "status_code": {
+                    "description": "HTTP status code (202 on success).",
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
               }
             },
             "type": "object"
@@ -53090,6 +54278,77 @@
     },
     {
       "actions": {
+        "get_friend_list": {
+          "description": "List a Steam user's friends. The target profile's friends list must be public.",
+          "display_name": "Get friend list",
+          "display_str_template": "Get friends for Steam ID '{0}'.",
+          "handler": "actions.get_friend_list",
+          "id": "steam_get_friend_list",
+          "method": "POST",
+          "mock_response": {
+            "friends": [
+              {
+                "friend_since": 1512803400,
+                "relationship": "friend",
+                "steamid": "76561198000000001"
+              }
+            ]
+          },
+          "name": "get_friend_list",
+          "parameters": [
+            {
+              "description": "The Steam ID of the user whose friends you want to list.",
+              "name": "steam_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": "all",
+              "description": "Which relationships to include: 'all' (the default) or 'friend'.",
+              "name": "relationship",
+              "options": [
+                {
+                  "label": "All relationships",
+                  "value": "all"
+                },
+                {
+                  "label": "Friends only",
+                  "value": "friend"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/steam/friend-list",
+          "result_str_template": "Friend list retrieved.",
+          "returns": {
+            "properties": {
+              "friends": {
+                "description": "The user's friends.",
+                "items": {
+                  "properties": {
+                    "friend_since": {
+                      "description": "Unix timestamp of when the friendship began.",
+                      "type": "integer"
+                    },
+                    "relationship": {
+                      "description": "Relationship type, e.g. 'friend'.",
+                      "type": "string"
+                    },
+                    "steamid": {
+                      "description": "The friend's Steam ID.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
         "get_owned_games": {
           "description": "List the games a Steam user owns.",
           "display_name": "Get owned games",
@@ -53206,9 +54465,118 @@
             },
             "type": "object"
           }
+        },
+        "get_recently_played_games": {
+          "description": "List the games a Steam user has played in the last two weeks.",
+          "display_name": "Get recently played games",
+          "display_str_template": "Get recently played games for Steam ID '{0}'.",
+          "handler": "actions.get_recently_played_games",
+          "id": "steam_get_recently_played_games",
+          "method": "POST",
+          "mock_response": {
+            "games": [
+              {
+                "appid": 730,
+                "name": "Counter-Strike 2",
+                "playtime_2weeks_hours": 5.5,
+                "playtime_hours": 320.0
+              }
+            ]
+          },
+          "name": "get_recently_played_games",
+          "parameters": [
+            {
+              "description": "The Steam ID of the user whose recent games you want.",
+              "name": "steam_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Maximum number of games to return (default: all).",
+              "minimum": 1,
+              "name": "count",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/steam/recently-played-games",
+          "result_str_template": "Recently played games retrieved.",
+          "returns": {
+            "properties": {
+              "games": {
+                "description": "Games played in the last two weeks.",
+                "items": {
+                  "properties": {
+                    "appid": {
+                      "description": "App ID.",
+                      "type": "integer"
+                    },
+                    "name": {
+                      "description": "Game name.",
+                      "type": "string"
+                    },
+                    "playtime_2weeks_hours": {
+                      "description": "Hours played in the last two weeks.",
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "resolve_vanity_url": {
+          "description": "Convert a Steam custom (vanity) profile name into its 64-bit Steam ID, which the other actions require.",
+          "display_name": "Resolve vanity URL",
+          "display_str_template": "Resolve Steam vanity URL '{0}'.",
+          "handler": "actions.resolve_vanity_url",
+          "id": "steam_resolve_vanity_url",
+          "method": "POST",
+          "mock_response": {
+            "steamid": "76561197960287930",
+            "vanity_url": "gabelogannewell"
+          },
+          "name": "resolve_vanity_url",
+          "parameters": [
+            {
+              "description": "The custom name from a profile's web address, for example 'gabelogannewell' in steamcommunity.com/id/gabelogannewell. A full profile URL is also accepted.",
+              "display_name": "Vanity URL or name",
+              "name": "vanity_url",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": 1,
+              "description": "What the name refers to: 1 for an individual profile (the default), 2 for a group, or 3 for an official game group.",
+              "display_name": "URL type",
+              "maximum": 3,
+              "minimum": 1,
+              "name": "url_type",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/steam/resolve-vanity-url",
+          "result_str_template": "Resolved to Steam ID {steamid}.",
+          "returns": {
+            "properties": {
+              "steamid": {
+                "description": "The resolved 64-bit Steam ID.",
+                "type": "string"
+              },
+              "vanity_url": {
+                "description": "The vanity name that was resolved.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
         }
       },
-      "description": "Look up Steam player profiles and the games people own.",
+      "description": "Look up Steam player profiles, resolve vanity URLs to Steam IDs, and list the games people own, have played recently, and their friends.",
       "display_name": "Steam",
       "id": "steam"
     },
@@ -54162,45 +55530,6 @@
     },
     {
       "actions": {
-        "call_function": {
-          "description": "Run one of your Supabase database functions (a saved routine you can call by name).",
-          "display_name": "Call a database function",
-          "display_str_template": "Call Supabase function '{function_name}'.",
-          "handler": "actions.call_function",
-          "id": "supabase_call_function",
-          "method": "POST",
-          "mock_response": {
-            "result": {}
-          },
-          "name": "call_function",
-          "parameters": [
-            {
-              "description": "The name of the database function to run.",
-              "display_name": "Function name",
-              "name": "function_name",
-              "required": true,
-              "type": "ParameterType.STRING"
-            },
-            {
-              "description": "The inputs to pass to the function, given as name-and-value pairs (for example, {\"user_id\": 42}). Leave blank if the function takes no inputs.",
-              "display_name": "Function inputs",
-              "name": "params",
-              "required": false,
-              "type": "ParameterType.OBJECT"
-            }
-          ],
-          "path": "/actions/library/supabase/call-function",
-          "result_str_template": "Function run.",
-          "returns": {
-            "properties": {
-              "result": {
-                "description": "Function response.",
-                "type": "object"
-              }
-            },
-            "type": "object"
-          }
-        },
         "delete_rows": {
           "description": "Delete rows in a Supabase table that match your conditions.",
           "display_name": "Delete rows from a table",
@@ -54220,6 +55549,7 @@
             {
               "description": "The name of the table to delete rows from.",
               "display_name": "Table name",
+              "dynamic_source": "tables",
               "name": "table",
               "required": true,
               "type": "ParameterType.STRING"
@@ -54265,13 +55595,18 @@
             {
               "description": "The name of the table to add the row to.",
               "display_name": "Table name",
+              "dynamic_source": "tables",
               "name": "table",
               "required": true,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "The new row's columns and values, given as column-and-value pairs (for example, {\"name\": \"Ada\", \"email\": \"ada@example.com\"}).",
+              "description": "The new row's columns and values. Pick a table and its columns appear as fields to fill in; if the table comes from an earlier step, enter column-and-value pairs yourself (for example, {\"name\": \"Ada\", \"email\": \"ada@example.com\"}).",
               "display_name": "New row",
+              "dynamic_source": "columns",
+              "dynamic_source_depends_on": [
+                "table"
+              ],
               "name": "row",
               "required": true,
               "type": "ParameterType.OBJECT"
@@ -54309,16 +55644,21 @@
             {
               "description": "The name of the table to read from.",
               "display_name": "Table name",
+              "dynamic_source": "tables",
               "name": "table",
               "required": true,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "The columns to include, separated by commas (for example, 'name, email'). Leave blank to return all columns.",
+              "description": "The columns to return. Pick from the table's columns; leave empty to return every column.",
               "display_name": "Columns to return",
+              "dynamic_source": "columns",
+              "dynamic_source_depends_on": [
+                "table"
+              ],
               "name": "columns",
               "required": false,
-              "type": "ParameterType.STRING"
+              "type": "ParameterType.ARRAY"
             },
             {
               "description": "Only return rows where these columns exactly equal these values, given as column-and-value pairs (for example, {\"status\": \"active\"}). Leave blank to return every row.",
@@ -54369,6 +55709,7 @@
             {
               "description": "The name of the table to update.",
               "display_name": "Table name",
+              "dynamic_source": "tables",
               "name": "table",
               "required": true,
               "type": "ParameterType.STRING"
@@ -54404,7 +55745,7 @@
           }
         }
       },
-      "description": "Read and write rows in your Supabase tables and run your database functions.",
+      "description": "List, insert, update, and delete rows in your Supabase tables.",
       "display_name": "Supabase",
       "id": "supabase"
     },
