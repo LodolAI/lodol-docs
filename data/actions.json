@@ -16102,6 +16102,14 @@
               "name": "num_results",
               "required": false,
               "type": "ParameterType.NUMBER"
+            },
+            {
+              "default": false,
+              "description": "Leave out other pages from the same website as the page you provided.",
+              "display_name": "Skip the same website",
+              "name": "exclude_source_domain",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
             }
           ],
           "path": "/actions/library/exa/find-similar",
@@ -16114,6 +16122,66 @@
               },
               "results": {
                 "description": "The similar web pages.",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_answer": {
+          "description": "Ask a question and get a written answer from Exa, along with the web pages the answer was based on.",
+          "display_name": "Answer a question",
+          "display_str_template": "Answer '{0}' with Exa.",
+          "handler": "actions.get_answer",
+          "id": "exa_get_answer",
+          "method": "POST",
+          "mock_response": {
+            "answer": "SpaceX was most recently valued at $350 billion.",
+            "source_count": 1,
+            "sources": [
+              {
+                "id": "https://example.com/spacex-valuation",
+                "title": "SpaceX valuation report",
+                "url": "https://example.com/spacex-valuation"
+              }
+            ]
+          },
+          "name": "get_answer",
+          "parameters": [
+            {
+              "description": "The question to answer, such as 'What is the latest valuation of SpaceX?'.",
+              "display_name": "Question",
+              "multiline": true,
+              "name": "query",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": false,
+              "description": "Also return the text of each source page alongside the answer. Leave off unless a later step needs to read the sources.",
+              "display_name": "Include source page text",
+              "name": "include_sources_text",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/exa/answer",
+          "result_str_template": "Answered using {sources,length} sources.",
+          "returns": {
+            "properties": {
+              "answer": {
+                "description": "The written answer.",
+                "type": "string"
+              },
+              "source_count": {
+                "description": "How many sources were used.",
+                "type": "number"
+              },
+              "sources": {
+                "description": "The web pages the answer was based on.",
                 "items": {
                   "type": "object"
                 },
@@ -16142,11 +16210,19 @@
           "name": "get_contents",
           "parameters": [
             {
-              "description": "The web addresses (URLs) of the pages to read, such as those from an earlier search.",
+              "description": "A list of web addresses (URLs) of the pages to read, such as those from an earlier search. Pass a list even when there is only one page.",
               "display_name": "Web page addresses",
               "name": "urls",
               "required": true,
               "type": "ParameterType.ARRAY"
+            },
+            {
+              "description": "Trim each page to this many characters. Leave blank to get the whole page.",
+              "display_name": "Character limit per page",
+              "minimum": 1,
+              "name": "max_characters",
+              "required": false,
+              "type": "ParameterType.NUMBER"
             }
           ],
           "path": "/actions/library/exa/get-contents",
@@ -16203,7 +16279,7 @@
             },
             {
               "default": "auto",
-              "description": "How Exa finds results. 'Automatic' lets Exa choose the best method, 'Meaning-based' matches by meaning, and 'Fast' is quicker but less thorough.",
+              "description": "How hard Exa works on the search. 'Automatic' suits almost every case; the faster types trade some quality for speed, and the deep types research across several steps and can take up to a minute.",
               "display_name": "Search type",
               "name": "type",
               "options": [
@@ -16212,19 +16288,31 @@
                   "value": "auto"
                 },
                 {
-                  "label": "Meaning-based",
-                  "value": "neural"
-                },
-                {
                   "label": "Fast",
                   "value": "fast"
+                },
+                {
+                  "label": "Instant (lowest quality)",
+                  "value": "instant"
+                },
+                {
+                  "label": "Deep \u2014 lightweight",
+                  "value": "deep-lite"
+                },
+                {
+                  "label": "Deep \u2014 multi-step research",
+                  "value": "deep"
+                },
+                {
+                  "label": "Deep \u2014 maximum reasoning (slowest)",
+                  "value": "deep-reasoning"
                 }
               ],
               "required": false,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "Narrow results to a specific type of page. Leave blank to search everything.",
+              "description": "Narrow results to a specific type of page. Leave blank to search everything. Companies and People are drawn from Exa's own indexes and don't support the date filters or 'Websites to exclude'.",
               "display_name": "Focus on a category",
               "name": "category",
               "options": [
@@ -16233,28 +16321,20 @@
                   "value": "company"
                 },
                 {
-                  "label": "Research papers",
-                  "value": "research paper"
+                  "label": "People (LinkedIn profiles)",
+                  "value": "people"
+                },
+                {
+                  "label": "Publications (research papers)",
+                  "value": "publication"
                 },
                 {
                   "label": "News",
                   "value": "news"
                 },
                 {
-                  "label": "PDFs",
-                  "value": "pdf"
-                },
-                {
-                  "label": "GitHub",
-                  "value": "github"
-                },
-                {
                   "label": "Personal sites",
                   "value": "personal site"
-                },
-                {
-                  "label": "People (LinkedIn profiles)",
-                  "value": "people"
                 },
                 {
                   "label": "Financial reports",
@@ -16277,6 +16357,36 @@
               "name": "exclude_domains",
               "required": false,
               "type": "ParameterType.ARRAY"
+            },
+            {
+              "description": "Only show pages published on or after this date, in YYYY-MM-DD format.",
+              "display_name": "Published after",
+              "name": "start_published_date",
+              "required": false,
+              "type": "ParameterType.DATE"
+            },
+            {
+              "description": "Only show pages published on or before this date, in YYYY-MM-DD format.",
+              "display_name": "Published before",
+              "name": "end_published_date",
+              "required": false,
+              "type": "ParameterType.DATE"
+            },
+            {
+              "default": true,
+              "description": "Include the passages of each page that best match the search, so later steps can read the findings without fetching every page.",
+              "display_name": "Include relevant excerpts",
+              "name": "include_highlights",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "default": false,
+              "description": "Also include the text of each page, trimmed to {...} characters. Leave off unless a later step needs the full page \u2014 the excerpts above are usually enough.",
+              "display_name": "Include page text",
+              "name": "include_text",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
             }
           ],
           "path": "/actions/library/exa/search-web",
@@ -16311,7 +16421,7 @@
           "name": "summarize_contents",
           "parameters": [
             {
-              "description": "The web addresses (URLs) of the pages to summarize, such as those from an earlier search.",
+              "description": "A list of web addresses (URLs) of the pages to summarize, such as those from an earlier search. Pass a list even when there is only one page.",
               "display_name": "Web page addresses",
               "name": "urls",
               "required": true,
@@ -16342,7 +16452,7 @@
           }
         }
       },
-      "description": "Search, explore, and summarize web content using Exa.",
+      "description": "Search the web, read and summarize pages, and answer questions with cited sources using Exa.",
       "display_name": "Exa",
       "id": "exa"
     },
