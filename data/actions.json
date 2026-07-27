@@ -47219,6 +47219,104 @@
     },
     {
       "actions": {
+        "parse_pdf": {
+          "description": "Parse a PDF (or other supported document) with Reducto and return its extracted content as structured chunks.",
+          "display_name": "Parse PDF",
+          "display_str_template": "Parse a PDF with Reducto",
+          "handler": "actions.parse_pdf",
+          "id": "reducto_parse_pdf",
+          "method": "POST",
+          "mock_response": {
+            "job_id": "job-abc123",
+            "result": {
+              "chunks": [
+                {
+                  "content": "# Invoice\n\nInvoice number: INV-2024-001",
+                  "embed": "Invoice number: INV-2024-001"
+                },
+                {
+                  "content": "Total due: $1,234.56",
+                  "embed": "Total due: $1,234.56"
+                }
+              ],
+              "type": "full"
+            },
+            "status": "success",
+            "usage": {
+              "num_pages": 2
+            }
+          },
+          "name": "parse_pdf",
+          "output_formatter": "actions.format_parse_pdf_output",
+          "parameters": [
+            {
+              "accepts_file_upload": true,
+              "description": "The PDF to parse, given by its public URL or uploaded here. Uploaded files are sent to Reducto first, then parsed.",
+              "display_name": "File",
+              "name": "file",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/reducto/parse-pdf",
+          "result_str_template": "Document parsed successfully",
+          "returns": {
+            "properties": {
+              "job_id": {
+                "description": "Reducto job id for this parse",
+                "type": "string"
+              },
+              "result": {
+                "description": "The parse result. A 'full' result carries the extracted content under 'chunks'; a 'url' result carries a presigned download link when the payload is too large to inline.",
+                "properties": {
+                  "chunks": {
+                    "description": "Extracted content chunks",
+                    "items": {
+                      "properties": {
+                        "content": {
+                          "description": "The chunk's extracted text",
+                          "type": "string"
+                        },
+                        "embed": {
+                          "description": "Content optimized for embedding",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "type": {
+                    "description": "'full' or 'url'",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "status": {
+                "type": "string"
+              },
+              "usage": {
+                "description": "Usage metadata (e.g. num_pages) for the parse",
+                "properties": {
+                  "num_pages": {
+                    "description": "Number of pages parsed",
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Turn PDFs and other documents into clean, structured content with Reducto's document parsing.",
+      "display_name": "Reducto",
+      "id": "reducto"
+    },
+    {
+      "actions": {
         "get_customer": {
           "description": "Look up a single customer by their App User ID, including the entitlements they currently have active. Optionally expand the customer's subscriber attributes (such as $email).",
           "display_name": "Get customer",
@@ -56413,7 +56511,11 @@
           "id": "square_create_customer",
           "method": "POST",
           "mock_response": {
-            "customer_id": "cust_123"
+            "customer": {
+              "family_name": "Doe",
+              "given_name": "Jane",
+              "id": "cust_123"
+            }
           },
           "name": "create_customer",
           "parameters": [
@@ -56428,7 +56530,7 @@
               "description": "Customer last name.",
               "display_name": "Last name",
               "name": "family_name",
-              "required": true,
+              "required": false,
               "type": "ParameterType.STRING"
             },
             {
@@ -56448,44 +56550,61 @@
           "result_str_template": "Customer created.",
           "returns": {
             "properties": {
-              "customer_id": {
-                "description": "Created customer ID.",
-                "type": "string"
+              "customer": {
+                "description": "Created customer record.",
+                "properties": {
+                  "family_name": {
+                    "description": "Customer last name.",
+                    "type": "string"
+                  },
+                  "given_name": {
+                    "description": "Customer first name.",
+                    "type": "string"
+                  },
+                  "id": {
+                    "description": "Customer ID.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               }
             },
             "type": "object"
           }
         },
         "create_payment_link": {
-          "description": "Create a Square payment link for checkout.",
+          "description": "Create a Square-hosted payment link to charge a single custom amount.",
           "display_name": "Create payment link",
           "display_str_template": "Create Square payment link.",
           "handler": "actions.create_payment_link",
           "id": "square_create_payment_link",
           "method": "POST",
           "mock_response": {
-            "order_id": "order_123",
-            "url": "https://square.link/u/example"
+            "payment_link": {
+              "id": "plink_123",
+              "order_id": "order_123",
+              "url": "https://square.link/u/example"
+            }
           },
           "name": "create_payment_link",
           "parameters": [
             {
-              "description": "Square location ID.",
+              "description": "Square location ID to associate with the checkout.",
               "name": "location_id",
-              "required": false,
+              "required": true,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "The items to charge for.",
-              "name": "line_items",
+              "description": "Amount to charge, in the smallest currency unit (e.g. cents for USD).",
+              "minimum": 1,
+              "name": "amount",
               "required": true,
-              "type": "ParameterType.ARRAY"
+              "type": "ParameterType.NUMBER"
             },
             {
-              "description": "Checkout description.",
-              "multiline": true,
-              "name": "description",
-              "required": false,
+              "description": "ISO 4217 currency code, such as USD.",
+              "name": "currency",
+              "required": true,
               "type": "ParameterType.STRING"
             }
           ],
@@ -56493,13 +56612,23 @@
           "result_str_template": "Payment link created.",
           "returns": {
             "properties": {
-              "order_id": {
-                "description": "Associated order ID.",
-                "type": "string"
-              },
-              "url": {
-                "description": "Payment link URL.",
-                "type": "string"
+              "payment_link": {
+                "description": "Created payment link.",
+                "properties": {
+                  "id": {
+                    "description": "Payment link ID.",
+                    "type": "string"
+                  },
+                  "order_id": {
+                    "description": "Associated order ID.",
+                    "type": "string"
+                  },
+                  "url": {
+                    "description": "Payment link URL.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               }
             },
             "type": "object"
@@ -56524,17 +56653,11 @@
           "name": "list_catalog_items",
           "parameters": [
             {
-              "description": "The kinds of catalog items to include, such as ITEM, CATEGORY, or DISCOUNT.",
+              "description": "The kinds of catalog objects to include, such as ITEM, CATEGORY, or DISCOUNT. Defaults to ITEM.",
               "display_name": "Item types",
               "name": "types",
               "required": false,
               "type": "ParameterType.ARRAY"
-            },
-            {
-              "description": "Maximum number of catalog items.",
-              "name": "limit",
-              "required": false,
-              "type": "ParameterType.NUMBER"
             }
           ],
           "path": "/actions/library/square/list-catalog-items",
@@ -56684,17 +56807,11 @@
           "name": "search_customers",
           "parameters": [
             {
-              "description": "What to search for.",
+              "description": "Text to fuzzy-match against customer email addresses.",
               "display_name": "Search text",
-              "name": "query",
-              "required": false,
+              "name": "query_text",
+              "required": true,
               "type": "ParameterType.STRING"
-            },
-            {
-              "description": "Maximum number of customers to return.",
-              "name": "limit",
-              "required": false,
-              "type": "ParameterType.NUMBER"
             }
           ],
           "path": "/actions/library/square/search-customers",
@@ -56748,16 +56865,16 @@
           "name": "search_orders",
           "parameters": [
             {
-              "description": "Location IDs to search.",
-              "name": "location_ids",
-              "required": false,
-              "type": "ParameterType.ARRAY"
+              "description": "Square location ID to search for orders.",
+              "name": "location_id",
+              "required": true,
+              "type": "ParameterType.STRING"
             },
             {
-              "description": "Maximum number of orders.",
-              "name": "limit",
+              "description": "Optional order states to filter by, such as OPEN, COMPLETED, or CANCELED.",
+              "name": "states",
               "required": false,
-              "type": "ParameterType.NUMBER"
+              "type": "ParameterType.ARRAY"
             }
           ],
           "path": "/actions/library/square/search-orders",
