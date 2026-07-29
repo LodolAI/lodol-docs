@@ -54153,10 +54153,78 @@
             "type": "object"
           }
         },
+        "list_parser_templates": {
+          "description": "List the Document Parser templates on the account, both your own and the ones PDF.co provides, with the ID needed to parse a document.",
+          "display_name": "List document parser templates",
+          "display_str_template": "List PDF.co document parser templates",
+          "handler": "actions.list_parser_templates",
+          "id": "pdfco_list_parser_templates",
+          "method": "POST",
+          "mock_response": {
+            "remaining_credits": 94229,
+            "template_count": 2,
+            "templates": [
+              {
+                "description": "Parses invoices and extracts invoice number, company name, due date, amount, tax",
+                "id": "1",
+                "title": "Invoice Parser",
+                "type": "system"
+              },
+              {
+                "description": "Untitled",
+                "id": "40",
+                "title": "Untitled",
+                "type": "user"
+              }
+            ]
+          },
+          "name": "list_parser_templates",
+          "parameters": [],
+          "path": "/actions/library/pdfco/list-parser-templates",
+          "result_str_template": "Listed the document parser templates",
+          "returns": {
+            "properties": {
+              "remaining_credits": {
+                "description": "PDF.co credits left on the account.",
+                "type": "integer"
+              },
+              "template_count": {
+                "description": "How many templates were returned.",
+                "type": "integer"
+              },
+              "templates": {
+                "description": "The templates available on the account.",
+                "items": {
+                  "properties": {
+                    "description": {
+                      "description": "What the template extracts.",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "ID of the template, used by the Parse document step.",
+                      "type": "string"
+                    },
+                    "title": {
+                      "description": "Name of the template.",
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "'user' for your own templates, 'system' for the ones PDF.co provides.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
         "merge_pdfs": {
           "description": "Combine multiple PDF files into a single document.",
           "display_name": "Merge PDFs",
-          "display_str_template": "Merge {file_urls,count} PDFs",
+          "display_str_template": "Merge the PDFs at {file_urls}",
           "handler": "actions.merge_pdfs",
           "id": "pdfco_merge_pdfs",
           "method": "POST",
@@ -54167,7 +54235,14 @@
           "name": "merge_pdfs",
           "parameters": [
             {
-              "description": "List of PDF URLs to merge (at least two).",
+              "description": "The PDFs to merge, in order (at least two). Give one URL per entry, or paste them all separated by commas.",
+              "display_name": "PDF URLs",
+              "examples": [
+                {
+                  "label": "Two files",
+                  "value": "https://example.com/one.pdf, https://example.com/two.pdf"
+                }
+              ],
               "name": "file_urls",
               "required": true,
               "type": "ParameterType.ARRAY"
@@ -54195,6 +54270,153 @@
             "type": "object"
           }
         },
+        "parse_document": {
+          "description": "Pull the fields and tables out of a PDF or image using one of your PDF.co Document Parser templates -- for example the invoice number, due date, and line items on an invoice.",
+          "display_name": "Parse document",
+          "display_str_template": "Parse the document at {source_url}",
+          "handler": "actions.parse_document",
+          "id": "pdfco_parse_document",
+          "method": "POST",
+          "mock_response": {
+            "fields": {
+              "companyName": "Amazon Web Services, Inc",
+              "dateDue": "2018-04-03T00:00:00",
+              "invoiceId": "123456789",
+              "total": 6.58
+            },
+            "objects": [
+              {
+                "name": "invoiceId",
+                "objectType": "field",
+                "pageIndex": 0,
+                "rectangle": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "value": "123456789"
+              }
+            ],
+            "page_count": 1,
+            "remaining_credits": 60803,
+            "tables": [
+              {
+                "name": "table",
+                "row_count": 1,
+                "rows": [
+                  {
+                    "amount": "5.57",
+                    "description": "Data Transfer"
+                  }
+                ]
+              }
+            ],
+            "template_name": "Generic Invoice [en]",
+            "template_version": "4"
+          },
+          "name": "parse_document",
+          "parameters": [
+            {
+              "description": "Public URL of the PDF or image to parse.",
+              "examples": [
+                {
+                  "label": "Example",
+                  "value": "https://example.com/invoice.pdf"
+                }
+              ],
+              "name": "source_url",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The Document Parser template that says which fields and tables to pull out. PDF.co provides built-in templates (such as Invoice Parser), and you can create your own at https://app.pdf.co/document-parser/templates.",
+              "display_name": "Template",
+              "dynamic_source": "parser_templates",
+              "name": "template_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional pages to parse. The first page is 0, so 0-2 means the first three pages. Leave blank to parse every page.",
+              "examples": [
+                {
+                  "label": "First three pages",
+                  "value": "0-2"
+                }
+              ],
+              "name": "pages",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional password, if the PDF is protected.",
+              "name": "password",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/pdfco/parse-document",
+          "result_str_template": "Parsed the document",
+          "returns": {
+            "properties": {
+              "fields": {
+                "additionalProperties": true,
+                "description": "Each field the template found, by name.",
+                "type": "object"
+              },
+              "objects": {
+                "description": "The raw result from PDF.co, including each value's position on the page.",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "page_count": {
+                "description": "Number of pages in the document.",
+                "type": "integer"
+              },
+              "remaining_credits": {
+                "description": "PDF.co credits left on the account.",
+                "type": "integer"
+              },
+              "tables": {
+                "description": "Every table the template found.",
+                "items": {
+                  "properties": {
+                    "name": {
+                      "description": "Name of the table in the template.",
+                      "type": "string"
+                    },
+                    "row_count": {
+                      "description": "How many rows the table has.",
+                      "type": "integer"
+                    },
+                    "rows": {
+                      "description": "The rows, each one a set of column names and values.",
+                      "items": {
+                        "additionalProperties": true,
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "template_name": {
+                "description": "Name of the template used to read the document.",
+                "type": "string"
+              },
+              "template_version": {
+                "description": "Version of the template used to read the document.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
         "read_barcodes": {
           "description": "Scan a PDF or image and read any barcodes it contains.",
           "display_name": "Read barcodes",
@@ -54216,9 +54438,20 @@
               "type": "ParameterType.STRING"
             },
             {
-              "description": "Optional list of barcode types to look for (e.g., Code39, QRCode).",
+              "description": "The barcode types to look for -- PDF.co needs to know which ones to decode. Give one type per entry, or paste them separated by commas. Common types are QRCode, Code128, Code39, EAN13, UPCA, PDF417, and DataMatrix; see https://docs.pdf.co/api/barcode/read-barcodes for the full list.",
+              "display_name": "Barcode types",
+              "examples": [
+                {
+                  "label": "QR codes",
+                  "value": "QRCode"
+                },
+                {
+                  "label": "QR and barcodes",
+                  "value": "QRCode, Code128, Code39"
+                }
+              ],
               "name": "barcode_types",
-              "required": false,
+              "required": true,
               "type": "ParameterType.ARRAY"
             }
           ],
@@ -54292,7 +54525,7 @@
           }
         }
       },
-      "description": "Automate PDF conversions, barcode reading, and document editing with PDF.co.",
+      "description": "Automate PDF conversions, barcode reading, document editing, and data extraction with PDF.co.",
       "display_name": "PDF.co",
       "id": "pdfco"
     },
