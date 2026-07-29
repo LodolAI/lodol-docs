@@ -2179,7 +2179,7 @@
           }
         },
         "enrich_person": {
-          "description": "Enrich a single person with Apollo data such as title, company, and (optionally) email and phone number.",
+          "description": "Enrich a single person with Apollo data such as title, company, and (optionally) personal email addresses.",
           "display_name": "Enrich person",
           "display_str_template": "Enrich Apollo person {0}",
           "handler": "actions.enrich_person",
@@ -2229,12 +2229,6 @@
             {
               "description": "Set to true to include the person's personal email addresses. This uses Apollo credits.",
               "name": "reveal_personal_emails",
-              "required": false,
-              "type": "ParameterType.BOOLEAN"
-            },
-            {
-              "description": "Set to true to include the person's phone numbers. This uses Apollo credits.",
-              "name": "reveal_phone_number",
               "required": false,
               "type": "ParameterType.BOOLEAN"
             }
@@ -9705,6 +9699,545 @@
     },
     {
       "actions": {
+        "create_customer": {
+          "description": "Create a new customer record in Chargebee with optional contact details (email, first and last name, company, and phone). The customer is the top-level account that subscriptions and invoices attach to. Useful for onboarding a new signup or syncing a CRM/e-commerce contact into billing. Provide at least one identifying field.",
+          "display_name": "Create a Chargebee customer",
+          "display_str_template": "Create Chargebee customer '{0}'.",
+          "handler": "actions.create_customer",
+          "id": "chargebee_create_customer",
+          "method": "POST",
+          "mock_response": {
+            "customer": {
+              "auto_collection": "on",
+              "card_status": "no_card",
+              "company": "Acme Robotics",
+              "created_at": 1769385600,
+              "email": "jordan.ellis@acme.example",
+              "first_name": "Jordan",
+              "id": "cust_acme_8f21",
+              "last_name": "Ellis",
+              "net_term_days": 0,
+              "object": "customer",
+              "phone": "+1-415-555-0148",
+              "preferred_currency_code": "USD",
+              "resource_version": 1769385600000,
+              "updated_at": 1769385600
+            }
+          },
+          "name": "create_customer",
+          "output_formatter": "actions.format_create_customer_output",
+          "parameters": [
+            {
+              "description": "Customer email address. Configured email notifications (invoices, receipts, dunning) are sent here.",
+              "name": "email",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Customer's first name.",
+              "name": "first_name",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Customer's last name.",
+              "name": "last_name",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Company name to associate with the customer.",
+              "name": "company",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Customer phone number.",
+              "name": "phone",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/chargebee/create-customer",
+          "result_str_template": "Chargebee customer created.",
+          "returns": {
+            "description": "Chargebee wraps the created record under a 'customer' key. IDs are strings; 'created_at'/'updated_at' are Unix epoch seconds.",
+            "properties": {
+              "customer": {
+                "description": "The created customer resource.",
+                "properties": {
+                  "auto_collection": {
+                    "description": "Whether charges are collected automatically. Enum: 'on', 'off'.",
+                    "type": "string"
+                  },
+                  "company": {
+                    "type": "string"
+                  },
+                  "created_at": {
+                    "description": "Unix epoch seconds of creation.",
+                    "type": "integer"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "first_name": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "description": "Customer id. Auto-generated when not supplied; used by the other actions.",
+                    "type": "string"
+                  },
+                  "last_name": {
+                    "type": "string"
+                  },
+                  "net_term_days": {
+                    "description": "Days to pay after an invoice is raised.",
+                    "type": "integer"
+                  },
+                  "object": {
+                    "description": "Always 'customer'.",
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_customers": {
+          "description": "List customers in your Chargebee site, one page at a time, optionally filtered by an exact email address. Returns a 'list' of customer records plus a 'next_offset' cursor when more pages are available. Useful for finding a customer's ID by email or exporting the customer base.",
+          "display_name": "List Chargebee customers",
+          "display_str_template": "List Chargebee customers.",
+          "handler": "actions.list_customers",
+          "id": "chargebee_list_customers",
+          "method": "POST",
+          "mock_response": {
+            "list": [
+              {
+                "customer": {
+                  "auto_collection": "on",
+                  "company": "Acme Robotics",
+                  "created_at": 1769385600,
+                  "email": "jordan.ellis@acme.example",
+                  "first_name": "Jordan",
+                  "id": "cust_acme_8f21",
+                  "last_name": "Ellis",
+                  "object": "customer"
+                }
+              },
+              {
+                "customer": {
+                  "auto_collection": "off",
+                  "company": "Globex",
+                  "created_at": 1769299200,
+                  "email": "priya@globex.example",
+                  "first_name": "Priya",
+                  "id": "cust_globex_3b90",
+                  "last_name": "Nair",
+                  "object": "customer"
+                }
+              }
+            ],
+            "next_offset": "[\"1769299200000\",\"cust_globex_3b90\"]"
+          },
+          "name": "list_customers",
+          "output_formatter": "actions.format_list_customers_output",
+          "parameters": [
+            {
+              "description": "Filter to customers with this exact email address. Leave blank to list all customers.",
+              "name": "email",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            "_LIMIT_PARAM",
+            "_OFFSET_PARAM"
+          ],
+          "path": "/actions/library/chargebee/list-customers",
+          "result_str_template": "Retrieved Chargebee customers.",
+          "returns": {
+            "description": "Paginated list. Each entry in 'list' wraps a customer under a 'customer' key. 'next_offset' is present only when more pages remain \u2014 pass it back as 'offset' to continue.",
+            "properties": {
+              "list": {
+                "description": "Array of { customer: {...} } entries.",
+                "items": {
+                  "properties": {
+                    "customer": {
+                      "properties": {
+                        "company": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "first_name": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "last_name": {
+                          "type": "string"
+                        },
+                        "object": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "next_offset": {
+                "description": "Cursor for the next page; absent on the last page.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_invoices": {
+          "description": "List invoices in your Chargebee site, one page at a time, optionally filtered by customer ID and/or status. Returns a 'list' of invoice records with a 'next_offset' cursor. Amounts are in the currency's minor units (e.g. cents). Useful for accounts-receivable checks, chasing unpaid invoices, or revenue reporting.",
+          "display_name": "List Chargebee invoices",
+          "display_str_template": "List Chargebee invoices.",
+          "handler": "actions.list_invoices",
+          "id": "chargebee_list_invoices",
+          "method": "POST",
+          "mock_response": {
+            "list": [
+              {
+                "invoice": {
+                  "amount_due": 0,
+                  "amount_paid": 9900,
+                  "currency_code": "USD",
+                  "customer_id": "cust_acme_8f21",
+                  "date": 1769385600,
+                  "due_date": 1769385600,
+                  "id": "INV-00042",
+                  "object": "invoice",
+                  "status": "paid",
+                  "subscription_id": "sub_acme_pro_01",
+                  "total": 9900
+                }
+              },
+              {
+                "invoice": {
+                  "amount_due": 24900,
+                  "amount_paid": 0,
+                  "currency_code": "USD",
+                  "customer_id": "cust_globex_3b90",
+                  "date": 1769385600,
+                  "due_date": 1771977600,
+                  "id": "INV-00043",
+                  "object": "invoice",
+                  "status": "payment_due",
+                  "subscription_id": "sub_globex_team_02",
+                  "total": 24900
+                }
+              }
+            ],
+            "next_offset": null
+          },
+          "name": "list_invoices",
+          "output_formatter": "actions.format_list_invoices_output",
+          "parameters": [
+            {
+              "description": "Filter to invoices for this customer ID. Leave blank for all customers.",
+              "name": "customer_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Filter by invoice status. One of: paid, posted, payment_due, not_paid, voided, pending. Leave blank for all statuses.",
+              "name": "status",
+              "options": {
+                "__args__": [
+                  null
+                ]
+              },
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            "_LIMIT_PARAM",
+            "_OFFSET_PARAM"
+          ],
+          "path": "/actions/library/chargebee/list-invoices",
+          "result_str_template": "Retrieved Chargebee invoices.",
+          "returns": {
+            "description": "Paginated list. Each entry wraps an 'invoice'. 'total', 'amount_paid', and 'amount_due' are integers in the currency's minor units (e.g. cents). Dates are Unix epoch seconds.",
+            "properties": {
+              "list": {
+                "items": {
+                  "properties": {
+                    "invoice": {
+                      "properties": {
+                        "amount_due": {
+                          "description": "Minor units (e.g. cents).",
+                          "type": "integer"
+                        },
+                        "amount_paid": {
+                          "description": "Minor units (e.g. cents).",
+                          "type": "integer"
+                        },
+                        "currency_code": {
+                          "type": "string"
+                        },
+                        "customer_id": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "description": "Unix epoch seconds.",
+                          "type": "integer"
+                        },
+                        "due_date": {
+                          "description": "Unix epoch seconds.",
+                          "type": "integer"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "object": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "description": "Enum: paid, posted, payment_due, not_paid, voided, pending.",
+                          "type": "string"
+                        },
+                        "subscription_id": {
+                          "type": "string"
+                        },
+                        "total": {
+                          "description": "Minor units (e.g. cents).",
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "next_offset": {
+                "description": "Cursor for the next page; absent on the last page.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_subscriptions": {
+          "description": "List subscriptions in your Chargebee site, one page at a time, optionally filtered by customer ID and/or status. Returns a 'list' of subscription records with a 'next_offset' cursor for paging. Useful for monitoring active subscriptions, spotting cancellations, or auditing a customer's plans.",
+          "display_name": "List Chargebee subscriptions",
+          "display_str_template": "List Chargebee subscriptions.",
+          "handler": "actions.list_subscriptions",
+          "id": "chargebee_list_subscriptions",
+          "method": "POST",
+          "mock_response": {
+            "list": [
+              {
+                "customer": {
+                  "email": "jordan.ellis@acme.example",
+                  "id": "cust_acme_8f21",
+                  "object": "customer"
+                },
+                "subscription": {
+                  "billing_period": 1,
+                  "billing_period_unit": "month",
+                  "created_at": 1769385600,
+                  "currency_code": "USD",
+                  "current_term_end": 1772064000,
+                  "current_term_start": 1769385600,
+                  "customer_id": "cust_acme_8f21",
+                  "id": "sub_acme_pro_01",
+                  "mrr": 9900,
+                  "next_billing_at": 1772064000,
+                  "object": "subscription",
+                  "status": "active"
+                }
+              }
+            ],
+            "next_offset": null
+          },
+          "name": "list_subscriptions",
+          "output_formatter": "actions.format_list_subscriptions_output",
+          "parameters": [
+            {
+              "description": "Filter to subscriptions belonging to this customer ID. Leave blank for all customers.",
+              "name": "customer_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Filter by subscription status. One of: future, in_trial, active, non_renewing, paused, cancelled. Leave blank for all statuses.",
+              "name": "status",
+              "options": {
+                "__args__": [
+                  null
+                ]
+              },
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            "_LIMIT_PARAM",
+            "_OFFSET_PARAM"
+          ],
+          "path": "/actions/library/chargebee/list-subscriptions",
+          "result_str_template": "Retrieved Chargebee subscriptions.",
+          "returns": {
+            "description": "Paginated list. Each entry wraps a 'subscription' (and often the related 'customer' and 'card'). Money fields such as 'mrr' are in the currency's minor units (e.g. cents). Term timestamps are Unix epoch seconds.",
+            "properties": {
+              "list": {
+                "items": {
+                  "properties": {
+                    "subscription": {
+                      "properties": {
+                        "currency_code": {
+                          "type": "string"
+                        },
+                        "current_term_end": {
+                          "description": "Unix epoch seconds.",
+                          "type": "integer"
+                        },
+                        "current_term_start": {
+                          "description": "Unix epoch seconds.",
+                          "type": "integer"
+                        },
+                        "customer_id": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "mrr": {
+                          "description": "Monthly recurring revenue in minor units.",
+                          "type": "integer"
+                        },
+                        "next_billing_at": {
+                          "description": "Unix epoch seconds.",
+                          "type": "integer"
+                        },
+                        "object": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "description": "Enum: future, in_trial, active, non_renewing, paused, cancelled.",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "next_offset": {
+                "description": "Cursor for the next page; absent on the last page.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "retrieve_customer": {
+          "description": "Look up a single Chargebee customer by their customer ID and return the full customer record \u2014 contact details, billing preferences, account credits, and card status. Useful for confirming a customer exists or reading their current details before creating a subscription or sending a message.",
+          "display_name": "Retrieve a Chargebee customer",
+          "display_str_template": "Retrieve Chargebee customer {0}.",
+          "handler": "actions.retrieve_customer",
+          "id": "chargebee_retrieve_customer",
+          "method": "POST",
+          "mock_response": {
+            "customer": {
+              "auto_collection": "on",
+              "card_status": "valid",
+              "company": "Acme Robotics",
+              "created_at": 1769385600,
+              "email": "jordan.ellis@acme.example",
+              "first_name": "Jordan",
+              "id": "cust_acme_8f21",
+              "last_name": "Ellis",
+              "net_term_days": 0,
+              "object": "customer",
+              "phone": "+1-415-555-0148",
+              "preferred_currency_code": "USD",
+              "resource_version": 1769472000000,
+              "updated_at": 1769472000
+            }
+          },
+          "name": "retrieve_customer",
+          "output_formatter": "actions.format_retrieve_customer_output",
+          "parameters": [
+            {
+              "description": "The Chargebee customer ID (for example the 'id' returned by Create customer or List customers).",
+              "name": "customer_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/chargebee/retrieve-customer",
+          "result_str_template": "Retrieved Chargebee customer.",
+          "returns": {
+            "description": "The customer resource wrapped under a 'customer' key (same shape as Create customer).",
+            "properties": {
+              "customer": {
+                "properties": {
+                  "auto_collection": {
+                    "description": "Enum: 'on', 'off'.",
+                    "type": "string"
+                  },
+                  "card_status": {
+                    "description": "Enum: 'no_card', 'valid', 'expiring', 'expired'.",
+                    "type": "string"
+                  },
+                  "company": {
+                    "type": "string"
+                  },
+                  "created_at": {
+                    "description": "Unix epoch seconds.",
+                    "type": "integer"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "first_name": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "last_name": {
+                    "type": "string"
+                  },
+                  "net_term_days": {
+                    "type": "integer"
+                  },
+                  "object": {
+                    "description": "Always 'customer'.",
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Subscription billing and revenue management with Chargebee. Create and look up customers, and list subscriptions and invoices, straight from your workflows.",
+      "display_name": "DISPLAY_NAME",
+      "id": "chargebee"
+    },
+    {
+      "actions": {
         "get_club_members": {
           "description": "List a club's members, grouped by how recently they were active (weekly, monthly, and all-time).",
           "display_name": "Get club members",
@@ -10437,6 +10970,439 @@
       "description": "Access public Chess.com data through the keyless PubAPI \u2014 player profiles and stats, games and PGN archives, clubs, tournaments, titled players, leaderboards, streamers, and the daily puzzle. No account or API key required.",
       "display_name": "Chess.com",
       "id": "chess_com"
+    },
+    {
+      "actions": {
+        "create_meeting": {
+          "description": "Schedule a Webex meeting and optionally invite people.",
+          "display_name": "Schedule a meeting",
+          "display_str_template": "Schedule the Webex meeting '{0}'.",
+          "handler": "actions.create_meeting",
+          "id": "cisco_webex_create_meeting",
+          "method": "POST",
+          "mock_response": {
+            "__args__": [
+              "_MOCK_MEETING"
+            ]
+          },
+          "name": "create_meeting",
+          "parameters": [
+            {
+              "description": "The name of the meeting, shown on the invite.",
+              "display_name": "Title",
+              "name": "title",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "When the meeting starts, as an ISO 8601 timestamp such as 2026-08-03T15:00:00Z.",
+              "display_name": "Start time",
+              "name": "start",
+              "required": true,
+              "type": "ParameterType.DATETIME"
+            },
+            {
+              "description": "When the meeting ends, as an ISO 8601 timestamp such as 2026-08-03T15:30:00Z.",
+              "display_name": "End time",
+              "name": "end",
+              "required": true,
+              "type": "ParameterType.DATETIME"
+            },
+            {
+              "description": "Optional. Timezone for the start and end times, for example 'America/New_York'.",
+              "display_name": "Timezone",
+              "name": "timezone",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. An agenda or description for the meeting.",
+              "display_name": "Agenda",
+              "multiline": true,
+              "name": "agenda",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. Email addresses to invite, as a list or a comma-separated string.",
+              "display_name": "Invitee emails",
+              "name": "invitees",
+              "required": false,
+              "type": "ParameterType.ARRAY"
+            }
+          ],
+          "path": "/actions/library/cisco-webex/create-meeting",
+          "result_str_template": "Webex meeting scheduled.",
+          "returns": {
+            "properties": "_MEETING_PROPERTIES",
+            "type": "object"
+          }
+        },
+        "delete_meeting": {
+          "description": "Cancel a scheduled Webex meeting.",
+          "display_name": "Cancel a meeting",
+          "display_str_template": "Cancel Webex meeting '{0}'.",
+          "handler": "actions.delete_meeting",
+          "id": "cisco_webex_delete_meeting",
+          "method": "POST",
+          "mock_response": {
+            "deleted": true,
+            "meeting_id": "870f51ff287b41be84648412901e0402"
+          },
+          "name": "delete_meeting",
+          "parameters": [
+            {
+              "description": "The Webex meeting ID to cancel, as returned by Schedule a meeting or List meetings.",
+              "display_name": "Meeting ID",
+              "name": "meeting_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/cisco-webex/delete-meeting",
+          "result_str_template": "Webex meeting cancelled.",
+          "returns": {
+            "properties": {
+              "deleted": {
+                "description": "Whether the meeting was cancelled",
+                "type": "boolean"
+              },
+              "meeting_id": {
+                "description": "The meeting that was cancelled",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_meetings": {
+          "description": "List the Webex meetings scheduled on your account.",
+          "display_name": "List meetings",
+          "display_str_template": "List Webex meetings.",
+          "handler": "actions.list_meetings",
+          "id": "cisco_webex_list_meetings",
+          "method": "POST",
+          "mock_response": {
+            "meetings": [
+              "_MOCK_MEETING"
+            ]
+          },
+          "name": "list_meetings",
+          "parameters": [
+            {
+              "default": 10,
+              "description": "How many meetings to return (1-100).",
+              "display_name": "Maximum meetings",
+              "maximum": 100,
+              "minimum": 1,
+              "name": "max_results",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Optional. Only include meetings starting on or after this ISO 8601 timestamp.",
+              "display_name": "Starting from",
+              "name": "from_time",
+              "required": false,
+              "type": "ParameterType.DATETIME"
+            },
+            {
+              "description": "Optional. Only include meetings starting on or before this ISO 8601 timestamp.",
+              "display_name": "Up until",
+              "name": "to_time",
+              "required": false,
+              "type": "ParameterType.DATETIME"
+            }
+          ],
+          "path": "/actions/library/cisco-webex/list-meetings",
+          "result_str_template": "Webex meetings retrieved.",
+          "returns": {
+            "properties": {
+              "meetings": {
+                "description": "Scheduled meetings",
+                "items": {
+                  "properties": "_MEETING_PROPERTIES",
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_rooms": {
+          "description": "List the Webex spaces you belong to.",
+          "display_name": "List spaces",
+          "display_str_template": "List Webex spaces.",
+          "handler": "actions.list_rooms",
+          "id": "cisco_webex_list_rooms",
+          "method": "POST",
+          "mock_response": {
+            "rooms": [
+              {
+                "last_activity": "2026-08-03T14:55:00.000Z",
+                "room_id": "Y2lzY29zcGFyazovL3VzL1JPT00vYmJjZWIxYWQ",
+                "title": "Product Team",
+                "type": "group"
+              }
+            ]
+          },
+          "name": "list_rooms",
+          "parameters": [
+            {
+              "default": 20,
+              "description": "How many spaces to return (1-100).",
+              "display_name": "Maximum spaces",
+              "maximum": 100,
+              "minimum": 1,
+              "name": "max_results",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/cisco-webex/list-rooms",
+          "result_str_template": "Webex spaces retrieved.",
+          "returns": {
+            "properties": {
+              "rooms": {
+                "description": "Spaces the account belongs to",
+                "items": {
+                  "properties": {
+                    "last_activity": {
+                      "description": "When the space was last active",
+                      "type": "string"
+                    },
+                    "room_id": {
+                      "description": "Webex space ID. Use with Send a message.",
+                      "type": "string"
+                    },
+                    "title": {
+                      "description": "The space's name",
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "Whether the space is a 'group' or a 'direct' one-to-one conversation",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "send_message": {
+          "description": "Post a message to a Webex space, or send it directly to one person by email.",
+          "display_name": "Send a message",
+          "display_str_template": "Send a Webex message.",
+          "handler": "actions.send_message",
+          "id": "cisco_webex_send_message",
+          "method": "POST",
+          "mock_response": {
+            "created": "2026-08-03T15:02:11.000Z",
+            "message_id": "Y2lzY29zcGFyazovL3VzL01FU1NBR0UvOTJkYjNiZTA",
+            "room_id": "Y2lzY29zcGFyazovL3VzL1JPT00vYmJjZWIxYWQ",
+            "text": "Deployment finished successfully."
+          },
+          "name": "send_message",
+          "parameters": [
+            {
+              "description": "The message to send.",
+              "display_name": "Message",
+              "multiline": true,
+              "name": "text",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The Webex space to post in, as returned by List spaces. Provide this or a person's email, not both.",
+              "display_name": "Space ID",
+              "name": "room_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Send a direct message to this email address instead of posting in a space.",
+              "display_name": "Person's email",
+              "name": "to_person_email",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/cisco-webex/send-message",
+          "result_str_template": "Webex message sent.",
+          "returns": {
+            "properties": {
+              "created": {
+                "description": "When the message was sent",
+                "type": "string"
+              },
+              "message_id": {
+                "description": "ID of the message that was sent",
+                "type": "string"
+              },
+              "room_id": {
+                "description": "The space the message landed in",
+                "type": "string"
+              },
+              "text": {
+                "description": "The message text as Webex stored it",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Schedule Webex meetings and send messages to Webex spaces from your workflows.",
+      "display_name": "Cisco Webex",
+      "id": "cisco_webex"
+    },
+    {
+      "actions": {
+        "send_record": {
+          "description": "Send one record (a lead, contact, or company) to your connected Clay table via its webhook. Each top-level field becomes a column value, Clay appends a new row, and any enrichment, scoring, or sync columns you've configured on the table run on it. Use this to push a single prospect into Clay \u2014 for example after a form submission or a CRM update.",
+          "display_name": "Send record to Clay",
+          "display_str_template": "Send a record to the Clay table.",
+          "handler": "actions.send_record",
+          "id": "clay_send_record",
+          "method": "POST",
+          "mock_response": {
+            "delivered": true,
+            "http_status": 200,
+            "object": "clay_webhook_result",
+            "response": {
+              "success": true
+            }
+          },
+          "name": "send_record",
+          "output_formatter": "actions.format_send_record_output",
+          "parameters": [
+            {
+              "description": "The row to add, as a JSON object of field name/value pairs. Each top-level key maps to a column in your Clay table, e.g. {\"email\": \"jane@acme.com\", \"first_name\": \"Jane\", \"company\": \"Acme\", \"domain\": \"acme.com\"}. Use the same field names your Clay table expects. Adds one row per call.",
+              "display_name": "Record",
+              "name": "record",
+              "required": true,
+              "type": "ParameterType.OBJECT"
+            }
+          ],
+          "path": "/actions/library/clay/send-record",
+          "result_str_template": "Sent a record to Clay.",
+          "returns": {
+            "description": "Delivery outcome for the single record. This is Lodol's result wrapper, not Clay's schema: Clay's webhook returns a lightweight acknowledgement (often an empty body), so 'response' may be null even on success.",
+            "properties": {
+              "delivered": {
+                "description": "True when Clay accepted the record (HTTP 2xx).",
+                "type": "boolean"
+              },
+              "http_status": {
+                "description": "HTTP status code Clay returned (e.g. 200).",
+                "type": "integer"
+              },
+              "object": {
+                "description": "Always 'clay_webhook_result'.",
+                "type": "string"
+              },
+              "response": {
+                "description": "Clay's raw acknowledgement body when it returned JSON; null when the body was empty or non-JSON.",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "send_records": {
+          "description": "Send a list of records (leads, contacts, or companies) to your connected Clay table in one step. Each item is delivered as its own webhook submission, so Clay appends one row per record and runs the table's enrichment on each. Use this to bulk-import a target list \u2014 for example a batch of companies to enrich or a list of signups to score. Up to 100 records per call.",
+          "display_name": "Send records to Clay",
+          "display_str_template": "Send multiple records to the Clay table.",
+          "handler": "actions.send_records",
+          "id": "clay_send_records",
+          "method": "POST",
+          "mock_response": {
+            "delivered": 2,
+            "failed": 0,
+            "object": "clay_bulk_webhook_result",
+            "results": [
+              {
+                "delivered": true,
+                "http_status": 200,
+                "index": 0
+              },
+              {
+                "delivered": true,
+                "http_status": 200,
+                "index": 1
+              }
+            ],
+            "total": 2
+          },
+          "name": "send_records",
+          "output_formatter": "actions.format_send_records_output",
+          "parameters": [
+            {
+              "description": "A list of rows to add. Each item is a JSON object of field name/value pairs and becomes one new row in your Clay table, e.g. [{\"email\": \"jane@acme.com\", \"company\": \"Acme\"}, {\"email\": \"sam@globex.com\", \"company\": \"Globex\"}]. Maximum 100 items per call; split larger lists across multiple calls.",
+              "display_name": "Records",
+              "name": "records",
+              "required": true,
+              "type": "ParameterType.ARRAY"
+            }
+          ],
+          "path": "/actions/library/clay/send-records",
+          "result_str_template": "Sent records to Clay.",
+          "returns": {
+            "description": "Summary of the bulk send. Each record is delivered as its own webhook POST (one Clay row each); per-record outcomes are in 'results'. A connection-level auth failure aborts the whole batch, so a partial 'delivered' count reflects only per-record HTTP failures.",
+            "properties": {
+              "delivered": {
+                "description": "How many Clay accepted.",
+                "type": "integer"
+              },
+              "failed": {
+                "description": "How many failed after retries.",
+                "type": "integer"
+              },
+              "object": {
+                "description": "Always 'clay_bulk_webhook_result'.",
+                "type": "string"
+              },
+              "results": {
+                "description": "Per-record outcome, in input order.",
+                "items": {
+                  "properties": {
+                    "delivered": {
+                      "description": "True if this record was accepted.",
+                      "type": "boolean"
+                    },
+                    "error": {
+                      "description": "Failure reason when not delivered.",
+                      "type": "string"
+                    },
+                    "http_status": {
+                      "description": "HTTP status when delivered.",
+                      "type": "integer"
+                    },
+                    "index": {
+                      "description": "0-based position in the input list.",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "total": {
+                "description": "Number of records submitted.",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Send leads, contacts, and companies into a Clay table through its webhook so Clay can dedupe, enrich, score, and sync them. Push a single record or a batch of records in one step.",
+      "display_name": "DISPLAY_NAME",
+      "id": "clay"
     },
     {
       "actions": {
@@ -25740,7 +26706,7 @@
           "name": "list_contacts",
           "parameters": [
             {
-              "description": "Maximum number of contacts to return (default 25)",
+              "description": "Maximum number of contacts to return (1-1000, default 25)",
               "display_name": "Maximum contacts",
               "name": "page_size",
               "required": false,
@@ -26756,6 +27722,38 @@
             "type": "string"
           }
         },
+        "check_if_member": {
+          "description": "Check whether a person is a member of a Google Group. Counts both direct members and members inherited from nested groups.",
+          "display_name": "Check if member",
+          "display_str_template": "Check if '{1}' is a member of group '{0}'.",
+          "handler": "actions.check_if_member",
+          "id": "google_groups_check_if_member",
+          "method": "POST",
+          "mock_response": true,
+          "name": "check_if_member",
+          "parameters": [
+            {
+              "description": "The group's email address (or its unique ID).",
+              "display_name": "Group",
+              "name": "group_key",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The email address of the person to check.",
+              "display_name": "Member email",
+              "name": "member_email",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/google-groups/check-if-member",
+          "result_str_template": "Checked whether {1} is a member of group {0}.",
+          "returns": {
+            "description": "Whether the person is a member of the group",
+            "type": "boolean"
+          }
+        },
         "create_group": {
           "description": "Create a new Google Group.",
           "display_name": "Create group",
@@ -26862,6 +27860,65 @@
               },
               "name": {
                 "description": "Group name",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_member": {
+          "description": "Get the details of one person who belongs to a Google Group.",
+          "display_name": "Get member",
+          "display_str_template": "Get member '{1}' of group '{0}'.",
+          "handler": "actions.get_member",
+          "id": "google_groups_get_member",
+          "method": "POST",
+          "mock_response": {
+            "email": "user@example.com",
+            "id": "112233445566778899",
+            "role": "MEMBER",
+            "status": "ACTIVE",
+            "type": "USER"
+          },
+          "name": "get_member",
+          "parameters": [
+            {
+              "description": "The group's email address (or its unique ID).",
+              "display_name": "Group",
+              "name": "group_key",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The email address of the person to look up.",
+              "display_name": "Member email",
+              "name": "member_email",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/google-groups/get-member",
+          "result_str_template": "Retrieved member {1} of group {0}.",
+          "returns": {
+            "properties": {
+              "email": {
+                "description": "Member email",
+                "type": "string"
+              },
+              "id": {
+                "description": "Member ID",
+                "type": "string"
+              },
+              "role": {
+                "description": "Member role (OWNER, MANAGER, or MEMBER)",
+                "type": "string"
+              },
+              "status": {
+                "description": "Membership status, e.g. ACTIVE",
+                "type": "string"
+              },
+              "type": {
+                "description": "Member type (USER, GROUP, etc.)",
                 "type": "string"
               }
             },
@@ -27201,6 +28258,127 @@
     },
     {
       "actions": {
+        "cancel_meeting": {
+          "description": "Cancel a scheduled meeting and let everyone invited know it's off.",
+          "display_name": "Cancel meeting",
+          "display_str_template": "Cancel the Google Meet meeting '{0}'.",
+          "handler": "actions.cancel_meeting",
+          "id": "google_meet_cancel_meeting",
+          "method": "POST",
+          "mock_response": {
+            "cancelled": true,
+            "event_id": "abc123def456"
+          },
+          "name": "cancel_meeting",
+          "parameters": [
+            {
+              "description": "The calendar event ID to cancel, as returned by Schedule meeting or List meetings.",
+              "display_name": "Event ID",
+              "name": "event_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/google-meet/cancel-meeting",
+          "result_str_template": "Google Meet meeting cancelled.",
+          "returns": {
+            "properties": {
+              "cancelled": {
+                "description": "Whether the meeting was cancelled.",
+                "type": "boolean"
+              },
+              "event_id": {
+                "description": "The meeting that was cancelled.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_meeting": {
+          "description": "Look up one scheduled meeting and its Google Meet link.",
+          "display_name": "Get meeting",
+          "display_str_template": "Get the Google Meet meeting '{0}'.",
+          "handler": "actions.get_meeting",
+          "id": "google_meet_get_meeting",
+          "method": "POST",
+          "mock_response": {
+            "__args__": [
+              "_MOCK_MEETING"
+            ]
+          },
+          "name": "get_meeting",
+          "parameters": [
+            {
+              "description": "The calendar event ID, as returned by Schedule meeting or List meetings.",
+              "display_name": "Event ID",
+              "name": "event_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/google-meet/get-meeting",
+          "result_str_template": "Google Meet meeting retrieved.",
+          "returns": {
+            "properties": "_MEETING_PROPERTIES",
+            "type": "object"
+          }
+        },
+        "list_meetings": {
+          "description": "List upcoming meetings on your calendar that have a Google Meet link. Calendar entries with no way to join are left out.",
+          "display_name": "List meetings",
+          "display_str_template": "List Google Meet meetings.",
+          "handler": "actions.list_meetings",
+          "id": "google_meet_list_meetings",
+          "method": "POST",
+          "mock_response": {
+            "meetings": [
+              "_MOCK_MEETING"
+            ]
+          },
+          "name": "list_meetings",
+          "parameters": [
+            {
+              "default": 10,
+              "description": "How many meetings to return (1-100).",
+              "display_name": "Maximum meetings",
+              "maximum": 100,
+              "minimum": 1,
+              "name": "max_results",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Optional. Only include meetings starting on or after this time, as an ISO 8601 timestamp.",
+              "display_name": "Starting from",
+              "name": "time_min",
+              "required": false,
+              "type": "ParameterType.DATETIME"
+            },
+            {
+              "description": "Optional. Only include meetings starting on or before this time, as an ISO 8601 timestamp.",
+              "display_name": "Up until",
+              "name": "time_max",
+              "required": false,
+              "type": "ParameterType.DATETIME"
+            }
+          ],
+          "path": "/actions/library/google-meet/list-meetings",
+          "result_str_template": "Google Meet meetings retrieved.",
+          "returns": {
+            "properties": {
+              "meetings": {
+                "description": "Upcoming meetings that have a Meet link.",
+                "items": {
+                  "properties": "_MEETING_PROPERTIES",
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
         "schedule_meeting": {
           "description": "Create a Google Meet video call and add it to your Google Calendar. Anyone you invite gets a calendar invitation with the link to join.",
           "display_name": "Schedule meeting",
@@ -27209,12 +28387,9 @@
           "id": "google_meet_schedule_meeting",
           "method": "POST",
           "mock_response": {
-            "end": "2024-01-15T11:00:00-05:00",
-            "event_id": "abc123def456",
-            "event_link": "https://calendar.google.com/event?eid=abc123",
-            "meeting_link": "https://meet.google.com/abc-defg-hij",
-            "start": "2024-01-15T10:00:00-05:00",
-            "title": "Team Standup"
+            "__args__": [
+              "_MOCK_MEETING"
+            ]
           },
           "name": "schedule_meeting",
           "parameters": [
@@ -27278,37 +28453,12 @@
           "path": "/actions/library/google-meet/schedule-meeting",
           "result_str_template": "Google Meet call scheduled.",
           "returns": {
-            "properties": {
-              "end": {
-                "description": "When the meeting ends.",
-                "type": "string"
-              },
-              "event_id": {
-                "description": "The ID of the calendar event that was created.",
-                "type": "string"
-              },
-              "event_link": {
-                "description": "A link to open the meeting in Google Calendar.",
-                "type": "string"
-              },
-              "meeting_link": {
-                "description": "The Google Meet link people use to join the call.",
-                "type": "string"
-              },
-              "start": {
-                "description": "When the meeting starts.",
-                "type": "string"
-              },
-              "title": {
-                "description": "The name of the meeting.",
-                "type": "string"
-              }
-            },
+            "properties": "_MEETING_PROPERTIES",
             "type": "object"
           }
         }
       },
-      "description": "Create Google Meet video calls and send calendar invites.",
+      "description": "Create Google Meet video calls, send calendar invites, and look up or cancel meetings you've scheduled.",
       "display_name": "Google Meet",
       "id": "google_meet"
     },
@@ -31073,6 +32223,481 @@
     },
     {
       "actions": {
+        "account_information": {
+          "description": "Get the connected Hunter account's plan and how many searches and verifications remain this period.",
+          "display_name": "Get account information",
+          "display_str_template": "Get Hunter account information.",
+          "handler": "actions.account_information",
+          "id": "hunter_account_information",
+          "method": "POST",
+          "mock_response": {
+            "email": "you@example.com",
+            "plan_name": "Growth",
+            "reset_date": "2026-08-11",
+            "searches": {
+              "available": 10000,
+              "used": 500
+            },
+            "verifications": {
+              "available": 20000,
+              "used": 100
+            }
+          },
+          "name": "account_information",
+          "parameters": [],
+          "path": "/actions/library/hunter/account-information",
+          "result_str_template": "Hunter account information retrieved.",
+          "returns": {
+            "properties": {
+              "email": {
+                "description": "The account's email address",
+                "type": "string"
+              },
+              "plan_name": {
+                "description": "The account's plan, e.g. 'Free' or 'Growth'",
+                "type": "string"
+              },
+              "reset_date": {
+                "description": "When the monthly quota resets (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "searches": {
+                "description": "Search requests used and available",
+                "properties": "_USAGE_PROPERTIES",
+                "type": "object"
+              },
+              "verifications": {
+                "description": "Verification requests used and available",
+                "properties": "_USAGE_PROPERTIES",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "domain_search": {
+          "description": "Find the email addresses associated with a company domain, with each contact's name, role, and confidence score.",
+          "display_name": "Domain search",
+          "display_str_template": "Search Hunter for emails at '{0}'.",
+          "handler": "actions.domain_search",
+          "id": "hunter_domain_search",
+          "method": "POST",
+          "mock_response": {
+            "accept_all": false,
+            "disposable": false,
+            "domain": "stripe.com",
+            "emails": [
+              {
+                "confidence": 99,
+                "department": "executive",
+                "first_name": "Patrick",
+                "last_name": "Collison",
+                "linkedin": "patrickcollison",
+                "phone_number": "",
+                "position": "CEO",
+                "seniority": "executive",
+                "twitter": "patrickc",
+                "type": "personal",
+                "value": "patrick@stripe.com",
+                "verification": {
+                  "date": "2026-04-12",
+                  "status": "valid"
+                }
+              }
+            ],
+            "organization": "Stripe",
+            "pattern": "{first}",
+            "total_results": 142,
+            "webmail": false
+          },
+          "name": "domain_search",
+          "parameters": [
+            {
+              "description": "The company website domain to search, e.g. 'stripe.com'. Provide this or Company name.",
+              "display_name": "Domain",
+              "name": "domain",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The company name to search, e.g. 'Stripe'. Used when Domain is not provided.",
+              "display_name": "Company name",
+              "name": "company",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. Number of email addresses to return, from 1 to 100. Defaults to 10.",
+              "display_name": "Max results",
+              "maximum": 100,
+              "minimum": 1,
+              "name": "limit",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Optional. Number of results to skip, for paging through large domains.",
+              "display_name": "Offset",
+              "minimum": 0,
+              "name": "offset",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Optional. Restrict results to 'personal' or 'generic' addresses.",
+              "display_name": "Email type",
+              "name": "email_type",
+              "options": [
+                {
+                  "label": "Personal",
+                  "value": "personal"
+                },
+                {
+                  "label": "Generic",
+                  "value": "generic"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. Filter contacts by seniority. Comma-separate to combine, e.g. 'senior,executive'.",
+              "display_name": "Seniority",
+              "name": "seniority",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. Filter contacts by department, e.g. 'sales' or 'executive,it'. Comma-separate to combine.",
+              "display_name": "Department",
+              "name": "department",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/hunter/domain-search",
+          "result_str_template": "Hunter domain search complete.",
+          "returns": {
+            "properties": {
+              "accept_all": {
+                "description": "Whether the mail server accepts all addresses",
+                "type": "boolean"
+              },
+              "disposable": {
+                "description": "Whether the domain is a disposable-email provider",
+                "type": "boolean"
+              },
+              "domain": {
+                "description": "The domain the results are for",
+                "type": "string"
+              },
+              "emails": {
+                "description": "Contacts found on this page",
+                "items": {
+                  "properties": "_EMAIL_PROPERTIES",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "organization": {
+                "description": "Company name Hunter has for the domain",
+                "type": "string"
+              },
+              "pattern": {
+                "description": "The company's email pattern, e.g. '{first}.{last}'",
+                "type": "string"
+              },
+              "total_results": {
+                "description": "Total contacts Hunter has for the domain, across all pages",
+                "type": "number"
+              },
+              "webmail": {
+                "description": "Whether the domain is a free webmail provider",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "email_count": {
+          "description": "Count how many email addresses Hunter has for a domain or company, split by personal and generic. Free and uses no credits.",
+          "display_name": "Email count",
+          "display_str_template": "Count Hunter emails for '{0}'.",
+          "handler": "actions.email_count",
+          "id": "hunter_email_count",
+          "method": "POST",
+          "mock_response": {
+            "generic_emails": 14,
+            "personal_emails": 128,
+            "total": 142
+          },
+          "name": "email_count",
+          "parameters": [
+            {
+              "description": "The company website domain, e.g. 'stripe.com'. Provide this or Company name.",
+              "display_name": "Domain",
+              "name": "domain",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The company name, e.g. 'Stripe'. Used when Domain is not provided.",
+              "display_name": "Company name",
+              "name": "company",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. Restrict the count to 'personal' or 'generic' addresses.",
+              "display_name": "Email type",
+              "name": "email_type",
+              "options": [
+                {
+                  "label": "Personal",
+                  "value": "personal"
+                },
+                {
+                  "label": "Generic",
+                  "value": "generic"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/hunter/email-count",
+          "result_str_template": "Hunter email count complete.",
+          "returns": {
+            "properties": {
+              "generic_emails": {
+                "description": "How many are generic addresses (e.g. info@)",
+                "type": "number"
+              },
+              "personal_emails": {
+                "description": "How many are personal addresses",
+                "type": "number"
+              },
+              "total": {
+                "description": "Total email addresses Hunter has",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "email_finder": {
+          "description": "Find the most likely email address for a specific person at a company, from their name and the company's domain.",
+          "display_name": "Email finder",
+          "display_str_template": "Find {0} {1}'s email at '{2}'.",
+          "handler": "actions.email_finder",
+          "id": "hunter_email_finder",
+          "method": "POST",
+          "mock_response": {
+            "accept_all": false,
+            "company": "Stripe",
+            "domain": "stripe.com",
+            "email": "patrick@stripe.com",
+            "first_name": "Patrick",
+            "last_name": "Collison",
+            "linkedin_url": "https://linkedin.com/in/patrickcollison",
+            "phone_number": "",
+            "position": "CEO",
+            "score": 99,
+            "twitter": "patrickc",
+            "verification": {
+              "date": "2026-04-12",
+              "status": "valid"
+            }
+          },
+          "name": "email_finder",
+          "parameters": [
+            {
+              "description": "The company website domain, e.g. 'stripe.com'. Provide this or Company name.",
+              "display_name": "Domain",
+              "name": "domain",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The company name, e.g. 'Stripe'. Used when Domain is not provided.",
+              "display_name": "Company name",
+              "name": "company",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The person's first name. Provide with Last name, or use Full name instead.",
+              "display_name": "First name",
+              "name": "first_name",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The person's last name. Provide with First name, or use Full name instead.",
+              "display_name": "Last name",
+              "name": "last_name",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The person's full name. Use instead of First and Last name.",
+              "display_name": "Full name",
+              "name": "full_name",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/hunter/email-finder",
+          "result_str_template": "Hunter email finder complete.",
+          "returns": {
+            "properties": {
+              "accept_all": {
+                "description": "Whether the server accepts all addresses",
+                "type": "boolean"
+              },
+              "company": {
+                "description": "Company name, if known",
+                "type": "string"
+              },
+              "domain": {
+                "description": "Company domain",
+                "type": "string"
+              },
+              "email": {
+                "description": "The email address found, or empty if none",
+                "type": "string"
+              },
+              "first_name": {
+                "description": "First name",
+                "type": "string"
+              },
+              "last_name": {
+                "description": "Last name",
+                "type": "string"
+              },
+              "linkedin_url": {
+                "description": "LinkedIn profile URL, if known",
+                "type": "string"
+              },
+              "phone_number": {
+                "description": "Phone number, if known",
+                "type": "string"
+              },
+              "position": {
+                "description": "Job title, if known",
+                "type": "string"
+              },
+              "score": {
+                "description": "Confidence the address is correct, 0 to 100",
+                "type": "number"
+              },
+              "twitter": {
+                "description": "Twitter/X handle, if known",
+                "type": "string"
+              },
+              "verification": {
+                "description": "Verification of the found address, if any",
+                "properties": "_VERIFICATION_PROPERTIES",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "email_verifier": {
+          "description": "Check whether an email address is deliverable, returning its status and the individual checks Hunter ran.",
+          "display_name": "Email verifier",
+          "display_str_template": "Verify the email '{0}'.",
+          "handler": "actions.email_verifier",
+          "id": "hunter_email_verifier",
+          "method": "POST",
+          "mock_response": {
+            "accept_all": false,
+            "block": false,
+            "disposable": false,
+            "email": "patrick@stripe.com",
+            "gibberish": false,
+            "mx_records": true,
+            "regexp": true,
+            "score": 99,
+            "smtp_check": true,
+            "smtp_server": true,
+            "status": "valid",
+            "webmail": false
+          },
+          "name": "email_verifier",
+          "parameters": [
+            {
+              "description": "The email address to verify.",
+              "display_name": "Email address",
+              "name": "email",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/hunter/email-verifier",
+          "result_str_template": "Hunter email verification complete.",
+          "returns": {
+            "properties": {
+              "accept_all": {
+                "description": "Whether the server accepts all addresses",
+                "type": "boolean"
+              },
+              "block": {
+                "description": "Whether the server blocked verification",
+                "type": "boolean"
+              },
+              "disposable": {
+                "description": "Whether it's from a disposable-email provider",
+                "type": "boolean"
+              },
+              "email": {
+                "description": "The address that was verified",
+                "type": "string"
+              },
+              "gibberish": {
+                "description": "Whether the local part looks random",
+                "type": "boolean"
+              },
+              "mx_records": {
+                "description": "Whether the domain has mail (MX) records",
+                "type": "boolean"
+              },
+              "regexp": {
+                "description": "Whether the address has a valid format",
+                "type": "boolean"
+              },
+              "score": {
+                "description": "Deliverability confidence, 0 to 100",
+                "type": "number"
+              },
+              "smtp_check": {
+                "description": "Whether the mailbox itself was accepted",
+                "type": "boolean"
+              },
+              "smtp_server": {
+                "description": "Whether the mail server is reachable",
+                "type": "boolean"
+              },
+              "status": {
+                "description": "Overall result: 'valid', 'invalid', 'accept_all', 'webmail', 'disposable', or 'unknown'",
+                "type": "string"
+              },
+              "webmail": {
+                "description": "Whether it's from a free webmail provider",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Find and verify professional email addresses for your prospecting and outreach workflows.",
+      "display_name": "Hunter",
+      "id": "hunter"
+    },
+    {
+      "actions": {
         "enrich_profile": {
           "description": "Visit one profile and gather details you can use to qualify leads: name, headline, bio, location, recent posts, and any emails or phone numbers that are available (often not shown on the platform).",
           "display_name": "Look up profile details",
@@ -31246,6 +32871,177 @@
       "description": "Gather your own social media connections and look up profile details using Hyperbrowser's automated browser (starting with LinkedIn).",
       "display_name": "Hyperbrowser",
       "id": "hyperbrowser"
+    },
+    {
+      "actions": {
+        "find_email": {
+          "description": "Launch an Icypeas Email Finder search for one person using their name and their employer's domain or company name. This starts an asynchronous search and returns a search id \u2014 use 'Get results' with that id to read the found email once the search has finished.",
+          "display_name": "Find email",
+          "display_str_template": "Find email for {1} {2} at {0}",
+          "handler": "actions.find_email",
+          "id": "icypeas_find_email",
+          "method": "POST",
+          "mock_response": {
+            "item": {
+              "_id": "",
+              "status": ""
+            },
+            "success": true
+          },
+          "name": "find_email",
+          "parameters": [
+            {
+              "description": "The person's employer, given as a domain (e.g. icypeas.com) or a company name (e.g. Icypeas)",
+              "display_name": "Domain or company",
+              "name": "domain_or_company",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "First name of the person. Required unless a last name is provided.",
+              "name": "firstname",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Last name of the person. Required unless a first name is provided.",
+              "name": "lastname",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional URL Icypeas will POST the result to when the search finishes",
+              "name": "webhook_url",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional tag echoed back on the result so you can correlate it with your own records",
+              "name": "external_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/icypeas/find-email",
+          "result_str_template": "Email search launched.",
+          "returns": {
+            "type": "object"
+          }
+        },
+        "get_results": {
+          "description": "Read the results of a previously launched Icypeas search (email finder, email verifier, or domain scan) by its search id. Because searches run asynchronously, the result may still be pending; run this again if the search has not finished.",
+          "display_name": "Get results",
+          "display_str_template": "Get Icypeas results for {0}",
+          "handler": "actions.get_results",
+          "id": "icypeas_get_results",
+          "method": "POST",
+          "mock_response": {
+            "items": [],
+            "success": true
+          },
+          "name": "get_results",
+          "parameters": [
+            {
+              "description": "The search id returned by Find email, Verify email, or Scan domain",
+              "display_name": "Search ID",
+              "name": "search_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/icypeas/get-results",
+          "result_str_template": "Results retrieved.",
+          "returns": {
+            "type": "object"
+          }
+        },
+        "scan_domain": {
+          "description": "Launch an Icypeas Domain Scan to discover role-based email addresses at a company (for example contact@ or support@). This starts an asynchronous search and returns a search id \u2014 use 'Get results' with that id to read the discovered addresses once the scan has finished.",
+          "display_name": "Scan domain",
+          "display_str_template": "Scan domain {0}",
+          "handler": "actions.scan_domain",
+          "id": "icypeas_scan_domain",
+          "method": "POST",
+          "mock_response": {
+            "item": {
+              "_id": "",
+              "status": ""
+            },
+            "success": true
+          },
+          "name": "scan_domain",
+          "parameters": [
+            {
+              "description": "The company to scan, given as a domain (e.g. icypeas.com) or a company name (e.g. Icypeas)",
+              "display_name": "Domain or company",
+              "name": "domain_or_company",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional URL Icypeas will POST the result to when the scan finishes",
+              "name": "webhook_url",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional tag echoed back on the result so you can correlate it with your own records",
+              "name": "external_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/icypeas/scan-domain",
+          "result_str_template": "Domain scan launched.",
+          "returns": {
+            "type": "object"
+          }
+        },
+        "verify_email": {
+          "description": "Launch an Icypeas Email Verifier search to check whether an email address is valid and deliverable. This starts an asynchronous search and returns a search id \u2014 use 'Get results' with that id to read the verdict once the search has finished.",
+          "display_name": "Verify email",
+          "display_str_template": "Verify email {0}",
+          "handler": "actions.verify_email",
+          "id": "icypeas_verify_email",
+          "method": "POST",
+          "mock_response": {
+            "item": {
+              "_id": "",
+              "status": ""
+            },
+            "success": true
+          },
+          "name": "verify_email",
+          "parameters": [
+            {
+              "description": "The email address to verify",
+              "name": "email",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional URL Icypeas will POST the result to when the search finishes",
+              "name": "webhook_url",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional tag echoed back on the result so you can correlate it with your own records",
+              "name": "external_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/icypeas/verify-email",
+          "result_str_template": "Email verification launched.",
+          "returns": {
+            "type": "object"
+          }
+        }
+      },
+      "description": "Automate Icypeas: find professional email addresses, verify deliverability, and scan a company's domain for role-based addresses with an API key.",
+      "display_name": "Icypeas",
+      "id": "icypeas"
     },
     {
       "actions": {
@@ -32322,6 +34118,347 @@
       "description": "Check real-time service status and recent outages from the free, keyless IsItDownStatus (DownStatus) API \u2014 look up any monitored service's combined status, list services by category or status, and review outages from the last 7 days. No account or API key required. Disclaimer: this is an independent integration with the community-run IsItDownStatus (isitdownstatus.com); its data is crowdsourced from users and it is not affiliated with, endorsed by, or sponsored by any of the monitored services.",
       "display_name": "IsItDownStatus",
       "id": "isitdownstatus"
+    },
+    {
+      "actions": {
+        "classify_text": {
+          "description": "Sort each piece of text into one of your own labels using Jina's zero-shot classifier -- no training needed. Great for tagging, routing, or sentiment.",
+          "display_name": "Classify text",
+          "display_str_template": "Classify text into labels with Jina.",
+          "handler": "actions.classify_text",
+          "id": "jina_classify_text",
+          "method": "POST",
+          "mock_response": {
+            "results": [
+              {
+                "index": 0,
+                "prediction": "Positive",
+                "score": 0.91,
+                "text": "I love this product, it works great!"
+              },
+              {
+                "index": 1,
+                "prediction": "Negative",
+                "score": 0.87,
+                "text": "The delivery was late and the box was damaged."
+              }
+            ],
+            "tokens": 19
+          },
+          "name": "classify_text",
+          "parameters": [
+            {
+              "description": "The list of text snippets to classify.",
+              "display_name": "Texts",
+              "name": "inputs",
+              "required": true,
+              "schema": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "description": "The list of possible labels, for example 'Positive', 'Neutral', 'Negative'.",
+              "display_name": "Labels",
+              "name": "labels",
+              "required": true,
+              "schema": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            }
+          ],
+          "path": "/actions/library/jina/classify-text",
+          "result_str_template": "Jina classified the texts.",
+          "returns": {
+            "properties": {
+              "results": {
+                "description": "One prediction per input text, in order",
+                "items": {
+                  "properties": "_CLASSIFY_RESULT_PROPERTIES",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "tokens": {
+                "description": "Tokens Jina counted for this request",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "read_url": {
+          "description": "Fetch a web page through the Jina Reader and return it as clean, LLM-ready markdown -- ideal for feeding a page into a later AI step.",
+          "display_name": "Read a URL",
+          "display_str_template": "Read the page at '{0}' with Jina.",
+          "handler": "actions.read_url",
+          "id": "jina_read_url",
+          "method": "POST",
+          "mock_response": {
+            "content": "Jina AI - Your Search Foundation, Supercharged.\n===============\nBest-in-class embeddings and rerankers...",
+            "description": "Best-in-class embeddings, rerankers, LLM-reader, web scraper, classifiers.",
+            "images": [
+              {
+                "text": "Jina logo",
+                "url": "https://jina.ai/Jina%20-%20Dark.svg"
+              }
+            ],
+            "links": [
+              {
+                "text": "Contact sales",
+                "url": "https://jina.ai/contact-sales"
+              }
+            ],
+            "title": "Jina AI - Your Search Foundation, Supercharged.",
+            "tokens": 1234,
+            "url": "https://jina.ai/"
+          },
+          "name": "read_url",
+          "parameters": [
+            {
+              "description": "The web page to read, for example 'https://jina.ai'.",
+              "display_name": "URL",
+              "name": "url",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": false,
+              "description": "Optional. Also return a list of the links found on the page.",
+              "display_name": "Include links",
+              "name": "with_links",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "default": false,
+              "description": "Optional. Also return a list of the images found on the page.",
+              "display_name": "Include images",
+              "name": "with_images",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "default": false,
+              "description": "Optional. Fetch a fresh copy instead of Jina's cached version.",
+              "display_name": "Bypass cache",
+              "name": "no_cache",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/jina/read-url",
+          "result_str_template": "Jina read the page.",
+          "returns": {
+            "properties": {
+              "content": {
+                "description": "The page content as clean markdown",
+                "type": "string"
+              },
+              "description": {
+                "description": "The page's meta description, if any",
+                "type": "string"
+              },
+              "images": {
+                "description": "Images on the page. Empty unless 'Include images' is on.",
+                "items": {
+                  "properties": "_IMAGE_PROPERTIES",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "links": {
+                "description": "Links on the page. Empty unless 'Include links' is on.",
+                "items": {
+                  "properties": "_LINK_PROPERTIES",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "title": {
+                "description": "The page's title",
+                "type": "string"
+              },
+              "tokens": {
+                "description": "Tokens Jina counted for this page",
+                "type": "number"
+              },
+              "url": {
+                "description": "The URL that was read",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "rerank_documents": {
+          "description": "Reorder a list of documents by how relevant each one is to a query -- useful for picking the best matches out of search or database results.",
+          "display_name": "Rerank documents",
+          "display_str_template": "Rerank documents against '{0}' with Jina.",
+          "handler": "actions.rerank_documents",
+          "id": "jina_rerank_documents",
+          "method": "POST",
+          "mock_response": {
+            "results": [
+              {
+                "document": "Organic skincare for sensitive skin with aloe vera",
+                "index": 0,
+                "relevance_score": 0.9
+              },
+              {
+                "document": "Fragrance-free moisturizer for dry skin",
+                "index": 2,
+                "relevance_score": 0.8
+              }
+            ],
+            "tokens": 15,
+            "top_document": "Organic skincare for sensitive skin with aloe vera"
+          },
+          "name": "rerank_documents",
+          "parameters": [
+            {
+              "description": "The query to rank the documents against.",
+              "display_name": "Query",
+              "name": "query",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The list of text documents to reorder by relevance.",
+              "display_name": "Documents",
+              "name": "documents",
+              "required": true,
+              "schema": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "description": "Optional. Return only the top N most relevant documents.",
+              "display_name": "Top N",
+              "minimum": 1,
+              "name": "top_n",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/jina/rerank-documents",
+          "result_str_template": "Jina reranked the documents.",
+          "returns": {
+            "properties": {
+              "results": {
+                "description": "Documents ordered from most to least relevant",
+                "items": {
+                  "properties": "_RERANK_RESULT_PROPERTIES",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "tokens": {
+                "description": "Tokens Jina counted for this request",
+                "type": "number"
+              },
+              "top_document": {
+                "description": "The single most relevant document, for convenience",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "search_web": {
+          "description": "Search the web through Jina and get back LLM-ready results. Returns titles, URLs, and snippets by default, or full page content when asked.",
+          "display_name": "Search the web",
+          "display_str_template": "Search the web for '{0}' with Jina.",
+          "handler": "actions.search_web",
+          "id": "jina_search_web",
+          "method": "POST",
+          "mock_response": {
+            "results": [
+              {
+                "content": "",
+                "description": "Our frontier models form the search foundation for high-quality enterprise search.",
+                "title": "Jina AI - Your Search Foundation, Supercharged.",
+                "url": "https://jina.ai/"
+              }
+            ],
+            "tokens": 0
+          },
+          "name": "search_web",
+          "parameters": [
+            {
+              "description": "What to search for, for example 'best vector databases'.",
+              "display_name": "Search query",
+              "name": "query",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. How many results to return (1-20).",
+              "display_name": "Number of results",
+              "maximum": 20,
+              "minimum": 1,
+              "name": "num_results",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Optional. Restrict the search to one domain, for example 'https://jina.ai'.",
+              "display_name": "Limit to site",
+              "name": "site",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. Two-letter country code to search from, for example 'US'.",
+              "display_name": "Country",
+              "name": "country",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": false,
+              "description": "Optional. Fetch the full markdown of each result page. Slower and uses far more tokens; off by default.",
+              "display_name": "Include page content",
+              "name": "include_page_content",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/jina/search-web",
+          "result_str_template": "Jina search results retrieved.",
+          "returns": {
+            "properties": {
+              "results": {
+                "description": "Search results, most relevant first",
+                "items": {
+                  "properties": "_SEARCH_RESULT_PROPERTIES",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "tokens": {
+                "description": "Total tokens Jina counted across the results",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Read web pages as clean markdown, search the web, rerank documents, and classify text with Jina AI's Search Foundation APIs.",
+      "display_name": "Jina AI",
+      "id": "jina"
     },
     {
       "actions": {
@@ -38740,6 +40877,419 @@
       "description": "Create, update, and organize tasks and task lists in Microsoft To Do.",
       "display_name": "Microsoft To Do",
       "id": "microsoft_todo"
+    },
+    {
+      "actions": {
+        "get_bulk_file_info": {
+          "description": "Look up the status and per-result counts of a single bulk verification file by its file id. Returns the file name, processing status (in_progress, finished, or canceled), progress percent, total and unique email counts, and how many addresses came back ok, catch_all, disposable, invalid, or unknown. Use this to poll a bulk job until it finishes. Get the file id from List Bulk Files or the MillionVerifier dashboard.",
+          "display_name": "Get Bulk File Info",
+          "display_str_template": "Get info for MillionVerifier bulk file {0}.",
+          "handler": "actions.get_bulk_file_info",
+          "id": "millionverifier_get_bulk_file_info",
+          "method": "POST",
+          "mock_response": {
+            "catch_all": 41,
+            "createdate": "2026-07-27 09:14:02",
+            "credit": 1000,
+            "disposable": 7,
+            "estimated_time_sec": 0,
+            "file_id": "aBcD1234",
+            "file_name": "newsletter-list.csv",
+            "invalid": 96,
+            "ok": 812,
+            "percent": 100,
+            "raw_response": {
+              "catch_all": 41,
+              "credit": 1000,
+              "disposable": 7,
+              "error": "",
+              "estimated_time_sec": 0,
+              "file_id": "aBcD1234",
+              "file_name": "newsletter-list.csv",
+              "invalid": 96,
+              "ok": 812,
+              "percent": 100,
+              "status": "finished",
+              "total_rows": 1000,
+              "unique_emails": 1000,
+              "unknown": 44,
+              "verified": 1000
+            },
+            "reverify": 0,
+            "status": "finished",
+            "total_rows": 1000,
+            "unique_emails": 1000,
+            "unknown": 44,
+            "unverified": 0,
+            "updated_at": "2026-07-27 09:19:41",
+            "verified": 1000
+          },
+          "name": "get_bulk_file_info",
+          "output_formatter": "format_get_bulk_file_info_output",
+          "parameters": [
+            {
+              "description": "The id of the bulk file to look up, as returned by List Bulk Files or shown in the MillionVerifier dashboard.",
+              "display_name": "File ID",
+              "name": "file_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/millionverifier/get-bulk-file-info",
+          "result_str_template": "Bulk file status: {millionverifier_get_bulk_file_info,status}",
+          "returns": {
+            "properties": {
+              "catch_all": {
+                "description": "Count of catch-all addresses",
+                "type": "integer"
+              },
+              "credit": {
+                "description": "Credits this file consumed",
+                "type": "integer"
+              },
+              "disposable": {
+                "description": "Count of disposable addresses",
+                "type": "integer"
+              },
+              "estimated_time_sec": {
+                "description": "Estimated seconds remaining while in progress",
+                "type": "integer"
+              },
+              "file_id": {
+                "description": "Unique file identifier",
+                "type": "string"
+              },
+              "file_name": {
+                "description": "Original uploaded file name",
+                "type": "string"
+              },
+              "invalid": {
+                "description": "Count of invalid addresses",
+                "type": "integer"
+              },
+              "ok": {
+                "description": "Count of deliverable (ok) addresses",
+                "type": "integer"
+              },
+              "percent": {
+                "description": "Verification progress from 0 to 100",
+                "type": "integer"
+              },
+              "raw_response": {
+                "description": "The full original MillionVerifier response",
+                "type": "object"
+              },
+              "status": {
+                "description": "Processing status: in_progress, finished, or canceled",
+                "type": "string"
+              },
+              "total_rows": {
+                "description": "Total rows uploaded",
+                "type": "integer"
+              },
+              "unique_emails": {
+                "description": "Number of unique addresses in the file",
+                "type": "integer"
+              },
+              "unknown": {
+                "description": "Count of addresses that could not be verified",
+                "type": "integer"
+              },
+              "verified": {
+                "description": "Number of addresses verified so far",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_credits": {
+          "description": "Return the number of email-verification credits remaining on the connected MillionVerifier account. Useful for checking the balance before running a large verification job.",
+          "display_name": "Get Remaining Credits",
+          "display_str_template": "Get the number of remaining MillionVerifier credits.",
+          "handler": "actions.get_credits",
+          "id": "millionverifier_get_credits",
+          "method": "POST",
+          "mock_response": {
+            "credits": 481817
+          },
+          "name": "get_credits",
+          "output_formatter": "format_get_credits_output",
+          "parameters": [],
+          "path": "/actions/library/millionverifier/get-credits",
+          "result_str_template": "Remaining credits: {millionverifier_get_credits,credits}",
+          "returns": {
+            "properties": {
+              "credits": {
+                "description": "Number of email-verification credits remaining",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_bulk_files": {
+          "description": "List the bulk email-list files uploaded to the connected MillionVerifier account, most recent first. Each entry includes the file id, name, processing status (in_progress, finished, or canceled), progress percent, and per-result counts. Use the file id with Get Bulk File Info to poll a specific file. Optionally page through results or filter by status.",
+          "display_name": "List Bulk Files",
+          "display_str_template": "List MillionVerifier bulk files.",
+          "handler": "actions.list_bulk_files",
+          "id": "millionverifier_list_bulk_files",
+          "method": "POST",
+          "mock_response": {
+            "count": 2,
+            "files": [
+              {
+                "catch_all": 41,
+                "createdate": "2026-07-27 09:14:02",
+                "disposable": 7,
+                "file_id": "aBcD1234",
+                "file_name": "newsletter-list.csv",
+                "invalid": 96,
+                "ok": 812,
+                "percent": 100,
+                "status": "finished",
+                "total_rows": 1000,
+                "unique_emails": 1000,
+                "unknown": 44,
+                "updated_at": "2026-07-27 09:19:41"
+              },
+              {
+                "createdate": "2026-07-28 08:02:11",
+                "file_id": "eFgH5678",
+                "file_name": "webinar-signups.csv",
+                "percent": 63,
+                "status": "in_progress",
+                "total_rows": 5200,
+                "unique_emails": 5200,
+                "updated_at": "2026-07-28 08:05:37"
+              }
+            ],
+            "raw_response": {
+              "files": [
+                {
+                  "file_id": "aBcD1234",
+                  "file_name": "newsletter-list.csv",
+                  "percent": 100,
+                  "status": "finished",
+                  "unique_emails": 1000
+                },
+                {
+                  "file_id": "eFgH5678",
+                  "file_name": "webinar-signups.csv",
+                  "percent": 63,
+                  "status": "in_progress",
+                  "unique_emails": 5200
+                }
+              ],
+              "total": 2
+            },
+            "total": 2
+          },
+          "name": "list_bulk_files",
+          "output_formatter": "format_list_bulk_files_output",
+          "parameters": [
+            {
+              "description": "Optional. Only return files with this status. Leave empty to include all files.",
+              "display_name": "Status",
+              "name": "status",
+              "options": [
+                {
+                  "label": "In progress",
+                  "value": "in_progress"
+                },
+                {
+                  "label": "Finished",
+                  "value": "finished"
+                },
+                {
+                  "label": "Canceled",
+                  "value": "canceled"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. Maximum number of files to return, from 1 to {...}.",
+              "display_name": "Limit",
+              "maximum": "actions.MAX_LIST_LIMIT",
+              "minimum": 1,
+              "name": "limit",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Optional. Number of files to skip before returning results, for paging. Defaults to 0.",
+              "display_name": "Offset",
+              "minimum": 0,
+              "name": "offset",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/millionverifier/list-bulk-files",
+          "result_str_template": "Retrieved MillionVerifier bulk files.",
+          "returns": {
+            "properties": {
+              "count": {
+                "description": "Number of files returned on this page",
+                "type": "integer"
+              },
+              "files": {
+                "description": "The bulk files on this page.",
+                "items": {
+                  "properties": {
+                    "file_id": {
+                      "description": "Unique file identifier",
+                      "type": "string"
+                    },
+                    "file_name": {
+                      "description": "Original uploaded file name",
+                      "type": "string"
+                    },
+                    "percent": {
+                      "description": "Verification progress (0-100)",
+                      "type": "integer"
+                    },
+                    "status": {
+                      "description": "in_progress, finished, or canceled",
+                      "type": "string"
+                    },
+                    "unique_emails": {
+                      "description": "Unique addresses in the file",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "raw_response": {
+                "description": "The full original MillionVerifier response",
+                "type": "object"
+              },
+              "total": {
+                "description": "Total files matching the query across all pages, if reported by the API (otherwise null)",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "verify_email": {
+          "description": "Validate a single email address in real time and return its deliverability result. The result is one of ok, catch_all, unknown, error, disposable, or invalid, alongside a coarse quality rating (good, risky, or bad), a more specific subresult, whether the address is on a free provider or is a role address (like info@ or support@), and a typo suggestion when one is likely. Each successful, billable check consumes one MillionVerifier credit.",
+          "display_name": "Verify Email",
+          "display_str_template": "Verify the email address {0}.",
+          "handler": "actions.verify_email",
+          "id": "millionverifier_verify_email",
+          "method": "POST",
+          "mock_response": {
+            "credits": 481817,
+            "didyoumean": "",
+            "email": "info@millionverifier.com",
+            "executiontime": 1,
+            "free": false,
+            "livemode": true,
+            "quality": "good",
+            "raw_response": {
+              "credits": 481817,
+              "didyoumean": "",
+              "email": "info@millionverifier.com",
+              "error": "",
+              "executiontime": 1,
+              "free": false,
+              "livemode": true,
+              "quality": "good",
+              "result": "ok",
+              "resultcode": 1,
+              "role": true,
+              "subresult": ""
+            },
+            "result": "ok",
+            "resultcode": 1,
+            "role": true,
+            "subresult": ""
+          },
+          "name": "verify_email",
+          "output_formatter": "format_verify_email_output",
+          "parameters": [
+            {
+              "description": "The email address to validate, for example jane@example.com.",
+              "display_name": "Email address",
+              "name": "email",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. How many seconds MillionVerifier waits for the mailbox server before giving up, from 2 to 60. Leave empty to use the default of 20 seconds.",
+              "display_name": "Timeout (seconds)",
+              "maximum": "actions.MAX_TIMEOUT",
+              "minimum": "actions.MIN_TIMEOUT",
+              "name": "timeout",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/millionverifier/verify-email",
+          "result_str_template": "Email result: {millionverifier_verify_email,result}",
+          "returns": {
+            "properties": {
+              "credits": {
+                "description": "Verification credits remaining after this call",
+                "type": "integer"
+              },
+              "didyoumean": {
+                "description": "A suggested correction for a likely typo, or empty",
+                "type": "string"
+              },
+              "email": {
+                "description": "The email address that was validated",
+                "type": "string"
+              },
+              "executiontime": {
+                "description": "How long the check took, in seconds",
+                "type": "integer"
+              },
+              "free": {
+                "description": "Whether the domain is a free email provider (e.g. gmail.com)",
+                "type": "boolean"
+              },
+              "livemode": {
+                "description": "Whether the check ran against the live service and consumed a credit (false for the free test key)",
+                "type": "boolean"
+              },
+              "quality": {
+                "description": "Coarse send-safety rating: good, risky, or bad",
+                "type": "string"
+              },
+              "raw_response": {
+                "description": "The full original MillionVerifier response payload",
+                "type": "object"
+              },
+              "result": {
+                "description": "Deliverability result: ok, catch_all, unknown, error, disposable, or invalid",
+                "type": "string"
+              },
+              "resultcode": {
+                "description": "Numeric code for the result: 1 ok, 2 catch_all, 3 unknown, 4 error, 5 disposable, 6 invalid",
+                "type": "integer"
+              },
+              "role": {
+                "description": "Whether this is a role-based address such as info@ or support@",
+                "type": "boolean"
+              },
+              "subresult": {
+                "description": "More specific reason behind the result (may be empty)",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Verify email addresses in real time with MillionVerifier, check your remaining verification credits, and monitor bulk email-list verification files.",
+      "display_name": "DISPLAY_NAME",
+      "id": "millionverifier"
     },
     {
       "actions": {
@@ -48868,6 +51418,409 @@
       "description": "Monitor metrics, look up values over time, and check the health of monitored systems.",
       "display_name": "Prometheus",
       "id": "prometheus"
+    },
+    {
+      "actions": {
+        "enrich_company": {
+          "description": "Get a company's profile -- headcount, industry, location, founding year, and more -- from its website, name, LinkedIn URL, or company ID.",
+          "display_name": "Enrich company",
+          "display_str_template": "Enrich a company with Prospeo.",
+          "handler": "actions.enrich_company",
+          "id": "prospeo_enrich_company",
+          "method": "POST",
+          "mock_response": {
+            "company_id": "cmp_7a1b2c3d4e",
+            "description": "Product analytics for modern software teams.",
+            "domain": "acme.com",
+            "employee_count": 84,
+            "employee_range": "51-100",
+            "found": true,
+            "founded": 2016,
+            "industry": "Software Development",
+            "linkedin_url": "https://www.linkedin.com/company/acme-analytics",
+            "location": "San Francisco, California, United States",
+            "name": "Acme Analytics",
+            "website": "https://acme.com"
+          },
+          "name": "enrich_company",
+          "parameters": [
+            {
+              "description": "The company's website domain, e.g. acme.com. Matches best.",
+              "display_name": "Company website",
+              "name": "company_website",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. The company's name.",
+              "display_name": "Company name",
+              "name": "company_name",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. The company's LinkedIn URL.",
+              "display_name": "Company LinkedIn URL",
+              "name": "company_linkedin_url",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. A company ID from a prior enrichment.",
+              "display_name": "Company ID",
+              "name": "company_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/prospeo/enrich-company",
+          "result_str_template": "Prospeo company enriched.",
+          "returns": {
+            "properties": {
+              "company_id": {
+                "description": "Prospeo company ID",
+                "type": "string"
+              },
+              "description": {
+                "description": "Company description",
+                "type": "string"
+              },
+              "domain": {
+                "description": "Primary domain",
+                "type": "string"
+              },
+              "employee_count": {
+                "description": "Approximate employee count",
+                "type": "number"
+              },
+              "employee_range": {
+                "description": "Employee count range, e.g. '51-100'",
+                "type": "string"
+              },
+              "found": {
+                "description": "Whether a matching company was found",
+                "type": "boolean"
+              },
+              "founded": {
+                "description": "Year the company was founded (0 if unknown)",
+                "type": "number"
+              },
+              "industry": {
+                "description": "Industry",
+                "type": "string"
+              },
+              "linkedin_url": {
+                "description": "Company LinkedIn URL",
+                "type": "string"
+              },
+              "location": {
+                "description": "Headquarters as 'City, State, Country'",
+                "type": "string"
+              },
+              "name": {
+                "description": "Company name",
+                "type": "string"
+              },
+              "website": {
+                "description": "Website URL",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "enrich_person": {
+          "description": "Find a person's verified work email (and optionally mobile) plus profile data. Match on a LinkedIn URL, an email, a person ID from Search people, or a name together with a company.",
+          "display_name": "Enrich person",
+          "display_str_template": "Enrich a person with Prospeo.",
+          "handler": "actions.enrich_person",
+          "id": "prospeo_enrich_person",
+          "method": "POST",
+          "mock_response": {
+            "company_domain": "acme.com",
+            "company_name": "Acme Analytics",
+            "email": "jordan@acme.com",
+            "email_status": "VERIFIED",
+            "first_name": "Jordan",
+            "found": true,
+            "full_name": "Jordan Rivera",
+            "job_title": "Chief Executive Officer",
+            "last_name": "Rivera",
+            "linkedin_url": "https://www.linkedin.com/in/jordanrivera",
+            "location": "San Francisco, California, United States",
+            "mobile": "+1 415-555-0142",
+            "person_id": "prs_0f9a1b2c3d"
+          },
+          "name": "enrich_person",
+          "parameters": [
+            {
+              "description": "Optional. The person's LinkedIn profile URL.",
+              "display_name": "LinkedIn URL",
+              "name": "linkedin_url",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. A known email to enrich from.",
+              "display_name": "Email",
+              "name": "email",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. A person ID returned by Search people.",
+              "display_name": "Person ID",
+              "name": "person_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. Used with a company to match by name.",
+              "display_name": "First name",
+              "name": "first_name",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. Used with a company to match by name.",
+              "display_name": "Last name",
+              "name": "last_name",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. Alternative to first + last name; used with a company to match by name.",
+              "display_name": "Full name",
+              "name": "full_name",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. The person's employer name.",
+              "display_name": "Company name",
+              "name": "company_name",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. The employer's website domain, e.g. acme.com.",
+              "display_name": "Company website",
+              "name": "company_website",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional. The employer's LinkedIn URL.",
+              "display_name": "Company LinkedIn URL",
+              "name": "company_linkedin_url",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": false,
+              "description": "Optional. Also look up the person's mobile number. Costs extra credits; the email is still included.",
+              "display_name": "Also find mobile",
+              "name": "enrich_mobile",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/prospeo/enrich-person",
+          "result_str_template": "Prospeo person enriched.",
+          "returns": {
+            "properties": {
+              "found": {
+                "description": "Whether a matching person was found",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_account": {
+          "description": "Check the connected Prospeo account's plan, remaining credit balance, and next quota renewal. Free to call.",
+          "display_name": "Get account info",
+          "display_str_template": "Get Prospeo account info.",
+          "handler": "actions.get_account",
+          "id": "prospeo_get_account",
+          "method": "POST",
+          "mock_response": {
+            "current_plan": "Growth",
+            "current_team_members": 3,
+            "next_quota_renewal_date": "2026-08-09",
+            "next_quota_renewal_days": 12,
+            "remaining_credits": 4200,
+            "used_credits": 800
+          },
+          "name": "get_account",
+          "parameters": [],
+          "path": "/actions/library/prospeo/get-account",
+          "result_str_template": "Prospeo account info retrieved.",
+          "returns": {
+            "properties": {
+              "current_plan": {
+                "description": "Name of the current plan",
+                "type": "string"
+              },
+              "current_team_members": {
+                "description": "Members on the account",
+                "type": "number"
+              },
+              "next_quota_renewal_date": {
+                "description": "Date the credit quota renews",
+                "type": "string"
+              },
+              "next_quota_renewal_days": {
+                "description": "Days until the credit quota renews",
+                "type": "number"
+              },
+              "remaining_credits": {
+                "description": "Credits remaining this quota period",
+                "type": "number"
+              },
+              "used_credits": {
+                "description": "Credits used this quota period",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "search_person": {
+          "description": "Search Prospeo's B2B database for people matching job title, seniority, location, or keyword filters. Results include a person ID you can pass to Enrich person to reveal contact details.",
+          "display_name": "Search people",
+          "display_str_template": "Search Prospeo for people.",
+          "handler": "actions.search_person",
+          "id": "prospeo_search_person",
+          "method": "POST",
+          "mock_response": {
+            "current_page": 1,
+            "results": [
+              {
+                "company_domain": "acme.com",
+                "company_name": "Acme Analytics",
+                "email": "",
+                "email_status": "",
+                "first_name": "Jordan",
+                "full_name": "Jordan Rivera",
+                "job_title": "Chief Executive Officer",
+                "last_name": "Rivera",
+                "linkedin_url": "https://www.linkedin.com/in/jordanrivera",
+                "location": "San Francisco, California, United States",
+                "mobile": "",
+                "person_id": "prs_0f9a1b2c3d"
+              }
+            ],
+            "total_count": 128,
+            "total_pages": 6
+          },
+          "name": "search_person",
+          "parameters": [
+            {
+              "description": "Optional. Free-text terms matched across name, company name, and domain (e.g. a company name).",
+              "display_name": "Keywords",
+              "name": "keywords",
+              "required": false,
+              "schema": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "description": "Optional. Job titles to match (contains), e.g. 'Head of Sales', 'CEO'.",
+              "display_name": "Job titles",
+              "name": "job_titles",
+              "required": false,
+              "schema": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "description": "Optional. Seniority levels to include.",
+              "display_name": "Seniorities",
+              "multi_select": true,
+              "name": "seniorities",
+              "options": "_SENIORITY_OPTIONS",
+              "required": false,
+              "schema": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "description": "Optional. Locations to include (e.g. 'United States', 'London').",
+              "display_name": "Locations",
+              "name": "locations",
+              "required": false,
+              "schema": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "default": false,
+              "description": "Optional. Only return people who have a verified work email on file.",
+              "display_name": "Verified email only",
+              "name": "verified_email_only",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "default": 1,
+              "description": "Page number to fetch (1-1000). Each page returns up to 25 people.",
+              "display_name": "Page",
+              "maximum": 1000,
+              "minimum": 1,
+              "name": "page",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/prospeo/search-person",
+          "result_str_template": "Prospeo people retrieved.",
+          "returns": {
+            "properties": {
+              "current_page": {
+                "description": "The page these results are from",
+                "type": "number"
+              },
+              "results": {
+                "description": "People on this page",
+                "items": {
+                  "properties": "_PERSON_PROPERTIES",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "total_count": {
+                "description": "Total people matching the filters",
+                "type": "number"
+              },
+              "total_pages": {
+                "description": "Total pages available for these filters",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Find and verify B2B work emails and mobile numbers, and enrich people and companies, straight from Prospeo.",
+      "display_name": "Prospeo",
+      "id": "prospeo"
     },
     {
       "actions": {
@@ -66544,6 +69497,125 @@
     },
     {
       "actions": {
+        "delete_video": {
+          "description": "Permanently delete a video from your Vimeo account.",
+          "display_name": "Delete a video",
+          "display_str_template": "Delete Vimeo video '{0}'.",
+          "handler": "actions.delete_video",
+          "id": "vimeo_delete_video",
+          "method": "POST",
+          "mock_response": {
+            "deleted": true,
+            "video_id": "76979871"
+          },
+          "name": "delete_video",
+          "parameters": [
+            {
+              "description": "The Vimeo video ID to delete, as returned by Upload a video or List videos. A full vimeo.com link works too.",
+              "display_name": "Video ID",
+              "name": "video_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/vimeo/delete-video",
+          "result_str_template": "Vimeo video deleted.",
+          "returns": {
+            "properties": {
+              "deleted": {
+                "description": "Whether the video was deleted",
+                "type": "boolean"
+              },
+              "video_id": {
+                "description": "The video that was deleted",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_video": {
+          "description": "Fetch details for one of your Vimeo videos.",
+          "display_name": "Get a video",
+          "display_str_template": "Get Vimeo video '{0}'.",
+          "handler": "actions.get_video",
+          "id": "vimeo_get_video",
+          "method": "POST",
+          "mock_response": {
+            "__args__": [
+              "_MOCK_VIDEO"
+            ]
+          },
+          "name": "get_video",
+          "parameters": [
+            {
+              "description": "The Vimeo video ID, as returned by Upload a video or List videos. A full vimeo.com link works too.",
+              "display_name": "Video ID",
+              "name": "video_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/vimeo/get-video",
+          "result_str_template": "Vimeo video retrieved.",
+          "returns": {
+            "properties": "_VIDEO_PROPERTIES",
+            "type": "object"
+          }
+        },
+        "list_videos": {
+          "description": "List the videos on your Vimeo account, newest first.",
+          "display_name": "List videos",
+          "display_str_template": "List Vimeo videos.",
+          "handler": "actions.list_videos",
+          "id": "vimeo_list_videos",
+          "method": "POST",
+          "mock_response": {
+            "total": 1,
+            "videos": [
+              "_MOCK_VIDEO"
+            ]
+          },
+          "name": "list_videos",
+          "parameters": [
+            {
+              "description": "Optional. Only return videos matching these keywords.",
+              "display_name": "Search terms",
+              "name": "query",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": 10,
+              "description": "How many videos to return (1-100).",
+              "display_name": "Maximum videos",
+              "maximum": 100,
+              "minimum": 1,
+              "name": "per_page",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/vimeo/list-videos",
+          "result_str_template": "Vimeo videos retrieved.",
+          "returns": {
+            "properties": {
+              "total": {
+                "description": "How many videos match in total",
+                "type": "number"
+              },
+              "videos": {
+                "description": "Videos on the account, newest first",
+                "items": {
+                  "properties": "_VIDEO_PROPERTIES",
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
         "upload_video": {
           "description": "Upload a video to Vimeo from a link to the video file.",
           "display_name": "Upload a video",
@@ -66552,11 +69624,10 @@
           "id": "vimeo_upload_video",
           "method": "POST",
           "mock_response": {
-            "description": "mock_value",
-            "link": "mock_value",
-            "name": "mock_value",
-            "upload": "mock_value",
-            "uri": "mock_value"
+            "__args__": [
+              "_MOCK_VIDEO"
+            ],
+            "upload_status": "in_progress"
           },
           "name": "upload_video",
           "parameters": [
@@ -66583,33 +69654,12 @@
           "path": "/actions/library/vimeo/upload-video",
           "result_str_template": "Video uploaded to Vimeo.",
           "returns": {
-            "properties": {
-              "description": {
-                "description": "Description returned by Upload a video to Vimeo using the pull upload approach.",
-                "type": "string"
-              },
-              "link": {
-                "description": "Link.",
-                "type": "string"
-              },
-              "name": {
-                "description": "Name returned by Upload a video to Vimeo using the pull upload approach.",
-                "type": "string"
-              },
-              "upload": {
-                "description": "Upload returned by Upload a video to Vimeo using the pull upload approach.",
-                "type": "string"
-              },
-              "uri": {
-                "description": "URI.",
-                "type": "string"
-              }
-            },
+            "properties": "_VIDEO_PROPERTIES",
             "type": "object"
           }
         }
       },
-      "description": "Upload videos to Vimeo from a link.",
+      "description": "Upload videos to Vimeo from a link, and look up or manage the videos on your account.",
       "display_name": "Vimeo",
       "id": "vimeo"
     },
