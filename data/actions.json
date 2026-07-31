@@ -4203,6 +4203,443 @@
     },
     {
       "actions": {
+        "get_account_settings": {
+          "description": "Get the account's Lambda limits (code storage, concurrency) and current usage in the connection's region.",
+          "display_name": "Get account settings",
+          "display_str_template": "Get Lambda account settings.",
+          "handler": "actions.get_account_settings",
+          "id": "aws_lambda_get_account_settings",
+          "method": "POST",
+          "mock_response": {
+            "result": {
+              "account_limit": {
+                "CodeSizeUnzipped": 262144000,
+                "CodeSizeZipped": 52428800,
+                "ConcurrentExecutions": 1000,
+                "TotalCodeSize": 80530636800,
+                "UnreservedConcurrentExecutions": 1000
+              },
+              "account_usage": {
+                "FunctionCount": 1,
+                "TotalCodeSize": 1024
+              }
+            }
+          },
+          "name": "get_account_settings",
+          "parameters": [],
+          "path": "/actions/library/aws-lambda/get-account-settings",
+          "result_str_template": "Account settings retrieved.",
+          "returns": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "account_limit": {
+                    "description": "Account limits: TotalCodeSize, CodeSizeUnzipped, CodeSizeZipped, ConcurrentExecutions, and UnreservedConcurrentExecutions.",
+                    "type": "object"
+                  },
+                  "account_usage": {
+                    "description": "Current usage: TotalCodeSize and FunctionCount.",
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_function": {
+          "description": "Get a function's configuration, code location, tags, and reserved-concurrency settings.",
+          "display_name": "Get function",
+          "display_str_template": "Get Lambda function {0}.",
+          "handler": "actions.get_function",
+          "id": "aws_lambda_get_function",
+          "method": "POST",
+          "mock_response": {
+            "result": {
+              "code": {
+                "Location": "https://awslambda-us-east-1-tasks.s3.amazonaws.com/...",
+                "RepositoryType": "S3"
+              },
+              "concurrency": null,
+              "configuration": {
+                "FunctionArn": "arn:aws:lambda:us-east-1:123456789012:function:my-function",
+                "FunctionName": "my-function",
+                "Handler": "index.handler",
+                "MemorySize": 128,
+                "Runtime": "python3.12",
+                "State": "Active",
+                "Timeout": 3,
+                "Version": "$LATEST"
+              },
+              "tags": {
+                "env": "qa"
+              }
+            }
+          },
+          "name": "get_function",
+          "parameters": [
+            {
+              "description": "The name or ARN of the function.",
+              "display_name": "Function name",
+              "name": "function_name",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional version number or alias name.",
+              "name": "qualifier",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/aws-lambda/get-function",
+          "result_str_template": "Function retrieved.",
+          "returns": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "code": {
+                    "description": "The deployment package details, including a presigned Location URL and RepositoryType.",
+                    "type": "object"
+                  },
+                  "concurrency": {
+                    "description": "Reserved concurrency setting, or null when none is configured.",
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "configuration": {
+                    "description": "A Lambda function's configuration as returned by AWS (PascalCase keys such as FunctionName, FunctionArn, Runtime, Handler, Role, MemorySize, Timeout, LastModified, Version, State, and PackageType).",
+                    "type": "object"
+                  },
+                  "tags": {
+                    "description": "The function's tags (key/value).",
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "invoke_function": {
+          "description": "Invoke a Lambda function with an optional JSON payload, synchronously (RequestResponse) or asynchronously (Event).",
+          "display_name": "Invoke function",
+          "display_str_template": "Invoke Lambda function {0}.",
+          "handler": "actions.invoke_function",
+          "id": "aws_lambda_invoke_function",
+          "method": "POST",
+          "mock_response": {
+            "result": {
+              "executed_version": "$LATEST",
+              "function_error": null,
+              "log_result": null,
+              "payload": {
+                "body": "Hello from Lambda!",
+                "statusCode": 200
+              },
+              "status_code": 200
+            }
+          },
+          "name": "invoke_function",
+          "parameters": [
+            {
+              "description": "The name, version/alias-qualified name, or ARN of the function to invoke (e.g. 'my-function').",
+              "display_name": "Function name",
+              "examples": [
+                {
+                  "label": "Function name",
+                  "value": "my-function"
+                }
+              ],
+              "name": "function_name",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "JSON object passed to the function as the event. Leave empty to invoke with no input.",
+              "name": "payload",
+              "required": false,
+              "type": "ParameterType.OBJECT"
+            },
+            {
+              "default": "RequestResponse",
+              "description": "RequestResponse waits for the function and returns its output; Event queues an asynchronous invocation; DryRun validates parameters and permissions without running the function.",
+              "display_name": "Invocation type",
+              "name": "invocation_type",
+              "options": [
+                {
+                  "label": "RequestResponse (sync)",
+                  "value": "RequestResponse"
+                },
+                {
+                  "label": "Event (async)",
+                  "value": "Event"
+                },
+                {
+                  "label": "DryRun (validate only)",
+                  "value": "DryRun"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": "None",
+              "description": "Set to Tail to include the last 4 KB of the function's execution log in 'log_result' (RequestResponse only).",
+              "display_name": "Log type",
+              "name": "log_type",
+              "options": [
+                {
+                  "label": "None",
+                  "value": "None"
+                },
+                {
+                  "label": "Tail (return logs)",
+                  "value": "Tail"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional version number or alias name to invoke a specific published version of the function.",
+              "name": "qualifier",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional base64-encoded data (up to 3,583 bytes) passed to the function in the client context object.",
+              "display_name": "Client context",
+              "name": "client_context",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/aws-lambda/invoke-function",
+          "result_str_template": "Function invoked.",
+          "returns": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "executed_version": {
+                    "description": "The function version that executed.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "function_error": {
+                    "description": "'Handled' or 'Unhandled' when the function returned an error; null on success.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "log_result": {
+                    "description": "Decoded execution log tail when log_type is Tail; null otherwise.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "payload": {
+                    "description": "The function's response, parsed as JSON when possible (otherwise the raw string). Null for a DryRun invocation or an empty response.",
+                    "type": [
+                      "object",
+                      "array",
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "status_code": {
+                    "description": "HTTP status of the invocation (200 for RequestResponse, 202 for Event, 204 for DryRun).",
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_functions": {
+          "description": "List the Lambda functions in the connection's region, with pagination.",
+          "display_name": "List functions",
+          "display_str_template": "List Lambda functions.",
+          "handler": "actions.list_functions",
+          "id": "aws_lambda_list_functions",
+          "method": "POST",
+          "mock_response": {
+            "result": {
+              "functions": [
+                {
+                  "CodeSize": 1024,
+                  "FunctionArn": "arn:aws:lambda:us-east-1:123456789012:function:my-function",
+                  "FunctionName": "my-function",
+                  "Handler": "index.handler",
+                  "LastModified": "2026-07-30T00:00:00.000+0000",
+                  "MemorySize": 128,
+                  "PackageType": "Zip",
+                  "Runtime": "python3.12",
+                  "Timeout": 3,
+                  "Version": "$LATEST"
+                }
+              ],
+              "next_marker": null
+            }
+          },
+          "name": "list_functions",
+          "parameters": [
+            {
+              "description": "Set to 'ALL' to include all published versions of each function in addition to the latest.",
+              "display_name": "Function version",
+              "name": "function_version",
+              "options": [
+                {
+                  "label": "ALL (include all versions)",
+                  "value": "ALL"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "For a $LATEST listing, the region to filter Lambda@Edge functions by (e.g. 'us-east-1' or 'ALL').",
+              "display_name": "Master region",
+              "name": "master_region",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Maximum number of functions to return (1\u201310000).",
+              "display_name": "Max items",
+              "maximum": 10000,
+              "minimum": 1,
+              "name": "max_items",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Pagination token from a previous response's 'next_marker' to fetch the next page.",
+              "name": "marker",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/aws-lambda/list-functions",
+          "result_str_template": "Functions listed.",
+          "returns": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "functions": {
+                    "description": "The functions in this page.",
+                    "items": {
+                      "description": "A Lambda function's configuration as returned by AWS (PascalCase keys such as FunctionName, FunctionArn, Runtime, Handler, Role, MemorySize, Timeout, LastModified, Version, State, and PackageType).",
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "next_marker": {
+                    "description": "Pagination token for the next page, or null if there are no more results.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_versions_by_function": {
+          "description": "List the published versions of a Lambda function.",
+          "display_name": "List function versions",
+          "display_str_template": "List versions of Lambda function {0}.",
+          "handler": "actions.list_versions_by_function",
+          "id": "aws_lambda_list_versions_by_function",
+          "method": "POST",
+          "mock_response": {
+            "result": {
+              "next_marker": null,
+              "versions": [
+                {
+                  "FunctionArn": "arn:aws:lambda:us-east-1:123456789012:function:my-function:1",
+                  "FunctionName": "my-function",
+                  "Runtime": "python3.12",
+                  "Version": "1"
+                }
+              ]
+            }
+          },
+          "name": "list_versions_by_function",
+          "parameters": [
+            {
+              "description": "The name or ARN of the function.",
+              "display_name": "Function name",
+              "name": "function_name",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Maximum number of versions to return (1\u201310000).",
+              "display_name": "Max items",
+              "maximum": 10000,
+              "minimum": 1,
+              "name": "max_items",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Pagination token from a previous response's 'next_marker' to fetch the next page.",
+              "name": "marker",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/aws-lambda/list-versions-by-function",
+          "result_str_template": "Versions listed.",
+          "returns": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "next_marker": {
+                    "description": "Pagination token for the next page, or null if there are no more results.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "versions": {
+                    "description": "The function versions in this page.",
+                    "items": {
+                      "description": "A Lambda function's configuration as returned by AWS (PascalCase keys such as FunctionName, FunctionArn, Runtime, Handler, Role, MemorySize, Timeout, LastModified, Version, State, and PackageType).",
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Invoke and manage AWS Lambda serverless functions: run functions synchronously or asynchronously with a JSON payload, list and inspect functions and their versions, and check account limits and usage.",
+      "display_name": "AWS Lambda",
+      "id": "aws_lambda"
+    },
+    {
+      "actions": {
         "add_employee_note": {
           "description": "Adds a manager-visible note to a BambooHR employee profile.",
           "display_name": "Add employee note",
@@ -5228,6 +5665,764 @@
       "description": "Create, read, update, and delete rows in your Baserow tables.",
       "display_name": "Baserow",
       "id": "baserow"
+    },
+    {
+      "actions": {
+        "create_subscription": {
+          "description": "Add a subscriber to a beehiiv publication by email \u2014 the core way to grow a list from another source such as a form, CRM, or purchase. Optionally send the welcome email, reactivate a previously unsubscribed contact, record UTM/referrer attribution, set values for existing custom fields, and override double opt-in. Custom fields must already exist on the publication.",
+          "display_name": "Create beehiiv subscription",
+          "display_str_template": "Add {1} to beehiiv publication {0}.",
+          "handler": "actions.create_subscription",
+          "id": "beehiiv_create_subscription",
+          "method": "POST",
+          "mock_response": {
+            "data": {
+              "created": 1719400000,
+              "email": "reader@example.com",
+              "id": "sub_11112222-3333-4444-5555-666677778888",
+              "referral_code": "ab12cd34",
+              "referring_site": "example.com",
+              "status": "active",
+              "subscription_tier": "free",
+              "utm_campaign": "spring-launch",
+              "utm_medium": "api",
+              "utm_source": "workflow"
+            }
+          },
+          "name": "create_subscription",
+          "output_formatter": "actions.format_create_subscription_output",
+          "parameters": [
+            {
+              "description": "The beehiiv publication to act on, e.g. 'pub_00000000-0000-0000-0000-000000000000'. Use the 'List beehiiv publications' action to find it.",
+              "display_name": "Publication ID",
+              "examples": [
+                {
+                  "label": "Publication ID",
+                  "value": "pub_00000000-0000-0000-0000-000000000000"
+                }
+              ],
+              "name": "publication_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Email address of the subscriber to add.",
+              "display_name": "Email",
+              "examples": [
+                {
+                  "label": "Email",
+                  "value": "reader@example.com"
+                }
+              ],
+              "name": "email",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": false,
+              "description": "When true, re-activate the contact if they previously unsubscribed. Defaults to false.",
+              "display_name": "Reactivate existing",
+              "name": "reactivate_existing",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "default": false,
+              "description": "When true, send the publication's welcome email to the new subscriber. Defaults to false.",
+              "display_name": "Send welcome email",
+              "name": "send_welcome_email",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "description": "Attribution source recorded on the subscription.",
+              "display_name": "UTM source",
+              "name": "utm_source",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Attribution medium recorded on the subscription.",
+              "display_name": "UTM medium",
+              "name": "utm_medium",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Attribution campaign recorded on the subscription.",
+              "display_name": "UTM campaign",
+              "name": "utm_campaign",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The site the subscriber came from.",
+              "display_name": "Referring site",
+              "name": "referring_site",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Override the publication's double opt-in setting for this subscriber. 'on' sends a confirmation email, 'off' activates immediately, 'not_set' uses the publication default.",
+              "display_name": "Double opt-in override",
+              "name": "double_opt_override",
+              "options": [
+                {
+                  "label": "Use publication default",
+                  "value": "not_set"
+                },
+                {
+                  "label": "On (send confirmation email)",
+                  "value": "on"
+                },
+                {
+                  "label": "Off (activate immediately)",
+                  "value": "off"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Values for custom fields that already exist on the publication, as a list of {name, value} objects. Unknown fields are ignored by beehiiv.",
+              "display_name": "Custom fields",
+              "name": "custom_fields",
+              "required": false,
+              "schema": {
+                "items": {
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            }
+          ],
+          "path": "/actions/library/beehiiv/create-subscription",
+          "result_str_template": "Created beehiiv subscription.",
+          "returns": {
+            "description": "The created (or reactivated) subscription, wrapped in 'data'.",
+            "properties": {
+              "data": {
+                "properties": {
+                  "created": {
+                    "description": "Unix epoch seconds when the subscription was created.",
+                    "type": "integer"
+                  },
+                  "email": {
+                    "description": "Subscriber email address.",
+                    "type": "string"
+                  },
+                  "id": {
+                    "description": "Unique subscription id, prefixed 'sub_'.",
+                    "type": "string"
+                  },
+                  "referral_code": {
+                    "description": "The subscriber's own referral code; may be null.",
+                    "type": "string"
+                  },
+                  "referring_site": {
+                    "description": "Where the subscriber came from; may be null.",
+                    "type": "string"
+                  },
+                  "status": {
+                    "description": "Subscription status. Common values: 'validating', 'active', 'inactive', 'pending', 'needs_attention'.",
+                    "type": "string"
+                  },
+                  "subscription_tier": {
+                    "description": "Tier of the subscription, e.g. 'free' or 'premium'.",
+                    "type": "string"
+                  },
+                  "utm_campaign": {
+                    "description": "Attribution campaign; may be null.",
+                    "type": "string"
+                  },
+                  "utm_medium": {
+                    "description": "Attribution medium; may be null.",
+                    "type": "string"
+                  },
+                  "utm_source": {
+                    "description": "Attribution source; may be null.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_subscription_by_email": {
+          "description": "Look up a single subscriber on a beehiiv publication by their email address, returning their status, tier, attribution, and creation time. Optionally include engagement stats and custom field values. Useful for checking whether someone is subscribed and what tier they are on before taking an action.",
+          "display_name": "Get beehiiv subscription by email",
+          "display_str_template": "Look up {1} on beehiiv publication {0}.",
+          "handler": "actions.get_subscription_by_email",
+          "id": "beehiiv_get_subscription_by_email",
+          "method": "POST",
+          "mock_response": {
+            "data": {
+              "created": 1719400000,
+              "email": "reader@example.com",
+              "id": "sub_11112222-3333-4444-5555-666677778888",
+              "referral_code": "ab12cd34",
+              "referring_site": null,
+              "status": "active",
+              "subscription_tier": "premium",
+              "utm_campaign": null,
+              "utm_medium": "social",
+              "utm_source": "twitter"
+            }
+          },
+          "name": "get_subscription_by_email",
+          "output_formatter": "actions.format_get_subscription_output",
+          "parameters": [
+            {
+              "description": "The beehiiv publication to act on, e.g. 'pub_00000000-0000-0000-0000-000000000000'. Use the 'List beehiiv publications' action to find it.",
+              "display_name": "Publication ID",
+              "examples": [
+                {
+                  "label": "Publication ID",
+                  "value": "pub_00000000-0000-0000-0000-000000000000"
+                }
+              ],
+              "name": "publication_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Email address of the subscriber to look up.",
+              "display_name": "Email",
+              "examples": [
+                {
+                  "label": "Email",
+                  "value": "reader@example.com"
+                }
+              ],
+              "name": "email",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": false,
+              "description": "When true, include the subscriber's engagement stats.",
+              "display_name": "Include stats",
+              "name": "include_stats",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "default": false,
+              "description": "When true, include the subscriber's custom field values.",
+              "display_name": "Include custom fields",
+              "name": "include_custom_fields",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/beehiiv/get-subscription-by-email",
+          "result_str_template": "Retrieved beehiiv subscription.",
+          "returns": {
+            "description": "The matching subscription, wrapped in 'data'.",
+            "properties": {
+              "data": {
+                "properties": {
+                  "custom_fields": {
+                    "description": "Only present when 'include_custom_fields' is true; each entry is a {name, value} object.",
+                    "items": {
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "stats": {
+                    "description": "Only present when 'include_stats' is true.",
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_posts": {
+          "description": "List a beehiiv publication's posts (newsletter issues), newest first by default. Each post includes its title, subtitle, status (draft, confirmed, or archived), publish date, and web URL. Filter by status and, when 'Include stats' is on, get per-post open and click metrics. Useful for tracking what has shipped or pulling the latest issue into a workflow.",
+          "display_name": "List beehiiv posts",
+          "display_str_template": "List beehiiv posts for {0}.",
+          "handler": "actions.list_posts",
+          "id": "beehiiv_list_posts",
+          "method": "POST",
+          "mock_response": {
+            "data": [
+              {
+                "audience": "free",
+                "content_tags": [
+                  "ai",
+                  "creator-economy"
+                ],
+                "id": "post_a1b2c3d4-5566-7788-99aa-bbccddeeff00",
+                "publish_date": 1719400000,
+                "status": "confirmed",
+                "subtitle": "And what that means for creators",
+                "title": "AI agents are eating the newsletter",
+                "web_url": "https://the-weekly-byte.beehiiv.com/p/ai-agents"
+              }
+            ],
+            "limit": 10,
+            "page": 1,
+            "total_pages": 1,
+            "total_results": 1
+          },
+          "name": "list_posts",
+          "output_formatter": "actions.format_list_posts_output",
+          "parameters": [
+            {
+              "description": "The beehiiv publication to act on, e.g. 'pub_00000000-0000-0000-0000-000000000000'. Use the 'List beehiiv publications' action to find it.",
+              "display_name": "Publication ID",
+              "examples": [
+                {
+                  "label": "Publication ID",
+                  "value": "pub_00000000-0000-0000-0000-000000000000"
+                }
+              ],
+              "name": "publication_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Only return posts with this status. Leave blank for all.",
+              "display_name": "Status",
+              "name": "status",
+              "options": [
+                {
+                  "label": "Confirmed (published/scheduled)",
+                  "value": "confirmed"
+                },
+                {
+                  "label": "Draft",
+                  "value": "draft"
+                },
+                {
+                  "label": "Archived",
+                  "value": "archived"
+                },
+                {
+                  "label": "All",
+                  "value": "all"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "How many results to return per page, from 1 to 100. Defaults to 10.",
+              "display_name": "Limit",
+              "maximum": "actions.MAX_LIMIT",
+              "minimum": 1,
+              "name": "limit",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Which page of results to return (1-based). Defaults to 1. Combine with 'Limit' to page through large lists; the response reports 'total_pages'.",
+              "display_name": "Page",
+              "minimum": 1,
+              "name": "page",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Field to sort posts by. Defaults to creation time.",
+              "display_name": "Order by",
+              "name": "order_by",
+              "options": [
+                {
+                  "label": "Created",
+                  "value": "created"
+                },
+                {
+                  "label": "Publish date",
+                  "value": "publish_date"
+                },
+                {
+                  "label": "Displayed date",
+                  "value": "displayed_date"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Sort direction: ascending or descending.",
+              "display_name": "Direction",
+              "name": "direction",
+              "options": [
+                {
+                  "label": "Descending (newest first)",
+                  "value": "desc"
+                },
+                {
+                  "label": "Ascending (oldest first)",
+                  "value": "asc"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": false,
+              "description": "When true, add per-post statistics such as email opens, clicks, and open/click rates.",
+              "display_name": "Include stats",
+              "name": "include_stats",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/beehiiv/list-posts",
+          "result_str_template": "Retrieved beehiiv posts.",
+          "returns": {
+            "description": "Paginated list of posts. Heavy rendered-content fields are not requested; 'stats' is present only when 'include_stats' is true.",
+            "properties": {
+              "data": {
+                "items": {
+                  "properties": {
+                    "audience": {
+                      "description": "'free', 'premium', or 'both'.",
+                      "type": "string"
+                    },
+                    "content_tags": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "Post id, prefixed 'post_'.",
+                      "type": "string"
+                    },
+                    "publish_date": {
+                      "description": "Unix epoch seconds the post was/will be published; null for unscheduled drafts.",
+                      "type": "integer"
+                    },
+                    "stats": {
+                      "description": "Only present when 'include_stats' is true; email opens/clicks and web views.",
+                      "type": "object"
+                    },
+                    "status": {
+                      "description": "'draft', 'confirmed', or 'archived'.",
+                      "type": "string"
+                    },
+                    "subtitle": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "web_url": {
+                      "description": "Public URL of the post.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "total_pages": {
+                "type": "integer"
+              },
+              "total_results": {
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_publications": {
+          "description": "List the beehiiv publications your API key can access, with each publication's id, name, and creation time. Every other beehiiv action needs a publication id, so this is usually the first step in a workflow. Optionally include high-level stats (subscriber and post counts).",
+          "display_name": "List beehiiv publications",
+          "display_str_template": "List beehiiv publications.",
+          "handler": "actions.list_publications",
+          "id": "beehiiv_list_publications",
+          "method": "POST",
+          "mock_response": {
+            "data": [
+              {
+                "created": 1704067200,
+                "id": "pub_4c9c9b2a-1111-4a2b-8c3d-2f1e0a9b8c7d",
+                "name": "The Weekly Byte",
+                "organization_name": "Byte Media",
+                "referral_program_enabled": true
+              }
+            ],
+            "limit": 10,
+            "page": 1,
+            "total_pages": 1,
+            "total_results": 1
+          },
+          "name": "list_publications",
+          "output_formatter": "actions.format_list_publications_output",
+          "parameters": [
+            {
+              "description": "How many results to return per page, from 1 to 100. Defaults to 10.",
+              "display_name": "Limit",
+              "maximum": "actions.MAX_LIMIT",
+              "minimum": 1,
+              "name": "limit",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Which page of results to return (1-based). Defaults to 1. Combine with 'Limit' to page through large lists; the response reports 'total_pages'.",
+              "display_name": "Page",
+              "minimum": 1,
+              "name": "page",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "default": false,
+              "description": "When true, add each publication's aggregate stats (active subscriptions, total posts, and more).",
+              "display_name": "Include stats",
+              "name": "include_stats",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/beehiiv/list-publications",
+          "result_str_template": "Retrieved beehiiv publications.",
+          "returns": {
+            "description": "Paginated list of publications. 'data' holds the rows; 'total_results'/'total_pages' describe the full result set.",
+            "properties": {
+              "data": {
+                "items": {
+                  "properties": {
+                    "created": {
+                      "description": "Unix epoch seconds.",
+                      "type": "integer"
+                    },
+                    "id": {
+                      "description": "Publication id, prefixed 'pub_'.",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Publication name.",
+                      "type": "string"
+                    },
+                    "organization_name": {
+                      "description": "Owning organization; may be absent.",
+                      "type": "string"
+                    },
+                    "referral_program_enabled": {
+                      "description": "Whether the referral program is on.",
+                      "type": "boolean"
+                    },
+                    "stats": {
+                      "description": "Only present when 'include_stats' is true.",
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "total_pages": {
+                "type": "integer"
+              },
+              "total_results": {
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_segments": {
+          "description": "List a beehiiv publication's audience segments \u2014 the saved groups of subscribers you can target. Each segment includes its id, name, type (dynamic, static, or manual), status, and how many subscribers currently match. Filter by status or type. Useful for finding a segment id or checking segment sizes.",
+          "display_name": "List beehiiv segments",
+          "display_str_template": "List beehiiv segments for {0}.",
+          "handler": "actions.list_segments",
+          "id": "beehiiv_list_segments",
+          "method": "POST",
+          "mock_response": {
+            "data": [
+              {
+                "id": "seg_99887766-5544-3322-1100-aabbccddeeff",
+                "last_calculated": 1719386400,
+                "name": "Highly engaged readers",
+                "status": "completed",
+                "total_results": 1842,
+                "type": "dynamic"
+              }
+            ],
+            "limit": 10,
+            "page": 1,
+            "total_pages": 1,
+            "total_results": 1
+          },
+          "name": "list_segments",
+          "output_formatter": "actions.format_list_segments_output",
+          "parameters": [
+            {
+              "description": "The beehiiv publication to act on, e.g. 'pub_00000000-0000-0000-0000-000000000000'. Use the 'List beehiiv publications' action to find it.",
+              "display_name": "Publication ID",
+              "examples": [
+                {
+                  "label": "Publication ID",
+                  "value": "pub_00000000-0000-0000-0000-000000000000"
+                }
+              ],
+              "name": "publication_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Only return segments with this processing status. Leave blank for all.",
+              "display_name": "Status",
+              "name": "status",
+              "options": [
+                {
+                  "label": "Completed",
+                  "value": "completed"
+                },
+                {
+                  "label": "Pending",
+                  "value": "pending"
+                },
+                {
+                  "label": "Processing",
+                  "value": "processing"
+                },
+                {
+                  "label": "Failed",
+                  "value": "failed"
+                },
+                {
+                  "label": "All",
+                  "value": "all"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Only return segments of this type. Leave blank for all.",
+              "display_name": "Type",
+              "name": "type",
+              "options": [
+                {
+                  "label": "Dynamic",
+                  "value": "dynamic"
+                },
+                {
+                  "label": "Static",
+                  "value": "static"
+                },
+                {
+                  "label": "Manual",
+                  "value": "manual"
+                },
+                {
+                  "label": "All",
+                  "value": "all"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "How many results to return per page, from 1 to 100. Defaults to 10.",
+              "display_name": "Limit",
+              "maximum": "actions.MAX_LIMIT",
+              "minimum": 1,
+              "name": "limit",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Which page of results to return (1-based). Defaults to 1. Combine with 'Limit' to page through large lists; the response reports 'total_pages'.",
+              "display_name": "Page",
+              "minimum": 1,
+              "name": "page",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/beehiiv/list-segments",
+          "result_str_template": "Retrieved beehiiv segments.",
+          "returns": {
+            "description": "Paginated list of audience segments.",
+            "properties": {
+              "data": {
+                "items": {
+                  "properties": {
+                    "id": {
+                      "description": "Segment id, prefixed 'seg_'.",
+                      "type": "string"
+                    },
+                    "last_calculated": {
+                      "description": "Unix epoch seconds of the last recalculation; may be null.",
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "description": "'pending', 'processing', 'completed', or 'failed'.",
+                      "type": "string"
+                    },
+                    "total_results": {
+                      "description": "Number of subscribers currently in the segment.",
+                      "type": "integer"
+                    },
+                    "type": {
+                      "description": "'dynamic', 'static', or 'manual'.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "total_pages": {
+                "type": "integer"
+              },
+              "total_results": {
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Grow and manage your beehiiv newsletter: list publications, browse posts with open/click stats, add and look up subscribers, and view audience segments. Uses the official beehiiv API v2, which is available on every plan including the free Launch plan.",
+      "display_name": "beehiiv",
+      "id": "beehiiv"
     },
     {
       "actions": {
@@ -38215,6 +39410,180 @@
       "description": "Read any company's public Greenhouse job board: list and search its open roles, pull a job post's full description and application questions, and browse its departments, offices, and prospect sections. Read-only and keyless \u2014 no Greenhouse account or API key is required.",
       "display_name": "Greenhouse",
       "id": "greenhouse"
+    },
+    {
+      "actions": {
+        "get_repository": {
+          "description": "Check a repository's indexing status, file-processing progress, and indexed commit SHA. A completed status means indexing is done.",
+          "display_name": "Get repository status",
+          "display_str_template": "Get Greptile index status for {0}",
+          "handler": "actions.get_repository",
+          "id": "greptile_get_repository",
+          "method": "POST",
+          "mock_response": {
+            "branch": "main",
+            "filesProcessed": 420,
+            "numFiles": 420,
+            "private": false,
+            "remote": "github",
+            "repository": "greptileai/greptile",
+            "sha": "89b286a699b2d023b7a1ebc468abf230d84ad547",
+            "status": "completed"
+          },
+          "name": "get_repository",
+          "output_formatter": "actions.format_get_repository_output",
+          "parameters": [
+            {
+              "description": "The repository in 'owner/name' form, e.g. 'greptileai/greptile'.",
+              "examples": [
+                {
+                  "label": "Greptile",
+                  "value": "greptileai/greptile"
+                }
+              ],
+              "name": "repository",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": "github",
+              "description": "The Git hosting platform the repository lives on.",
+              "name": "remote",
+              "options": [
+                {
+                  "label": "GitHub",
+                  "value": "github"
+                },
+                {
+                  "label": "GitLab",
+                  "value": "gitlab"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": "main",
+              "description": "The branch to index (e.g. 'main').",
+              "name": "branch",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/greptile/get-repository",
+          "result_str_template": "Retrieved index status.",
+          "returns": {
+            "properties": {
+              "branch": {
+                "type": "string"
+              },
+              "filesProcessed": {
+                "type": "number"
+              },
+              "numFiles": {
+                "type": "number"
+              },
+              "private": {
+                "type": "boolean"
+              },
+              "remote": {
+                "type": "string"
+              },
+              "repository": {
+                "type": "string"
+              },
+              "sha": {
+                "description": "Indexed commit SHA (present once indexed).",
+                "type": "string"
+              },
+              "status": {
+                "description": "Indexing status, e.g. 'submitted', 'cloning', 'processing', or 'completed'.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "index_repository": {
+          "description": "Submit a Git repository to Greptile for indexing \u2014 the one-time (per branch) step that prepares a codebase for Greptile.",
+          "display_name": "Index repository",
+          "display_str_template": "Index Greptile repository {0}",
+          "handler": "actions.index_repository",
+          "id": "greptile_index_repository",
+          "method": "POST",
+          "mock_response": {
+            "response": "started indexing repository"
+          },
+          "name": "index_repository",
+          "output_formatter": "actions.format_index_repository_output",
+          "parameters": [
+            {
+              "description": "The repository in 'owner/name' form, e.g. 'greptileai/greptile'.",
+              "examples": [
+                {
+                  "label": "Greptile",
+                  "value": "greptileai/greptile"
+                }
+              ],
+              "name": "repository",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": "github",
+              "description": "The Git hosting platform the repository lives on.",
+              "name": "remote",
+              "options": [
+                {
+                  "label": "GitHub",
+                  "value": "github"
+                },
+                {
+                  "label": "GitLab",
+                  "value": "gitlab"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": "main",
+              "description": "The branch to index (e.g. 'main').",
+              "name": "branch",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": false,
+              "description": "Force a re-index of an already-indexed repository (use after new commits land). Defaults to false.",
+              "name": "reload",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "default": false,
+              "description": "Email you when indexing finishes. Defaults to false.",
+              "name": "notify",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/greptile/index-repository",
+          "result_str_template": "Repository submitted for indexing.",
+          "returns": {
+            "properties": {
+              "response": {
+                "description": "Greptile's acknowledgment of the indexing job.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Index your Git repositories with Greptile and track indexing progress so your codebase is ready for Greptile's AI code search.",
+      "display_name": "Greptile",
+      "id": "greptile"
     },
     {
       "actions": {
@@ -87493,6 +88862,455 @@
       "description": "Send, request, and refund payments through Venmo.",
       "display_name": "Venmo",
       "id": "venmo"
+    },
+    {
+      "actions": {
+        "create_environment_variable": {
+          "description": "Add an environment variable to a project so its deployments can read it -- an API key, a feature flag, a service URL, and so on.",
+          "display_name": "Create environment variable",
+          "display_str_template": "Set Vercel env var '{1}'.",
+          "handler": "actions.create_environment_variable",
+          "id": "vercel_create_environment_variable",
+          "method": "POST",
+          "mock_response": {
+            "result": {
+              "created": {
+                "createdAt": 1717000000000,
+                "id": "env_abc123",
+                "key": "API_URL",
+                "target": [
+                  "production",
+                  "preview",
+                  "development"
+                ],
+                "type": "encrypted"
+              },
+              "failed": []
+            }
+          },
+          "name": "create_environment_variable",
+          "parameters": [
+            {
+              "description": "The project's id (starts with 'prj_') or its name. Use the id returned by Create a project, or a value from List projects.",
+              "display_name": "Project ID",
+              "name": "project_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The environment variable name, for example 'API_URL'.",
+              "display_name": "Key",
+              "name": "key",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The environment variable value.",
+              "display_name": "Value",
+              "name": "value",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Which environments the variable applies to. Defaults to all of production, preview, and development when left empty.",
+              "display_name": "Targets",
+              "examples": [
+                {
+                  "label": "All environments",
+                  "value": "production, preview, development"
+                },
+                {
+                  "label": "Production only",
+                  "value": "production"
+                }
+              ],
+              "name": "target",
+              "required": false,
+              "schema": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "default": "encrypted",
+              "description": "How Vercel stores the value: 'encrypted' (default, a standard secret), 'plain' (readable in the dashboard), or 'sensitive' (write-only, never shown again).",
+              "display_name": "Type",
+              "name": "type",
+              "options": [
+                {
+                  "label": "Encrypted",
+                  "value": "encrypted"
+                },
+                {
+                  "label": "Plain",
+                  "value": "plain"
+                },
+                {
+                  "label": "Sensitive",
+                  "value": "sensitive"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional git branch to scope the variable to (for the preview target).",
+              "display_name": "Git branch",
+              "name": "git_branch",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional note describing what the variable is for.",
+              "display_name": "Comment",
+              "name": "comment",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "default": false,
+              "description": "When on, update the value of an existing variable with the same key/target instead of failing on a conflict.",
+              "display_name": "Update if it exists",
+              "name": "upsert",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "description": "Optional Vercel Team id or slug to act on behalf of a team. Leave empty to use the personal account the access token belongs to.",
+              "display_name": "Team ID or slug",
+              "name": "team_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/vercel/create-environment-variable",
+          "result_str_template": "Vercel environment variable created.",
+          "returns": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "created": {
+                    "description": "The created variable, with fields such as id, key, target, type, and createdAt (the value is not returned for encrypted/sensitive types).",
+                    "type": "object"
+                  },
+                  "failed": {
+                    "description": "Any variables Vercel rejected, with an error explaining why (empty on success).",
+                    "items": {
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "create_project": {
+          "description": "Create a new Vercel project by name and get back its id. A framework preset is optional -- Vercel auto-detects one on the first deployment when omitted.",
+          "display_name": "Create a project",
+          "display_str_template": "Create Vercel project '{0}'.",
+          "handler": "actions.create_project",
+          "id": "vercel_create_project",
+          "method": "POST",
+          "mock_response": {
+            "result": {
+              "accountId": "team_or_user_id",
+              "framework": "nextjs",
+              "id": "prj_abc123",
+              "name": "my-app"
+            }
+          },
+          "name": "create_project",
+          "parameters": [
+            {
+              "description": "The new project's name: lowercase letters, digits, '.', '_' or '-', up to 100 characters (for example 'my-app'). Must be unique within the account.",
+              "display_name": "Project name",
+              "name": "name",
+              "required": true,
+              "slugify": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional framework preset slug. Leave empty to let Vercel auto-detect.",
+              "display_name": "Framework preset",
+              "examples": [
+                {
+                  "label": "Next.js",
+                  "value": "nextjs"
+                },
+                {
+                  "label": "Vite",
+                  "value": "vite"
+                },
+                {
+                  "label": "SvelteKit",
+                  "value": "sveltekit"
+                },
+                {
+                  "label": "Astro",
+                  "value": "astro"
+                }
+              ],
+              "name": "framework",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional Vercel Team id or slug to act on behalf of a team. Leave empty to use the personal account the access token belongs to.",
+              "display_name": "Team ID or slug",
+              "name": "team_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/vercel/create-project",
+          "result_str_template": "Vercel project created.",
+          "returns": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "accountId": {
+                    "description": "The owning account (personal or team) id.",
+                    "type": "string"
+                  },
+                  "framework": {
+                    "description": "The detected or supplied framework preset, or null if none.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "description": "The new project's id (starts with 'prj_'); use it as Project ID in other actions.",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "The project's name.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "delete_project": {
+          "description": "Delete a project by its id or name. This also removes the project's deployments, domains, and environment variables and cannot be undone.",
+          "display_name": "Delete a project",
+          "display_str_template": "Delete Vercel project {0}.",
+          "handler": "actions.delete_project",
+          "id": "vercel_delete_project",
+          "method": "POST",
+          "mock_response": {
+            "result": {
+              "project": "prj_abc123",
+              "success": true
+            }
+          },
+          "name": "delete_project",
+          "parameters": [
+            {
+              "description": "The project's id (starts with 'prj_') or its name. Use the id returned by Create a project, or a value from List projects.",
+              "display_name": "Project ID",
+              "name": "project_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional Vercel Team id or slug to act on behalf of a team. Leave empty to use the personal account the access token belongs to.",
+              "display_name": "Team ID or slug",
+              "name": "team_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/vercel/delete-project",
+          "result_str_template": "Vercel project deleted.",
+          "returns": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "project": {
+                    "description": "The id or name that was deleted.",
+                    "type": "string"
+                  },
+                  "success": {
+                    "description": "Whether Vercel deleted the project.",
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_deployments": {
+          "description": "List recent deployments across your account, or narrow to a single project -- handy for monitoring build status and the latest release URL.",
+          "display_name": "List deployments",
+          "display_str_template": "List Vercel deployments.",
+          "handler": "actions.list_deployments",
+          "id": "vercel_list_deployments",
+          "method": "POST",
+          "mock_response": {
+            "result": {
+              "deployments": [
+                {
+                  "created": 1717000000000,
+                  "name": "my-app",
+                  "readyState": "READY",
+                  "state": "READY",
+                  "target": "production",
+                  "uid": "dpl_abc123",
+                  "url": "my-app-abc123.vercel.app"
+                }
+              ],
+              "pagination": {
+                "count": 1,
+                "next": null,
+                "prev": null
+              }
+            }
+          },
+          "name": "list_deployments",
+          "parameters": [
+            {
+              "description": "Optional project id (starts with 'prj_') to only return that project's deployments.",
+              "display_name": "Project ID",
+              "name": "project_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional project name to filter by (an alternative to Project ID).",
+              "display_name": "Project name",
+              "name": "app",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional maximum number of deployments to return.",
+              "display_name": "Limit",
+              "minimum": 1,
+              "name": "limit",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Optional Vercel Team id or slug to act on behalf of a team. Leave empty to use the personal account the access token belongs to.",
+              "display_name": "Team ID or slug",
+              "name": "team_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/vercel/list-deployments",
+          "result_str_template": "Vercel deployments listed.",
+          "returns": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "deployments": {
+                    "description": "Matching deployments, each with fields such as uid, name, url, state, readyState, target, and created.",
+                    "items": {
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "pagination": {
+                    "description": "Paging info (count, next, prev) for fetching further pages.",
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_projects": {
+          "description": "List the Vercel projects on your account (most recently updated first), optionally filtered by a name search.",
+          "display_name": "List projects",
+          "display_str_template": "List Vercel projects.",
+          "handler": "actions.list_projects",
+          "id": "vercel_list_projects",
+          "method": "POST",
+          "mock_response": {
+            "result": {
+              "pagination": {
+                "count": 1,
+                "next": null,
+                "prev": null
+              },
+              "projects": [
+                {
+                  "accountId": "team_or_user_id",
+                  "framework": "nextjs",
+                  "id": "prj_abc123",
+                  "name": "my-app"
+                }
+              ]
+            }
+          },
+          "name": "list_projects",
+          "parameters": [
+            {
+              "description": "Optional text to filter projects by name. Leave empty to list every project.",
+              "display_name": "Name search",
+              "name": "search",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Optional maximum number of projects to return.",
+              "display_name": "Limit",
+              "minimum": 1,
+              "name": "limit",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Optional Vercel Team id or slug to act on behalf of a team. Leave empty to use the personal account the access token belongs to.",
+              "display_name": "Team ID or slug",
+              "name": "team_id",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/vercel/list-projects",
+          "result_str_template": "Vercel projects listed.",
+          "returns": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "pagination": {
+                    "description": "Paging info (count, next, prev) for fetching further pages.",
+                    "type": "object"
+                  },
+                  "projects": {
+                    "description": "Matching projects, each with fields such as id, name, framework, and latestDeployments.",
+                    "items": {
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Manage your Vercel projects, deployments, and environment variables -- list projects and deployments, create projects, set environment variables, and delete projects through the Vercel REST API.",
+      "display_name": "Vercel",
+      "id": "vercel"
     },
     {
       "actions": {
