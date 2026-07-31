@@ -56173,6 +56173,443 @@
     },
     {
       "actions": {
+        "add_memories": {
+          "description": "Extract durable facts from a conversation (or a block of text) and store them in Mem0 against a user, agent, run or app.",
+          "display_name": "Add memories",
+          "display_str_template": "Add memories to Mem0.",
+          "handler": "actions.add_memories",
+          "id": "mem0_add_memories",
+          "method": "POST",
+          "mock_response": {
+            "event_id": "2c4d1f44-4f7b-4b2f-9f6e-7b5b4f5a1234",
+            "message": "Memory processing has been queued for background execution",
+            "status": "PENDING"
+          },
+          "name": "add_memories",
+          "output_formatter": "actions.format_add_memories_output",
+          "parameters": [
+            {
+              "description": "What Mem0 should remember. Pass a block of text, or the conversation turns as a list of objects, e.g. [{\"role\": \"user\", \"content\": \"I moved to Austin last month.\"}]. Roles are user, assistant or system.",
+              "display_name": "Messages",
+              "name": "messages",
+              "required": true,
+              "schema": {
+                "items": {
+                  "properties": {
+                    "content": {
+                      "description": "What was said.",
+                      "type": "string"
+                    },
+                    "role": {
+                      "description": "Who said it: user, assistant or system. Defaults to user.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "content"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            },
+            null,
+            {
+              "description": "Optional key/value data to attach to every memory this call extracts, e.g. {\"source\": \"onboarding_form\"}. You can filter on it later.",
+              "display_name": "Metadata",
+              "name": "metadata",
+              "required": false,
+              "type": "ParameterType.OBJECT"
+            },
+            {
+              "default": true,
+              "description": "Let Mem0's extraction model pull the facts out of the messages. Turn this off to store the text exactly as given, which also makes the call finish immediately instead of being queued.",
+              "display_name": "Extract facts",
+              "name": "infer",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "description": "Optional date (YYYY-MM-DD) the memories stay visible through. After it passes they are hidden from search and get-all unless expired memories are included.",
+              "display_name": "Expires on",
+              "name": "expiration_date",
+              "required": false,
+              "type": "ParameterType.DATE"
+            }
+          ],
+          "path": "/actions/library/mem0/add-memories",
+          "result_str_template": "Memories submitted to Mem0.",
+          "returns": {
+            "properties": {
+              "event_id": {
+                "description": "Identifier for the queued extraction job. Empty when fact extraction was turned off, because that path completes immediately.",
+                "type": "string"
+              },
+              "message": {
+                "description": "Mem0's acknowledgment of the request.",
+                "type": "string"
+              },
+              "status": {
+                "description": "Job status: PENDING while extraction is queued, then SUCCEEDED or FAILED.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "delete_memory": {
+          "description": "Permanently delete a single memory by its ID.",
+          "display_name": "Delete memory",
+          "display_str_template": "Delete Mem0 memory {0}.",
+          "handler": "actions.delete_memory",
+          "id": "mem0_delete_memory",
+          "method": "POST",
+          "mock_response": {
+            "id": "f4cbdb08-7062-4f3e-8eb2-9f5c80dfe64c",
+            "message": "Memory deleted successfully!"
+          },
+          "name": "delete_memory",
+          "output_formatter": "actions.format_delete_memory_output",
+          "parameters": [
+            {
+              "description": "The ID of the memory to act on, as returned by Search memories or Get memories.",
+              "display_name": "Memory ID",
+              "name": "memory_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/mem0/delete-memory",
+          "result_str_template": "Memory deleted.",
+          "returns": {
+            "properties": {
+              "id": {
+                "description": "The ID of the deleted memory.",
+                "type": "string"
+              },
+              "message": {
+                "description": "Mem0's confirmation of the deletion.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_memories": {
+          "description": "List everything Mem0 has stored for a user, agent, run or app, one page at a time.",
+          "display_name": "Get memories",
+          "display_str_template": "Get memories from Mem0.",
+          "handler": "actions.get_memories",
+          "id": "mem0_get_memories",
+          "method": "POST",
+          "mock_response": {
+            "count": 1,
+            "next": null,
+            "previous": null,
+            "results": [
+              {
+                "categories": [
+                  "personal_information"
+                ],
+                "created_at": "2026-07-01T12:00:00Z",
+                "expiration_date": null,
+                "id": "f4cbdb08-7062-4f3e-8eb2-9f5c80dfe64c",
+                "memory": "Alice moved to Austin in June 2026",
+                "metadata": {
+                  "source": "onboarding_form"
+                },
+                "updated_at": "2026-07-01T12:00:00Z"
+              }
+            ]
+          },
+          "name": "get_memories",
+          "output_formatter": "actions.format_get_memories_output",
+          "parameters": [
+            null,
+            {
+              "description": "Optional. Extra conditions combined with the IDs above, e.g. {\"categories\": {\"contains\": \"finance\"}} or {\"created_at\": {\"gte\": \"2026-07-01\"}}. Supports AND, OR, NOT and the in/gte/lte/gt/lt/ne/icontains operators.",
+              "display_name": "Extra filters",
+              "name": "filters",
+              "required": false,
+              "type": "ParameterType.OBJECT"
+            },
+            {
+              "default": false,
+              "description": "Include memories whose expiration date has passed. They stay stored after expiring but are hidden by default.",
+              "display_name": "Include expired memories",
+              "name": "show_expired",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "default": 1,
+              "description": "Which page of results to return. Starts at 1.",
+              "display_name": "Page",
+              "minimum": 1,
+              "name": "page",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "default": 100,
+              "description": "How many memories per page (1-200). Defaults to 100.",
+              "display_name": "Page size",
+              "maximum": "actions.MAX_PAGE_SIZE",
+              "minimum": 1,
+              "name": "page_size",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/mem0/get-memories",
+          "result_str_template": "Retrieved Mem0 memories.",
+          "returns": {
+            "properties": {
+              "count": {
+                "description": "Total memories matching the filters.",
+                "type": "number"
+              },
+              "next": {
+                "description": "URL of the next page, or null on the last page.",
+                "type": "string"
+              },
+              "previous": {
+                "description": "URL of the previous page, or null on the first page.",
+                "type": "string"
+              },
+              "results": {
+                "description": "The memories on this page.",
+                "items": {
+                  "properties": {
+                    "categories": {
+                      "description": "Categories Mem0 classified the memory under.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "created_at": {
+                      "description": "When the memory was created.",
+                      "type": "string"
+                    },
+                    "expiration_date": {
+                      "description": "Date the memory expires (YYYY-MM-DD), or null if permanent.",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Unique memory identifier, used to update or delete it.",
+                      "type": "string"
+                    },
+                    "memory": {
+                      "description": "The stored fact.",
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "description": "Metadata attached to the memory when it was added.",
+                      "type": "object"
+                    },
+                    "updated_at": {
+                      "description": "When the memory last changed.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "search_memories": {
+          "description": "Search stored memories in plain language and get the most relevant ones back, each with a relevance score.",
+          "display_name": "Search memories",
+          "display_str_template": "Search Mem0 memories for '{0}'.",
+          "handler": "actions.search_memories",
+          "id": "mem0_search_memories",
+          "method": "POST",
+          "mock_response": {
+            "results": [
+              {
+                "score": 0.82
+              }
+            ]
+          },
+          "name": "search_memories",
+          "output_formatter": "actions.format_search_memories_output",
+          "parameters": [
+            {
+              "description": "What to look for, in plain language, e.g. 'What are Alice's food preferences?'.",
+              "display_name": "Query",
+              "name": "query",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            null,
+            {
+              "description": "Optional. Extra conditions combined with the IDs above, e.g. {\"categories\": {\"contains\": \"finance\"}} or {\"created_at\": {\"gte\": \"2026-07-01\"}}. Supports AND, OR, NOT and the in/gte/lte/gt/lt/ne/icontains operators.",
+              "display_name": "Extra filters",
+              "name": "filters",
+              "required": false,
+              "type": "ParameterType.OBJECT"
+            },
+            {
+              "default": 10,
+              "description": "How many memories to return (1-1000). Defaults to 10.",
+              "display_name": "Max results",
+              "maximum": "actions.MAX_TOP_K",
+              "minimum": 1,
+              "name": "top_k",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "default": 0.1,
+              "description": "Drop results scoring below this (0-1). Defaults to 0.1; set 0 to keep everything.",
+              "display_name": "Minimum score",
+              "maximum": 1,
+              "minimum": 0,
+              "name": "threshold",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "default": false,
+              "description": "Run Mem0's reranker over the matches for better ordering. More accurate, but slower.",
+              "display_name": "Rerank results",
+              "name": "rerank",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "default": false,
+              "description": "Include memories whose expiration date has passed. They stay stored after expiring but are hidden by default.",
+              "display_name": "Include expired memories",
+              "name": "show_expired",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/mem0/search-memories",
+          "result_str_template": "Searched Mem0 memories.",
+          "returns": {
+            "properties": {
+              "results": {
+                "description": "The matching memories, most relevant first.",
+                "items": {
+                  "properties": {
+                    "score": {
+                      "description": "Combined relevance score between 0 and 1 (semantic, keyword and entity signals fused).",
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "update_memory": {
+          "description": "Change a single memory's text, metadata or expiration date.",
+          "display_name": "Update memory",
+          "display_str_template": "Update Mem0 memory {0}.",
+          "handler": "actions.update_memory",
+          "id": "mem0_update_memory",
+          "method": "POST",
+          "mock_response": {
+            "memory": "Alice moved to Austin in June 2026 and works downtown",
+            "updated_at": "2026-07-15T09:12:00Z"
+          },
+          "name": "update_memory",
+          "output_formatter": "actions.format_update_memory_output",
+          "parameters": [
+            {
+              "description": "The ID of the memory to act on, as returned by Search memories or Get memories.",
+              "display_name": "Memory ID",
+              "name": "memory_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "The replacement text for the memory.",
+              "display_name": "New text",
+              "multiline": true,
+              "name": "text",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Replacement key/value data for the memory, e.g. {\"category\": \"preferences\"}.",
+              "display_name": "Metadata",
+              "name": "metadata",
+              "required": false,
+              "type": "ParameterType.OBJECT"
+            },
+            {
+              "description": "New expiration date (YYYY-MM-DD) for the memory. Leave empty to keep the current one.",
+              "display_name": "Expires on",
+              "name": "expiration_date",
+              "required": false,
+              "type": "ParameterType.DATE"
+            },
+            {
+              "default": false,
+              "description": "Remove the memory's expiration date so it never expires. Can't be combined with a new expiration date.",
+              "display_name": "Make permanent",
+              "name": "clear_expiration_date",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/mem0/update-memory",
+          "result_str_template": "Memory updated.",
+          "returns": {
+            "properties": {
+              "categories": {
+                "description": "Categories Mem0 classified the memory under.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "created_at": {
+                "description": "When the memory was created.",
+                "type": "string"
+              },
+              "expiration_date": {
+                "description": "Date the memory expires (YYYY-MM-DD), or null if permanent.",
+                "type": "string"
+              },
+              "id": {
+                "description": "Unique memory identifier, used to update or delete it.",
+                "type": "string"
+              },
+              "memory": {
+                "description": "The stored fact.",
+                "type": "string"
+              },
+              "metadata": {
+                "description": "Metadata attached to the memory when it was added.",
+                "type": "object"
+              },
+              "updated_at": {
+                "description": "When the memory last changed.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Give your workflows a long-term memory: store what you learn about a person or agent in Mem0 and search it back in plain language.",
+      "display_name": "Mem0",
+      "id": "mem0"
+    },
+    {
+      "actions": {
         "get_definition": {
           "description": "Look up a word's part of speech and definitions.",
           "display_name": "Get definition",
