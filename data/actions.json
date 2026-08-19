@@ -170841,55 +170841,69 @@
     },
     {
       "actions": {
-        "create_document_from_template": {
-          "description": "Create a document from one of your SignWell templates and send it to recipients for signature. Fill in the template's fields and list who needs to sign.",
-          "display_name": "Create document from template",
-          "display_str_template": "Create SignWell document from template {template_id}.",
-          "handler": "actions.create_document_from_template",
-          "id": "signwell_create_document_from_template",
+        "create_document": {
+          "description": "Create a document from one or more files and send it for signature. The files are fetched from public URLs, so point this at something your workflow has already produced or stored somewhere reachable. Unless draft is true, place at least one field for each recipient \u2014 SignWell rejects a request that gives a recipient nothing to sign.",
+          "display_name": "Create SignWell document",
+          "display_str_template": "Create a SignWell document for signature.",
+          "handler": "actions.create_document",
+          "id": "signwell_create_document",
           "method": "POST",
           "mock_response": {
-            "document_id": "b567fe6c-6f0c-4543-9ea0-63d596962451",
-            "embedded_edit_url": "",
-            "name": "Master Services Agreement",
-            "recipients": [
-              {
-                "email": "jane@example.com",
-                "id": "1",
-                "name": "Jane Client",
-                "signing_url": "https://www.signwell.com/docs/b670b6130d/",
-                "status": "sent"
-              }
-            ],
-            "status": "Sent"
+            "document": {
+              "apply_signing_order": false,
+              "archived": false,
+              "created_at": "2026-01-28T16:59:03Z",
+              "decline_message": null,
+              "embedded_edit_url": null,
+              "embedded_preview_url": "https://www.signwell.com/preview/document/582a6a8f/",
+              "error_message": null,
+              "expires_in": 30,
+              "files": [
+                {
+                  "name": "agreement.pdf",
+                  "pages_number": 3
+                }
+              ],
+              "id": "582a6a8f-931b-491d-91f3-b27cdefa7878",
+              "message": "Let me know if anything needs changing before you sign.",
+              "metadata": {
+                "deal_id": "4821"
+              },
+              "name": "Consulting agreement",
+              "recipients": [
+                {
+                  "delivery_method": "email",
+                  "email": "ada@example.com",
+                  "id": "023d6b54-8cb0-4efb-928c-14c0758070bc",
+                  "name": "Ada Lovelace",
+                  "signing_order": 1,
+                  "signing_url": "https://www.signwell.com/docs/b98cc5a442/",
+                  "status": "sent"
+                }
+              ],
+              "requester_email_address": "grace@example.com",
+              "status": "Sent",
+              "subject": "Please sign the consulting agreement",
+              "test_mode": true,
+              "updated_at": "2026-01-28T16:59:03Z"
+            }
           },
-          "name": "create_document_from_template",
+          "name": "create_document",
           "parameters": [
             {
-              "description": "The ID of the template to use. Open the template in SignWell and copy its ID from the URL, or from Settings \u2192 API.",
-              "display_name": "Template ID",
-              "name": "template_id",
-              "required": true,
-              "type": "ParameterType.STRING"
-            },
-            {
-              "description": "The people who need to sign, in signing order. Each needs a name and email address.",
-              "display_name": "Recipients",
-              "name": "recipients",
+              "description": "The documents to send, each with a name and a publicly reachable file_url.",
+              "display_name": "Files",
+              "name": "files",
               "required": true,
               "schema": {
                 "items": {
                   "properties": {
-                    "email": {
-                      "description": "The recipient's email address (where the signature request is sent).",
+                    "file_url": {
+                      "description": "Publicly reachable link to the file. SignWell downloads it itself, so it must not need a login.",
                       "type": "string"
                     },
                     "name": {
-                      "description": "The recipient's full name.",
-                      "type": "string"
-                    },
-                    "placeholder_name": {
-                      "description": "The name of the template role this recipient fills (as set on the template in SignWell), for example 'Client'. Leave blank if the template has a single signer.",
+                      "description": "File name to show on the document, e.g. agreement.pdf.",
                       "type": "string"
                     }
                   },
@@ -170903,7 +170917,377 @@
               "type": "ParameterType.ARRAY"
             },
             {
-              "description": "Values that prefill the template's fields. Add one entry per field: the key is the field's API ID (from the template in SignWell) and the value is what to fill in.",
+              "description": "Who needs to sign, as a list of objects. Each needs a name and an email. Set signing_order to a number to control the sequence when apply_signing_order is on.",
+              "display_name": "Recipients",
+              "name": "recipients",
+              "required": true,
+              "schema": {
+                "items": {
+                  "properties": {
+                    "email": {
+                      "description": "The recipient's email address, where the signature request is sent.",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The recipient's full name.",
+                      "type": "string"
+                    },
+                    "placeholder_name": {
+                      "description": "The name of the template role this recipient fills, as set on the template in SignWell, for example 'Client'. Leave blank if the template has a single signer, or when not using a template.",
+                      "type": "string"
+                    },
+                    "signing_order": {
+                      "description": "Where this person falls in the sequence, used when apply_signing_order is on.",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "description": "Where to place a field (a signature, a text box, a date, ...) on the document, as a list of objects. SignWell rejects a non-draft document unless every recipient has at least one field, so this is required unless draft is true. Each needs a type, an x/y position in pixels, and the page it belongs to; recipient names which recipient (1 for the first entry in recipients, 2 for the second, ...) it is for; file_index names which file (0 for the first) when sending more than one, and defaults to the first.",
+              "display_name": "Fields",
+              "name": "fields",
+              "required": false,
+              "schema": {
+                "items": {
+                  "properties": {
+                    "api_id": {
+                      "description": "An id to reference this field's value by later.",
+                      "type": "string"
+                    },
+                    "file_index": {
+                      "description": "Which file this field belongs to, by position in files (0 for the first). Defaults to the first file.",
+                      "type": "number"
+                    },
+                    "height": {
+                      "description": "Field height, in pixels.",
+                      "type": "number"
+                    },
+                    "label": {
+                      "description": "Label shown above the field. Text and date fields only.",
+                      "type": "string"
+                    },
+                    "page": {
+                      "description": "The page number within the file this field sits on.",
+                      "type": "number"
+                    },
+                    "recipient": {
+                      "description": "Which recipient this field is for, by position in recipients (1 for the first, 2 for the second, ...).",
+                      "type": "number"
+                    },
+                    "required": {
+                      "description": "Whether the recipient must fill this field. Defaults to true.",
+                      "type": "boolean"
+                    },
+                    "type": {
+                      "description": "The kind of field, e.g. signature, initials, text, date, checkbox.",
+                      "type": "string"
+                    },
+                    "width": {
+                      "description": "Field width, in pixels.",
+                      "type": "number"
+                    },
+                    "x": {
+                      "description": "Horizontal position, in pixels.",
+                      "type": "number"
+                    },
+                    "y": {
+                      "description": "Vertical position, in pixels.",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "description": "Name for the document, shown to recipients.",
+              "name": "name",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Subject line of the email sent to recipients.",
+              "name": "subject",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Message shown in the email sent to recipients.",
+              "multiline": true,
+              "name": "message",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Make recipients sign one after another in the order given, rather than all at once.",
+              "name": "apply_signing_order",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "description": "Let SignWell send its own automatic reminders to people who have not signed. On by default.",
+              "name": "reminders",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "description": "How many days recipients have to sign before the document expires.",
+              "name": "expires_in",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Create the document in test mode. Test documents are free and do not count towards your plan, but are not legally binding. Off by default.",
+              "name": "test_mode",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "description": "Create the document without sending it, so you can review or edit it in SignWell first. Off by default, which sends it straight away.",
+              "name": "draft",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            }
+          ],
+          "path": "/actions/library/signwell/create-document",
+          "result_str_template": "Created document '{signwell_create_document,document,id}'.",
+          "returns": {
+            "properties": {
+              "document": {
+                "properties": {
+                  "apply_signing_order": {
+                    "description": "True when recipients sign one after another.",
+                    "type": "boolean"
+                  },
+                  "archived": {
+                    "description": "True once the document has been archived.",
+                    "type": "boolean"
+                  },
+                  "created_at": {
+                    "description": "When the document was created, ISO 8601 UTC.",
+                    "type": "string"
+                  },
+                  "decline_message": {
+                    "description": "Why a recipient declined, when one did.",
+                    "type": "string"
+                  },
+                  "embedded_edit_url": {
+                    "description": "Link for editing the document in an embedded iframe. Only set on draft documents.",
+                    "type": "string"
+                  },
+                  "embedded_preview_url": {
+                    "description": "Link for previewing the document in an embedded iframe. Only set once the document has been sent.",
+                    "type": "string"
+                  },
+                  "error_message": {
+                    "description": "What went wrong with the document, if anything.",
+                    "type": "string"
+                  },
+                  "expires_in": {
+                    "description": "Days until the document expires, if a limit was set.",
+                    "type": "number"
+                  },
+                  "files": {
+                    "description": "The documents that make up this envelope.",
+                    "items": {
+                      "properties": {
+                        "name": {
+                          "description": "File name.",
+                          "type": "string"
+                        },
+                        "pages_number": {
+                          "description": "How many pages the file has.",
+                          "type": "number"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "id": {
+                    "description": "The document's id, taken by the get, remind, delete, and download actions.",
+                    "type": "string"
+                  },
+                  "message": {
+                    "description": "Message shown in the email sent to recipients.",
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "description": "Whatever custom metadata was attached to the document.",
+                    "type": "object"
+                  },
+                  "name": {
+                    "description": "The document's name.",
+                    "type": "string"
+                  },
+                  "recipients": {
+                    "description": "Everyone on the document, with their current status.",
+                    "items": {
+                      "properties": {
+                        "delivery_method": {
+                          "description": "How they are notified: email, sms, or both.",
+                          "type": "string"
+                        },
+                        "email": {
+                          "description": "The recipient's email address.",
+                          "type": "string"
+                        },
+                        "id": {
+                          "description": "SignWell's id for this recipient on the document.",
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "The recipient's name.",
+                          "type": "string"
+                        },
+                        "signing_order": {
+                          "description": "Where they fall in the signing sequence.",
+                          "type": "number"
+                        },
+                        "signing_url": {
+                          "description": "The recipient's personal signing link. Null until the document has been sent.",
+                          "type": "string"
+                        },
+                        "status": {
+                          "description": "How far this recipient has got: created, sent, viewed, signed, declined, or bounced.",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "requester_email_address": {
+                    "description": "Who sent the document.",
+                    "type": "string"
+                  },
+                  "status": {
+                    "description": "The document's own signing state: Created, Sent, Completed, Declined, or Expired.",
+                    "type": "string"
+                  },
+                  "subject": {
+                    "description": "Subject line of the email sent to recipients.",
+                    "type": "string"
+                  },
+                  "test_mode": {
+                    "description": "True for a test document, which is not legally binding.",
+                    "type": "boolean"
+                  },
+                  "updated_at": {
+                    "description": "When the document last changed, ISO 8601 UTC.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "create_document_from_template": {
+          "description": "Create a document from a SignWell template and send it for signature. Use Get SignWell template to find the roles and field ids the template expects.",
+          "display_name": "Create SignWell document from template",
+          "display_str_template": "Create a SignWell document from template '{0}'.",
+          "handler": "actions.create_document_from_template",
+          "id": "signwell_create_document_from_template",
+          "method": "POST",
+          "mock_response": {
+            "document": {
+              "apply_signing_order": false,
+              "archived": false,
+              "created_at": "2026-01-28T16:59:03Z",
+              "decline_message": null,
+              "embedded_edit_url": null,
+              "embedded_preview_url": "https://www.signwell.com/preview/document/582a6a8f/",
+              "error_message": null,
+              "expires_in": 30,
+              "files": [
+                {
+                  "name": "agreement.pdf",
+                  "pages_number": 3
+                }
+              ],
+              "id": "582a6a8f-931b-491d-91f3-b27cdefa7878",
+              "message": "Let me know if anything needs changing before you sign.",
+              "metadata": {
+                "deal_id": "4821"
+              },
+              "name": "Consulting agreement",
+              "recipients": [
+                {
+                  "delivery_method": "email",
+                  "email": "ada@example.com",
+                  "id": "023d6b54-8cb0-4efb-928c-14c0758070bc",
+                  "name": "Ada Lovelace",
+                  "signing_order": 1,
+                  "signing_url": "https://www.signwell.com/docs/b98cc5a442/",
+                  "status": "sent"
+                }
+              ],
+              "requester_email_address": "grace@example.com",
+              "status": "Sent",
+              "subject": "Please sign the consulting agreement",
+              "test_mode": true,
+              "updated_at": "2026-01-28T16:59:03Z"
+            }
+          },
+          "name": "create_document_from_template",
+          "parameters": [
+            {
+              "description": "The template's SignWell id, from the template's page URL or the Get SignWell template action.",
+              "name": "template_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "{...} Set placeholder_name to the template role each person fills.",
+              "display_name": "Recipients",
+              "name": "recipients",
+              "required": true,
+              "schema": {
+                "items": {
+                  "properties": {
+                    "email": {
+                      "description": "The recipient's email address, where the signature request is sent.",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The recipient's full name.",
+                      "type": "string"
+                    },
+                    "placeholder_name": {
+                      "description": "The name of the template role this recipient fills, as set on the template in SignWell, for example 'Client'. Leave blank if the template has a single signer, or when not using a template.",
+                      "type": "string"
+                    },
+                    "signing_order": {
+                      "description": "Where this person falls in the sequence, used when apply_signing_order is on.",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "type": "ParameterType.ARRAY"
+            },
+            {
+              "description": "Values that prefill the template's fields. Add one entry per field: the key is the field's API ID, which Get SignWell template lists, and the value is what to fill in.",
               "display_name": "Template fields",
               "name": "template_fields",
               "object_key_name": "field API ID",
@@ -170911,107 +171295,819 @@
               "type": "ParameterType.OBJECT"
             },
             {
-              "description": "A name for the document. Leave blank to use the template's name.",
-              "display_name": "Document name",
+              "description": "Name for the new document. Defaults to the template's.",
               "name": "name",
               "required": false,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "The subject line of the signature request email. Leave blank to use the template's default.",
-              "display_name": "Email subject",
+              "description": "Subject line of the email sent to recipients.",
               "name": "subject",
               "required": false,
               "type": "ParameterType.STRING"
             },
             {
-              "description": "A message shown to recipients in the signature request email.",
-              "display_name": "Email message",
+              "description": "Message shown in the email sent to recipients.",
               "multiline": true,
               "name": "message",
               "required": false,
               "type": "ParameterType.STRING"
             },
             {
-              "default": false,
-              "description": "Turn on to have recipients sign one after another, in the order listed above. Leave off to notify everyone at once.",
-              "display_name": "Sign in order",
+              "description": "Make recipients sign one after another in the order given, rather than all at once.",
               "name": "apply_signing_order",
               "required": false,
               "type": "ParameterType.BOOLEAN"
             },
             {
-              "default": false,
-              "description": "Turn on to create the document as a draft without sending it. Leave off to send it for signature straight away.",
-              "display_name": "Save as draft",
-              "name": "draft",
+              "description": "Create the document in test mode. Test documents are free and do not count towards your plan, but are not legally binding. Off by default.",
+              "name": "test_mode",
               "required": false,
               "type": "ParameterType.BOOLEAN"
             },
             {
-              "default": false,
-              "description": "Turn on to create a free test document that does not count toward your plan. Leave off for a real document.",
-              "display_name": "Test mode",
-              "name": "test_mode",
+              "description": "Create the document without sending it, so you can review or edit it in SignWell first. Off by default, which sends it straight away.",
+              "name": "draft",
               "required": false,
               "type": "ParameterType.BOOLEAN"
             }
           ],
           "path": "/actions/library/signwell/create-document-from-template",
-          "result_str_template": "SignWell document created.",
+          "result_str_template": "Created document '{signwell_create_document_from_template,document,id}'.",
           "returns": {
             "properties": {
-              "document_id": {
-                "description": "ID of the new document.",
-                "type": "string"
-              },
-              "embedded_edit_url": {
-                "description": "URL to edit the document before it is sent (drafts only).",
-                "type": "string"
-              },
-              "name": {
-                "description": "The document's name.",
-                "type": "string"
-              },
-              "recipients": {
-                "description": "The document's recipients.",
-                "items": {
-                  "properties": {
-                    "email": {
-                      "description": "The recipient's email address.",
-                      "type": "string"
-                    },
-                    "id": {
-                      "description": "The recipient's ID.",
-                      "type": "string"
-                    },
-                    "name": {
-                      "description": "The recipient's name.",
-                      "type": "string"
-                    },
-                    "signing_url": {
-                      "description": "Link this recipient uses to sign the document.",
-                      "type": "string"
-                    },
-                    "status": {
-                      "description": "The recipient's signing status.",
-                      "type": "string"
-                    }
+              "document": {
+                "properties": {
+                  "apply_signing_order": {
+                    "description": "True when recipients sign one after another.",
+                    "type": "boolean"
                   },
-                  "type": "object"
+                  "archived": {
+                    "description": "True once the document has been archived.",
+                    "type": "boolean"
+                  },
+                  "created_at": {
+                    "description": "When the document was created, ISO 8601 UTC.",
+                    "type": "string"
+                  },
+                  "decline_message": {
+                    "description": "Why a recipient declined, when one did.",
+                    "type": "string"
+                  },
+                  "embedded_edit_url": {
+                    "description": "Link for editing the document in an embedded iframe. Only set on draft documents.",
+                    "type": "string"
+                  },
+                  "embedded_preview_url": {
+                    "description": "Link for previewing the document in an embedded iframe. Only set once the document has been sent.",
+                    "type": "string"
+                  },
+                  "error_message": {
+                    "description": "What went wrong with the document, if anything.",
+                    "type": "string"
+                  },
+                  "expires_in": {
+                    "description": "Days until the document expires, if a limit was set.",
+                    "type": "number"
+                  },
+                  "files": {
+                    "description": "The documents that make up this envelope.",
+                    "items": {
+                      "properties": {
+                        "name": {
+                          "description": "File name.",
+                          "type": "string"
+                        },
+                        "pages_number": {
+                          "description": "How many pages the file has.",
+                          "type": "number"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "id": {
+                    "description": "The document's id, taken by the get, remind, delete, and download actions.",
+                    "type": "string"
+                  },
+                  "message": {
+                    "description": "Message shown in the email sent to recipients.",
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "description": "Whatever custom metadata was attached to the document.",
+                    "type": "object"
+                  },
+                  "name": {
+                    "description": "The document's name.",
+                    "type": "string"
+                  },
+                  "recipients": {
+                    "description": "Everyone on the document, with their current status.",
+                    "items": {
+                      "properties": {
+                        "delivery_method": {
+                          "description": "How they are notified: email, sms, or both.",
+                          "type": "string"
+                        },
+                        "email": {
+                          "description": "The recipient's email address.",
+                          "type": "string"
+                        },
+                        "id": {
+                          "description": "SignWell's id for this recipient on the document.",
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "The recipient's name.",
+                          "type": "string"
+                        },
+                        "signing_order": {
+                          "description": "Where they fall in the signing sequence.",
+                          "type": "number"
+                        },
+                        "signing_url": {
+                          "description": "The recipient's personal signing link. Null until the document has been sent.",
+                          "type": "string"
+                        },
+                        "status": {
+                          "description": "How far this recipient has got: created, sent, viewed, signed, declined, or bounced.",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "requester_email_address": {
+                    "description": "Who sent the document.",
+                    "type": "string"
+                  },
+                  "status": {
+                    "description": "The document's own signing state: Created, Sent, Completed, Declined, or Expired.",
+                    "type": "string"
+                  },
+                  "subject": {
+                    "description": "Subject line of the email sent to recipients.",
+                    "type": "string"
+                  },
+                  "test_mode": {
+                    "description": "True for a test document, which is not legally binding.",
+                    "type": "boolean"
+                  },
+                  "updated_at": {
+                    "description": "When the document last changed, ISO 8601 UTC.",
+                    "type": "string"
+                  }
                 },
-                "type": "array"
-              },
-              "status": {
-                "description": "The document's status, for example 'Sent' or 'Draft'.",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "delete_document": {
+          "description": "Delete a document. If signing is still in progress this cancels it, so no one can sign afterwards. This cannot be undone.",
+          "display_name": "Delete SignWell document",
+          "display_str_template": "Delete the SignWell document '{0}'.",
+          "handler": "actions.delete_document",
+          "id": "signwell_delete_document",
+          "method": "POST",
+          "mock_response": {},
+          "name": "delete_document",
+          "parameters": [
+            {
+              "description": "The document's SignWell id. You can get this from either create action, or from the end of the document's page URL.",
+              "name": "document_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/signwell/delete-document",
+          "result_str_template": "Document deleted.",
+          "returns": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        "get_account": {
+          "description": "Get the account and workspace the connected API key belongs to. Useful for confirming a connection points where you expect before a workflow sends anything.",
+          "display_name": "Get SignWell account",
+          "display_str_template": "Get the connected SignWell account.",
+          "handler": "actions.get_account",
+          "id": "signwell_get_account",
+          "method": "POST",
+          "mock_response": {
+            "account_name": "Example Ltd",
+            "plan_tier": "free",
+            "role": "owner",
+            "user_email": "grace@example.com",
+            "user_name": "Grace Hopper",
+            "workspace_id": "e26b82c5-668f-4456-ba5a-2ec15e4e243c",
+            "workspace_name": "Example Ltd"
+          },
+          "name": "get_account",
+          "parameters": [],
+          "path": "/actions/library/signwell/get-account",
+          "result_str_template": "Connected as {signwell_get_account,user_email}.",
+          "returns": {
+            "properties": {
+              "account_name": {
+                "description": "Name of the SignWell account.",
                 "type": "string"
+              },
+              "plan_tier": {
+                "description": "Which plan the account is on, which decides whether documents can be sent outside test mode.",
+                "type": "string"
+              },
+              "role": {
+                "description": "That user's role in the workspace, e.g. owner.",
+                "type": "string"
+              },
+              "user_email": {
+                "description": "Email of the account the key belongs to.",
+                "type": "string"
+              },
+              "user_name": {
+                "description": "Name on the account the key belongs to.",
+                "type": "string"
+              },
+              "workspace_id": {
+                "description": "Id of the active workspace.",
+                "type": "string"
+              },
+              "workspace_name": {
+                "description": "Name of the active workspace.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_completed_pdf": {
+          "description": "Get a download link for the finished, signed PDF, optionally with the audit page attached. Use this after a document completes to file the signed copy somewhere.",
+          "display_name": "Get SignWell signed PDF",
+          "display_str_template": "Get the signed PDF for SignWell document '{0}'.",
+          "handler": "actions.get_completed_pdf",
+          "id": "signwell_get_completed_pdf",
+          "method": "POST",
+          "mock_response": {
+            "file_url": "https://www.signwell.com/signed/gZLbdGbkzrtAyy2DQMNqH4baE9EP.pdf?audit_page=true"
+          },
+          "name": "get_completed_pdf",
+          "parameters": [
+            {
+              "description": "The document's SignWell id. You can get this from either create action, or from the end of the document's page URL.",
+              "name": "document_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Include SignWell's audit trail page, which records who signed and when. On by default.",
+              "name": "audit_page",
+              "required": false,
+              "type": "ParameterType.BOOLEAN"
+            },
+            {
+              "description": "Get one merged PDF, or a ZIP with each file separately. Defaults to PDF.",
+              "name": "file_format",
+              "options": [
+                {
+                  "label": "Single PDF",
+                  "value": "pdf"
+                },
+                {
+                  "label": "ZIP of separate files",
+                  "value": "zip"
+                }
+              ],
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/signwell/get-completed-pdf",
+          "result_str_template": "Got a download link for the signed PDF.",
+          "returns": {
+            "properties": {
+              "file_url": {
+                "description": "Temporary link to download the signed file from.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_document": {
+          "description": "Get a document and where each recipient has got to. Poll this to hold a workflow until everyone has signed.",
+          "display_name": "Get SignWell document",
+          "display_str_template": "Get the SignWell document '{0}'.",
+          "handler": "actions.get_document",
+          "id": "signwell_get_document",
+          "method": "POST",
+          "mock_response": {
+            "document": {
+              "apply_signing_order": false,
+              "archived": false,
+              "created_at": "2026-01-28T16:59:03Z",
+              "decline_message": null,
+              "embedded_edit_url": null,
+              "embedded_preview_url": "https://www.signwell.com/preview/document/582a6a8f/",
+              "error_message": null,
+              "expires_in": 30,
+              "files": [
+                {
+                  "name": "agreement.pdf",
+                  "pages_number": 3
+                }
+              ],
+              "id": "582a6a8f-931b-491d-91f3-b27cdefa7878",
+              "message": "Let me know if anything needs changing before you sign.",
+              "metadata": {
+                "deal_id": "4821"
+              },
+              "name": "Consulting agreement",
+              "recipients": [
+                {
+                  "delivery_method": "email",
+                  "email": "ada@example.com",
+                  "id": "023d6b54-8cb0-4efb-928c-14c0758070bc",
+                  "name": "Ada Lovelace",
+                  "signing_order": 1,
+                  "signing_url": "https://www.signwell.com/docs/b98cc5a442/",
+                  "status": "sent"
+                }
+              ],
+              "requester_email_address": "grace@example.com",
+              "status": "Sent",
+              "subject": "Please sign the consulting agreement",
+              "test_mode": true,
+              "updated_at": "2026-01-28T16:59:03Z"
+            }
+          },
+          "name": "get_document",
+          "parameters": [
+            {
+              "description": "The document's SignWell id. You can get this from either create action, or from the end of the document's page URL.",
+              "name": "document_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/signwell/get-document",
+          "result_str_template": "The document is {signwell_get_document,document,status}.",
+          "returns": {
+            "properties": {
+              "document": {
+                "properties": {
+                  "apply_signing_order": {
+                    "description": "True when recipients sign one after another.",
+                    "type": "boolean"
+                  },
+                  "archived": {
+                    "description": "True once the document has been archived.",
+                    "type": "boolean"
+                  },
+                  "created_at": {
+                    "description": "When the document was created, ISO 8601 UTC.",
+                    "type": "string"
+                  },
+                  "decline_message": {
+                    "description": "Why a recipient declined, when one did.",
+                    "type": "string"
+                  },
+                  "embedded_edit_url": {
+                    "description": "Link for editing the document in an embedded iframe. Only set on draft documents.",
+                    "type": "string"
+                  },
+                  "embedded_preview_url": {
+                    "description": "Link for previewing the document in an embedded iframe. Only set once the document has been sent.",
+                    "type": "string"
+                  },
+                  "error_message": {
+                    "description": "What went wrong with the document, if anything.",
+                    "type": "string"
+                  },
+                  "expires_in": {
+                    "description": "Days until the document expires, if a limit was set.",
+                    "type": "number"
+                  },
+                  "files": {
+                    "description": "The documents that make up this envelope.",
+                    "items": {
+                      "properties": {
+                        "name": {
+                          "description": "File name.",
+                          "type": "string"
+                        },
+                        "pages_number": {
+                          "description": "How many pages the file has.",
+                          "type": "number"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "id": {
+                    "description": "The document's id, taken by the get, remind, delete, and download actions.",
+                    "type": "string"
+                  },
+                  "message": {
+                    "description": "Message shown in the email sent to recipients.",
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "description": "Whatever custom metadata was attached to the document.",
+                    "type": "object"
+                  },
+                  "name": {
+                    "description": "The document's name.",
+                    "type": "string"
+                  },
+                  "recipients": {
+                    "description": "Everyone on the document, with their current status.",
+                    "items": {
+                      "properties": {
+                        "delivery_method": {
+                          "description": "How they are notified: email, sms, or both.",
+                          "type": "string"
+                        },
+                        "email": {
+                          "description": "The recipient's email address.",
+                          "type": "string"
+                        },
+                        "id": {
+                          "description": "SignWell's id for this recipient on the document.",
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "The recipient's name.",
+                          "type": "string"
+                        },
+                        "signing_order": {
+                          "description": "Where they fall in the signing sequence.",
+                          "type": "number"
+                        },
+                        "signing_url": {
+                          "description": "The recipient's personal signing link. Null until the document has been sent.",
+                          "type": "string"
+                        },
+                        "status": {
+                          "description": "How far this recipient has got: created, sent, viewed, signed, declined, or bounced.",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "requester_email_address": {
+                    "description": "Who sent the document.",
+                    "type": "string"
+                  },
+                  "status": {
+                    "description": "The document's own signing state: Created, Sent, Completed, Declined, or Expired.",
+                    "type": "string"
+                  },
+                  "subject": {
+                    "description": "Subject line of the email sent to recipients.",
+                    "type": "string"
+                  },
+                  "test_mode": {
+                    "description": "True for a test document, which is not legally binding.",
+                    "type": "boolean"
+                  },
+                  "updated_at": {
+                    "description": "When the document last changed, ISO 8601 UTC.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_template": {
+          "description": "Get a template with the recipient roles and the field ids it expects, which is exactly what Create SignWell document from template needs to fill in.",
+          "display_name": "Get SignWell template",
+          "display_str_template": "Get the SignWell template '{0}'.",
+          "handler": "actions.get_template",
+          "id": "signwell_get_template",
+          "method": "POST",
+          "mock_response": {
+            "template": {
+              "apply_signing_order": true,
+              "archived": false,
+              "created_at": "2026-01-24T16:59:23Z",
+              "embedded_edit_url": "https://www.signwell.com/edit/template/9af41161/",
+              "field_api_ids": [
+                "company_name",
+                "start_date"
+              ],
+              "id": "0ac7e607-a1a2-41ff-b01b-3fdca3cbba71",
+              "message": "Standard terms, nothing unusual.",
+              "name": "Consulting agreement",
+              "placeholders": [
+                {
+                  "id": "1",
+                  "name": "Client"
+                },
+                {
+                  "id": "2",
+                  "name": "Contractor"
+                }
+              ],
+              "status": "Available",
+              "subject": "Please sign the consulting agreement",
+              "template_link": "https://www.signwell.com/new_doc/rVkU9XeirC1PSEXT/",
+              "updated_at": "2026-01-24T16:59:23Z"
+            }
+          },
+          "name": "get_template",
+          "parameters": [
+            {
+              "description": "The template's SignWell id, from the template's page URL.",
+              "name": "template_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/signwell/get-template",
+          "result_str_template": "Fetched '{signwell_get_template,template,name}'.",
+          "returns": {
+            "properties": {
+              "template": {
+                "properties": {
+                  "apply_signing_order": {
+                    "description": "True when the template makes people sign in sequence.",
+                    "type": "boolean"
+                  },
+                  "archived": {
+                    "description": "True once the template is archived.",
+                    "type": "boolean"
+                  },
+                  "created_at": {
+                    "description": "When it was created, ISO 8601 UTC.",
+                    "type": "string"
+                  },
+                  "embedded_edit_url": {
+                    "description": "Link for editing the template in an embedded iframe.",
+                    "type": "string"
+                  },
+                  "field_api_ids": {
+                    "description": "The api_id of every field on the template. These are the keys template_fields accepts.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "id": {
+                    "description": "Template id, taken by Create SignWell document from template.",
+                    "type": "string"
+                  },
+                  "message": {
+                    "description": "Default email message.",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Template name.",
+                    "type": "string"
+                  },
+                  "placeholders": {
+                    "description": "The roles a document must supply a recipient for. Pass the name as placeholder_name.",
+                    "items": {
+                      "properties": {
+                        "id": {
+                          "description": "Placeholder id.",
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "Role name, e.g. Client.",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "status": {
+                    "description": "Whether the template is Available to use.",
+                    "type": "string"
+                  },
+                  "subject": {
+                    "description": "Default email subject.",
+                    "type": "string"
+                  },
+                  "template_link": {
+                    "description": "Public self-serve link that starts a document from this template.",
+                    "type": "string"
+                  },
+                  "updated_at": {
+                    "description": "When it last changed, ISO 8601 UTC.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "send_reminder": {
+          "description": "Remind everyone who has not signed the document yet. Each person is reminded through whichever delivery method they were set up with.",
+          "display_name": "Send SignWell reminder",
+          "display_str_template": "Send a SignWell reminder for document '{0}'.",
+          "handler": "actions.send_reminder",
+          "id": "signwell_send_reminder",
+          "method": "POST",
+          "mock_response": {
+            "document": {
+              "apply_signing_order": false,
+              "archived": false,
+              "created_at": "2026-01-28T16:59:03Z",
+              "decline_message": null,
+              "embedded_edit_url": null,
+              "embedded_preview_url": "https://www.signwell.com/preview/document/582a6a8f/",
+              "error_message": null,
+              "expires_in": 30,
+              "files": [
+                {
+                  "name": "agreement.pdf",
+                  "pages_number": 3
+                }
+              ],
+              "id": "582a6a8f-931b-491d-91f3-b27cdefa7878",
+              "message": "Let me know if anything needs changing before you sign.",
+              "metadata": {
+                "deal_id": "4821"
+              },
+              "name": "Consulting agreement",
+              "recipients": [
+                {
+                  "delivery_method": "email",
+                  "email": "ada@example.com",
+                  "id": "023d6b54-8cb0-4efb-928c-14c0758070bc",
+                  "name": "Ada Lovelace",
+                  "signing_order": 1,
+                  "signing_url": "https://www.signwell.com/docs/b98cc5a442/",
+                  "status": "sent"
+                }
+              ],
+              "requester_email_address": "grace@example.com",
+              "status": "Sent",
+              "subject": "Please sign the consulting agreement",
+              "test_mode": true,
+              "updated_at": "2026-01-28T16:59:03Z"
+            }
+          },
+          "name": "send_reminder",
+          "parameters": [
+            {
+              "description": "The document's SignWell id. You can get this from either create action, or from the end of the document's page URL.",
+              "name": "document_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/signwell/send-reminder",
+          "result_str_template": "Reminder sent.",
+          "returns": {
+            "properties": {
+              "document": {
+                "properties": {
+                  "apply_signing_order": {
+                    "description": "True when recipients sign one after another.",
+                    "type": "boolean"
+                  },
+                  "archived": {
+                    "description": "True once the document has been archived.",
+                    "type": "boolean"
+                  },
+                  "created_at": {
+                    "description": "When the document was created, ISO 8601 UTC.",
+                    "type": "string"
+                  },
+                  "decline_message": {
+                    "description": "Why a recipient declined, when one did.",
+                    "type": "string"
+                  },
+                  "embedded_edit_url": {
+                    "description": "Link for editing the document in an embedded iframe. Only set on draft documents.",
+                    "type": "string"
+                  },
+                  "embedded_preview_url": {
+                    "description": "Link for previewing the document in an embedded iframe. Only set once the document has been sent.",
+                    "type": "string"
+                  },
+                  "error_message": {
+                    "description": "What went wrong with the document, if anything.",
+                    "type": "string"
+                  },
+                  "expires_in": {
+                    "description": "Days until the document expires, if a limit was set.",
+                    "type": "number"
+                  },
+                  "files": {
+                    "description": "The documents that make up this envelope.",
+                    "items": {
+                      "properties": {
+                        "name": {
+                          "description": "File name.",
+                          "type": "string"
+                        },
+                        "pages_number": {
+                          "description": "How many pages the file has.",
+                          "type": "number"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "id": {
+                    "description": "The document's id, taken by the get, remind, delete, and download actions.",
+                    "type": "string"
+                  },
+                  "message": {
+                    "description": "Message shown in the email sent to recipients.",
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "description": "Whatever custom metadata was attached to the document.",
+                    "type": "object"
+                  },
+                  "name": {
+                    "description": "The document's name.",
+                    "type": "string"
+                  },
+                  "recipients": {
+                    "description": "Everyone on the document, with their current status.",
+                    "items": {
+                      "properties": {
+                        "delivery_method": {
+                          "description": "How they are notified: email, sms, or both.",
+                          "type": "string"
+                        },
+                        "email": {
+                          "description": "The recipient's email address.",
+                          "type": "string"
+                        },
+                        "id": {
+                          "description": "SignWell's id for this recipient on the document.",
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "The recipient's name.",
+                          "type": "string"
+                        },
+                        "signing_order": {
+                          "description": "Where they fall in the signing sequence.",
+                          "type": "number"
+                        },
+                        "signing_url": {
+                          "description": "The recipient's personal signing link. Null until the document has been sent.",
+                          "type": "string"
+                        },
+                        "status": {
+                          "description": "How far this recipient has got: created, sent, viewed, signed, declined, or bounced.",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "requester_email_address": {
+                    "description": "Who sent the document.",
+                    "type": "string"
+                  },
+                  "status": {
+                    "description": "The document's own signing state: Created, Sent, Completed, Declined, or Expired.",
+                    "type": "string"
+                  },
+                  "subject": {
+                    "description": "Subject line of the email sent to recipients.",
+                    "type": "string"
+                  },
+                  "test_mode": {
+                    "description": "True for a test document, which is not legally binding.",
+                    "type": "boolean"
+                  },
+                  "updated_at": {
+                    "description": "When the document last changed, ISO 8601 UTC.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               }
             },
             "type": "object"
           }
         }
       },
-      "description": "Create documents from your SignWell templates and send them out for e-signature.",
+      "description": "Send documents for e-signature with SignWell: create a document from a template or from your own files, track where each recipient has got to, remind whoever is holding things up, download the signed PDF, and delete a document to cancel signing.",
       "display_name": "SignWell",
       "id": "signwell"
     },
