@@ -283320,6 +283320,604 @@
     },
     {
       "actions": {
+        "check_service_status": {
+          "description": "Check whether the Official Joke API is answering, and how quickly. This is the one action that reports a problem as a value instead of failing the step, so a workflow can decide what to do about it. Being rate limited is reported separately from being down, since the service allows 100 requests every 15 minutes per address.",
+          "display_name": "Check service status",
+          "display_str_template": "Check the Official Joke API status.",
+          "handler": "actions.check_service_status",
+          "id": "official_joke_api_check_service_status",
+          "method": "POST",
+          "mock_response": {
+            "message": "The Official Joke API is up and answering.",
+            "online": true,
+            "rate_limited": false,
+            "reachable": true,
+            "response_time_ms": 142.7,
+            "status_code": 200
+          },
+          "name": "check_service_status",
+          "output_formatter": "actions.format_status_output",
+          "parameters": [],
+          "path": "/actions/library/official-joke-api/check-service-status",
+          "result_str_template": "Service status checked.",
+          "returns": {
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "online": {
+                "type": "boolean"
+              },
+              "rate_limited": {
+                "type": "boolean"
+              },
+              "reachable": {
+                "type": "boolean"
+              },
+              "response_time_ms": {
+                "type": "number"
+              },
+              "status_code": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_joke_by_id": {
+          "description": "Get one specific joke by its id, for re-reading a joke an earlier step found. Ids are positions in the service's joke file and are handed out when it restarts, so a joke inserted upstream shifts every id after it: store the joke itself, not its id, if it has to still mean the same thing next month.",
+          "display_name": "Get a joke by id",
+          "display_str_template": "Get joke {0}.",
+          "handler": "actions.get_joke_by_id",
+          "id": "official_joke_api_get_joke_by_id",
+          "method": "POST",
+          "mock_response": {
+            "joke": {
+              "id": 14,
+              "punchline": "He's adept at riffing in C#.",
+              "setup": "Why would a guitarist become a good programmer?",
+              "text": "Why would a guitarist become a good programmer?\nHe's adept at riffing in C#.",
+              "type": "programming"
+            }
+          },
+          "name": "get_joke_by_id",
+          "output_formatter": "actions.format_joke_output",
+          "parameters": [
+            {
+              "description": "The joke's numeric id. A full official-joke-api.appspot.com joke URL is also accepted.",
+              "display_name": "Joke ID",
+              "examples": [
+                {
+                  "label": "Joke id",
+                  "value": "14"
+                },
+                {
+                  "label": "Joke URL",
+                  "value": "https://official-joke-api.appspot.com/jokes/14"
+                }
+              ],
+              "name": "joke_id",
+              "required": true,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/official-joke-api/get-joke-by-id",
+          "result_str_template": "Joke retrieved.",
+          "returns": {
+            "properties": {
+              "joke": {
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "punchline": {
+                    "type": "string"
+                  },
+                  "setup": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_joke_of_the_day": {
+          "description": "Pick one joke for a day and keep picking that same joke all day. A random draw gives a different joke on every call, so a daily workflow that retries, or that two people run an hour apart, tells two different jokes for the one day. This one is fixed by the date: the same date always gives the same joke, and tomorrow gives a different one. Add a seed of your own to have two workspaces tell different jokes on the same day.",
+          "display_name": "Get the joke of the day",
+          "display_str_template": "Get the joke of the day for {0}.",
+          "handler": "actions.get_joke_of_the_day",
+          "id": "official_joke_api_get_joke_of_the_day",
+          "method": "POST",
+          "mock_response": {
+            "date": "2026-08-25",
+            "joke": {
+              "id": 1,
+              "punchline": "Dam.",
+              "setup": "What did the fish say when it hit the wall?",
+              "text": "What did the fish say when it hit the wall?\nDam.",
+              "type": "general"
+            },
+            "joke_type": null,
+            "pool_size": 451,
+            "seed": "2026-08-25"
+          },
+          "name": "get_joke_of_the_day",
+          "output_formatter": "actions.format_joke_of_the_day_output",
+          "parameters": [
+            {
+              "description": "The day to pick a joke for. Leave empty for today in UTC, which is what a scheduled step wants.",
+              "display_name": "Day",
+              "name": "date",
+              "required": false,
+              "type": "ParameterType.DATE"
+            },
+            {
+              "description": "Only return jokes of this type. The service publishes general, programming, knock-knock and dad; run Get joke types for the current list. Leave empty to draw from every joke.",
+              "display_name": "Joke type",
+              "examples": [
+                {
+                  "label": "General",
+                  "value": "general"
+                },
+                {
+                  "label": "Programming",
+                  "value": "programming"
+                },
+                {
+                  "label": "Knock-knock",
+                  "value": "knock-knock"
+                },
+                {
+                  "label": "Dad",
+                  "value": "dad"
+                }
+              ],
+              "name": "joke_type",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Any text you like, mixed into the day so that two workspaces running this on the same day get different jokes. Leave empty to share the day's joke with everyone else.",
+              "display_name": "Seed",
+              "examples": [
+                {
+                  "label": "A team name",
+                  "value": "platform-standup"
+                }
+              ],
+              "name": "seed",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/official-joke-api/get-joke-of-the-day",
+          "result_str_template": "Joke of the day retrieved.",
+          "returns": {
+            "properties": {
+              "date": {
+                "type": "string"
+              },
+              "joke": {
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "punchline": {
+                    "type": "string"
+                  },
+                  "setup": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "joke_type": {
+                "type": "string"
+              },
+              "pool_size": {
+                "type": "number"
+              },
+              "seed": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_random_joke": {
+          "description": "Get one random joke, with its setup and punchline both separately and joined together ready to post. Narrow it to a type such as programming or dad, or leave the type empty to draw from the whole catalogue.",
+          "display_name": "Get a random joke",
+          "display_str_template": "Get a random {0} joke.",
+          "handler": "actions.get_random_joke",
+          "id": "official_joke_api_get_random_joke",
+          "method": "POST",
+          "mock_response": {
+            "joke": {
+              "id": 14,
+              "punchline": "He's adept at riffing in C#.",
+              "setup": "Why would a guitarist become a good programmer?",
+              "text": "Why would a guitarist become a good programmer?\nHe's adept at riffing in C#.",
+              "type": "programming"
+            },
+            "joke_type": "programming"
+          },
+          "name": "get_random_joke",
+          "output_formatter": "actions.format_joke_output",
+          "parameters": [
+            {
+              "description": "Only return jokes of this type. The service publishes general, programming, knock-knock and dad; run Get joke types for the current list. Leave empty to draw from every joke.",
+              "display_name": "Joke type",
+              "examples": [
+                {
+                  "label": "General",
+                  "value": "general"
+                },
+                {
+                  "label": "Programming",
+                  "value": "programming"
+                },
+                {
+                  "label": "Knock-knock",
+                  "value": "knock-knock"
+                },
+                {
+                  "label": "Dad",
+                  "value": "dad"
+                }
+              ],
+              "name": "joke_type",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/official-joke-api/get-random-joke",
+          "result_str_template": "Joke retrieved.",
+          "returns": {
+            "properties": {
+              "joke": {
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "punchline": {
+                    "type": "string"
+                  },
+                  "setup": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "joke_type": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "get_random_jokes": {
+          "description": "Get several different jokes at once, up to 100, optionally all of one type. No joke is drawn twice in the same batch. Give it a seed and the same seed draws the same jokes in the same order every time, so a run can be repeated; leave the seed empty for a fresh draw. Asking for more jokes of a type than exist returns all of them rather than failing.",
+          "display_name": "Get random jokes",
+          "display_str_template": "Get {0} random jokes.",
+          "handler": "actions.get_random_jokes",
+          "id": "official_joke_api_get_random_jokes",
+          "method": "POST",
+          "mock_response": {
+            "joke_count": 2,
+            "joke_type": null,
+            "jokes": [
+              {
+                "id": 1,
+                "punchline": "Dam.",
+                "setup": "What did the fish say when it hit the wall?",
+                "text": "What did the fish say when it hit the wall?\nDam.",
+                "type": "general"
+              },
+              {
+                "id": 14,
+                "punchline": "He's adept at riffing in C#.",
+                "setup": "Why would a guitarist become a good programmer?",
+                "text": "Why would a guitarist become a good programmer?\nHe's adept at riffing in C#.",
+                "type": "programming"
+              }
+            ],
+            "requested_count": 2,
+            "seed": null
+          },
+          "name": "get_random_jokes",
+          "output_formatter": "actions.format_jokes_output",
+          "parameters": [
+            {
+              "description": "How many jokes to draw, from 1 to 100. Defaults to 10.",
+              "display_name": "Number of jokes",
+              "maximum": "actions.MAX_JOKE_COUNT",
+              "minimum": 1,
+              "name": "count",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            },
+            {
+              "description": "Only return jokes of this type. The service publishes general, programming, knock-knock and dad; run Get joke types for the current list. Leave empty to draw from every joke.",
+              "display_name": "Joke type",
+              "examples": [
+                {
+                  "label": "General",
+                  "value": "general"
+                },
+                {
+                  "label": "Programming",
+                  "value": "programming"
+                },
+                {
+                  "label": "Knock-knock",
+                  "value": "knock-knock"
+                },
+                {
+                  "label": "Dad",
+                  "value": "dad"
+                }
+              ],
+              "name": "joke_type",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Any text you like. The same seed always draws the same jokes, so a workflow can be re-run and get the same batch. Leave empty for a different draw each time.",
+              "display_name": "Seed",
+              "examples": [
+                {
+                  "label": "A campaign name",
+                  "value": "spring-newsletter"
+                },
+                {
+                  "label": "A date",
+                  "value": "2026-08-25"
+                }
+              ],
+              "name": "seed",
+              "required": false,
+              "type": "ParameterType.STRING"
+            }
+          ],
+          "path": "/actions/library/official-joke-api/get-random-jokes",
+          "result_str_template": "Jokes retrieved.",
+          "returns": {
+            "properties": {
+              "joke_count": {
+                "type": "number"
+              },
+              "joke_type": {
+                "type": "string"
+              },
+              "jokes": {
+                "items": {
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "punchline": {
+                      "type": "string"
+                    },
+                    "setup": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "requested_count": {
+                "type": "number"
+              },
+              "seed": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "list_joke_types": {
+          "description": "List the joke types the service currently publishes and how many jokes each one holds, biggest first, so a step that filters by type knows what it can ask for and how much there is to draw on.",
+          "display_name": "Get joke types",
+          "display_str_template": "Get the Official Joke API joke types.",
+          "handler": "actions.list_joke_types",
+          "id": "official_joke_api_list_joke_types",
+          "method": "POST",
+          "mock_response": {
+            "total_jokes": 451,
+            "type_count": 4,
+            "types": [
+              {
+                "joke_count": 380,
+                "type": "general"
+              },
+              {
+                "joke_count": 64,
+                "type": "programming"
+              },
+              {
+                "joke_count": 5,
+                "type": "knock-knock"
+              },
+              {
+                "joke_count": 2,
+                "type": "dad"
+              }
+            ]
+          },
+          "name": "list_joke_types",
+          "output_formatter": "actions.format_types_output",
+          "parameters": [],
+          "path": "/actions/library/official-joke-api/list-joke-types",
+          "result_str_template": "Joke types retrieved.",
+          "returns": {
+            "properties": {
+              "total_jokes": {
+                "type": "number"
+              },
+              "type_count": {
+                "type": "number"
+              },
+              "types": {
+                "items": {
+                  "properties": {
+                    "joke_count": {
+                      "type": "number"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "search_jokes": {
+          "description": "Find jokes about something: search every setup and punchline for a word or phrase, best match first. A joke matches on the whole phrase, or on all of your words appearing somewhere in it, and each result says whether the match was in the setup or the punchline. The service has no search of its own, so this reads its whole catalogue and matches here.",
+          "display_name": "Search jokes",
+          "display_str_template": "Search jokes for {0}.",
+          "handler": "actions.search_jokes",
+          "id": "official_joke_api_search_jokes",
+          "method": "POST",
+          "mock_response": {
+            "joke_type": "programming",
+            "match_count": 1,
+            "matches": [
+              {
+                "matched_fields": [
+                  "setup"
+                ]
+              }
+            ],
+            "query": "guitarist",
+            "total_matches": 1
+          },
+          "name": "search_jokes",
+          "output_formatter": "actions.format_search_output",
+          "parameters": [
+            {
+              "description": "The word or phrase to look for in setups and punchlines.",
+              "display_name": "Search for",
+              "examples": [
+                {
+                  "label": "A subject",
+                  "value": "coffee"
+                },
+                {
+                  "label": "A phrase",
+                  "value": "police report"
+                }
+              ],
+              "name": "query",
+              "required": true,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "Only search jokes of this type. Leave empty to search every joke.",
+              "display_name": "Joke type",
+              "examples": [
+                {
+                  "label": "General",
+                  "value": "general"
+                },
+                {
+                  "label": "Programming",
+                  "value": "programming"
+                },
+                {
+                  "label": "Knock-knock",
+                  "value": "knock-knock"
+                },
+                {
+                  "label": "Dad",
+                  "value": "dad"
+                }
+              ],
+              "name": "joke_type",
+              "required": false,
+              "type": "ParameterType.STRING"
+            },
+            {
+              "description": "How many matches to return, from 1 to 100. Defaults to 10. The total number of matches is always reported, however many are returned.",
+              "display_name": "Number of results",
+              "maximum": "actions.MAX_SEARCH_LIMIT",
+              "minimum": 1,
+              "name": "limit",
+              "required": false,
+              "type": "ParameterType.NUMBER"
+            }
+          ],
+          "path": "/actions/library/official-joke-api/search-jokes",
+          "result_str_template": "Joke search complete.",
+          "returns": {
+            "properties": {
+              "joke_type": {
+                "type": "string"
+              },
+              "match_count": {
+                "type": "number"
+              },
+              "matches": {
+                "items": {
+                  "properties": {
+                    "matched_fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "query": {
+                "type": "string"
+              },
+              "total_matches": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "description": "Pull jokes from the Official Joke API's open catalogue of several hundred setups and punchlines. Draw one at random or a batch of them, narrow to a type such as programming, knock-knock or dad, search every joke for a subject, look one up by id, or pick a joke of the day that stays the same all day so a scheduled post never tells two.",
+      "display_name": "Official Joke API",
+      "id": "official_joke_api"
+    },
+    {
+      "actions": {
         "activate_user": {
           "description": "Activate an Okta user account without sending an activation email.",
           "display_name": "Activate user",
