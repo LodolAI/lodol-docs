@@ -3,9 +3,6 @@ name: Deploy the Docs live
 on:
   push:
     branches: ["main"]
-    paths:
-      - "**"
-      - ".github/workflows/deploy-docs.yml"
 
 env:
   REGION: us-west1
@@ -32,17 +29,84 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker us-west1-docker.pkg.dev --quiet
 
+      # Tag by commit as well as latest, so every deployed revision maps back to
+      # the exact image that produced it and can be redeployed as-is.
       - name: Build & push Docker image
         run: |
-          docker build -t $IMAGE .
-          docker push $IMAGE
+          docker build -t "$IMAGE:$GITHUB_SHA" -t "$IMAGE:latest" .
+          docker push "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:latest"
 
-      - name: Deploy to Cloud Run
+      # The deploy states the resources the service needs instead of inheriting
+      # Cloud Run's defaults. Measured against the 575-provider catalog: the
+      # server holds ~460 MB resident after boot and ~825 MB once the search
+      # index is built, so the 512 MiB default limit killed every instance and
+      # the site served nothing but 503s.
+      #
+      # The revision takes no traffic until it has proven it can serve. If it
+      # cannot, this job fails and the previous revision keeps serving.
+      - name: Deploy new revision (no traffic yet)
         run: |
-          gcloud run deploy $SERVICE \
-            --image $IMAGE \
-            --region $REGION \
+          gcloud run deploy "$SERVICE" \
+            --image "$IMAGE:$GITHUB_SHA" \
+            --region "$REGION" \
             --platform managed \
-            --port $PORT \
+            --port "$PORT" \
             --service-account=941033595490-compute@developer.gserviceaccount.com \
+            --memory 2Gi \
+            --cpu 2 \
+            --cpu-boost \
+            --min-instances 1 \
+            --max-instances 10 \
+            --concurrency 40 \
+            --timeout 60s \
+            --no-traffic \
+            --tag candidate \
+            --quiet
+
+      - name: Check the new revision serves the docs
+        run: |
+          set -euo pipefail
+
+          CANDIDATE_URL="$(
+            gcloud run services describe "$SERVICE" --region "$REGION" --format=json \
+              | jq -r '.status.traffic[] | select(.tag == "candidate") | .url'
+          )"
+
+          if [ -z "$CANDIDATE_URL" ]; then
+            echo "::error::Could not resolve the candidate revision's URL."
+            exit 1
+          fi
+
+          echo "Checking $CANDIDATE_URL"
+
+          # Each page is checked with retries so a cold start is not mistaken
+          # for a broken build, but a revision that cannot serve fails them all.
+          check() {
+            path="$1"
+            code=000
+            for attempt in $(seq 1 10); do
+              code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$CANDIDATE_URL$path" || echo 000)"
+              if [ "$code" = "200" ]; then
+                echo "  ok   $path"
+                return 0
+              fi
+              echo "  $code  $path (attempt $attempt/10)"
+              sleep 10
+            done
+            echo "::error::$path returned $code. Not sending traffic to this revision."
+            return 1
+          }
+
+          # The landing page, the heaviest docs page, and the search endpoint —
+          # between them they load everything that has to fit in memory.
+          check "/"
+          check "/docs/api-reference/actions"
+          check "/api/search?query=slack"
+
+      - name: Send all traffic to the new revision
+        run: |
+          gcloud run services update-traffic "$SERVICE" \
+            --region "$REGION" \
+            --to-latest \
             --quiet
