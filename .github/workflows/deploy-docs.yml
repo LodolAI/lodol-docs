@@ -9,6 +9,7 @@ env:
   SERVICE: docs
   IMAGE: us-west1-docker.pkg.dev/skipflow/docs-repo/docs
   PORT: 3000
+  SITE_URL: https://docs.lodol.com
 
 jobs:
   deploy-docs:
@@ -37,15 +38,25 @@ jobs:
           docker push "$IMAGE:$GITHUB_SHA"
           docker push "$IMAGE:latest"
 
+      # Note the revision serving before this deploy, so a failed deploy can be
+      # rolled back with a single command from the job log.
+      - name: Note the revision currently serving
+        id: previous
+        run: |
+          set -euo pipefail
+          PREVIOUS="$(
+            gcloud run services describe "$SERVICE" --region "$REGION" --format=json \
+              | jq -r '[.status.traffic[] | select((.percent // 0) > 0) | .revisionName] | first // empty'
+          )"
+          echo "revision=$PREVIOUS" >> "$GITHUB_OUTPUT"
+          echo "Currently serving: ${PREVIOUS:-none}"
+
       # The deploy states the resources the service needs instead of inheriting
       # Cloud Run's defaults. Measured against the 575-provider catalog: the
       # server holds ~460 MB resident after boot and ~825 MB once the search
-      # index is built, so the 512 MiB default limit killed every instance and
-      # the site served nothing but 503s.
-      #
-      # The revision takes no traffic until it has proven it can serve. If it
-      # cannot, this job fails and the previous revision keeps serving.
-      - name: Deploy new revision (no traffic yet)
+      # index is built, well past the 512 MiB default limit that was killing
+      # every instance and leaving the site serving nothing but 503s.
+      - name: Deploy to Cloud Run
         run: |
           gcloud run deploy "$SERVICE" \
             --image "$IMAGE:$GITHUB_SHA" \
@@ -60,33 +71,29 @@ jobs:
             --max-instances 10 \
             --concurrency 40 \
             --timeout 60s \
-            --no-traffic \
-            --tag candidate \
             --quiet
 
-      - name: Check the new revision serves the docs
+      # A deploy is not a success until the site actually serves pages. Cloud
+      # Run's own startup probe only checks that the port opens, which Next does
+      # in milliseconds before the app does any work -- that is why this job kept
+      # reporting success while docs.lodol.com was returning 503 to everyone.
+      #
+      # This checks the public site, because the service's run.app URL is not
+      # externally reachable (it answers 404 at the Google Frontend), so there is
+      # no address that reaches a revision before it takes traffic.
+      - name: Check the site is actually serving
         run: |
           set -euo pipefail
 
-          CANDIDATE_URL="$(
-            gcloud run services describe "$SERVICE" --region "$REGION" --format=json \
-              | jq -r '.status.traffic[] | select(.tag == "candidate") | .url'
-          )"
+          echo "Checking $SITE_URL"
 
-          if [ -z "$CANDIDATE_URL" ]; then
-            echo "::error::Could not resolve the candidate revision's URL."
-            exit 1
-          fi
-
-          echo "Checking $CANDIDATE_URL"
-
-          # Each page is checked with retries so a cold start is not mistaken
-          # for a broken build, but a revision that cannot serve fails them all.
+          # Retried so a cold start is not mistaken for a broken deploy, but a
+          # revision that cannot serve fails every attempt.
           check() {
             path="$1"
             code=000
             for attempt in $(seq 1 10); do
-              code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$CANDIDATE_URL$path" || echo 000)"
+              code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$SITE_URL$path" || echo 000)"
               if [ "$code" = "200" ]; then
                 echo "  ok   $path"
                 return 0
@@ -94,19 +101,20 @@ jobs:
               echo "  $code  $path (attempt $attempt/10)"
               sleep 10
             done
-            echo "::error::$path returned $code. Not sending traffic to this revision."
+            echo "::error::$path returned $code -- the site is not serving."
             return 1
           }
 
-          # The landing page, the heaviest docs page, and the search endpoint —
+          # The landing page, the heaviest docs page, and the search endpoint --
           # between them they load everything that has to fit in memory.
-          check "/"
-          check "/docs/api-reference/actions"
-          check "/api/search?query=slack"
+          if check "/" && check "/docs/api-reference/actions" && check "/api/search?query=slack"; then
+            echo "The docs are serving."
+            exit 0
+          fi
 
-      - name: Send all traffic to the new revision
-        run: |
-          gcloud run services update-traffic "$SERVICE" \
-            --region "$REGION" \
-            --to-latest \
-            --quiet
+          PREVIOUS="${{ steps.previous.outputs.revision }}"
+          if [ -n "$PREVIOUS" ]; then
+            echo "::error::To put the previous revision back:"
+            echo "::error::  gcloud run services update-traffic $SERVICE --region $REGION --to-revisions=$PREVIOUS=100"
+          fi
+          exit 1
