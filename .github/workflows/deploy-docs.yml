@@ -81,9 +81,29 @@ jobs:
       # This checks the public site, because the service's run.app URL is not
       # externally reachable (it answers 404 at the Google Frontend), so there is
       # no address that reaches a revision before it takes traffic.
-      - name: Check the site is actually serving
+      - name: Check the deploy actually reached users
         run: |
           set -euo pipefail
+
+          # Traffic can be pinned to a named revision, in which case a deploy
+          # lands but never goes live and the page checks below would pass
+          # against the old one. Confirm the revision just built is the one
+          # users are getting before trusting anything else.
+          DEPLOYED="$(
+            gcloud run services describe "$SERVICE" --region "$REGION" \
+              --format='value(status.latestCreatedRevisionName)'
+          )"
+          SERVING="$(
+            gcloud run services describe "$SERVICE" --region "$REGION" --format=json \
+              | jq -r '[.status.traffic[] | select((.percent // 0) > 0) | .revisionName] | first // empty'
+          )"
+          if [ "$DEPLOYED" != "$SERVING" ]; then
+            echo "::error::Deployed $DEPLOYED but ${SERVING:-nothing} is serving traffic."
+            echo "::error::Traffic is pinned to a revision. To follow new deploys again:"
+            echo "::error::  gcloud run services update-traffic $SERVICE --region $REGION --to-latest"
+            exit 1
+          fi
+          echo "Serving revision: $SERVING"
 
           echo "Checking $SITE_URL"
 
