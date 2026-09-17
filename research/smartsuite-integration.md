@@ -258,7 +258,8 @@ reuse matter more here than they do for Airtable.
 
 ### Endpoint inventory
 
-Everything relevant, from the official docs:
+Everything relevant, from the official docs. [Part 5](#part-5--full-scope-of-buildable-actions)
+takes the same list and works through what each one would become as an action.
 
 | Area | Endpoint | Method | Notes |
 | --- | --- | --- | --- |
@@ -417,17 +418,162 @@ secret_fields = (
 
 ### Deliberately out of v1
 
-- **Bulk record actions** (capped at 25 and bulk-create skips required-field
-  validation — awkward semantics to surface in a builder). Worth a v2 if
-  customers hit per-record throughput limits, since bulk is also the cheapest
-  way to stay inside the monthly quota.
-- **Schema manipulation** (create solution/table/field). Real endpoints, but
-  no existing provider of ours exposes schema writes, and the payloads are
-  large.
-- **File upload** (`multipart/form-data` — different from the JSON client, and
-  `accepts_file_upload` on a ParameterSpec would need wiring).
-- **Members / teams listing.** Cheap to add later if a workflow needs to
-  resolve an assignee id.
+Everything in [Part 5](#part-5--full-scope-of-buildable-actions) that isn't in
+the table above. The short rationale: bulk has awkward semantics to surface in
+a builder, schema writes have no precedent in our library, file upload needs a
+second client, and org management is only useful once something needs to
+resolve an assignee. All are buildable; none are needed to make the provider
+useful on day one.
+
+---
+
+## Part 5 — Full scope of buildable actions
+
+SmartSuite documents **39 REST surfaces**. Below is all of them, grouped, with
+a verdict on each. "Buildable" here means documented well enough to implement
+from public docs today — every row marked ✅ could be an action.
+
+### Records — 13 surfaces
+
+| # | Endpoint | Method | Action it would become | Verdict |
+| --- | --- | --- | --- | --- |
+| 1 | `/applications/{t}/records/list/` | POST | `list_records` (sort + filter + pagination + `hydrated`) | ✅ v1 |
+| 2 | `/applications/{t}/records/{r}/` | GET | `get_record` | ✅ v1 |
+| 3 | `/applications/{t}/records/` | POST | `create_record` | ✅ v1 |
+| 4 | `/applications/{t}/records/{r}/` | PATCH | `update_record` (never PUT — destructive) | ✅ v1 |
+| 5 | `/applications/{t}/records/{r}/` | DELETE | `delete_record` | ✅ v1 |
+| 6 | `/applications/{t}/records/bulk/` | POST | `bulk_create_records` — max 25, **skips required-field validation** | ✅ |
+| 7 | `/applications/{t}/records/bulk/` | PATCH | `bulk_update_records` — max 25, each item needs `id` | ✅ |
+| 8 | `/applications/{t}/records/bulk_delete/` | PATCH | `bulk_delete_records` — max 25 ids | ✅ |
+| 9 | `/applications/{t}/records/{r}/restore/` | POST | `restore_record` — title gets `(Restored)` appended | ✅ |
+| 10 | `/deleted-records/` | POST | `list_deleted_records` (per solution) | ✅ |
+| 11 | `/applications/{t}/records/{r}/` | PATCH | `attach_file_from_url` — file field takes a URL array | ✅ |
+| 12 | `/recordfiles/{t}/{r}/{fieldSlug}/` | POST | `upload_file` — `multipart/form-data`, needs a second client path | ✅ |
+| 13 | `/shared-files/{handle}/url/` | GET | `get_file_url` — 20-year public URL | ✅ |
+
+### Views — 2 surfaces
+
+| # | Endpoint | Method | Action | Verdict |
+| --- | --- | --- | --- | --- |
+| 14 | `/applications/{t}/records-for-report/?report={viewId}` | GET | `list_records_in_view` — returns records as the saved View filters/sorts them | ⚠️ see below |
+| 15 | `/reports/` | POST | `create_view` — very large body (sharing flags, `state.filterWindow`, `state.fieldsWindow`, `view_mode`) | ✅ but unpleasant |
+
+⚠️ **There is no documented REST endpoint that lists views.** The Views
+category in SmartSuite's docs contains only "Create View"; the scripting API
+has `retrieve_views` but that's a different runtime. So a
+`list_records_in_view` action can't offer a view dropdown — the user would
+paste a view id from the URL. A `GET /reports/?application=` probably works
+but is undocumented and would need verifying against a live workspace before
+we depend on it.
+
+### Solutions — 5 surfaces
+
+| # | Endpoint | Method | Action | Verdict |
+| --- | --- | --- | --- | --- |
+| 16 | `/solutions/` | GET | `list_solutions` | ✅ v1 |
+| 17 | `/solutions/{id}/` | GET | `get_solution` | ✅ |
+| 18 | `/solutions/` | POST | `create_solution` — `name`, `logo_icon`, `logo_color` (fixed 20-colour palette) | ✅ |
+| 19 | `/solutions/duplicate/` | POST | `duplicate_solution` — cross-workspace, with `copy_records` / `copy_comments` toggles | ✅ |
+| 20 | `/solutions/validate_name_uniqueness/` | POST | `validate_solution_name` → `{"is_unique": bool}` | ✅ but it's a helper, not a user-facing step |
+
+### Tables — 3 surfaces
+
+| # | Endpoint | Method | Action | Verdict |
+| --- | --- | --- | --- | --- |
+| 21 | `/applications/` | GET | `list_tables` — `?solution=` filters, `?fields=` projects | ✅ v1 |
+| 22 | `/applications/{id}/` | GET | `get_table` — returns `structure` (the field schema) and `primary_field` | ✅ — also the engine behind the `fields` dropdown |
+| 23 | `/applications/` | POST | `create_table` — needs ≥1 field in `structure` | ✅ |
+
+### Fields — 4 surfaces
+
+| # | Endpoint | Method | Action | Verdict |
+| --- | --- | --- | --- | --- |
+| 24 | `/applications/{t}/add_field/` | POST | `add_field` — caller invents a random 10-char slug; `params` is field-type-specific | ✅ |
+| 25 | `/applications/{t}/bulk-add-fields/` | POST | `bulk_add_fields` | ⚠️ the docs page URL says `bulk-add-fields` but its own curl example says `bulk_add_fields` — one of them is wrong; verify live |
+| 26 | `/applications/{t}/change_field/` | PUT | `update_field` | ✅ |
+| 27 | `/applications/{t}/delete_field/` | POST | `delete_field` (by slug) | ✅ — destructive, should confirm in the builder |
+
+All four need a per-field-type `params` payload across 46 field types. That's
+the single largest chunk of work in the whole surface, and the least likely to
+be asked for.
+
+### Comments — 2 surfaces
+
+| # | Endpoint | Method | Action | Verdict |
+| --- | --- | --- | --- | --- |
+| 28 | `/comments/?record={id}` | GET | `list_comments` — can scope by record, table, or solution | ✅ |
+| 29 | `/comments/` | POST | `add_comment` **and** `reply_to_comment` (same endpoint, `parent_comment` set). Accepts plain `{"message": {"html": "..."}}` — no SmartDoc needed. Also takes `assigned_to`. | ✅ v1 (two actions from one endpoint) |
+
+### Org management — 4 surfaces
+
+| # | Endpoint | Method | Action | Verdict |
+| --- | --- | --- | --- | --- |
+| 30 | `/members/list/` | POST | `list_members` — same sort/filter/pagination shape as records | ✅ — useful as a `members` cache source for assignee pickers |
+| 31 | `/members/{id}/` | PATCH | `update_member` — profile fields, role, status, timezone | ✅ but sensitive; admin-ish |
+| 32 | `/teams/list/` | POST | `list_teams` | ✅ |
+| 33 | `/teams/` | POST | `create_team` — quirky body: `id: null`, `type: "2"`, `first_created: null`, `comments_count: 0` all required | ✅ |
+
+### Webhooks — 6 surfaces (BETA, separate host)
+
+All on `https://webhooks.smartsuite.com/smartsuite.webhooks.engine.Webhooks/<Method>`, POST-only, RPC-style.
+
+| # | Method | Action | Verdict |
+| --- | --- | --- | --- |
+| 34 | `CreateWebhook` | `create_webhook` — filter at solution / table / field granularity; kinds are `RECORD_CREATED`, `RECORD_UPDATED`, `RECORD_DELETED` | ⚠️ BETA |
+| 35 | `GetWebhook` | `get_webhook` | ⚠️ BETA |
+| 36 | `ListWebhooks` | `list_webhooks` (per solution) | ⚠️ BETA |
+| 37 | `UpdateWebhook` | `update_webhook` | ⚠️ BETA |
+| 38 | `DeleteWebhook` | `delete_webhook` — also deletes stored events | ⚠️ BETA |
+| 39 | `ListEvents` | `list_events` — paged; **this is the only way to get event data**, the ping carries none | ⚠️ BETA |
+
+These are buildable as plain actions today — a workflow could create a webhook
+and poll `list_events` on a schedule. That's a fair bit worse than a real
+trigger, but it is strictly cheaper than 1-minute polling and it's the only
+change-detection mechanism SmartSuite offers. Calling `list_events` at least
+weekly is also what keeps a webhook alive (7-day expiry, 14-day deletion).
+
+### Derived actions — not 1:1 with any endpoint
+
+Things worth building on top of the above, all composed from `records/list/`
+plus its filter syntax. Several of our providers already do this kind of thing:
+
+| Action | Built from | Why |
+| --- | --- | --- |
+| `find_record` | `records/list/` + filter, return first match | The single most common workflow need; saves users hand-writing filter JSON. |
+| `search_records` | `records/list/` + filter builder | Guided field/comparison/value pickers instead of raw filter objects. |
+| `count_records` | `records/list/` with `limit=1`, read `total` | One cheap call; the response always carries `total`. |
+| `upsert_record` | filter → create or PATCH | Classic sync primitive. Two calls, so quota-aware. |
+| `assign_record` | `members/list/` lookup → PATCH `assigned_to` | Users know emails, not the 24-char member ids the field actually takes. |
+| `set_status` | `get_table` for choices → PATCH `{"status": {"value": ...}}` | Status takes an internal value, not the visible label. Mirrors Monday's `update_item_status`. |
+| `link_records` | PATCH a `linkedrecordfield` with an id array | Linked records are core to how SmartSuite is used. |
+| `download_file` | `get_file_url` → fetch | Returns a usable document to later workflow steps. |
+
+### Not buildable
+
+- **Delete table, duplicate table, delete view, duplicate view, resolve
+  comment, update team, list views.** These exist in SmartSuite's *scripting*
+  API — an in-product JavaScript runtime, not an HTTP surface — and have no
+  documented REST equivalent. Not callable from outside SmartSuite.
+- **OAuth connect flow.** Requires registration via support@smartsuite.com;
+  no published authorize/token URLs or scopes.
+- **Anything touching SmartSuite Automations.** No API surface at all.
+- **List workspaces for a token.** Doesn't exist; hence the manual
+  `ACCOUNT-ID`.
+
+### Realistic sizing
+
+| Tier | Actions | Effort |
+| --- | --- | --- |
+| v1 — records + comments + navigation | 8 | The proposal in Part 4. |
+| v2 — bulk, files, views, org lookups | ~10 | Mostly mechanical; `upload_file` needs a multipart client path. |
+| v3 — derived/composite | ~8 | No new endpoints, real UX gain. |
+| v4 — schema writes + webhooks | ~13 | 46 field types' `params` payloads; webhooks are BETA. |
+
+**~30 actions is the sensible ceiling**, out of ~39 endpoints — the gap is
+helper endpoints (`validate_solution_name`) and things better folded into
+another action (`reply_to_comment` shares an endpoint with `add_comment`).
+For comparison, Basecamp is our largest work-management provider at 19 actions
+and Airtable ships 7.
 
 ---
 
@@ -509,13 +655,15 @@ Official SmartSuite developer documentation:
 - [Restore Deleted Record](https://developers.smartsuite.com/docs/solution-data/records/restore-deleted-record)
 - [List Deleted Records](https://developers.smartsuite.com/docs/solution-data/records/list-deleted-records)
 - [Attach File](https://developers.smartsuite.com/docs/solution-data/records/attach-file) · [Get File URL](https://developers.smartsuite.com/docs/solution-data/records/get-file-url)
-- [List Solutions](https://developers.smartsuite.com/docs/solution-data/solutions/list-solutions) · [Get Solution](https://developers.smartsuite.com/docs/solution-data/solutions/get-solution) · [Create Solution](https://developers.smartsuite.com/docs/solution-data/solutions/create-solution)
-- [List Tables](https://developers.smartsuite.com/docs/solution-data/tables/list-tables) · [Table Object](https://developers.smartsuite.com/docs/solution-data/tables/table-object) · [Create Table](https://developers.smartsuite.com/docs/solution-data/tables/create-table)
-- [Field Types and Properties][ss-field-types]
+- [List Solutions](https://developers.smartsuite.com/docs/solution-data/solutions/list-solutions) · [Get Solution](https://developers.smartsuite.com/docs/solution-data/solutions/get-solution) · [Create Solution](https://developers.smartsuite.com/docs/solution-data/solutions/create-solution) · [Duplicate Solution](https://developers.smartsuite.com/docs/solution-data/solutions/duplicate-solution) · [Validate Solution Name](https://developers.smartsuite.com/docs/solution-data/solutions/validate-solution-name)
+- [List Tables](https://developers.smartsuite.com/docs/solution-data/tables/list-tables) · [Get Table](https://developers.smartsuite.com/docs/solution-data/tables/get-table) · [Table Object](https://developers.smartsuite.com/docs/solution-data/tables/table-object) · [Create Table](https://developers.smartsuite.com/docs/solution-data/tables/create-table)
+- [Field Types and Properties][ss-field-types] · [Field Object](https://developers.smartsuite.com/docs/solution-data/fields/field-object) · [Add Field](https://developers.smartsuite.com/docs/solution-data/fields/add-field) · [Bulk Add Fields](https://developers.smartsuite.com/docs/solution-data/fields/bulk-add-fields) · [Update Field](https://developers.smartsuite.com/docs/solution-data/fields/update-field) · [Delete Field](https://developers.smartsuite.com/docs/solution-data/fields/delete-field)
 - [List Comments](https://developers.smartsuite.com/docs/solution-data/comments/list-comments) · [Add Comment](https://developers.smartsuite.com/docs/solution-data/comments/add-comment)
-- [Get Records for View](https://developers.smartsuite.com/docs/solution-data/views/records-for-view)
-- [Webhooks Overview](https://developers.smartsuite.com/docs/solution-data/webhooks/webhooks-overview) · [Create Webhook](https://developers.smartsuite.com/docs/solution-data/webhooks/create-webhook) · [List Events](https://developers.smartsuite.com/docs/solution-data/webhooks/list-events) · [List Webhooks](https://developers.smartsuite.com/docs/solution-data/webhooks/list-webhooks)
-- [List Members](https://developers.smartsuite.com/docs/org_management/members/list-members) · [List Teams](https://developers.smartsuite.com/docs/org_management/teams/list-teams)
+- [Get Records for View](https://developers.smartsuite.com/docs/solution-data/views/records-for-view) · [Create View](https://developers.smartsuite.com/docs/solution-data/views/create-view)
+- [Webhooks Overview](https://developers.smartsuite.com/docs/solution-data/webhooks/webhooks-overview) · [Create Webhook](https://developers.smartsuite.com/docs/solution-data/webhooks/create-webhook) · [Get Webhook](https://developers.smartsuite.com/docs/solution-data/webhooks/get-webhook) · [Update Webhook](https://developers.smartsuite.com/docs/solution-data/webhooks/update-webhook) · [Delete Webhook](https://developers.smartsuite.com/docs/solution-data/webhooks/delete-webhook) · [List Events](https://developers.smartsuite.com/docs/solution-data/webhooks/list-events) · [List Webhooks](https://developers.smartsuite.com/docs/solution-data/webhooks/list-webhooks)
+- [List Members](https://developers.smartsuite.com/docs/org_management/members/list-members) · [Member Object](https://developers.smartsuite.com/docs/org_management/members/member-object) · [Update Member](https://developers.smartsuite.com/docs/org_management/members/update-member)
+- [List Teams](https://developers.smartsuite.com/docs/org_management/teams/list-teams) · [Team Object](https://developers.smartsuite.com/docs/org_management/teams/team-object) · [Add Team](https://developers.smartsuite.com/docs/org_management/teams/add-team)
+- [Scripting: Overview](https://developers.smartsuite.com/docs/scripting/intro) (confirms the scripting API is an in-product JavaScript runtime, not an HTTP surface)
 
 SmartSuite help centre and blog:
 
