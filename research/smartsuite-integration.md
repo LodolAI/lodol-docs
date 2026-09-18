@@ -1,10 +1,35 @@
 # SmartSuite integration — feasibility research
 
-**Status:** research only, no implementation.
-**Date:** 2026-09-17.
+**Status:** implemented. The provider ships 47 actions on
+`lodolai/lodol`, branch `claude/smartsuite-integration-research-9tn0g5`
+(`projects/server/src/skipflow/integrations/providers/smartsuite/`).
+**Date:** 2026-09-17, implementation 2026-09-18.
 **Scope:** what a SmartSuite provider would look like in the Lodol provider
 library, what the SmartSuite API actually supports, and what the real
 constraints are.
+
+## What shipped
+
+Everything in [Part 5](#part-5--full-scope-of-buildable-actions) that is
+buildable from public documentation — 47 actions across records (CRUD, bulk,
+restore, trash), comments, views, files, solutions, tables, fields, members,
+teams and webhooks, plus the derived actions. The `list_fields` action was
+added beyond the Part 5 inventory because field slugs are opaque and nothing
+else exposes the slug-to-label mapping.
+
+No trigger ships, for the quota reason in
+[Triggers](#triggers--the-one-real-problem).
+
+Two follow-ups remain:
+
+1. **Brand icon.** `projects/web-app/public/app-icons/smartsuite-icon.png`
+   plus a line in `src/utils/app_utils.ts`. Left out deliberately rather than
+   inventing artwork — the UI falls back to initials, so nothing is broken
+   meanwhile.
+2. **The three live-workspace questions** below. Each has a defensive
+   behaviour in the code (the bulk-add-fields path falls back on a 404, the
+   view action takes a pasted id), but they should be confirmed rather than
+   left to a reviewer.
 
 ---
 
