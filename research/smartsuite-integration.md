@@ -617,6 +617,61 @@ with the cost documented on the trigger itself.
 
 ---
 
+## Documentation gaps
+
+Every page requested during this research returned real content — 58 pages
+across the developer site, help centre and blog, with no fetch failures and no
+silent 404s. The gaps below are not access failures; they are documentation
+that is account-gated, doesn't exist, or can only be settled against a live
+workspace.
+
+### Exists, but not readable from outside an account
+
+- **`api-docs.smartsuite.com`** — a second, separate docs host. It's a React
+  SPA (`<noscript>You need to enable JavaScript to run this app</noscript>`)
+  and is almost certainly the in-product reference the help centre describes:
+  reachable from a solution's menu → *API Documentation*, generating
+  "solution-specific and table-specific examples based on your environment".
+  Because it renders from the signed-in workspace's own schema, there is
+  nothing static to read. **This is the most likely place the undocumented
+  bits are actually written down.** Anyone with a SmartSuite login can check
+  it in a minute.
+- **`community.smartsuite.com`** (Developer Hub) — a Bettermode/Tribe SPA;
+  thread content isn't in the served HTML and isn't well indexed by search.
+  Historically where SmartSuite staff answer endpoint-level questions.
+
+### Doesn't exist publicly at all
+
+- **OAuth 2.** No authorize URL, token URL, scope list, PKCE details or
+  registration form are published anywhere — the only pointer is "email
+  support@smartsuite.com". Nothing to read; this is a conversation.
+- **OpenAPI spec / Postman collection.** Not a fetch problem — they don't
+  exist. It's an [open feature request][canny-openapi] on SmartSuite's Canny
+  board, filed April 2025, still collecting "yes please" comments as recently
+  as March 2026 with no official response. A spec would have resolved most of
+  the ambiguity below for free.
+- **Automations API.** No surface, no docs.
+
+### Settled by a live workspace, not by documentation
+
+These three are open because the docs are silent or self-contradictory, and no
+amount of further reading fixes that:
+
+| Unknown | Why it matters | How to settle it |
+| --- | --- | --- |
+| Does `GET /api/v1/reports/?application={id}` list views? | Decides whether `list_records_in_view` can have a view dropdown or needs a pasted id. | One authenticated GET. |
+| Is the bulk-add-fields path `bulk-add-fields` or `bulk_add_fields`? | The docs page contradicts its own curl example. | One authenticated POST. |
+| What is the Button field's API type name? | Needed for the read-only filter on the `fields` dropdown. | Read `structure` from any table with a Button field. |
+
+The API is reachable from our build environment — an unauthenticated
+`GET /api/v1/solutions/` returns a clean `400 Account ID is not specified`,
+so connectivity and the `ACCOUNT-ID` requirement are both confirmed. **A
+throwaway API key plus workspace id on any plan would close all three in
+minutes.** Worth getting before implementation starts rather than discovering
+them in review.
+
+---
+
 ## Open questions for the team
 
 1. **OAuth**: do we want to email support@smartsuite.com and start the OAuth
@@ -674,4 +729,11 @@ SmartSuite help centre and blog:
 - [Uploading and Downloading Files from the SmartSuite API](https://help.smartsuite.com/en/articles/7842079-uploading-and-downloading-files-from-the-smartsuite-api)
 - [SmartSuite Public API Updates and Roadmap](https://www.smartsuite.com/blog/api-updates) (the OAuth registration announcement)
 
+Gated or non-existent (see [Documentation gaps](#documentation-gaps)):
+
+- `https://api-docs.smartsuite.com/` — account-scoped in-product reference, JS-only SPA
+- `https://community.smartsuite.com/developer-hub-u5l41n7u` — Developer Hub, JS-only SPA
+- [OpenAPI (Swagger) Specification for REST API][canny-openapi] — open feature request, not a released artifact
+
 [ss-field-types]: https://developers.smartsuite.com/docs/solution-data/fields/field-types
+[canny-openapi]: https://smartsuite.canny.io/feature-requests/p/openapi-swagger-specification-for-rest-api
