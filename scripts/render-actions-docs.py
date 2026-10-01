@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -161,20 +162,33 @@ def _mock_to_json(mock: Any) -> str:
         return json.dumps(str(mock))
 
 
+# Text Markdown shows as written (a backslash escape, or a code span: a run
+# of backticks closed by a run of the same length), or else an image opener.
+_LITERAL_OR_IMAGE_RE = re.compile(r"\\.|(?<!`)(`+)(?!`).*?(?<!`)\1(?!`)|!\[")
+
+
 def _escape_mdx(text: Any) -> str:
-    """Escape characters MDX would otherwise interpret as JSX.
+    """Escape characters MDX would otherwise interpret as JSX or an image.
 
     ``{`` and ``}`` are treated as JSX expression delimiters; ``<``
     opens a JSX tag. Replace them with HTML entities so they render as
     literal characters in prose.
+
+    ``![`` opens an image, and fumadocs turns an image whose source isn't
+    a web URL into an ``import`` of that file, so Slack's ``![](@U123)``
+    mention syntax failed the build. Escape the bracket everywhere but in
+    code spans, which already show their text as written.
     """
     if text is None:
         return ""
-    s = str(text)
-    return (
-        s.replace("{", "&#123;")
+    s = (
+        str(text)
+        .replace("{", "&#123;")
         .replace("}", "&#125;")
         .replace("<", "&lt;")
+    )
+    return _LITERAL_OR_IMAGE_RE.sub(
+        lambda m: "!\\[" if m.group(0) == "![" else m.group(0), s
     )
 
 

@@ -231,6 +231,20 @@ class EscapeMdxTests(unittest.TestCase):
             "&#123;x&#125;\\|y&lt;z",
         )
 
+    def test_escapes_image_syntax(self):
+        self.assertEqual(
+            ren._escape_mdx("Mention someone with ![](@U123)."),
+            "Mention someone with !\\[](@U123).",
+        )
+
+    def test_leaves_image_syntax_in_code_spans(self):
+        text = "Mention someone with `![](@U123)` or ``a ` ![](#C123)``."
+        self.assertEqual(ren._escape_mdx(text), text)
+
+    def test_unclosed_or_escaped_backtick_does_not_start_code_span(self):
+        self.assertEqual(ren._escape_mdx("a ` ![](x)"), "a ` !\\[](x)")
+        self.assertEqual(ren._escape_mdx("\\` ![](x) `"), "\\` !\\[](x) `")
+
 
 class YamlQuoteTests(unittest.TestCase):
     def test_basic_quote(self):
@@ -330,6 +344,13 @@ class GenerateActionSectionTests(unittest.TestCase):
         self.assertNotIn("{key:", out)
         self.assertIn("&#123;key:", out)
         self.assertIn("&lt;value>&#125;", out)
+
+    def test_escapes_image_syntax_in_parameter_descriptions(self):
+        action = self._action()
+        action["parameters"][0]["description"] = "Mention someone with ![](@U123)."
+        out = ren.generate_action_section("send_message", action)
+        self.assertIn("Mention someone with !\\[](@U123).", out)
+        self.assertNotIn("![](", out)
 
 
 class GenerateProviderMdxTests(unittest.TestCase):
