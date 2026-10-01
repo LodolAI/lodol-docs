@@ -12,24 +12,61 @@ Workflows are the core resource in Lodol. They define a series of automated step
 ```json
 {
   "id": "665f1a2b3c4d5e6f7a8b9c0d",
-  "name": "Welcome Email Workflow",
-  "description": "Sends a welcome email when a user signs up",
+  "name": "Monthly Client Report",
+  "description": "Builds a client's monthly report and emails it to them",
   "created_by": "665f1a2b3c4d5e6f7a8b9c0e",
   "created_at": "2026-01-15T10:30:00+00:00",
   "updated_at": "2026-01-15T10:30:00+00:00",
-  "last_run_at": "2026-03-17T08:00:00+00:00"
+  "last_run_at": "2026-03-17T08:00:00+00:00",
+  "inputs": [
+    {
+      "name": "client",
+      "type": "text",
+      "required": true,
+      "default": null,
+      "description": "The client to report on"
+    },
+    {
+      "name": "month",
+      "type": "text",
+      "required": false,
+      "default": "last month",
+      "description": ""
+    }
+  ]
 }
 ```
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `id` | string | Unique identifier (MongoDB ObjectId) |
+| `id` | string | Unique identifier. It stays the same when the workflow is edited, so it is safe to store (see [Workflow IDs](#workflow-ids)) |
 | `name` | string | Name of the workflow |
 | `description` | string | Description of the workflow |
 | `created_by` | string \| null | ID of the user who created the workflow |
 | `created_at` | string \| null | ISO 8601 timestamp of creation |
 | `updated_at` | string \| null | ISO 8601 timestamp of last update |
 | `last_run_at` | string \| null | ISO 8601 timestamp of the most recent execution |
+| `inputs` | array | The inputs the workflow declares, which a run can be given values for (see [Inputs](#inputs)). Empty if it declares none |
+
+### Workflow IDs
+
+Editing a workflow can save a new version of it, but its `id` stays the same, so you can store it and use it to run the workflow later. Every endpoint that takes a workflow ID also accepts the ID of any version of the workflow, such as an ID this API returned before the workflow was edited, and acts on the workflow as it is now.
+
+A run records the version that ran as its `version_id` (see [Executions](/docs/api-reference/executions)).
+
+### Inputs
+
+A workflow can declare inputs, such as the client or month to report on, so that one workflow can be [run](/docs/api-reference/executions#run-a-workflow) for any of them. Each entry in `inputs` describes one:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name` | string | The name a run gives its value under |
+| `type` | string | `text`, `number`, `boolean`, `list`, or `object` |
+| `required` | boolean | Whether every run must be given a value |
+| `default` | any \| null | The value an optional input takes when a run leaves it out |
+| `description` | string | What the input is for, as written in the workflow |
+
+A workflow that starts from its own trigger or schedule runs once per event, so it takes no inputs, whatever it declares.
 
 ---
 
@@ -57,12 +94,16 @@ curl https://app.skipflow.com/api/v1/workflows \
   "workflows": [
     {
       "id": "665f1a2b3c4d5e6f7a8b9c0d",
-      "name": "Welcome Email Workflow",
-      "description": "Sends a welcome email when a user signs up",
+      "name": "Monthly Client Report",
+      "description": "Builds a client's monthly report and emails it to them",
       "created_by": "665f1a2b3c4d5e6f7a8b9c0e",
       "created_at": "2026-01-15T10:30:00+00:00",
       "updated_at": "2026-01-15T10:30:00+00:00",
-      "last_run_at": "2026-03-17T08:00:00+00:00"
+      "last_run_at": "2026-03-17T08:00:00+00:00",
+      "inputs": [
+        { "name": "client", "type": "text", "required": true, "default": null, "description": "The client to report on" },
+        { "name": "month", "type": "text", "required": false, "default": "last month", "description": "" }
+      ]
     }
   ]
 }
@@ -76,7 +117,7 @@ curl https://app.skipflow.com/api/v1/workflows \
 GET /api/v1/workflows/:id
 ```
 
-Retrieves a workflow by its ID, including the full program AST.
+Retrieves a workflow by its ID, including the full program AST. The ID may also be the ID of any version of the workflow (see [Workflow IDs](#workflow-ids)); the response describes the workflow as it is now, under its `id`.
 
 **Required scope:** `workflows:read`
 
@@ -92,17 +133,22 @@ curl https://app.skipflow.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d \
 ```json
 {
   "id": "665f1a2b3c4d5e6f7a8b9c0d",
-  "name": "Welcome Email Workflow",
-  "description": "Sends a welcome email when a user signs up",
+  "name": "Monthly Client Report",
+  "description": "Builds a client's monthly report and emails it to them",
   "program": {
     "kind": "Program",
     "version": 1,
+    "inputs": [...],
     "body": [...]
   },
   "created_by": "665f1a2b3c4d5e6f7a8b9c0e",
   "created_at": "2026-01-15T10:30:00+00:00",
   "updated_at": "2026-01-15T10:30:00+00:00",
-  "last_run_at": "2026-03-17T08:00:00+00:00"
+  "last_run_at": "2026-03-17T08:00:00+00:00",
+  "inputs": [
+    { "name": "client", "type": "text", "required": true, "default": null, "description": "The client to report on" },
+    { "name": "month", "type": "text", "required": false, "default": "last month", "description": "" }
+  ]
 }
 ```
 
