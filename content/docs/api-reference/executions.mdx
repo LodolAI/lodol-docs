@@ -13,7 +13,8 @@ An execution represents a single run of a workflow. Workflows are run asynchrono
 {
   "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
   "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
-  "workflow_name": "Welcome Email Workflow",
+  "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "workflow_name": "Monthly Client Report",
   "status": "success",
   "started_at": "2026-01-15T10:30:00+00:00",
   "completed_at": "2026-01-15T10:30:03+00:00"
@@ -23,9 +24,10 @@ An execution represents a single run of a workflow. Workflows are run asynchrono
 | Field | Type | Description |
 | --- | --- | --- |
 | `execution_id` | string | Unique identifier for this execution |
-| `workflow_id` | string | ID of the workflow that was executed |
+| `workflow_id` | string | The `id` of the workflow that was executed, which stays the same when the workflow is edited |
+| `version_id` | string | ID of the version of the workflow that ran. It changes as the workflow is edited (see [Workflow IDs](/docs/api-reference/workflows#workflow-ids)) |
 | `workflow_name` | string | Name of the workflow (included in list view) |
-| `status` | string | Current status: `running`, `success`, `failed`, `stopped` |
+| `status` | string | Current status: `queued`, `running`, `success`, `failed`, `stopped` |
 | `started_at` | string | ISO 8601 timestamp when execution started |
 | `completed_at` | string \| null | ISO 8601 timestamp when execution finished |
 
@@ -39,6 +41,8 @@ POST /api/v1/workflows/:id/run-async
 
 Starts a workflow execution in the background. Returns immediately with an `execution_id` that you can poll via the [Get Execution](#get-an-execution) endpoint.
 
+`:id` is the workflow's `id`, or the ID of any version of it. Either way, the workflow runs as it is now (see [Workflow IDs](/docs/api-reference/workflows#workflow-ids)).
+
 **Required scope:** `workflows:execute`
 
 Costs **1 credit** per execution. Returns `402 Payment Required` if the workspace has insufficient credits.
@@ -47,7 +51,43 @@ Costs **1 credit** per execution. Returns `402 Payment Required` if the workspac
 
 | Header | Required | Description |
 | --- | --- | --- |
-| `Idempotency-Key` | No | Prevents duplicate executions on retry (max 256 characters). Cached for 24 hours. |
+| `Idempotency-Key` | No | Prevents duplicate executions on retry (max 256 characters). Cached for 24 hours. Reusing a key for a different request, such as the same workflow with different inputs, returns `422`. |
+
+**Request Body**
+
+The body is optional. To give values for the [inputs](/docs/api-reference/workflows#inputs) the workflow declares, send a JSON object:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `inputs` | object | Values for the workflow's inputs, by input name |
+
+```json
+{
+  "inputs": {
+    "client": "Acme",
+    "month": "2026-05"
+  }
+}
+```
+
+Each value is converted to its input's declared type:
+
+| Type | Accepts |
+| --- | --- |
+| `text` | Any value, as text |
+| `number` | A number, or text that reads as one, such as `"21"` |
+| `boolean` | `true` or `false`, or text such as `"yes"`, `"no"`, `"on"`, or `"0"` |
+| `list` | A list, or comma-separated text |
+| `object` | An object |
+
+An optional input you leave out takes its default, so a workflow that declares no required inputs can be run without a body. The run is refused with `400`, before anything starts, naming the input at fault, when:
+
+- a value names an input the workflow doesn't declare
+- a required input has no value
+- a value can't be converted to its input's type
+- a value can't be stored with a run, such as `NaN`, `Infinity`, a whole number wider than 64 bits, or lists and objects nested more than 32 levels deep
+
+The body itself must be a JSON object of at most 500 KB whose only field is `inputs`; anything else returns `400`. A workflow that starts from its own trigger or schedule takes no inputs, and sending it some returns `400`: run it without a body to start it listening.
 
 **Example**
 
@@ -57,14 +97,33 @@ curl -X POST https://app.skipflow.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/
   -H "Idempotency-Key: unique-request-id-123"
 ```
 
+**Example with inputs**
+
+```bash
+curl -X POST https://app.skipflow.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async \
+  -H "Authorization: Bearer sk_live_your_api_key" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: acme-report-2026-05" \
+  -d '{"inputs": {"client": "Acme", "month": "2026-05"}}'
+```
+
 **Response (202)**
 
 ```json
 {
   "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
   "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
-  "status": "running",
+  "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "status": "queued",
   "created_at": "2026-01-15T10:30:00+00:00"
+}
+```
+
+**Response (400)**
+
+```json
+{
+  "error": "'Monthly Client Report' needs a value for its 'client' input."
 }
 ```
 
@@ -84,7 +143,7 @@ Returns a list of executions for the workspace, with optional filtering and curs
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `workflow_id` | string | Filter executions by workflow ID |
+| `workflow_id` | string | Only executions of this workflow, from every version of it. Takes the workflow's `id` or the ID of any of its versions |
 | `limit` | integer | Max results to return (1-100, default 20) |
 | `after` | string | Cursor: the `execution_id` of the last item from the previous page |
 
@@ -103,7 +162,8 @@ curl "https://app.skipflow.com/api/v1/executions?workflow_id=665f1a2b3c4d5e6f7a8
     {
       "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
       "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
-      "workflow_name": "Welcome Email Workflow",
+      "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+      "workflow_name": "Monthly Client Report",
       "status": "success",
       "started_at": "2026-01-15T10:30:00+00:00",
       "completed_at": "2026-01-15T10:30:03+00:00"
@@ -148,6 +208,7 @@ curl "https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?includ
 {
   "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
   "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
   "status": "running",
   "started_at": "2026-01-15T10:30:00+00:00",
   "completed_at": null,
@@ -161,6 +222,7 @@ curl "https://app.skipflow.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?includ
 {
   "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
   "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
   "status": "success",
   "started_at": "2026-01-15T10:30:00+00:00",
   "completed_at": "2026-01-15T10:30:03+00:00",
