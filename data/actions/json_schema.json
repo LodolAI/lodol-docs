@@ -1,0 +1,1900 @@
+{
+  "actions": {
+    "check_schema": {
+      "description": "Check that a JSON Schema is valid: against its dialect's meta-schema, with every $ref followed, and for the mistakes validators pass over in silence, such as a misspelled keyword, a format that does not exist, keywords ignored beside $ref and limits nothing can meet. No API key required.",
+      "display_name": "Check a schema",
+      "display_str_template": "Check the schema.",
+      "handler": "actions.check_schema",
+      "id": "json_schema_check_schema",
+      "method": "POST",
+      "mock_response": {
+        "dialect": "https://json-schema.org/draft/2020-12/schema",
+        "dialect_name": "Draft 2020-12",
+        "dialect_note": null,
+        "error_count": 1,
+        "errors": [
+          {
+            "keyword": "$ref",
+            "message": "A $ref points at #/$defs/tag, where the schema has nothing. Did you mean #/$defs/tags?",
+            "schema_location": "/properties/tags/items/$ref"
+          }
+        ],
+        "summary": "Not a valid Draft 2020-12 schema: 1 error. At /properties/tags/items/$ref: A $ref points at #/$defs/tag, where the schema has nothing. Did you mean #/$defs/tags? 2 warnings: At /properties/age/minimun: minimun is not a JSON Schema keyword, so validators ignore it. Did you mean minimum? At /properties/created/format: \"datetime\" is not a format Draft 2020-12 defines, so validators do not check it. Did you mean \"date-time\"?",
+        "valid": false,
+        "warning_count": 2,
+        "warnings": [
+          {
+            "keyword": "minimun",
+            "kind": "unknown_keyword",
+            "message": "minimun is not a JSON Schema keyword, so validators ignore it. Did you mean minimum?",
+            "occurrences": 1,
+            "schema_location": "/properties/age/minimun"
+          },
+          {
+            "keyword": "format",
+            "kind": "unknown_format",
+            "message": "\"datetime\" is not a format Draft 2020-12 defines, so validators do not check it. Did you mean \"date-time\"?",
+            "occurrences": 1,
+            "schema_location": "/properties/created/format"
+          }
+        ]
+      },
+      "name": "check_schema",
+      "output_formatter": "actions.format_check_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "description": "The JSON Schema: an object from an earlier step, JSON text, an uploaded .json file, or the web address of one, such as https://json.schemastore.org/package.json. Its $ref links to other schemas on the web are followed.",
+          "display_name": "Schema",
+          "examples": [
+            {
+              "label": "An object that needs an email address",
+              "value": "{\"type\": \"object\", \"properties\": {\"email\": {\"type\": \"string\", \"format\": \"email\"}}, \"required\": [\"email\"]}"
+            },
+            {
+              "label": "A package.json, from SchemaStore",
+              "value": "https://json.schemastore.org/package.json"
+            }
+          ],
+          "multiline": true,
+          "name": "schema",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "auto",
+          "description": "Which version of JSON Schema to read the schema as. Leave it on the schema's own to follow its $schema, which is Draft 2020-12 when it has none; choose a draft to read it that way whatever it declares.",
+          "display_name": "Dialect",
+          "name": "dialect",
+          "options": [
+            {
+              "label": "The schema's own $schema (Draft 2020-12 if none)",
+              "value": "auto"
+            },
+            {
+              "label": "Draft 2020-12",
+              "value": "2020-12"
+            },
+            {
+              "label": "Draft 2019-09",
+              "value": "2019-09"
+            },
+            {
+              "label": "Draft 7",
+              "value": "draft-07"
+            },
+            {
+              "label": "Draft 6",
+              "value": "draft-06"
+            },
+            {
+              "label": "Draft 4",
+              "value": "draft-04"
+            },
+            {
+              "label": "Draft 3",
+              "value": "draft-03"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 100,
+          "description": "How many errors to list, from 1 to 1,000; 100 by default. All of them are counted either way.",
+          "display_name": "Most errors to list",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "max_errors",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/json-schema/check-schema",
+      "result_str_template": "{json_schema_check_schema,summary}",
+      "returns": {
+        "properties": {
+          "dialect": {
+            "description": "The $schema URI of the dialect the schema was read as, e.g. 'https://json-schema.org/draft/2020-12/schema'.",
+            "type": "string"
+          },
+          "dialect_name": {
+            "description": "That dialect's name, e.g. 'Draft 2020-12'.",
+            "type": "string"
+          },
+          "dialect_note": {
+            "description": "Why the schema was read as a dialect other than the one it declares, such as a $schema this step does not know. Null when it was read as declared.",
+            "type": "string"
+          },
+          "error_count": {
+            "description": "How many errors the schema has.",
+            "type": "number"
+          },
+          "errors": {
+            "description": "The errors, up to the most asked for.",
+            "items": {
+              "description": "One error in the schema.",
+              "properties": {
+                "keyword": {
+                  "description": "The meta-schema keyword it failed, e.g. 'enum' or 'type', or '$ref' for a reference that leads nowhere.",
+                  "type": "string"
+                },
+                "message": {
+                  "description": "What is wrong, in plain words.",
+                  "type": "string"
+                },
+                "schema_location": {
+                  "description": "Where in the schema it is, as a JSON Pointer, e.g. '/properties/age/type'.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "What happened, in a sentence or two.",
+            "type": "string"
+          },
+          "valid": {
+            "description": "True when the schema passes its meta-schema and every $ref leads somewhere. Warnings do not count.",
+            "type": "boolean"
+          },
+          "warning_count": {
+            "description": "How many warnings there are.",
+            "type": "number"
+          },
+          "warnings": {
+            "description": "Mistakes validators pass over, one per keyword for keywords used more than once.",
+            "items": {
+              "description": "One warning.",
+              "properties": {
+                "keyword": {
+                  "description": "The keyword it is about.",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "What kind of mistake: 'unknown_keyword', 'retired_keyword', 'unknown_format', 'ignored_beside_ref' or 'unsatisfiable'.",
+                  "type": "string"
+                },
+                "message": {
+                  "description": "What is wrong and, where one is close, what was meant.",
+                  "type": "string"
+                },
+                "occurrences": {
+                  "description": "How many times the schema makes the same mistake; the location is the first.",
+                  "type": "number"
+                },
+                "schema_location": {
+                  "description": "Where in the schema it is, as a JSON Pointer.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "generate_schema": {
+      "description": "Create a JSON Schema from example data, such as an API response or a few records: the types, properties, required fields and common formats it finds, ready to validate later data with. No API key required.",
+      "display_name": "Create a schema from examples",
+      "display_str_template": "Create a schema from {examples}.",
+      "handler": "actions.generate_schema",
+      "id": "json_schema_generate_schema",
+      "method": "POST",
+      "mock_response": {
+        "example_count": 2,
+        "property_count": 6,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "created": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "email": {
+              "format": "email",
+              "type": "string"
+            },
+            "id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "note": {
+              "type": "null"
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "total": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "email",
+            "created",
+            "total",
+            "tags"
+          ],
+          "title": "Order",
+          "type": "object"
+        },
+        "summary": "A Draft 2020-12 schema for an object with 6 properties, from 2 examples."
+      },
+      "name": "generate_schema",
+      "output_formatter": "actions.format_schema_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "description": "The data to describe, such as an API response, a webhook payload or some records from an earlier step: an object, a list or any JSON value, as JSON text too, or an uploaded .json file.",
+          "display_name": "Example data",
+          "examples": [
+            {
+              "label": "One record",
+              "value": "{\"id\": 7, \"email\": \"ada@example.com\", \"tags\": [\"vip\"]}"
+            }
+          ],
+          "multiline": true,
+          "name": "examples",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Turn on when the example data is a list of separate examples, such as several webhook payloads: the schema then describes one of them. Off, a list is one example, and the schema describes the whole list.",
+          "display_name": "Each item is an example",
+          "name": "list_of_examples",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": "2020-12",
+          "description": "Which version of JSON Schema to write the schema in; Draft 2020-12, the current one, by default. Choose an older draft for a tool that needs one, such as Draft 7.",
+          "display_name": "Dialect",
+          "name": "dialect",
+          "options": [
+            {
+              "label": "Draft 2020-12",
+              "value": "2020-12"
+            },
+            {
+              "label": "Draft 2019-09",
+              "value": "2019-09"
+            },
+            {
+              "label": "Draft 7",
+              "value": "draft-07"
+            },
+            {
+              "label": "Draft 6",
+              "value": "draft-06"
+            },
+            {
+              "label": "Draft 4",
+              "value": "draft-04"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "List the properties every example has as required. On by default; turn it off to make every property optional.",
+          "display_name": "Mark properties required",
+          "name": "mark_required",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Refuse objects with properties the examples did not have, by setting additionalProperties to false on every object. Off by default, so new properties still pass.",
+          "display_name": "Allow no other properties",
+          "name": "no_additional_properties",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": true,
+          "description": "Add a format where every example value has one: date-time, date, time, email, uuid or uri (a web address). On by default.",
+          "display_name": "Detect formats",
+          "name": "detect_formats",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. A title for the schema, such as 'Order'.",
+          "display_name": "Title",
+          "name": "title",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. A description for the schema, saying what it describes.",
+          "display_name": "Description",
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/json-schema/generate-schema",
+      "result_str_template": "{json_schema_generate_schema,summary}",
+      "returns": {
+        "properties": {
+          "example_count": {
+            "description": "How many examples it was made from.",
+            "type": "number"
+          },
+          "property_count": {
+            "description": "How many properties it describes, at every depth.",
+            "type": "number"
+          },
+          "schema": {
+            "description": "The schema, with its $schema, ready to use as the schema of a validation step.",
+            "type": "object"
+          },
+          "summary": {
+            "description": "What happened, in a sentence or two.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_compliance": {
+      "description": "Get how much of the official JSON Schema Test Suite a validator passes, dialect by dialect, as Bowtie measures it, with its version, language and links. Name it by its Bowtie id, its name or its repository. No API key required.",
+      "display_name": "Get a validator's compliance",
+      "display_str_template": "Get the compliance of {implementation}.",
+      "handler": "actions.get_compliance",
+      "id": "json_schema_get_compliance",
+      "method": "POST",
+      "mock_response": {
+        "dialects": [
+          {
+            "dialect": "Draft 2020-12",
+            "passing_percent": 99,
+            "uri": "https://json-schema.org/draft/2020-12/schema"
+          },
+          {
+            "dialect": "Draft 2019-09",
+            "passing_percent": 99,
+            "uri": "https://json-schema.org/draft/2019-09/schema"
+          },
+          {
+            "dialect": "Draft 7",
+            "passing_percent": 100,
+            "uri": "http://json-schema.org/draft-07/schema#"
+          },
+          {
+            "dialect": "Draft 6",
+            "passing_percent": 100,
+            "uri": "http://json-schema.org/draft-06/schema#"
+          },
+          {
+            "dialect": "Draft 4",
+            "passing_percent": 100,
+            "uri": "http://json-schema.org/draft-04/schema#"
+          },
+          {
+            "dialect": "Draft 3",
+            "passing_percent": 100,
+            "uri": "http://json-schema.org/draft-03/schema#"
+          }
+        ],
+        "documentation": "https://python-jsonschema.readthedocs.io/",
+        "homepage": "https://python-jsonschema.readthedocs.io/",
+        "id": "python-jsonschema",
+        "issues": "https://github.com/python-jsonschema/jsonschema/issues",
+        "language": "python",
+        "name": "jsonschema",
+        "report_url": "https://bowtie.report/#/implementations/python-jsonschema",
+        "source": "https://github.com/python-jsonschema/jsonschema",
+        "summary": "jsonschema 4.26.0 (python) passes this share of the official test suite on Bowtie: Draft 2020-12 99%, Draft 2019-09 99%, Draft 7 100%, Draft 6 100%, Draft 4 100%, Draft 3 100%.",
+        "version": "4.26.0"
+      },
+      "name": "get_compliance",
+      "output_formatter": "actions.format_summary_output",
+      "parameters": [
+        {
+          "description": "The validator, as Bowtie knows it: its Bowtie id such as 'python-jsonschema' or 'js-ajv' (which 'Find JSON Schema tools' returns), its name, or its repository's address.",
+          "display_name": "Validator",
+          "examples": [
+            {
+              "label": "python-jsonschema",
+              "value": "python-jsonschema"
+            },
+            {
+              "label": "Ajv, by its repository",
+              "value": "https://github.com/ajv-validator/ajv"
+            }
+          ],
+          "name": "implementation",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/json-schema/get-compliance",
+      "result_str_template": "{json_schema_get_compliance,summary}",
+      "returns": {
+        "properties": {
+          "dialects": {
+            "description": "Each dialect Bowtie tests it on, newest first.",
+            "items": {
+              "description": "One dialect.",
+              "properties": {
+                "dialect": {
+                  "description": "The dialect's name, e.g. 'Draft 2020-12'.",
+                  "type": "string"
+                },
+                "passing_percent": {
+                  "description": "The share of the dialect's tests it passes, in whole percent as Bowtie rounds it, or null when Bowtie has no score.",
+                  "type": "number"
+                },
+                "uri": {
+                  "description": "The dialect's $schema URI.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "documentation": {
+            "description": "Its documentation, or null.",
+            "type": "string"
+          },
+          "homepage": {
+            "description": "Its home page, or null.",
+            "type": "string"
+          },
+          "id": {
+            "description": "Its id on Bowtie, e.g. 'python-jsonschema'.",
+            "type": "string"
+          },
+          "issues": {
+            "description": "Where to report its bugs, or null.",
+            "type": "string"
+          },
+          "language": {
+            "description": "Its programming language, as Bowtie names it, e.g. 'python'.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Its name, e.g. 'jsonschema'.",
+            "type": "string"
+          },
+          "report_url": {
+            "description": "Its full report on bowtie.report.",
+            "type": "string"
+          },
+          "source": {
+            "description": "Its source repository, or null.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "What happened, in a sentence or two.",
+            "type": "string"
+          },
+          "version": {
+            "description": "The version Bowtie tested, or null.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_keyword": {
+      "description": "Look up a JSON Schema keyword in json-schema.org's Understanding JSON Schema reference: what it does, its examples of valid and invalid values, its notes on older drafts, which dialects have it, and links to the reference, Learn JSON Schema and the specification. No API key required.",
+      "display_name": "Look up a keyword",
+      "display_str_template": "Look up the keyword {keyword}.",
+      "handler": "actions.get_keyword",
+      "id": "json_schema_get_keyword",
+      "method": "POST",
+      "mock_response": {
+        "applies_to": "string",
+        "dialects": [
+          "Draft 2020-12",
+          "Draft 2019-09",
+          "Draft 7",
+          "Draft 6",
+          "Draft 4",
+          "Draft 3"
+        ],
+        "docs_url": "https://json-schema.org/understanding-json-schema/reference/string#length",
+        "examples": [
+          {
+            "schema": {
+              "maxLength": 3,
+              "minLength": 2,
+              "type": "string"
+            },
+            "values": [
+              {
+                "caption": null,
+                "valid": false,
+                "value": "A"
+              },
+              {
+                "caption": null,
+                "valid": true,
+                "value": "AB"
+              },
+              {
+                "caption": null,
+                "valid": true,
+                "value": "ABC"
+              },
+              {
+                "caption": null,
+                "valid": false,
+                "value": "ABCD"
+              }
+            ]
+          }
+        ],
+        "explanation": "The length of a string can be constrained using the `minLength` and `maxLength` keywords. For both keywords, the value must be a non-negative number.",
+        "keyword": "minLength",
+        "learn_url": "https://www.learnjsonschema.com/2020-12/validation/minlength/",
+        "note": null,
+        "notes": [],
+        "section": "Length",
+        "spec_url": "https://json-schema.org/draft/2020-12/json-schema-validation#name-minlength",
+        "summary": "minLength applies to a string, in the Validation vocabulary (Draft 2020-12, Draft 2019-09, Draft 7, Draft 6, Draft 4, Draft 3). The length of a string can be constrained using the `minLength` and `maxLength` keywords. For both keywords, the value must be a non-negative number.",
+        "vocabulary": "Validation"
+      },
+      "name": "get_keyword",
+      "output_formatter": "actions.format_keyword_output",
+      "parameters": [
+        {
+          "description": "The keyword to look up, such as minLength, required, unevaluatedProperties or $ref. The $ can be left off, and older names such as definitions lead to the keyword that replaced them.",
+          "display_name": "Keyword",
+          "examples": [
+            {
+              "label": "minLength",
+              "value": "minLength"
+            },
+            {
+              "label": "unevaluatedProperties",
+              "value": "unevaluatedProperties"
+            },
+            {
+              "label": "$ref",
+              "value": "$ref"
+            }
+          ],
+          "name": "keyword",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/json-schema/get-keyword",
+      "result_str_template": "{json_schema_get_keyword,summary}",
+      "returns": {
+        "properties": {
+          "applies_to": {
+            "description": "What it constrains: 'string', 'number', 'object', 'array' or 'any' value.",
+            "type": "string"
+          },
+          "dialects": {
+            "description": "The dialects that have it, newest first.",
+            "items": {
+              "description": "A dialect's name.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "docs_url": {
+            "description": "The section on json-schema.org.",
+            "type": "string"
+          },
+          "examples": {
+            "description": "The section's examples for the current dialect: a schema, and values checked against it.",
+            "items": {
+              "description": "One example from the reference.",
+              "properties": {
+                "schema": {
+                  "description": "The example schema.",
+                  "type": "object"
+                },
+                "values": {
+                  "description": "Values the reference checks against it.",
+                  "items": {
+                    "description": "One value.",
+                    "properties": {
+                      "caption": {
+                        "description": "The reference's words introducing it, e.g. 'Less than `minimum`', or null.",
+                        "type": "string"
+                      },
+                      "valid": {
+                        "description": "Whether the reference says it passes.",
+                        "type": "boolean"
+                      },
+                      "value": {
+                        "description": "The value, of any JSON type.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "explanation": {
+            "description": "The section's explanation, as plain text.",
+            "type": "string"
+          },
+          "keyword": {
+            "description": "The keyword, as the reference names it today. For an older name, such as definitions, the keyword that replaced it, such as $defs.",
+            "type": "string"
+          },
+          "learn_url": {
+            "description": "The keyword's page on Learn JSON Schema, or null.",
+            "type": "string"
+          },
+          "note": {
+            "description": "For an older keyword, what became of it; otherwise null.",
+            "type": "string"
+          },
+          "notes": {
+            "description": "What the section says about other drafts.",
+            "items": {
+              "description": "One note.",
+              "properties": {
+                "label": {
+                  "description": "Which drafts it is about, e.g. 'Draft 4'.",
+                  "type": "string"
+                },
+                "text": {
+                  "description": "What it says.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "section": {
+            "description": "The reference section that explains it, e.g. 'Length'.",
+            "type": "string"
+          },
+          "spec_url": {
+            "description": "Its section of the Draft 2020-12 specification, or null.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "What happened, in a sentence or two.",
+            "type": "string"
+          },
+          "vocabulary": {
+            "description": "The Draft 2020-12 vocabulary that defines it, e.g. 'Validation'.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_keywords": {
+      "description": "List the keywords of a JSON Schema dialect, from Draft 3 to Draft 2020-12, with the vocabulary each belongs to, what kind of value it applies to and links to its documentation. No API key required.",
+      "display_name": "List the keywords of a dialect",
+      "display_str_template": "List the keywords of a JSON Schema dialect.",
+      "handler": "actions.list_keywords",
+      "id": "json_schema_list_keywords",
+      "method": "POST",
+      "mock_response": {
+        "count": 20,
+        "dialect": "https://json-schema.org/draft/2020-12/schema",
+        "dialect_name": "Draft 2020-12",
+        "keywords": [
+          {
+            "applies_to": "any",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/const",
+            "keyword": "const",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/const",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "object",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/conditionals#dependentRequired",
+            "keyword": "dependentRequired",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/dependentrequired",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "any",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/enum",
+            "keyword": "enum",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/enum",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "number",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/numeric#range",
+            "keyword": "exclusiveMaximum",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/exclusivemaximum",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "number",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/numeric#range",
+            "keyword": "exclusiveMinimum",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/exclusiveminimum",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "array",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/array#mincontains-maxcontains",
+            "keyword": "maxContains",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/maxcontains",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "number",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/numeric#range",
+            "keyword": "maximum",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/maximum",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "array",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/array#length",
+            "keyword": "maxItems",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/maxitems/",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "string",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/string#length",
+            "keyword": "maxLength",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/maxlength",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "object",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/object#size",
+            "keyword": "maxProperties",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/maxproperties",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "array",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/array#mincontains-maxcontains",
+            "keyword": "minContains",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/mincontains",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "number",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/numeric#range",
+            "keyword": "minimum",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/minimum",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "array",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/array#length",
+            "keyword": "minItems",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/minitems",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "string",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/string#length",
+            "keyword": "minLength",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/minlength/",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "object",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/object#size",
+            "keyword": "minProperties",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/minproperties",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "number",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/numeric#multiples",
+            "keyword": "multipleOf",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/multipleof",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "string",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/string#regexp",
+            "keyword": "pattern",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/pattern",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "object",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/object#required",
+            "keyword": "required",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/required",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "any",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/type",
+            "keyword": "type",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/type",
+            "vocabulary": "Validation"
+          },
+          {
+            "applies_to": "array",
+            "docs_url": "https://json-schema.org/understanding-json-schema/reference/array#uniqueItems",
+            "keyword": "uniqueItems",
+            "learn_url": "https://www.learnjsonschema.com/2020-12/validation/uniqueitems",
+            "vocabulary": "Validation"
+          }
+        ],
+        "summary": "20 keywords in the Validation vocabulary of Draft 2020-12: const, dependentRequired, enum, exclusiveMaximum, exclusiveMinimum, maxContains, maximum, maxItems, maxLength, maxProperties, minContains, minimum, minItems, minLength, minProperties, multipleOf, pattern, required, type, uniqueItems."
+      },
+      "name": "list_keywords",
+      "output_formatter": "actions.format_keywords_output",
+      "parameters": [
+        {
+          "default": "2020-12",
+          "description": "The dialect whose keywords to list; Draft 2020-12 by default.",
+          "display_name": "Dialect",
+          "name": "dialect",
+          "options": [
+            {
+              "label": "Draft 2020-12",
+              "value": "2020-12"
+            },
+            {
+              "label": "Draft 2019-09",
+              "value": "2019-09"
+            },
+            {
+              "label": "Draft 7",
+              "value": "draft-07"
+            },
+            {
+              "label": "Draft 6",
+              "value": "draft-06"
+            },
+            {
+              "label": "Draft 4",
+              "value": "draft-04"
+            },
+            {
+              "label": "Draft 3",
+              "value": "draft-03"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only the keywords of one vocabulary, such as Validation. Vocabularies came with Draft 2019-09, so leave this empty for older drafts.",
+          "display_name": "Vocabulary",
+          "name": "vocabulary",
+          "options": [
+            {
+              "label": "Core",
+              "value": "core"
+            },
+            {
+              "label": "Applicator",
+              "value": "applicator"
+            },
+            {
+              "label": "Unevaluated (Draft 2020-12)",
+              "value": "unevaluated"
+            },
+            {
+              "label": "Validation",
+              "value": "validation"
+            },
+            {
+              "label": "Meta-Data",
+              "value": "meta-data"
+            },
+            {
+              "label": "Format Annotation (Draft 2020-12)",
+              "value": "format-annotation"
+            },
+            {
+              "label": "Format (Draft 2019-09)",
+              "value": "format"
+            },
+            {
+              "label": "Content",
+              "value": "content"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/json-schema/list-keywords",
+      "result_str_template": "{json_schema_list_keywords,summary}",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many keywords there are.",
+            "type": "number"
+          },
+          "dialect": {
+            "description": "The dialect's $schema URI.",
+            "type": "string"
+          },
+          "dialect_name": {
+            "description": "That dialect's name, e.g. 'Draft 2020-12'.",
+            "type": "string"
+          },
+          "keywords": {
+            "description": "The keywords, in alphabetical order.",
+            "items": {
+              "description": "One keyword.",
+              "properties": {
+                "applies_to": {
+                  "description": "What it constrains: 'string', 'number', 'object', 'array' or 'any' value.",
+                  "type": "string"
+                },
+                "docs_url": {
+                  "description": "Where Understanding JSON Schema explains it, or null.",
+                  "type": "string"
+                },
+                "keyword": {
+                  "description": "The keyword, e.g. 'minLength'.",
+                  "type": "string"
+                },
+                "learn_url": {
+                  "description": "Its page on Learn JSON Schema, or null.",
+                  "type": "string"
+                },
+                "vocabulary": {
+                  "description": "The vocabulary that defines it, e.g. 'Validation'; null before Draft 2019-09, which had none.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "What happened, in a sentence or two.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_tools": {
+      "description": "Search json-schema.org's catalogue of JSON Schema tools (validators, code generators, editors, linters and more) by kind, programming language, dialect and words in the name or description, with which validators Bowtie tests. No API key required.",
+      "display_name": "Find JSON Schema tools",
+      "display_str_template": "Find JSON Schema tools.",
+      "handler": "actions.search_tools",
+      "id": "json_schema_search_tools",
+      "method": "POST",
+      "mock_response": {
+        "catalogue_size": 59,
+        "count": 3,
+        "summary": "4 tools of the 59 in json-schema.org's catalogue match: jschon, json-schema-utils, jsonschema, and 1 more.",
+        "tools": [
+          {
+            "bowtie_id": "python-jschon",
+            "bowtie_url": "https://bowtie.report/#/implementations/python-jschon",
+            "compliance_note": null,
+            "description": "An object-oriented JSON Schema implementation for Python.",
+            "dialects": [
+              "Draft 2020-12",
+              "Draft 2019-09"
+            ],
+            "environments": [],
+            "homepage": "https://jschon.readthedocs.io/",
+            "languages": [
+              "Python"
+            ],
+            "last_updated": "2022-08-31",
+            "license": "MIT",
+            "maintainers": [
+              "Mark Joseph"
+            ],
+            "name": "jschon",
+            "notes": null,
+            "obsolete": false,
+            "other_dialects": [],
+            "source": "https://github.com/marksparkza/jschon",
+            "tooling_types": [
+              "validator"
+            ]
+          },
+          {
+            "bowtie_id": "python-jsu-compile",
+            "bowtie_url": "https://bowtie.report/#/implementations/python-jsu-compile",
+            "compliance_note": null,
+            "description": "Random utilities to analyze and manipulate JSON Schema",
+            "dialects": [
+              "Draft 2020-12",
+              "Draft 2019-09",
+              "Draft 7",
+              "Draft 6",
+              "Draft 5",
+              "Draft 4",
+              "Draft 3",
+              "Draft 2",
+              "Draft 1"
+            ],
+            "environments": [],
+            "homepage": "https://github.com/zx80/json-schema-utils",
+            "languages": [
+              "Python"
+            ],
+            "last_updated": null,
+            "license": "Public Domain",
+            "maintainers": [
+              "zx80",
+              "clairey-zx81"
+            ],
+            "name": "json-schema-utils",
+            "notes": null,
+            "obsolete": false,
+            "other_dialects": [],
+            "source": "https://github.com/zx80/json-schema-utils",
+            "tooling_types": [
+              "validator",
+              "linter",
+              "schema-to-types",
+              "util-general-processing"
+            ]
+          },
+          {
+            "bowtie_id": "python-jsonschema",
+            "bowtie_url": "https://bowtie.report/#/implementations/python-jsonschema",
+            "compliance_note": null,
+            "description": "An implementation of the JSON Schema specification for Python",
+            "dialects": [
+              "Draft 2020-12",
+              "Draft 2019-09",
+              "Draft 7",
+              "Draft 6",
+              "Draft 4",
+              "Draft 3"
+            ],
+            "environments": [],
+            "homepage": "https://python-jsonschema.readthedocs.io/",
+            "languages": [
+              "Python"
+            ],
+            "last_updated": "2022-11-09",
+            "license": "MIT",
+            "maintainers": [
+              "Julian Berman"
+            ],
+            "name": "jsonschema",
+            "notes": null,
+            "obsolete": false,
+            "other_dialects": [],
+            "source": "https://github.com/python-jsonschema/jsonschema",
+            "tooling_types": [
+              "validator"
+            ]
+          }
+        ],
+        "total_matches": 4
+      },
+      "name": "search_tools",
+      "output_formatter": "actions.format_tools_output",
+      "parameters": [
+        {
+          "description": "Optional. Words that must all appear in a tool's name or description, such as 'typescript generator'.",
+          "display_name": "Search for",
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only one kind of tool, such as Validator or Schema to code.",
+          "display_name": "Kind of tool",
+          "name": "tooling_type",
+          "options": [
+            {
+              "label": "Validator",
+              "value": "validator"
+            },
+            {
+              "label": "Annotations",
+              "value": "annotations"
+            },
+            {
+              "label": "Bundler",
+              "value": "bundler"
+            },
+            {
+              "label": "Hyper-Schema",
+              "value": "hyper-schema"
+            },
+            {
+              "label": "Benchmarks",
+              "value": "benchmarks"
+            },
+            {
+              "label": "Documentation",
+              "value": "documentation"
+            },
+            {
+              "label": "LDO utility",
+              "value": "LDO-utility"
+            },
+            {
+              "label": "Code to schema",
+              "value": "code-to-schema"
+            },
+            {
+              "label": "Data to schema",
+              "value": "data-to-schema"
+            },
+            {
+              "label": "Model to schema",
+              "value": "model-to-schema"
+            },
+            {
+              "label": "Schema to types",
+              "value": "schema-to-types"
+            },
+            {
+              "label": "Schema to code",
+              "value": "schema-to-code"
+            },
+            {
+              "label": "Schema to web UI",
+              "value": "schema-to-web-UI"
+            },
+            {
+              "label": "Schema to data",
+              "value": "schema-to-data"
+            },
+            {
+              "label": "General processing utility",
+              "value": "util-general-processing"
+            },
+            {
+              "label": "Schema to schema utility",
+              "value": "util-schema-to-schema"
+            },
+            {
+              "label": "Draft migration utility",
+              "value": "util-draft-migration"
+            },
+            {
+              "label": "Format conversion utility",
+              "value": "util-format-conversion"
+            },
+            {
+              "label": "Testing utility",
+              "value": "util-testing"
+            },
+            {
+              "label": "Editor",
+              "value": "editor"
+            },
+            {
+              "label": "Editor plugin",
+              "value": "editor-plugins"
+            },
+            {
+              "label": "Schema repository",
+              "value": "schema-repository"
+            },
+            {
+              "label": "Registry",
+              "value": "registry"
+            },
+            {
+              "label": "Linter",
+              "value": "linter"
+            },
+            {
+              "label": "Linter plugin",
+              "value": "linter-plugins"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only tools for one programming language, as the catalogue names it, such as Python, JavaScript, TypeScript, Java, Go, Rust, C# or .NET.",
+          "display_name": "Language",
+          "examples": [
+            {
+              "label": "Python",
+              "value": "Python"
+            },
+            {
+              "label": "JavaScript",
+              "value": "JavaScript"
+            }
+          ],
+          "name": "language",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only tools that say they support this dialect.",
+          "display_name": "Supports",
+          "name": "dialect",
+          "options": [
+            {
+              "label": "Draft 2020-12",
+              "value": "2020-12"
+            },
+            {
+              "label": "Draft 2019-09",
+              "value": "2019-09"
+            },
+            {
+              "label": "Draft 7",
+              "value": "7"
+            },
+            {
+              "label": "Draft 6",
+              "value": "6"
+            },
+            {
+              "label": "Draft 5",
+              "value": "5"
+            },
+            {
+              "label": "Draft 4",
+              "value": "4"
+            },
+            {
+              "label": "Draft 3",
+              "value": "3"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Also list tools the catalogue marks obsolete, which are no longer maintained. Off by default.",
+          "display_name": "Include obsolete tools",
+          "name": "include_obsolete",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Only the validators Bowtie runs against the official test suite, whose scores 'Get a validator's compliance' reads. Off by default.",
+          "display_name": "Only tools Bowtie tests",
+          "name": "bowtie_only",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": "name",
+          "description": "By name, as json-schema.org lists them, or the most recently updated first. A tool the catalogue gives no date comes last.",
+          "display_name": "Order",
+          "name": "sort",
+          "options": [
+            {
+              "label": "By name",
+              "value": "name"
+            },
+            {
+              "label": "Most recently updated first",
+              "value": "last_updated"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 25,
+          "description": "How many tools to return, from 1 to 300; 25 by default.",
+          "display_name": "Most tools to return",
+          "maximum": 300,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/json-schema/search-tools",
+      "result_str_template": "{json_schema_search_tools,summary}",
+      "returns": {
+        "properties": {
+          "catalogue_size": {
+            "description": "How many tools the catalogue has in all.",
+            "type": "number"
+          },
+          "count": {
+            "description": "How many tools are returned.",
+            "type": "number"
+          },
+          "summary": {
+            "description": "What happened, in a sentence or two.",
+            "type": "string"
+          },
+          "tools": {
+            "description": "The tools that match, up to the most asked for.",
+            "items": {
+              "description": "One tool.",
+              "properties": {
+                "bowtie_id": {
+                  "description": "Its id on Bowtie, for 'Get a validator's compliance', or null when Bowtie does not test it.",
+                  "type": "string"
+                },
+                "bowtie_url": {
+                  "description": "Its report on bowtie.report, or null.",
+                  "type": "string"
+                },
+                "compliance_note": {
+                  "description": "How to configure it to follow the specification most closely, when the catalogue says, or null.",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "What it does, as the catalogue says, or null.",
+                  "type": "string"
+                },
+                "dialects": {
+                  "description": "The dialects it says it supports, newest first, e.g. 'Draft 2020-12'.",
+                  "items": {
+                    "description": "A dialect.",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "environments": {
+                  "description": "Where it runs, when the catalogue says, e.g. 'Web (Online)'.",
+                  "items": {
+                    "description": "An environment.",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "homepage": {
+                  "description": "Its home page, or null.",
+                  "type": "string"
+                },
+                "languages": {
+                  "description": "The programming languages it is for, e.g. 'Python'.",
+                  "items": {
+                    "description": "A language.",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "last_updated": {
+                  "description": "When its catalogue entry was last updated, as YYYY-MM-DD, or null.",
+                  "type": "string"
+                },
+                "license": {
+                  "description": "Its license, or null.",
+                  "type": "string"
+                },
+                "maintainers": {
+                  "description": "Who maintains it.",
+                  "items": {
+                    "description": "A maintainer's name.",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "description": "Its name.",
+                  "type": "string"
+                },
+                "notes": {
+                  "description": "The catalogue's notes on it, or null.",
+                  "type": "string"
+                },
+                "obsolete": {
+                  "description": "True when the catalogue marks it obsolete.",
+                  "type": "boolean"
+                },
+                "other_dialects": {
+                  "description": "Other dialects it supports, such as OpenAPI's.",
+                  "items": {
+                    "description": "A dialect's name.",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "source": {
+                  "description": "Its source repository, or null.",
+                  "type": "string"
+                },
+                "tooling_types": {
+                  "description": "The kinds of tool it is, e.g. 'validator', 'schema-to-code'.",
+                  "items": {
+                    "description": "A kind of tool.",
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matches": {
+            "description": "How many tools match, however many are returned.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "validate": {
+      "description": "Check data against a JSON Schema and get whether it is valid, with every error: where in the data it is, which keyword it broke and why, in plain words. The schema can be an object, JSON text, a file or a link, in any dialect from Draft 3 to Draft 2020-12, and formats such as email and date-time are really checked. No API key required.",
+      "display_name": "Validate data against a schema",
+      "display_str_template": "Validate {data} against the schema.",
+      "handler": "actions.validate",
+      "id": "json_schema_validate",
+      "method": "POST",
+      "mock_response": {
+        "dialect": "https://json-schema.org/draft/2020-12/schema",
+        "dialect_name": "Draft 2020-12",
+        "dialect_note": null,
+        "error_count": 3,
+        "errors": [
+          {
+            "instance_location": "/email",
+            "keyword": "format",
+            "keyword_location": "/properties/email/format",
+            "message": "\"ada.example.com\" is not a valid email."
+          },
+          {
+            "instance_location": "/total",
+            "keyword": "multipleOf",
+            "keyword_location": "/properties/total/multipleOf",
+            "message": "19.999 is not a multiple of 0.01."
+          },
+          {
+            "instance_location": "/items",
+            "keyword": "minItems",
+            "keyword_location": "/properties/items/minItems",
+            "message": "The list has 0 items, fewer than the minimum of 1."
+          }
+        ],
+        "summary": "Not valid: 3 errors against the schema (Draft 2020-12). At /email: \"ada.example.com\" is not a valid email. At /total: 19.999 is not a multiple of 0.01. At /items: The list has 0 items, fewer than the minimum of 1.",
+        "valid": false
+      },
+      "name": "validate",
+      "output_formatter": "actions.format_validation_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "description": "The JSON Schema: an object from an earlier step, JSON text, an uploaded .json file, or the web address of one, such as https://json.schemastore.org/package.json. Its $ref links to other schemas on the web are followed.",
+          "display_name": "Schema",
+          "examples": [
+            {
+              "label": "An object that needs an email address",
+              "value": "{\"type\": \"object\", \"properties\": {\"email\": {\"type\": \"string\", \"format\": \"email\"}}, \"required\": [\"email\"]}"
+            },
+            {
+              "label": "A package.json, from SchemaStore",
+              "value": "https://json.schemastore.org/package.json"
+            }
+          ],
+          "multiline": true,
+          "name": "schema",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "accepts_file_upload": true,
+          "description": "The data to check, usually from an earlier step: an object, a list, text, a number, true, false or null. Text holding a JSON object or list is read as JSON (see Read JSON text as JSON), and an uploaded .json file works too.",
+          "display_name": "Data",
+          "examples": [
+            {
+              "label": "An object",
+              "value": "{\"email\": \"ada@example.com\", \"age\": 36}"
+            }
+          ],
+          "multiline": true,
+          "name": "data",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "auto",
+          "description": "Which version of JSON Schema to read the schema as. Leave it on the schema's own to follow its $schema, which is Draft 2020-12 when it has none; choose a draft to read it that way whatever it declares.",
+          "display_name": "Dialect",
+          "name": "dialect",
+          "options": [
+            {
+              "label": "The schema's own $schema (Draft 2020-12 if none)",
+              "value": "auto"
+            },
+            {
+              "label": "Draft 2020-12",
+              "value": "2020-12"
+            },
+            {
+              "label": "Draft 2019-09",
+              "value": "2019-09"
+            },
+            {
+              "label": "Draft 7",
+              "value": "draft-07"
+            },
+            {
+              "label": "Draft 6",
+              "value": "draft-06"
+            },
+            {
+              "label": "Draft 4",
+              "value": "draft-04"
+            },
+            {
+              "label": "Draft 3",
+              "value": "draft-03"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Whether a value must really be what its format says: an email address, a date-time, a URI, a UUID and the rest. On by default. JSON Schema itself treats format as a label unless a validator is told to check it; turn this off to do the same.",
+          "display_name": "Check formats",
+          "name": "check_formats",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": true,
+          "description": "When the data is text holding a JSON object or list, such as a pasted document or a response kept as text, read it as JSON first. On by default. Turn it off to check such text as a string.",
+          "display_name": "Read JSON text as JSON",
+          "name": "read_json_text",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": 100,
+          "description": "How many errors to list, from 1 to 1,000; 100 by default. All of them are counted either way.",
+          "display_name": "Most errors to list",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "max_errors",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/json-schema/validate",
+      "result_str_template": "{json_schema_validate,summary}",
+      "returns": {
+        "properties": {
+          "dialect": {
+            "description": "The $schema URI of the dialect the schema was read as, e.g. 'https://json-schema.org/draft/2020-12/schema'.",
+            "type": "string"
+          },
+          "dialect_name": {
+            "description": "That dialect's name, e.g. 'Draft 2020-12'.",
+            "type": "string"
+          },
+          "dialect_note": {
+            "description": "Why the schema was read as a dialect other than the one it declares, such as a $schema this step does not know. Null when it was read as declared.",
+            "type": "string"
+          },
+          "error_count": {
+            "description": "How many errors the data has, however many are listed.",
+            "type": "number"
+          },
+          "errors": {
+            "description": "The errors, in the order the schema's keywords run, up to the most asked for.",
+            "items": {
+              "description": "One error.",
+              "properties": {
+                "instance_location": {
+                  "description": "Where in the data it is, as a JSON Pointer: '/items/0/price', or '' for the data as a whole.",
+                  "type": "string"
+                },
+                "keyword": {
+                  "description": "The keyword that failed, e.g. 'required', 'type' or 'format'; 'false' for a schema that allows nothing.",
+                  "type": "string"
+                },
+                "keyword_location": {
+                  "description": "Where in the schema the keyword that failed is, as a JSON Pointer, e.g. '/properties/price/minimum'.",
+                  "type": "string"
+                },
+                "message": {
+                  "description": "What is wrong, in plain words with values as JSON, e.g. '\"email\" is a required property.'",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "What happened, in a sentence or two.",
+            "type": "string"
+          },
+          "valid": {
+            "description": "True when the data matches the schema.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "validate_items": {
+      "description": "Check each item of a list against a JSON Schema and split the list in two: the items that match, ready for the next step, and those that do not, each with its position and its errors. Up to 50,000 items. No API key required.",
+      "display_name": "Validate each item in a list",
+      "display_str_template": "Validate each item of {items} against the schema.",
+      "handler": "actions.validate_items",
+      "id": "json_schema_validate_items",
+      "method": "POST",
+      "mock_response": {
+        "dialect": "https://json-schema.org/draft/2020-12/schema",
+        "dialect_name": "Draft 2020-12",
+        "dialect_note": null,
+        "invalid_count": 1,
+        "invalid_items": [
+          {
+            "error_count": 2,
+            "errors": [
+              {
+                "instance_location": "/sku",
+                "keyword": "pattern",
+                "keyword_location": "/properties/sku/pattern",
+                "message": "\"abc-1\" does not match the pattern \"^[A-Z]{3}-[0-9]{3}$\"."
+              },
+              {
+                "instance_location": "/qty",
+                "keyword": "minimum",
+                "keyword_location": "/properties/qty/minimum",
+                "message": "0 is less than the minimum of 1."
+              }
+            ],
+            "index": 1,
+            "item": {
+              "qty": 0,
+              "sku": "abc-1"
+            }
+          }
+        ],
+        "item_count": 3,
+        "summary": "2 items of 3 match the schema (Draft 2020-12) and 1 does not. The first that does not is item 1: At /sku: \"abc-1\" does not match the pattern \"^[A-Z]{3}-[0-9]{3}$\".",
+        "valid": false,
+        "valid_count": 2,
+        "valid_items": [
+          {
+            "qty": 2,
+            "sku": "ABC-123"
+          },
+          {
+            "qty": 1,
+            "sku": "XYZ-999"
+          }
+        ]
+      },
+      "name": "validate_items",
+      "output_formatter": "actions.format_items_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "description": "The JSON Schema: an object from an earlier step, JSON text, an uploaded .json file, or the web address of one, such as https://json.schemastore.org/package.json. Its $ref links to other schemas on the web are followed.",
+          "display_name": "Schema",
+          "examples": [
+            {
+              "label": "An object that needs an email address",
+              "value": "{\"type\": \"object\", \"properties\": {\"email\": {\"type\": \"string\", \"format\": \"email\"}}, \"required\": [\"email\"]}"
+            },
+            {
+              "label": "A package.json, from SchemaStore",
+              "value": "https://json.schemastore.org/package.json"
+            }
+          ],
+          "multiline": true,
+          "name": "schema",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "accepts_file_upload": true,
+          "description": "The list to check item by item: a list from an earlier step, such as the rows of a sheet or the records an API returned, JSON text holding one, or an uploaded .json file of one. Up to 50,000 items.",
+          "display_name": "Items",
+          "examples": [
+            {
+              "label": "Two orders",
+              "value": "[{\"sku\": \"ABC-123\", \"qty\": 2}, {\"sku\": \"abc\", \"qty\": 0}]"
+            }
+          ],
+          "multiline": true,
+          "name": "items",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "auto",
+          "description": "Which version of JSON Schema to read the schema as. Leave it on the schema's own to follow its $schema, which is Draft 2020-12 when it has none; choose a draft to read it that way whatever it declares.",
+          "display_name": "Dialect",
+          "name": "dialect",
+          "options": [
+            {
+              "label": "The schema's own $schema (Draft 2020-12 if none)",
+              "value": "auto"
+            },
+            {
+              "label": "Draft 2020-12",
+              "value": "2020-12"
+            },
+            {
+              "label": "Draft 2019-09",
+              "value": "2019-09"
+            },
+            {
+              "label": "Draft 7",
+              "value": "draft-07"
+            },
+            {
+              "label": "Draft 6",
+              "value": "draft-06"
+            },
+            {
+              "label": "Draft 4",
+              "value": "draft-04"
+            },
+            {
+              "label": "Draft 3",
+              "value": "draft-03"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Whether a value must really be what its format says: an email address, a date-time, a URI, a UUID and the rest. On by default. JSON Schema itself treats format as a label unless a validator is told to check it; turn this off to do the same.",
+          "display_name": "Check formats",
+          "name": "check_formats",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": true,
+          "description": "When the data is text holding a JSON object or list, such as a pasted document or a response kept as text, read it as JSON first. On by default. Turn it off to check such text as a string.",
+          "display_name": "Read JSON text as JSON",
+          "name": "read_json_text",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": 10,
+          "description": "How many errors to list for each item that does not match, from 1 to 100; 10 by default. All of them are counted either way.",
+          "display_name": "Most errors per item",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "max_errors",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/json-schema/validate-items",
+      "result_str_template": "{json_schema_validate_items,summary}",
+      "returns": {
+        "properties": {
+          "dialect": {
+            "description": "The $schema URI of the dialect the schema was read as, e.g. 'https://json-schema.org/draft/2020-12/schema'.",
+            "type": "string"
+          },
+          "dialect_name": {
+            "description": "That dialect's name, e.g. 'Draft 2020-12'.",
+            "type": "string"
+          },
+          "dialect_note": {
+            "description": "Why the schema was read as a dialect other than the one it declares, such as a $schema this step does not know. Null when it was read as declared.",
+            "type": "string"
+          },
+          "invalid_count": {
+            "description": "How many items do not.",
+            "type": "number"
+          },
+          "invalid_items": {
+            "description": "The items that do not match, in order.",
+            "items": {
+              "description": "One item that does not match.",
+              "properties": {
+                "error_count": {
+                  "description": "How many errors it has.",
+                  "type": "number"
+                },
+                "errors": {
+                  "description": "Its errors, with locations inside the item, up to the most asked for.",
+                  "items": {
+                    "description": "One error.",
+                    "properties": {
+                      "instance_location": {
+                        "description": "Where in the data it is, as a JSON Pointer: '/items/0/price', or '' for the data as a whole.",
+                        "type": "string"
+                      },
+                      "keyword": {
+                        "description": "The keyword that failed, e.g. 'required', 'type' or 'format'; 'false' for a schema that allows nothing.",
+                        "type": "string"
+                      },
+                      "keyword_location": {
+                        "description": "Where in the schema the keyword that failed is, as a JSON Pointer, e.g. '/properties/price/minimum'.",
+                        "type": "string"
+                      },
+                      "message": {
+                        "description": "What is wrong, in plain words with values as JSON, e.g. '\"email\" is a required property.'",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "index": {
+                  "description": "Its position in the list, from 0.",
+                  "type": "number"
+                },
+                "item": {
+                  "description": "The item, as given.",
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "item_count": {
+            "description": "How many items the list has.",
+            "type": "number"
+          },
+          "summary": {
+            "description": "What happened, in a sentence or two.",
+            "type": "string"
+          },
+          "valid": {
+            "description": "True when every item matches the schema.",
+            "type": "boolean"
+          },
+          "valid_count": {
+            "description": "How many items match.",
+            "type": "number"
+          },
+          "valid_items": {
+            "description": "The items that match, in order, as given.",
+            "items": {
+              "description": "An item.",
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Validate JSON data against JSON Schema, the standard for describing JSON. Check any value, or every item of a list, against a schema given as an object, text, a file or a link, in any dialect from Draft 3 to Draft 2020-12, and get each error in plain words. Check a schema for mistakes, create one from example data, look up keywords in json-schema.org's reference, and find JSON Schema tools and how much of the official test suite each validator passes. No account or API key required.",
+  "display_name": "JSON Schema",
+  "id": "json_schema"
+}

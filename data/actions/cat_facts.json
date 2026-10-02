@@ -1,0 +1,712 @@
+{
+  "actions": {
+    "check_service_status": {
+      "description": "Check whether catfact.ninja is answering, how quickly, and how much of the rate limit is left. This is the one action that reports a problem as a value instead of failing the step, so a workflow can decide what to do about it. Being throttled is reported separately from being down.",
+      "display_name": "Check service status",
+      "display_str_template": "Check the catfact.ninja status.",
+      "handler": "actions.check_service_status",
+      "id": "cat_facts_check_service_status",
+      "method": "POST",
+      "mock_response": {
+        "message": "catfact.ninja is up and answering.",
+        "online": true,
+        "rate_limit": 100,
+        "rate_limit_remaining": 99,
+        "rate_limited": false,
+        "reachable": true,
+        "response_time_ms": 74.2,
+        "status_code": 200
+      },
+      "name": "check_service_status",
+      "output_formatter": "actions.format_status_output",
+      "parameters": [],
+      "path": "/actions/library/cat-facts/check-service-status",
+      "result_str_template": "Service status checked.",
+      "returns": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "rate_limit": {
+            "type": "number"
+          },
+          "rate_limit_remaining": {
+            "type": "number"
+          },
+          "rate_limited": {
+            "type": "boolean"
+          },
+          "reachable": {
+            "type": "boolean"
+          },
+          "response_time_ms": {
+            "type": "number"
+          },
+          "status_code": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_breed": {
+      "description": "Look up one cat breed by name and get the country, coat, pattern and origin recorded for it. The service has no route that takes a name, so the table is read and matched here: an exact name always wins, and failing that a partial one resolves when it lands on a single breed, so 'bobtail' and 'Bengal cat' both work. A name matching two breeds is reported with both rather than guessed between.",
+      "display_name": "Get a cat breed",
+      "display_str_template": "Get the {0} cat breed.",
+      "handler": "actions.get_breed",
+      "id": "cat_facts_get_breed",
+      "method": "POST",
+      "mock_response": {
+        "breed": {
+          "breed": "Abyssinian",
+          "coat": "Short",
+          "country": "Ethiopia",
+          "origin": "Natural/Standard",
+          "pattern": "Ticked"
+        },
+        "matched_exactly": true,
+        "requested_breed": "Abyssinian"
+      },
+      "name": "get_breed",
+      "output_formatter": "actions.format_breed_output",
+      "parameters": [
+        {
+          "description": "The breed to look up. Pick one from the list, or type a name from an earlier step: a partial name works when only one breed matches it.",
+          "display_name": "Breed",
+          "dynamic_source": "breeds",
+          "examples": [
+            {
+              "label": "A breed",
+              "value": "Bengal"
+            },
+            {
+              "label": "A partial name",
+              "value": "bobtail"
+            }
+          ],
+          "name": "breed",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/cat-facts/get-breed",
+      "result_str_template": "Cat breed retrieved.",
+      "returns": {
+        "properties": {
+          "breed": {
+            "properties": {
+              "breed": {
+                "type": "string"
+              },
+              "coat": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "origin": {
+                "type": "string"
+              },
+              "pattern": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "matched_exactly": {
+            "type": "boolean"
+          },
+          "requested_breed": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_fact_of_the_day": {
+      "description": "Pick one cat fact for a day and keep picking that same fact all day. A random draw gives a different one on every call, so a daily workflow that retries, or that two people run an hour apart, posts two different facts for the one day. This one is fixed by the date: the same date always gives the same fact, and tomorrow gives a different one. Add a seed of your own to have two workspaces post different facts on the same day.",
+      "display_name": "Get the cat fact of the day",
+      "display_str_template": "Get the cat fact of the day for {0}.",
+      "handler": "actions.get_fact_of_the_day",
+      "id": "cat_facts_get_fact_of_the_day",
+      "method": "POST",
+      "mock_response": {
+        "date": "2026-08-31",
+        "fact": {
+          "fact": "The technical term for a cat\u2019s hairball is a \u201cbezoar.\u201d",
+          "length": 54
+        },
+        "max_length": null,
+        "pool_size": 332,
+        "seed": "2026-08-31"
+      },
+      "name": "get_fact_of_the_day",
+      "output_formatter": "actions.format_fact_of_the_day_output",
+      "parameters": [
+        {
+          "description": "The day to pick a fact for. Leave empty for today in UTC, which is what a scheduled step wants.",
+          "display_name": "Day",
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Any text you like, mixed into the day so that two workspaces running this on the same day get different facts. Leave empty to share the day's fact with everyone else.",
+          "display_name": "Seed",
+          "examples": [
+            {
+              "label": "A team name",
+              "value": "platform-standup"
+            }
+          ],
+          "name": "seed",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only allow facts up to this many characters, which is useful when the fact has to fit somewhere: a tweet, a Slack status, a subject line. Every fact comes back with its own length beside it. Leave empty to allow any fact.",
+          "display_name": "Maximum length",
+          "minimum": 1,
+          "name": "max_length",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/cat-facts/get-fact-of-the-day",
+      "result_str_template": "Cat fact of the day retrieved.",
+      "returns": {
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "fact": {
+            "properties": {
+              "fact": {
+                "type": "string"
+              },
+              "length": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "max_length": {
+            "type": "number"
+          },
+          "pool_size": {
+            "type": "number"
+          },
+          "seed": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_random_fact": {
+      "description": "Get one random cat fact, ready to post. Cap its length when it has to fit somewhere, such as a Slack status or a subject line, and the service picks a fact that fits.",
+      "display_name": "Get a random cat fact",
+      "display_str_template": "Get a random cat fact.",
+      "handler": "actions.get_random_fact",
+      "id": "cat_facts_get_random_fact",
+      "method": "POST",
+      "mock_response": {
+        "fact": {
+          "fact": "A cat\u2019s jaw can\u2019t move sideways, so a cat can\u2019t chew large chunks of food.",
+          "length": 74
+        },
+        "max_length": null
+      },
+      "name": "get_random_fact",
+      "output_formatter": "actions.format_fact_output",
+      "parameters": [
+        {
+          "description": "Only allow facts up to this many characters, which is useful when the fact has to fit somewhere: a tweet, a Slack status, a subject line. Every fact comes back with its own length beside it. Leave empty to allow any fact.",
+          "display_name": "Maximum length",
+          "minimum": 1,
+          "name": "max_length",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/cat-facts/get-random-fact",
+      "result_str_template": "Cat fact retrieved.",
+      "returns": {
+        "properties": {
+          "fact": {
+            "properties": {
+              "fact": {
+                "type": "string"
+              },
+              "length": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "max_length": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_random_facts": {
+      "description": "Get several different cat facts at once, up to 25. No fact is drawn twice in the same batch. The catalogue is read once and the batch sampled from it, so twenty facts cost one request rather than twenty; asking for more than the catalogue holds returns what there is rather than failing.",
+      "display_name": "Get random cat facts",
+      "display_str_template": "Get {0} random cat facts.",
+      "handler": "actions.get_random_facts",
+      "id": "cat_facts_get_random_facts",
+      "method": "POST",
+      "mock_response": {
+        "fact_count": 2,
+        "facts": [
+          {
+            "fact": "Unlike dogs, cats do not have a sweet tooth. Scientists believe this is due to a mutation in a key taste receptor.",
+            "length": 114
+          },
+          {
+            "fact": "A cat\u2019s jaw can\u2019t move sideways, so a cat can\u2019t chew large chunks of food.",
+            "length": 74
+          }
+        ],
+        "max_length": null,
+        "requested_count": 2,
+        "total": 332
+      },
+      "name": "get_random_facts",
+      "output_formatter": "actions.format_facts_output",
+      "parameters": [
+        {
+          "description": "How many facts to draw, from 1 to 25. Defaults to 5.",
+          "display_name": "Number of facts",
+          "maximum": 25,
+          "minimum": 1,
+          "name": "count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only allow facts up to this many characters, which is useful when the fact has to fit somewhere: a tweet, a Slack status, a subject line. Every fact comes back with its own length beside it. Leave empty to allow any fact.",
+          "display_name": "Maximum length",
+          "minimum": 1,
+          "name": "max_length",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/cat-facts/get-random-facts",
+      "result_str_template": "Cat facts retrieved.",
+      "returns": {
+        "properties": {
+          "fact_count": {
+            "type": "number"
+          },
+          "facts": {
+            "items": {
+              "properties": {
+                "fact": {
+                  "type": "string"
+                },
+                "length": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "max_length": {
+            "type": "number"
+          },
+          "requested_count": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_breeds": {
+      "description": "List the cat breeds the service records, with the country, coat, pattern and origin it holds for each. Narrow by any of those fields: the service itself offers no filter at all, so the table is read once and narrowed here on whole words, which is what lets one spelling find another. The number of breeds matching is always reported, however many are returned.",
+      "display_name": "List cat breeds",
+      "display_str_template": "List cat breeds from {0}.",
+      "handler": "actions.list_breeds",
+      "id": "cat_facts_list_breeds",
+      "method": "POST",
+      "mock_response": {
+        "breed_count": 3,
+        "breeds": [
+          {
+            "breed": "Abyssinian",
+            "coat": "Short",
+            "country": "Ethiopia",
+            "origin": "Natural/Standard",
+            "pattern": "Ticked"
+          },
+          {
+            "breed": "Aegean",
+            "coat": "Semi-long",
+            "country": "Greece",
+            "origin": "Natural/Standard",
+            "pattern": "Bi- or tri-colored"
+          },
+          {
+            "breed": "Arabian Mau",
+            "coat": "Short",
+            "country": "Arabian Peninsula",
+            "origin": "Natural",
+            "pattern": null
+          }
+        ],
+        "coat": null,
+        "country": null,
+        "origin": null,
+        "pattern": null,
+        "requested_count": 3,
+        "total_matches": 98
+      },
+      "name": "list_breeds",
+      "output_formatter": "actions.format_breeds_output",
+      "parameters": [
+        {
+          "description": "Only keep breeds whose country mentions this. Matched on whole words rather than exactly, so the table's inconsistent spellings still find each other. Many entries read like 'developed in the United States (founding stock from Asia)', so 'United States' finds those too.",
+          "display_name": "Country",
+          "examples": [
+            {
+              "label": "A country",
+              "value": "United Kingdom"
+            },
+            {
+              "label": "A region",
+              "value": "Thailand"
+            }
+          ],
+          "name": "country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only keep breeds with this coat. The table records Short, Long, Semi-long, Short/Long, Rex and Hairless among others. Matched on whole words rather than exactly, so the table's inconsistent spellings still find each other.",
+          "display_name": "Coat",
+          "examples": [
+            {
+              "label": "Short-haired",
+              "value": "Short"
+            },
+            {
+              "label": "Hairless",
+              "value": "Hairless"
+            }
+          ],
+          "name": "coat",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only keep breeds with this coat pattern, such as Ticked, Spotted, Solid or Colorpoint. Matched on whole words rather than exactly, so the table's inconsistent spellings still find each other.",
+          "display_name": "Pattern",
+          "examples": [
+            {
+              "label": "Spotted",
+              "value": "Spotted"
+            },
+            {
+              "label": "Colorpoint",
+              "value": "Colorpoint"
+            }
+          ],
+          "name": "pattern",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only keep breeds with this origin, such as Natural, Mutation, Crossbreed or Hybrid. Matched on whole words rather than exactly, so the table's inconsistent spellings still find each other.",
+          "display_name": "Origin",
+          "examples": [
+            {
+              "label": "Natural",
+              "value": "Natural"
+            },
+            {
+              "label": "Hybrid",
+              "value": "Hybrid"
+            }
+          ],
+          "name": "origin",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many breeds to return, from 1 to 200. Defaults to 25, which is the service's own page size.",
+          "display_name": "Number of breeds",
+          "maximum": 200,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/cat-facts/list-breeds",
+      "result_str_template": "Cat breeds listed.",
+      "returns": {
+        "properties": {
+          "breed_count": {
+            "type": "number"
+          },
+          "breeds": {
+            "items": {
+              "properties": {
+                "breed": {
+                  "type": "string"
+                },
+                "coat": {
+                  "type": "string"
+                },
+                "country": {
+                  "type": "string"
+                },
+                "origin": {
+                  "type": "string"
+                },
+                "pattern": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "coat": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "requested_count": {
+            "type": "number"
+          },
+          "total_matches": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_facts": {
+      "description": "Walk the cat fact catalogue a page at a time, in the service's own order, with the total and the page counts beside the facts. Use this to work through every fact; use Get random cat facts for a handful to post.",
+      "display_name": "List cat facts",
+      "display_str_template": "List {0} cat facts.",
+      "handler": "actions.list_facts",
+      "id": "cat_facts_list_facts",
+      "method": "POST",
+      "mock_response": {
+        "current_page": 1,
+        "fact_count": 2,
+        "facts": [
+          {
+            "fact": "Unlike dogs, cats do not have a sweet tooth. Scientists believe this is due to a mutation in a key taste receptor.",
+            "length": 114
+          },
+          {
+            "fact": "The technical term for a cat\u2019s hairball is a \u201cbezoar.\u201d",
+            "length": 54
+          }
+        ],
+        "has_more": true,
+        "last_page": 166,
+        "max_length": null,
+        "per_page": 2,
+        "requested_count": 2,
+        "total": 332
+      },
+      "name": "list_facts",
+      "output_formatter": "actions.format_facts_output",
+      "parameters": [
+        {
+          "description": "How many facts to return, from 1 to 500. Defaults to 10, which is the service's own page size.",
+          "display_name": "Facts per page",
+          "maximum": 500,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Which page to fetch, counting from 1. The result says how many pages there are and whether another follows.",
+          "display_name": "Page",
+          "minimum": 1,
+          "name": "page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only allow facts up to this many characters, which is useful when the fact has to fit somewhere: a tweet, a Slack status, a subject line. Every fact comes back with its own length beside it. Leave empty to allow any fact.",
+          "display_name": "Maximum length",
+          "minimum": 1,
+          "name": "max_length",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/cat-facts/list-facts",
+      "result_str_template": "Cat facts listed.",
+      "returns": {
+        "properties": {
+          "current_page": {
+            "type": "number"
+          },
+          "fact_count": {
+            "type": "number"
+          },
+          "facts": {
+            "items": {
+              "properties": {
+                "fact": {
+                  "type": "string"
+                },
+                "length": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "last_page": {
+            "type": "number"
+          },
+          "max_length": {
+            "type": "number"
+          },
+          "per_page": {
+            "type": "number"
+          },
+          "requested_count": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_facts": {
+      "description": "Find the cat facts that mention something, a word, a breed or a place, best match first. The service has no search of its own, so the whole catalogue is read and matched here, and ranked with a whole-word hit worth far more than one buried inside a longer word. The total number of matches is always reported, however many are returned.",
+      "display_name": "Search cat facts",
+      "display_str_template": "Search cat facts for {0}.",
+      "handler": "actions.search_facts",
+      "id": "cat_facts_search_facts",
+      "method": "POST",
+      "mock_response": {
+        "match_count": 1,
+        "matches": [
+          {
+            "fact": "Unlike dogs, cats do not have a sweet tooth. Scientists believe this is due to a mutation in a key taste receptor.",
+            "length": 114
+          }
+        ],
+        "max_length": null,
+        "query": "sweet tooth",
+        "searched_count": 332,
+        "total_matches": 1
+      },
+      "name": "search_facts",
+      "output_formatter": "actions.format_search_output",
+      "parameters": [
+        {
+          "description": "The word or phrase to look for in the facts, 2 to 120 characters.",
+          "display_name": "Search for",
+          "examples": [
+            {
+              "label": "A subject",
+              "value": "sleep"
+            },
+            {
+              "label": "A behaviour",
+              "value": "purr"
+            },
+            {
+              "label": "A breed",
+              "value": "Siamese"
+            }
+          ],
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many matches to return, from 1 to 100. Defaults to 10.",
+          "display_name": "Number of results",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only allow facts up to this many characters, which is useful when the fact has to fit somewhere: a tweet, a Slack status, a subject line. Every fact comes back with its own length beside it. Leave empty to allow any fact.",
+          "display_name": "Maximum length",
+          "minimum": 1,
+          "name": "max_length",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/cat-facts/search-facts",
+      "result_str_template": "Cat fact search complete.",
+      "returns": {
+        "properties": {
+          "match_count": {
+            "type": "number"
+          },
+          "matches": {
+            "items": {
+              "properties": {
+                "fact": {
+                  "type": "string"
+                },
+                "length": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "max_length": {
+            "type": "number"
+          },
+          "query": {
+            "type": "string"
+          },
+          "searched_count": {
+            "type": "number"
+          },
+          "total_matches": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Pull cat facts and cat breed data from catfact.ninja, the free keyless cat trivia API. Draw one fact at random or a batch of different ones, cap the length so a fact fits a Slack status or a subject line, search every fact for a word, walk the whole catalogue a page at a time, or pick a fact of the day that stays the same all day so a scheduled post never tells two. It also publishes a breed table: list the breeds by country, coat, pattern or origin, or look one up by name.",
+  "display_name": "Cat Facts",
+  "id": "cat_facts"
+}

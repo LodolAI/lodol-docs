@@ -1,0 +1,882 @@
+{
+  "actions": {
+    "check_email_security": {
+      "description": "Find out whether a domain is set up to stop other people sending email that appears to come from it. Three records have to agree for that to work, and this reads all three and says what they add up to in a sentence, with a list of anything missing. Use it to audit your own domains, to check a client's before taking on their email, or to score a prospect's security posture.",
+      "display_name": "Check a domain's email security",
+      "display_str_template": "Check the email security for {domain}.",
+      "handler": "actions.check_email_security",
+      "id": "google_public_dns_check_email_security",
+      "method": "POST",
+      "mock_response": {
+        "dkim": {
+          "checked": false,
+          "found": false,
+          "key_type": "",
+          "record": "",
+          "selector": ""
+        },
+        "dmarc": {
+          "aggregate_report_addresses": [
+            "mailauth-reports@google.com"
+          ],
+          "forensic_report_addresses": [],
+          "found": true,
+          "percentage": 100,
+          "policy": "Reject",
+          "record": "v=DMARC1; p=reject; rua=mailto:mailauth-reports@google.com",
+          "subdomain_policy": "Reject"
+        },
+        "dnssec_validated": false,
+        "domain": "google.com",
+        "domain_exists": true,
+        "issue_count": 0,
+        "issues": [],
+        "protected_from_spoofing": true,
+        "spf": {
+          "found": true,
+          "includes": [
+            "_spf.google.com"
+          ],
+          "policy": "Mark as spam",
+          "record": "v=spf1 include:_spf.google.com ~all",
+          "record_count": 1
+        },
+        "summary": "google.com is protected: SPF says to treat mail from any other server as spam, and DMARC tells inboxes to reject anything that fails."
+      },
+      "name": "check_email_security",
+      "parameters": [
+        {
+          "description": "The domain to check, such as example.com. Paste a whole email address and the domain is taken out of it.",
+          "display_name": "Domain or email address",
+          "name": "domain",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A domain's signing keys are filed under short names, and there is no way to list them, so checking one means naming it. Your email provider's setup page gives it - 'google' for Google Workspace, 'selector1' for Microsoft 365, 'k1' for Mailchimp. Leave it empty to check the other two records only.",
+          "display_name": "DKIM selector",
+          "name": "dkim_selector",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-public-dns/check-email-security",
+      "result_str_template": "{google_public_dns_check_email_security,summary}",
+      "returns": {
+        "properties": {
+          "dkim": {
+            "description": "The signing key published under the selector you named, if you named one.",
+            "properties": {
+              "checked": {
+                "description": "False when no selector was given, in which case nothing below was looked up.",
+                "type": "boolean"
+              },
+              "found": {
+                "description": "True when a usable key is published. A record that is published with its key removed is a withdrawn key, and reads as False.",
+                "type": "boolean"
+              },
+              "key_type": {
+                "description": "The kind of key, usually 'rsa' or 'ed25519'.",
+                "type": "string"
+              },
+              "record": {
+                "description": "The record itself.",
+                "type": "string"
+              },
+              "selector": {
+                "description": "The selector that was checked.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "dmarc": {
+            "description": "What the domain asks inboxes to do with email that fails the checks.",
+            "properties": {
+              "aggregate_report_addresses": {
+                "description": "Where daily summary reports are sent.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "forensic_report_addresses": {
+                "description": "Where reports on individual failures are sent, for the domains that ask for them.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "found": {
+                "description": "Whether the domain has one.",
+                "type": "boolean"
+              },
+              "percentage": {
+                "description": "How much of the domain's email the policy applies to. Normally 100.",
+                "type": "integer"
+              },
+              "policy": {
+                "description": "One of 'Reject', 'Quarantine', 'Monitor only' or 'Not specified'. Monitor only means failing email is still delivered.",
+                "type": "string"
+              },
+              "record": {
+                "description": "The record itself.",
+                "type": "string"
+              },
+              "subdomain_policy": {
+                "description": "The same, for subdomains. A domain that says nothing about them means the main policy, which is what is reported.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "dnssec_validated": {
+            "description": "True when the answer was signed by the domain's owner and the signature checked out, so it is proof against tampering. Most domains are not signed, so False is normal and does not mean anything is wrong.",
+            "type": "boolean"
+          },
+          "domain": {
+            "description": "The domain that was looked up, as it was sent: trimmed down from a link or an email address, and in plain letters.",
+            "type": "string"
+          },
+          "domain_exists": {
+            "description": "True when the domain is registered and its name servers answered. False means no such domain, which is an answer rather than an error - the step still succeeds so a workflow can branch on it.",
+            "type": "boolean"
+          },
+          "issue_count": {
+            "description": "How many issues were found.",
+            "type": "integer"
+          },
+          "issues": {
+            "description": "What is missing or misconfigured, one plain sentence each. Empty when nothing is.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "protected_from_spoofing": {
+            "description": "True only when both halves are in force: the domain names the servers allowed to send as it, and it tells inboxes to reject or quarantine anything else. A domain that publishes the records but asks for nothing to be done is False, because nothing is being blocked.",
+            "type": "boolean"
+          },
+          "spf": {
+            "description": "Which servers are allowed to send email as this domain.",
+            "properties": {
+              "found": {
+                "description": "Whether the domain has one.",
+                "type": "boolean"
+              },
+              "includes": {
+                "description": "The services the domain sends through, such as _spf.google.com or sendgrid.net.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "policy": {
+                "description": "What the domain asks for when mail comes from a server that is not on its list. One of 'Reject', 'Mark as spam', 'No opinion', 'Allow anything' or 'Not specified'.",
+                "type": "string"
+              },
+              "record": {
+                "description": "The record itself.",
+                "type": "string"
+              },
+              "record_count": {
+                "description": "How many there are. A domain may only have one: two or more and mail providers treat the check as broken.",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "summary": {
+            "description": "The whole answer in one sentence, ready to put in a message or a ticket.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_alias": {
+      "description": "Find out whether a name is a signpost to somewhere else, and where it points. This is the check behind every 'point your domain at us' onboarding step: a customer is told to send support.their-company.com to your service, and this is how a workflow knows whether they have done it and finishes setting them up on its own.",
+      "display_name": "Find a domain's alias",
+      "display_str_template": "Find what {domain} is an alias for.",
+      "handler": "actions.find_alias",
+      "id": "google_public_dns_find_alias",
+      "method": "POST",
+      "mock_response": {
+        "alias_chain": [
+          "dyna.wikimedia.org"
+        ],
+        "alias_target": "dyna.wikimedia.org",
+        "dnssec_validated": false,
+        "domain": "www.wikipedia.org",
+        "domain_exists": true,
+        "final_name": "dyna.wikimedia.org",
+        "is_alias": true,
+        "ttl_seconds": 5779
+      },
+      "name": "find_alias",
+      "parameters": [
+        {
+          "description": "The name to check, such as support.example.com. A full web address or an email address works too - the domain is taken out of it.",
+          "display_name": "Domain",
+          "name": "domain",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-public-dns/find-alias",
+      "result_str_template": "{google_public_dns_find_alias,domain} points to {google_public_dns_find_alias,final_name}.",
+      "returns": {
+        "properties": {
+          "alias_chain": {
+            "description": "If this name is an alias, the names it points through, in order. Empty when it is not an alias.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "alias_target": {
+            "description": "The name it points at. Empty when it is not an alias.",
+            "type": "string"
+          },
+          "dnssec_validated": {
+            "description": "True when the answer was signed by the domain's owner and the signature checked out, so it is proof against tampering. Most domains are not signed, so False is normal and does not mean anything is wrong.",
+            "type": "boolean"
+          },
+          "domain": {
+            "description": "The domain that was looked up, as it was sent: trimmed down from a link or an email address, and in plain letters.",
+            "type": "string"
+          },
+          "domain_exists": {
+            "description": "True when the domain is registered and its name servers answered. False means no such domain, which is an answer rather than an error - the step still succeeds so a workflow can branch on it.",
+            "type": "boolean"
+          },
+          "final_name": {
+            "description": "Where the signposts end up. The same as the domain you asked about when it is not an alias, so this field always names something.",
+            "type": "string"
+          },
+          "is_alias": {
+            "description": "True when this name is a signpost to another one. False when it stands on its own, which is what a top-level domain like example.com normally does.",
+            "type": "boolean"
+          },
+          "ttl_seconds": {
+            "description": "How many seconds this answer stays cached before it is looked up again. This is how long a change to these records can take to show up here. Empty when there were no records.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_host_name": {
+      "description": "Turn an IP address back into a name. A visitor's address on its own says nothing; its name often says who they are - a company, a cloud provider, a home connection. Use it to put a name on an address in a log, or to check that a server you run is named the way your mail provider expects. Works for both address styles.",
+      "display_name": "Find the host name for an IP address",
+      "display_str_template": "Find the host name for {ip_address}.",
+      "handler": "actions.find_host_name",
+      "id": "google_public_dns_find_host_name",
+      "method": "POST",
+      "mock_response": {
+        "dnssec_validated": false,
+        "found": true,
+        "host_name": "dns.google",
+        "host_name_count": 1,
+        "host_names": [
+          "dns.google"
+        ],
+        "ip_address": "8.8.8.8",
+        "ttl_seconds": 20035
+      },
+      "name": "find_host_name",
+      "parameters": [
+        {
+          "description": "The address to look up, such as 8.8.8.8 or 2001:4860:4860::8888.",
+          "display_name": "IP address",
+          "name": "ip_address",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-public-dns/find-host-name",
+      "result_str_template": "{google_public_dns_find_host_name,ip_address} is {google_public_dns_find_host_name,host_name}.",
+      "returns": {
+        "properties": {
+          "dnssec_validated": {
+            "description": "True when the answer was signed by the domain's owner and the signature checked out, so it is proof against tampering. Most domains are not signed, so False is normal and does not mean anything is wrong.",
+            "type": "boolean"
+          },
+          "found": {
+            "description": "True when the address has a name. Plenty do not - naming an address is optional and its owner has to set it up.",
+            "type": "boolean"
+          },
+          "host_name": {
+            "description": "The name, lifted to the top. Empty when there is none.",
+            "type": "string"
+          },
+          "host_name_count": {
+            "description": "How many names there are.",
+            "type": "integer"
+          },
+          "host_names": {
+            "description": "Every name for the address. Usually one, occasionally several.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ip_address": {
+            "description": "The address that was looked up, in its standard written form.",
+            "type": "string"
+          },
+          "ttl_seconds": {
+            "description": "How many seconds this answer stays cached before it is looked up again. This is how long a change to these records can take to show up here. Empty when there were no records.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_ip_addresses": {
+      "description": "Find the servers a domain points at - the addresses a browser would connect to. Use it to check a site is pointed where you expect after a move, to confirm a customer's domain has gone live, or to find out whether a domain exists at all. Both modern and older address types are looked up together.",
+      "display_name": "Find a domain's IP addresses",
+      "display_str_template": "Find the IP addresses for {domain}.",
+      "handler": "actions.find_ip_addresses",
+      "id": "google_public_dns_find_ip_addresses",
+      "method": "POST",
+      "mock_response": {
+        "address_count": 1,
+        "alias_chain": [
+          "github.com"
+        ],
+        "dnssec_validated": false,
+        "domain": "www.github.com",
+        "domain_exists": true,
+        "found": true,
+        "ip_addresses": [
+          "140.82.112.3"
+        ],
+        "ipv4_addresses": [
+          "140.82.112.3"
+        ],
+        "ipv6_addresses": [],
+        "ttl_seconds": 60
+      },
+      "name": "find_ip_addresses",
+      "parameters": [
+        {
+          "description": "The domain to look up, such as example.com. A full web address or an email address works too - the domain is taken out of it, www and all, because www.example.com and example.com can point to different places.",
+          "display_name": "Domain",
+          "name": "domain",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-public-dns/find-ip-addresses",
+      "result_str_template": "{google_public_dns_find_ip_addresses,domain} has {google_public_dns_find_ip_addresses,address_count} IP address(es).",
+      "returns": {
+        "properties": {
+          "address_count": {
+            "description": "How many addresses there are in total.",
+            "type": "integer"
+          },
+          "alias_chain": {
+            "description": "If this name is an alias, the names it points through, in order. Empty when it is not an alias.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "dnssec_validated": {
+            "description": "True when the answer was signed by the domain's owner and the signature checked out, so it is proof against tampering. Most domains are not signed, so False is normal and does not mean anything is wrong.",
+            "type": "boolean"
+          },
+          "domain": {
+            "description": "The domain that was looked up, as it was sent: trimmed down from a link or an email address, and in plain letters.",
+            "type": "string"
+          },
+          "domain_exists": {
+            "description": "True when the domain is registered and its name servers answered. False means no such domain, which is an answer rather than an error - the step still succeeds so a workflow can branch on it.",
+            "type": "boolean"
+          },
+          "found": {
+            "description": "True when the domain has at least one IP address. A domain can exist and still have none, which is normal for one that only handles email.",
+            "type": "boolean"
+          },
+          "ip_addresses": {
+            "description": "Every address the domain points at, modern and older together.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ipv4_addresses": {
+            "description": "Just the older-style addresses, like 93.184.216.34. These are the ones almost everything still uses.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ipv6_addresses": {
+            "description": "Just the modern addresses, like 2606:2800:220:1::. Empty for the many domains that do not use them yet.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ttl_seconds": {
+            "description": "How many seconds this answer stays cached before it is looked up again. This is how long a change to these records can take to show up here. Empty when there were no records.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_mail_servers": {
+      "description": "Find out who handles a domain's email, and whether it can receive any at all. The servers come back in the order mail is offered to them, so the first one is the one that normally takes it. Use it to check an address is worth sending to before a campaign, to see which provider a company's mail runs through, or to confirm a mail migration has finished.",
+      "display_name": "Find a domain's mail servers",
+      "display_str_template": "Find the mail servers for {domain}.",
+      "handler": "actions.find_mail_servers",
+      "id": "google_public_dns_find_mail_servers",
+      "method": "POST",
+      "mock_response": {
+        "accepts_email": true,
+        "dnssec_validated": false,
+        "domain": "gmail.com",
+        "domain_exists": true,
+        "found": true,
+        "mail_server_count": 3,
+        "mail_servers": [
+          {
+            "host": "gmail-smtp-in.l.google.com",
+            "priority": 5
+          },
+          {
+            "host": "alt1.gmail-smtp-in.l.google.com",
+            "priority": 10
+          },
+          {
+            "host": "alt2.gmail-smtp-in.l.google.com",
+            "priority": 20
+          }
+        ],
+        "primary_mail_server": "gmail-smtp-in.l.google.com",
+        "ttl_seconds": 2597
+      },
+      "name": "find_mail_servers",
+      "parameters": [
+        {
+          "description": "The domain whose mail servers you want, such as example.com. Paste a whole email address and the domain is taken out of it.",
+          "display_name": "Domain or email address",
+          "name": "domain",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-public-dns/find-mail-servers",
+      "result_str_template": "{google_public_dns_find_mail_servers,domain} has {google_public_dns_find_mail_servers,mail_server_count} mail server(s).",
+      "returns": {
+        "properties": {
+          "accepts_email": {
+            "description": "True when the domain can receive email. That usually means the mail servers listed below, but a domain with no mail servers and a website can still receive mail, and that counts too. False means mail to this domain will bounce.",
+            "type": "boolean"
+          },
+          "dnssec_validated": {
+            "description": "True when the answer was signed by the domain's owner and the signature checked out, so it is proof against tampering. Most domains are not signed, so False is normal and does not mean anything is wrong.",
+            "type": "boolean"
+          },
+          "domain": {
+            "description": "The domain that was looked up, as it was sent: trimmed down from a link or an email address, and in plain letters.",
+            "type": "string"
+          },
+          "domain_exists": {
+            "description": "True when the domain is registered and its name servers answered. False means no such domain, which is an answer rather than an error - the step still succeeds so a workflow can branch on it.",
+            "type": "boolean"
+          },
+          "found": {
+            "description": "True when the domain lists mail servers of its own.",
+            "type": "boolean"
+          },
+          "mail_server_count": {
+            "description": "How many mail servers there are.",
+            "type": "integer"
+          },
+          "mail_servers": {
+            "description": "The mail servers, best first. Only the servers the domain actually lists appear here.",
+            "items": {
+              "properties": {
+                "host": {
+                  "description": "The server's address.",
+                  "type": "string"
+                },
+                "priority": {
+                  "description": "Which server mail should be offered to first. The lowest number wins; the rest are the backups, in order.",
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "primary_mail_server": {
+            "description": "The server mail is offered to first, lifted to the top. Empty when the domain lists none.",
+            "type": "string"
+          },
+          "ttl_seconds": {
+            "description": "How many seconds this answer stays cached before it is looked up again. This is how long a change to these records can take to show up here. Empty when there were no records.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_name_servers": {
+      "description": "Find out who runs a domain's DNS - the servers that answer every question about it. The names give away the provider, so this is how you tell that a domain is on Cloudflare, or Route 53, or still with the registrar. Use it to confirm a domain transfer has taken effect, or to check a customer has pointed their domain at you before you go looking for the records.",
+      "display_name": "Find a domain's name servers",
+      "display_str_template": "Find the name servers for {domain}.",
+      "handler": "actions.find_name_servers",
+      "id": "google_public_dns_find_name_servers",
+      "method": "POST",
+      "mock_response": {
+        "dnssec_validated": true,
+        "domain": "example.com",
+        "domain_exists": true,
+        "found": true,
+        "name_server_count": 2,
+        "name_servers": [
+          "elliott.ns.cloudflare.com",
+          "hera.ns.cloudflare.com"
+        ],
+        "ttl_seconds": 21600
+      },
+      "name": "find_name_servers",
+      "parameters": [
+        {
+          "description": "The domain to look up, such as example.com. A full web address or an email address works too - the domain is taken out of it.",
+          "display_name": "Domain",
+          "name": "domain",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-public-dns/find-name-servers",
+      "result_str_template": "{google_public_dns_find_name_servers,domain} has {google_public_dns_find_name_servers,name_server_count} name server(s).",
+      "returns": {
+        "properties": {
+          "dnssec_validated": {
+            "description": "True when the answer was signed by the domain's owner and the signature checked out, so it is proof against tampering. Most domains are not signed, so False is normal and does not mean anything is wrong.",
+            "type": "boolean"
+          },
+          "domain": {
+            "description": "The domain that was looked up, as it was sent: trimmed down from a link or an email address, and in plain letters.",
+            "type": "string"
+          },
+          "domain_exists": {
+            "description": "True when the domain is registered and its name servers answered. False means no such domain, which is an answer rather than an error - the step still succeeds so a workflow can branch on it.",
+            "type": "boolean"
+          },
+          "found": {
+            "description": "True when the domain lists name servers of its own. A subdomain usually does not - its parent answers for it.",
+            "type": "boolean"
+          },
+          "name_server_count": {
+            "description": "How many name servers there are.",
+            "type": "integer"
+          },
+          "name_servers": {
+            "description": "The name servers, in alphabetical order. They are equals, so there is no first among them.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ttl_seconds": {
+            "description": "How many seconds this answer stays cached before it is looked up again. This is how long a change to these records can take to show up here. Empty when there were no records.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_text_records": {
+      "description": "Read the notes a domain's owner has published on it. This is where verification codes live: when a service asks a customer to 'add this record to prove you own the domain', this is where it lands. Give it the code you are waiting for and the step tells you whether it has appeared yet, so a workflow can check every hour and carry on the moment it does.",
+      "display_name": "Find a domain's text records",
+      "display_str_template": "Find the text records for {domain}.",
+      "handler": "actions.find_text_records",
+      "id": "google_public_dns_find_text_records",
+      "method": "POST",
+      "mock_response": {
+        "dnssec_validated": true,
+        "domain": "example.com",
+        "domain_exists": true,
+        "found": true,
+        "match_found": true,
+        "matching_records": [
+          "google-site-verification=4ibFUgB-wXLQ_S7vsXVomSTVamuOXBiVAzpR"
+        ],
+        "record_count": 2,
+        "searched_for": "google-site-verification",
+        "text_records": [
+          "v=spf1 include:_spf.google.com ~all",
+          "google-site-verification=4ibFUgB-wXLQ_S7vsXVomSTVamuOXBiVAzpR"
+        ],
+        "ttl_seconds": 300
+      },
+      "name": "find_text_records",
+      "parameters": [
+        {
+          "description": "The domain to read, such as example.com. A full web address or an email address works too - the domain is taken out of it.",
+          "display_name": "Domain",
+          "name": "domain",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Waiting for a particular record to appear? Put part of it here - a verification code, or something as short as 'v=spf1' - and the step reports whether any record contains it. Leave it empty to just get every record back.",
+          "display_name": "Text to look for",
+          "name": "contains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-public-dns/find-text-records",
+      "result_str_template": "{google_public_dns_find_text_records,domain} has {google_public_dns_find_text_records,record_count} text record(s).",
+      "returns": {
+        "properties": {
+          "dnssec_validated": {
+            "description": "True when the answer was signed by the domain's owner and the signature checked out, so it is proof against tampering. Most domains are not signed, so False is normal and does not mean anything is wrong.",
+            "type": "boolean"
+          },
+          "domain": {
+            "description": "The domain that was looked up, as it was sent: trimmed down from a link or an email address, and in plain letters.",
+            "type": "string"
+          },
+          "domain_exists": {
+            "description": "True when the domain is registered and its name servers answered. False means no such domain, which is an answer rather than an error - the step still succeeds so a workflow can branch on it.",
+            "type": "boolean"
+          },
+          "found": {
+            "description": "True when the domain has at least one text record.",
+            "type": "boolean"
+          },
+          "match_found": {
+            "description": "True when a record contains the text you asked about. False when none does, and also when you did not ask about any - check 'searched_for' to tell those apart.",
+            "type": "boolean"
+          },
+          "matching_records": {
+            "description": "The records that contain the text you asked about. Empty when the field was left blank.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "record_count": {
+            "description": "How many text records there are.",
+            "type": "integer"
+          },
+          "searched_for": {
+            "description": "The text that was looked for, echoed back. Empty when the field was left blank.",
+            "type": "string"
+          },
+          "text_records": {
+            "description": "Every text record on the domain. A record too long to store in one piece is joined back up first, so what you read here is what was written.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ttl_seconds": {
+            "description": "How many seconds this answer stays cached before it is looked up again. This is how long a change to these records can take to show up here. Empty when there were no records.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "look_up_dns_record": {
+      "description": "Read any kind of DNS record, for the questions the other steps do not cover: which authorities may issue certificates for a domain, where a service lives, when its records were last changed. Pick the kind of record from the list and the values come back as they were published.",
+      "display_name": "Look up any DNS record",
+      "display_str_template": "Look up the {record_type} records for {domain}.",
+      "handler": "actions.look_up_dns_record",
+      "id": "google_public_dns_look_up_dns_record",
+      "method": "POST",
+      "mock_response": {
+        "alias_chain": [],
+        "dnssec_validated": false,
+        "domain": "google.com",
+        "domain_exists": true,
+        "found": true,
+        "record_count": 1,
+        "record_type": "CAA",
+        "records": [
+          {
+            "name": "google.com",
+            "ttl_seconds": 18292,
+            "value": "0 issue \"pki.goog\""
+          }
+        ],
+        "ttl_seconds": 18292,
+        "values": [
+          "0 issue \"pki.goog\""
+        ]
+      },
+      "name": "look_up_dns_record",
+      "parameters": [
+        {
+          "description": "The name to look up, such as example.com. A full web address or an email address works too - the domain is taken out of it.",
+          "display_name": "Domain",
+          "name": "domain",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "A",
+          "description": "What kind of record to read. Not sure? Addresses, mail servers, text records, name servers and aliases each have a step of their own that does not ask.",
+          "display_name": "Record type",
+          "name": "record_type",
+          "options": [
+            {
+              "label": "A (IPv4 address)",
+              "value": "A"
+            },
+            {
+              "label": "AAAA (IPv6 address)",
+              "value": "AAAA"
+            },
+            {
+              "label": "CNAME (alias)",
+              "value": "CNAME"
+            },
+            {
+              "label": "MX (mail servers)",
+              "value": "MX"
+            },
+            {
+              "label": "TXT (text records)",
+              "value": "TXT"
+            },
+            {
+              "label": "NS (name servers)",
+              "value": "NS"
+            },
+            {
+              "label": "SOA (zone details)",
+              "value": "SOA"
+            },
+            {
+              "label": "PTR (name for an address)",
+              "value": "PTR"
+            },
+            {
+              "label": "CAA (who may issue certificates)",
+              "value": "CAA"
+            },
+            {
+              "label": "SRV (service location)",
+              "value": "SRV"
+            },
+            {
+              "label": "HTTPS (web service details)",
+              "value": "HTTPS"
+            },
+            {
+              "label": "SVCB (service binding)",
+              "value": "SVCB"
+            },
+            {
+              "label": "TLSA (certificate pinning)",
+              "value": "TLSA"
+            },
+            {
+              "label": "SSHFP (SSH key fingerprint)",
+              "value": "SSHFP"
+            },
+            {
+              "label": "NAPTR (phone and service routing)",
+              "value": "NAPTR"
+            },
+            {
+              "label": "DS (DNSSEC delegation)",
+              "value": "DS"
+            },
+            {
+              "label": "DNSKEY (DNSSEC key)",
+              "value": "DNSKEY"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-public-dns/look-up-dns-record",
+      "result_str_template": "{google_public_dns_look_up_dns_record,domain} has {google_public_dns_look_up_dns_record,record_count} {google_public_dns_look_up_dns_record,record_type} record(s).",
+      "returns": {
+        "properties": {
+          "alias_chain": {
+            "description": "If this name is an alias, the names it points through, in order. Empty when it is not an alias.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "dnssec_validated": {
+            "description": "True when the answer was signed by the domain's owner and the signature checked out, so it is proof against tampering. Most domains are not signed, so False is normal and does not mean anything is wrong.",
+            "type": "boolean"
+          },
+          "domain": {
+            "description": "The domain that was looked up, as it was sent: trimmed down from a link or an email address, and in plain letters.",
+            "type": "string"
+          },
+          "domain_exists": {
+            "description": "True when the domain is registered and its name servers answered. False means no such domain, which is an answer rather than an error - the step still succeeds so a workflow can branch on it.",
+            "type": "boolean"
+          },
+          "found": {
+            "description": "True when the domain has at least one record of this kind.",
+            "type": "boolean"
+          },
+          "record_count": {
+            "description": "How many records there are.",
+            "type": "integer"
+          },
+          "record_type": {
+            "description": "The kind of record that was read.",
+            "type": "string"
+          },
+          "records": {
+            "description": "The records themselves.",
+            "items": {
+              "properties": {
+                "name": {
+                  "description": "The name the record is published under. Different from the domain you asked about when that name is an alias.",
+                  "type": "string"
+                },
+                "ttl_seconds": {
+                  "description": "How long this record stays cached.",
+                  "type": "integer"
+                },
+                "value": {
+                  "description": "The value, exactly as it was published.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "ttl_seconds": {
+            "description": "How many seconds this answer stays cached before it is looked up again. This is how long a change to these records can take to show up here. Empty when there were no records.",
+            "type": "integer"
+          },
+          "values": {
+            "description": "Just the values, for reading or comparing without reaching into each record.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Look up the public records behind any domain, using Google Public DNS - the resolver at 8.8.8.8 that answers for much of the internet. Find the servers a domain points at, who handles its email, who runs its DNS, and whether a name is an alias for somewhere else. Read the notes published on a domain to catch the moment a customer adds the verification record you asked them for. Check whether a domain is protected against people sending email that looks like it came from it, and get the answer as a sentence rather than a pile of records. Turn an IP address back into a name. Free, instant, and no account or API key required.",
+  "display_name": "Google Public DNS",
+  "id": "google_public_dns"
+}

@@ -1,0 +1,589 @@
+{
+  "actions": {
+    "get_account": {
+      "description": "Look up your Temporal Cloud account via the Cloud Operations API, including its account id, current lifecycle state, and the Prometheus metrics endpoint if metrics are enabled. Useful as a connectivity check or to retrieve the account id and metrics URL; not for workflow data.",
+      "display_name": "Get Temporal account",
+      "display_str_template": "Get Temporal Cloud account.",
+      "handler": "actions.get_account",
+      "id": "temporal_get_account",
+      "method": "POST",
+      "mock_response": {
+        "account": {
+          "id": "a1b2c3",
+          "metrics": {
+            "uri": "https://a1b2c3.tmprl.cloud/prometheus"
+          },
+          "resourceVersion": "0e9f6c4e-6b2a-4c1d-8a1a-2f7d9b0c1e33",
+          "spec": {
+            "metrics": {}
+          },
+          "state": "RESOURCE_STATE_ACTIVE"
+        }
+      },
+      "name": "get_account",
+      "output_formatter": "actions.format_get_account_output",
+      "parameters": [],
+      "path": "/actions/library/temporal/get-account",
+      "result_str_template": "Retrieved Temporal Cloud account.",
+      "returns": {
+        "description": "Wrapper with a single 'account' object. The API key is scoped to one account, so this endpoint takes no parameters.",
+        "properties": {
+          "account": {
+            "description": "The Temporal Cloud account.",
+            "properties": {
+              "id": {
+                "description": "The account id (short identifier).",
+                "type": "string"
+              },
+              "metrics": {
+                "description": "Resolved metrics info.",
+                "properties": {
+                  "uri": {
+                    "description": "Prometheus metrics endpoint URI; only set when metrics are enabled.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "resourceVersion": {
+                "description": "Opaque version of the account spec, required by update operations.",
+                "type": "string"
+              },
+              "spec": {
+                "description": "Account specification.",
+                "properties": {
+                  "metrics": {
+                    "description": "Metrics config; present when metrics are enabled.",
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
+              "state": {
+                "description": "Lifecycle state enum, e.g. 'RESOURCE_STATE_ACTIVE'.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_namespace": {
+      "description": "Fetch a single Temporal Cloud namespace by its full identifier ('<name>.<account>'), including its lifecycle state, active region, data-retention period, authentication settings (mTLS and/or API key), and connection endpoints. Useful for inspecting one namespace's configuration in detail.",
+      "display_name": "Get Temporal namespace",
+      "display_str_template": "Get Temporal namespace {0}.",
+      "handler": "actions.get_namespace",
+      "id": "temporal_get_namespace",
+      "method": "POST",
+      "mock_response": {
+        "namespace": {
+          "activeRegion": "aws-us-west-2",
+          "createdTime": "2026-01-15T10:30:00Z",
+          "endpoints": {
+            "grpcAddress": "production.a1b2c3.tmprl.cloud:7233",
+            "mtlsGrpcAddress": "",
+            "webAddress": "https://cloud.temporal.io/namespaces/production.a1b2c3"
+          },
+          "lastModifiedTime": "2026-03-02T12:45:00Z",
+          "namespace": "production.a1b2c3",
+          "resourceVersion": "b7c1e2d3-1a2b-4c3d-9e8f-0a1b2c3d4e5f",
+          "spec": {
+            "apiKeyAuth": {
+              "enabled": true
+            },
+            "mtlsAuth": {
+              "enabled": false
+            },
+            "name": "production",
+            "retentionDays": 30
+          },
+          "state": "RESOURCE_STATE_ACTIVE"
+        }
+      },
+      "name": "get_namespace",
+      "output_formatter": "actions.format_get_namespace_output",
+      "parameters": [
+        {
+          "description": "The full namespace identifier, formatted as '<name>.<account>', for example 'production.a1b2c3'. This is the value shown as 'namespace' in List Temporal namespaces, not just the short name.",
+          "display_name": "Namespace",
+          "name": "namespace",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/temporal/get-namespace",
+      "result_str_template": "Retrieved Temporal namespace.",
+      "returns": {
+        "description": "Wrapper with a single 'namespace' object.",
+        "properties": {
+          "namespace": {
+            "description": "The namespace.",
+            "properties": {
+              "activeRegion": {
+                "type": "string"
+              },
+              "createdTime": {
+                "type": "string"
+              },
+              "endpoints": {
+                "properties": {
+                  "grpcAddress": {
+                    "type": "string"
+                  },
+                  "mtlsGrpcAddress": {
+                    "type": "string"
+                  },
+                  "webAddress": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "lastModifiedTime": {
+                "description": "RFC 3339; absent if never modified.",
+                "type": "string"
+              },
+              "namespace": {
+                "description": "The namespace identifier, '<name>.<account>'.",
+                "type": "string"
+              },
+              "resourceVersion": {
+                "type": "string"
+              },
+              "spec": {
+                "properties": {
+                  "apiKeyAuth": {
+                    "description": "{'enabled': bool}.",
+                    "type": "object"
+                  },
+                  "mtlsAuth": {
+                    "description": "{'enabled': bool, ...}.",
+                    "type": "object"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "retentionDays": {
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "state": {
+                "description": "Lifecycle state enum, e.g. 'RESOURCE_STATE_ACTIVE'.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_namespaces": {
+      "description": "List the namespaces in your Temporal Cloud account, one page at a time, optionally filtered by name. Each namespace includes its full identifier ('<name>.<account>'), lifecycle state, active region, retention period, and connection endpoints. Useful for auditing which namespaces exist, finding a namespace's gRPC endpoint, or checking data-retention settings.",
+      "display_name": "List Temporal namespaces",
+      "display_str_template": "List Temporal namespaces.",
+      "handler": "actions.list_namespaces",
+      "id": "temporal_list_namespaces",
+      "method": "POST",
+      "mock_response": {
+        "namespaces": [
+          {
+            "activeRegion": "aws-us-west-2",
+            "createdTime": "2026-01-15T10:30:00Z",
+            "endpoints": {
+              "grpcAddress": "production.a1b2c3.tmprl.cloud:7233",
+              "webAddress": "https://cloud.temporal.io/namespaces/production.a1b2c3"
+            },
+            "namespace": "production.a1b2c3",
+            "resourceVersion": "b7c1e2d3-1a2b-4c3d-9e8f-0a1b2c3d4e5f",
+            "spec": {
+              "apiKeyAuth": {
+                "enabled": true
+              },
+              "name": "production",
+              "retentionDays": 30
+            },
+            "state": "RESOURCE_STATE_ACTIVE"
+          },
+          {
+            "activeRegion": "aws-us-east-1",
+            "createdTime": "2026-02-01T08:00:00Z",
+            "endpoints": {
+              "grpcAddress": "staging.a1b2c3.tmprl.cloud:7233",
+              "webAddress": "https://cloud.temporal.io/namespaces/staging.a1b2c3"
+            },
+            "namespace": "staging.a1b2c3",
+            "resourceVersion": "c8d2f3e4-2b3c-4d4e-8f9a-1b2c3d4e5f60",
+            "spec": {
+              "apiKeyAuth": {
+                "enabled": true
+              },
+              "name": "staging",
+              "retentionDays": 14
+            },
+            "state": "RESOURCE_STATE_ACTIVE"
+          }
+        ],
+        "nextPageToken": ""
+      },
+      "name": "list_namespaces",
+      "output_formatter": "actions.format_list_namespaces_output",
+      "parameters": [
+        {
+          "description": "Only return the namespace whose short name matches this value exactly, for example 'production'. Leave blank to list all namespaces.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many namespaces to return per page, from 1 to 1000. Defaults to 100.",
+          "display_name": "Page size",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "page_size",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "To get the next page, enter the 'nextPageToken' value from the previous page of results.",
+          "display_name": "Continue from",
+          "name": "page_token",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/temporal/list-namespaces",
+      "result_str_template": "Retrieved Temporal namespaces.",
+      "returns": {
+        "description": "Paginated list of namespaces. 'nextPageToken' is empty when there are no more pages; pass it back as 'page_token' to fetch the next page.",
+        "properties": {
+          "namespaces": {
+            "description": "Namespaces for this page, in name order.",
+            "items": {
+              "properties": {
+                "activeRegion": {
+                  "description": "The region currently serving the namespace, e.g. 'aws-us-west-2'.",
+                  "type": "string"
+                },
+                "createdTime": {
+                  "description": "RFC 3339 creation timestamp.",
+                  "type": "string"
+                },
+                "endpoints": {
+                  "properties": {
+                    "grpcAddress": {
+                      "description": "gRPC endpoint for API-key clients, e.g. '<ns>.<acct>.tmprl.cloud:7233'.",
+                      "type": "string"
+                    },
+                    "webAddress": {
+                      "description": "Web UI URL.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "namespace": {
+                  "description": "The namespace identifier, formatted as '<name>.<account>'.",
+                  "type": "string"
+                },
+                "resourceVersion": {
+                  "type": "string"
+                },
+                "spec": {
+                  "properties": {
+                    "apiKeyAuth": {
+                      "description": "API-key auth config; {'enabled': bool}.",
+                      "type": "object"
+                    },
+                    "name": {
+                      "description": "Short namespace name.",
+                      "type": "string"
+                    },
+                    "retentionDays": {
+                      "description": "Days that closed workflow data is retained.",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                },
+                "state": {
+                  "description": "Lifecycle state enum, e.g. 'RESOURCE_STATE_ACTIVE'.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "nextPageToken": {
+            "description": "Cursor for the next page; empty if none.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_service_accounts": {
+      "description": "List the service accounts in your Temporal Cloud account, one page at a time. Service accounts are non-human identities (used by workers, CI, and automation) that own API keys. Each one includes its id, name, optional description, account-level role, and current state. Useful for auditing machine access and credentials. Note: this returns the service accounts themselves, not their API-key secrets.",
+      "display_name": "List Temporal service accounts",
+      "display_str_template": "List Temporal service accounts.",
+      "handler": "actions.list_service_accounts",
+      "id": "temporal_list_service_accounts",
+      "method": "POST",
+      "mock_response": {
+        "nextPageToken": "",
+        "serviceAccount": [
+          {
+            "createdTime": "2026-01-20T14:00:00Z",
+            "id": "b8c9d0e1-6f70-4283-9c3d-4e5f6a7b8c9d",
+            "resourceVersion": "c9d0e1f2-7081-4394-8d4e-5f6a7b8c9d0e",
+            "spec": {
+              "access": {
+                "accountAccess": {
+                  "role": "ROLE_DEVELOPER"
+                }
+              },
+              "description": "GitHub Actions deployment worker",
+              "name": "ci-deployer"
+            },
+            "state": "RESOURCE_STATE_ACTIVE"
+          },
+          {
+            "createdTime": "2026-02-05T11:30:00Z",
+            "id": "d0e1f2a3-8192-44a5-9e5f-6a7b8c9d0e1f",
+            "resourceVersion": "e1f2a3b4-9203-45b6-8f60-7a8b9c0d1e2f",
+            "spec": {
+              "access": {
+                "accountAccess": {
+                  "role": "ROLE_READ"
+                }
+              },
+              "description": "Production task-queue worker fleet",
+              "name": "prod-worker"
+            },
+            "state": "RESOURCE_STATE_ACTIVE"
+          }
+        ]
+      },
+      "name": "list_service_accounts",
+      "output_formatter": "actions.format_list_service_accounts_output",
+      "parameters": [
+        {
+          "description": "How many service accounts to return per page, from 1 to 1000. Defaults to 100.",
+          "display_name": "Page size",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "page_size",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "To get the next page, enter the 'nextPageToken' value from the previous page of results.",
+          "display_name": "Continue from",
+          "name": "page_token",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/temporal/list-service-accounts",
+      "result_str_template": "Retrieved Temporal service accounts.",
+      "returns": {
+        "description": "Paginated list of service accounts. IMPORTANT: the array is returned under the SINGULAR key 'serviceAccount' (a quirk of the underlying proto field name), not 'serviceAccounts'. 'nextPageToken' is empty when there are no more pages.",
+        "properties": {
+          "nextPageToken": {
+            "description": "Cursor for the next page; empty if none.",
+            "type": "string"
+          },
+          "serviceAccount": {
+            "description": "Service accounts for this page, in id order. Note the singular key name.",
+            "items": {
+              "properties": {
+                "createdTime": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "resourceVersion": {
+                  "type": "string"
+                },
+                "spec": {
+                  "properties": {
+                    "access": {
+                      "description": "Account and/or namespace access.",
+                      "type": "object"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "state": {
+                  "description": "Lifecycle state enum, e.g. 'RESOURCE_STATE_ACTIVE'.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_users": {
+      "description": "List the users in your Temporal Cloud account, one page at a time, optionally filtered by email address or by a namespace they can access. Each user includes their email, account-level role (owner, admin, developer, read, etc.), and current state. Useful for access reviews and auditing who can reach the account or a given namespace. Requires an API key with Account Admin (or higher) access.",
+      "display_name": "List Temporal users",
+      "display_str_template": "List Temporal users.",
+      "handler": "actions.list_users",
+      "id": "temporal_list_users",
+      "method": "POST",
+      "mock_response": {
+        "nextPageToken": "",
+        "users": [
+          {
+            "createdTime": "2026-01-15T10:35:00Z",
+            "id": "d4e5f6a7-3c4d-4e5f-8a9b-0c1d2e3f4a5b",
+            "resourceVersion": "e5f6a7b8-4d5e-4f60-9a0b-1c2d3e4f5a6b",
+            "spec": {
+              "access": {
+                "accountAccess": {
+                  "role": "ROLE_ADMIN"
+                },
+                "namespaceAccesses": {}
+              },
+              "email": "alice@example.com"
+            },
+            "state": "RESOURCE_STATE_ACTIVE"
+          },
+          {
+            "createdTime": "2026-02-10T09:12:00Z",
+            "id": "f6a7b8c9-5e6f-4061-8a1b-2c3d4e5f6a7b",
+            "resourceVersion": "a7b8c9d0-6f70-4172-9b2c-3d4e5f6a7b8c",
+            "spec": {
+              "access": {
+                "accountAccess": {
+                  "role": "ROLE_DEVELOPER"
+                },
+                "namespaceAccesses": {
+                  "production.a1b2c3": {
+                    "permission": "write"
+                  }
+                }
+              },
+              "email": "bob@example.com"
+            },
+            "state": "RESOURCE_STATE_ACTIVE"
+          }
+        ]
+      },
+      "name": "list_users",
+      "output_formatter": "actions.format_list_users_output",
+      "parameters": [
+        {
+          "description": "Only return the user with this exact email address. Leave blank to list all users.",
+          "display_name": "Email",
+          "name": "email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only return users who have access to this namespace (full '<name>.<account>' identifier). Leave blank to list all users.",
+          "display_name": "Namespace",
+          "name": "namespace",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many users to return per page, from 1 to 1000. Defaults to 100.",
+          "display_name": "Page size",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "page_size",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "To get the next page, enter the 'nextPageToken' value from the previous page of results.",
+          "display_name": "Continue from",
+          "name": "page_token",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/temporal/list-users",
+      "result_str_template": "Retrieved Temporal users.",
+      "returns": {
+        "description": "Paginated list of users. 'nextPageToken' is empty when there are no more pages; pass it back as 'page_token' for the next page.",
+        "properties": {
+          "nextPageToken": {
+            "description": "Cursor for the next page; empty if none.",
+            "type": "string"
+          },
+          "users": {
+            "description": "Users for this page, in id order.",
+            "items": {
+              "properties": {
+                "createdTime": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "resourceVersion": {
+                  "type": "string"
+                },
+                "spec": {
+                  "properties": {
+                    "access": {
+                      "description": "Account and per-namespace access.",
+                      "properties": {
+                        "accountAccess": {
+                          "properties": {
+                            "role": {
+                              "description": "Account role enum, e.g. 'ROLE_ADMIN'.",
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "namespaceAccesses": {
+                          "description": "Map of namespace id \u2192 access.",
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "email": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "state": {
+                  "description": "Lifecycle state enum, e.g. 'RESOURCE_STATE_ACTIVE'.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Programmatic access to the Temporal Cloud control plane via the Cloud Operations (Ops) API. Provides read access to your account, namespaces, users, and service accounts for auditing, inventory, and connectivity checks. (Temporal Cloud exposes workflow execution over gRPC only, so starting or signalling workflows is not available over this HTTP API.)",
+  "display_name": "Temporal",
+  "id": "temporal"
+}

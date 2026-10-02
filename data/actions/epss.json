@@ -1,0 +1,1502 @@
+{
+  "actions": {
+    "export_scores_csv": {
+      "description": "Export matching scores as CSV, ready to attach to a ticket or drop into a spreadsheet. Each row carries the CVE, its probability as both a fraction and a percentage, its percentile, its band and a link to the NIST record. No API key required.",
+      "display_name": "Export scores as CSV",
+      "display_str_template": "Export EPSS scores as CSV.",
+      "handler": "actions.export_scores_csv",
+      "id": "epss_export_scores_csv",
+      "method": "POST",
+      "mock_response": {
+        "columns": [
+          "cve",
+          "epss",
+          "epss_percent",
+          "percentile",
+          "percentile_rank",
+          "likelihood",
+          "date",
+          "nvd_url"
+        ],
+        "count": 2,
+        "csv": "cve,epss,epss_percent,percentile,percentile_rank,likelihood,date,nvd_url\nCVE-2021-44228,0.99999,99.999,1,100,very_high,2026-09-03,https://nvd.nist.gov/vuln/detail/CVE-2021-44228\nCVE-2026-9854,0.00122,0.122,0.02245,2.245,low,2026-09-03,https://nvd.nist.gov/vuln/detail/CVE-2026-9854\n",
+        "retrieved_at": "2026-09-03T19:05:57Z",
+        "score_date": "2026-09-03",
+        "sort": "probability_desc",
+        "total_count": 533,
+        "truncated": true
+      },
+      "name": "export_scores_csv",
+      "output_formatter": "actions.format_export_output",
+      "parameters": [
+        {
+          "description": "Read the scores FIRST published on this day rather than the newest ones. FIRST has published every day since 2021-04-14. Leave it empty for today's scores.",
+          "display_name": "Scores as of",
+          "name": "as_of",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only CVEs with at least this chance of being exploited in the next 30 days, as a percentage. 10 keeps roughly the top 5% of all scored CVEs. Leave it empty for every probability.",
+          "display_name": "Minimum probability (%)",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "minimum_probability",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only CVEs ranked at or above this percentile of everything FIRST scores, from 0 to 100. 99 means the riskiest one percent. Use this when you want a fixed share of the catalog rather than a fixed probability. Leave it empty for every rank.",
+          "display_name": "Minimum percentile",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "minimum_percentile",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only CVEs whose identifier contains this text. It matches the ID alone: FIRST publishes a score and nothing else about a CVE, so there is no product or description here to search. FIRST also matches each part of the ID separately rather than the whole string, so '2021' finds CVE-2021-1234 and CVE-2011-2021 alike, and '44228' finds that number in any year.",
+          "display_name": "CVE ID contains",
+          "examples": [
+            {
+              "label": "A year",
+              "value": "2026"
+            },
+            {
+              "label": "A CVE number",
+              "value": "44228"
+            }
+          ],
+          "name": "cve_contains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "probability_desc",
+          "description": "How to order the results. Most likely to be exploited first by default.",
+          "display_name": "Order by",
+          "name": "sort",
+          "options": [
+            {
+              "label": "Most likely to be exploited first",
+              "value": "probability_desc"
+            },
+            {
+              "label": "Least likely to be exploited first",
+              "value": "probability_asc"
+            },
+            {
+              "label": "Newest CVE ID first",
+              "value": "cve_desc"
+            },
+            {
+              "label": "Oldest CVE ID first",
+              "value": "cve_asc"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 500,
+          "description": "How many rows to write. The answer also carries how many matched in all, so a capped export never reads as a complete one.",
+          "display_name": "Maximum rows",
+          "maximum": 5000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/epss/export-scores-csv",
+      "result_str_template": "Exported {epss_export_scores_csv,count} rows.",
+      "returns": {
+        "properties": {
+          "columns": {
+            "description": "The column names, in order.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many rows were written.",
+            "type": "integer"
+          },
+          "csv": {
+            "description": "The CSV text, header row first.",
+            "type": "string"
+          },
+          "retrieved_at": {
+            "description": "When this step read the API, in UTC.",
+            "type": "string"
+          },
+          "score_date": {
+            "description": "The day these scores were published, as YYYY-MM-DD. FIRST rescores every CVE daily, so an answer is only reproducible alongside its day.",
+            "type": "string"
+          },
+          "sort": {
+            "description": "The order the CVEs came back in.",
+            "type": "string"
+          },
+          "total_count": {
+            "description": "How many CVEs matched in all, before the limit was applied.",
+            "type": "integer"
+          },
+          "truncated": {
+            "description": "True when matches were left out by the limit.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_dataset_info": {
+      "description": "Read which day's scores are current, how many CVEs FIRST has scored, and how they are spread across the four likelihood bands. Run it to confirm the connection works, or as the opening line of a report: 'of 367,633 scored CVEs, 533 are at 50% or more today'. No API key required.",
+      "display_name": "Get scoring details",
+      "display_str_template": "Get the EPSS scoring details.",
+      "handler": "actions.get_dataset_info",
+      "id": "epss_get_dataset_info",
+      "method": "POST",
+      "mock_response": {
+        "api_url": "https://api.first.org/data/v1/epss",
+        "epss_url": "https://www.first.org/epss/",
+        "first_score_date": "2021-04-14",
+        "high_count": 16823,
+        "low_count": 261825,
+        "medium_count": 88452,
+        "model_url": "https://www.first.org/epss/model",
+        "retrieved_at": "2026-09-03T19:05:57Z",
+        "score_date": "2026-09-03",
+        "scored_cve_count": 367633,
+        "very_high_count": 533
+      },
+      "name": "get_dataset_info",
+      "output_formatter": "actions.format_dataset_info_output",
+      "parameters": [],
+      "path": "/actions/library/epss/get-dataset-info",
+      "result_str_template": "{epss_get_dataset_info,scored_cve_count} CVEs scored for {epss_get_dataset_info,score_date}.",
+      "returns": {
+        "properties": {
+          "api_url": {
+            "description": "The endpoint this data was read from.",
+            "type": "string"
+          },
+          "epss_url": {
+            "description": "FIRST's page for EPSS.",
+            "type": "string"
+          },
+          "first_score_date": {
+            "description": "The first day FIRST published EPSS scores, and so the earliest day any step here can ask for.",
+            "type": "string"
+          },
+          "high_count": {
+            "description": "How many are between 10% and 50%.",
+            "type": "integer"
+          },
+          "low_count": {
+            "description": "How many are below 1%.",
+            "type": "integer"
+          },
+          "medium_count": {
+            "description": "How many are between 1% and 10%.",
+            "type": "integer"
+          },
+          "model_url": {
+            "description": "FIRST's explanation of how the score is produced, for a reader who wants the method.",
+            "type": "string"
+          },
+          "retrieved_at": {
+            "description": "When this step read the API, in UTC.",
+            "type": "string"
+          },
+          "score_date": {
+            "description": "The day these scores were published, as YYYY-MM-DD. FIRST rescores every CVE daily, so an answer is only reproducible alongside its day.",
+            "type": "string"
+          },
+          "scored_cve_count": {
+            "description": "How many CVEs carry a score that day.",
+            "type": "integer"
+          },
+          "very_high_count": {
+            "description": "How many are at 50% or more.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_score": {
+      "description": "Read one CVE's current EPSS score: the chance it is exploited somewhere in the world in the next 30 days, where that ranks against every other scored CVE, and a plain English sentence saying both. The step fails if FIRST has not scored the CVE yet, so use 'Score and rank a list of CVEs' when you are checking several at once. No API key required.",
+      "display_name": "Get a CVE's exploit probability",
+      "display_str_template": "Get the EPSS score for {0}.",
+      "handler": "actions.get_score",
+      "id": "epss_get_score",
+      "method": "POST",
+      "mock_response": {
+        "cve": "CVE-2021-44228",
+        "date": "2026-09-03",
+        "epss": 0.99999,
+        "epss_percent": 99.999,
+        "likelihood": "very_high",
+        "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+        "percentile": 1.0,
+        "percentile_rank": 100.0,
+        "summary": "CVE-2021-44228 has a 100% chance of exploitation in the next 30 days, which puts it at the 100% percentile of all scored CVEs."
+      },
+      "name": "get_score",
+      "output_formatter": "actions.format_score_output",
+      "parameters": [
+        {
+          "description": "The CVE to look up, such as CVE-2021-44228. Any casing is accepted.",
+          "display_name": "CVE ID",
+          "examples": [
+            {
+              "label": "Log4Shell",
+              "value": "CVE-2021-44228"
+            },
+            {
+              "label": "BlueKeep",
+              "value": "CVE-2019-0708"
+            }
+          ],
+          "name": "cve_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/epss/get-score",
+      "result_str_template": "{epss_get_score,cve} scores {epss_get_score,epss_percent}% ({epss_get_score,likelihood}).",
+      "returns": {
+        "properties": {
+          "cve": {
+            "description": "The CVE identifier, for example 'CVE-2021-44228'.",
+            "type": "string"
+          },
+          "date": {
+            "description": "The day FIRST published this score, as YYYY-MM-DD.",
+            "type": "string"
+          },
+          "epss": {
+            "description": "The probability that this CVE will be exploited somewhere in the world in the next 30 days, from 0 to 1. This is FIRST's own number, as published.",
+            "type": "number"
+          },
+          "epss_percent": {
+            "description": "The same probability written as a percentage, from 0 to 100 - the unit every filter on this integration is set in.",
+            "type": "number"
+          },
+          "likelihood": {
+            "description": "The probability in one word, for branching a workflow on: 'very_high' at 50% or more, 'high' at 10%, 'medium' at 1%, 'low' below that. The bands are Lodol's reading of the score; FIRST publishes the number without them.",
+            "type": "string"
+          },
+          "nvd_url": {
+            "description": "This CVE's record in the NIST National Vulnerability Database.",
+            "type": "string"
+          },
+          "percentile": {
+            "description": "Where that probability sits among every CVE FIRST scores, from 0 to 1. A CVE at 0.95 is riskier than 95% of all scored CVEs, even if its own probability is small.",
+            "type": "number"
+          },
+          "percentile_rank": {
+            "description": "The same rank written as a percentage, from 0 to 100.",
+            "type": "number"
+          },
+          "summary": {
+            "description": "Both numbers said in plain English, ready to paste into a ticket or a message.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_score_history": {
+      "description": "See how one CVE's exploit probability has moved over the past month, with the day it started, the day it peaked and where it stands now. A score that has climbed is the signal worth acting on: FIRST rescores daily, and a CVE that was negligible last week and is not now has usually had working exploit code published in between. No API key required.",
+      "display_name": "Get a CVE's score history",
+      "display_str_template": "Get the EPSS score history for {0}.",
+      "handler": "actions.get_score_history",
+      "id": "epss_get_score_history",
+      "method": "POST",
+      "mock_response": {
+        "change": 0.31872,
+        "change_percent": 31.872,
+        "cve": "CVE-2026-73570",
+        "day_count": 31,
+        "direction": "up",
+        "earliest": {
+          "cve": "CVE-2026-73570",
+          "date": "2026-08-05",
+          "epss": 0.04412,
+          "epss_percent": 4.412,
+          "likelihood": "medium",
+          "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2026-73570",
+          "percentile": 0.91133,
+          "percentile_rank": 91.133,
+          "summary": "CVE-2026-73570 has a 4.41% chance of exploitation in the next 30 days, which puts it at the 91.1% percentile of all scored CVEs."
+        },
+        "highest": {
+          "cve": "CVE-2026-73570",
+          "date": "2026-09-03",
+          "epss": 0.36284,
+          "epss_percent": 36.284,
+          "likelihood": "high",
+          "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2026-73570",
+          "percentile": 0.97401,
+          "percentile_rank": 97.401,
+          "summary": "CVE-2026-73570 has a 36.3% chance of exploitation in the next 30 days, which puts it at the 97.4% percentile of all scored CVEs."
+        },
+        "history": [
+          {
+            "cve": "CVE-2026-73570",
+            "date": "2026-08-05",
+            "epss": 0.04412,
+            "epss_percent": 4.412,
+            "likelihood": "medium",
+            "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2026-73570",
+            "percentile": 0.91133,
+            "percentile_rank": 91.133,
+            "summary": "CVE-2026-73570 has a 4.41% chance of exploitation in the next 30 days, which puts it at the 91.1% percentile of all scored CVEs."
+          },
+          {
+            "cve": "CVE-2026-73570",
+            "date": "2026-09-03",
+            "epss": 0.36284,
+            "epss_percent": 36.284,
+            "likelihood": "high",
+            "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2026-73570",
+            "percentile": 0.97401,
+            "percentile_rank": 97.401,
+            "summary": "CVE-2026-73570 has a 36.3% chance of exploitation in the next 30 days, which puts it at the 97.4% percentile of all scored CVEs."
+          }
+        ],
+        "latest": {
+          "cve": "CVE-2026-73570",
+          "date": "2026-09-03",
+          "epss": 0.36284,
+          "epss_percent": 36.284,
+          "likelihood": "high",
+          "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2026-73570",
+          "percentile": 0.97401,
+          "percentile_rank": 97.401,
+          "summary": "CVE-2026-73570 has a 36.3% chance of exploitation in the next 30 days, which puts it at the 97.4% percentile of all scored CVEs."
+        },
+        "lowest": {
+          "cve": "CVE-2026-73570",
+          "date": "2026-08-05",
+          "epss": 0.04412,
+          "epss_percent": 4.412,
+          "likelihood": "medium",
+          "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2026-73570",
+          "percentile": 0.91133,
+          "percentile_rank": 91.133,
+          "summary": "CVE-2026-73570 has a 4.41% chance of exploitation in the next 30 days, which puts it at the 91.1% percentile of all scored CVEs."
+        },
+        "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2026-73570",
+        "retrieved_at": "2026-09-03T19:05:57Z",
+        "trend_summary": "CVE-2026-73570 has risen from 4.41% on 2026-08-05 to 36.3% on 2026-09-03."
+      },
+      "name": "get_score_history",
+      "output_formatter": "actions.format_history_output",
+      "parameters": [
+        {
+          "description": "The CVE to trace, such as CVE-2021-44228. Any casing is accepted.",
+          "display_name": "CVE ID",
+          "examples": [
+            {
+              "label": "Log4Shell",
+              "value": "CVE-2021-44228"
+            },
+            {
+              "label": "BlueKeep",
+              "value": "CVE-2019-0708"
+            }
+          ],
+          "name": "cve_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "End the window on this day instead of today, to see what the score looked like at the time of an incident. FIRST has published every day since 2021-04-14. Leave it empty for the past month.",
+          "display_name": "Ending on",
+          "name": "as_of",
+          "required": false,
+          "type": "ParameterType.DATE"
+        }
+      ],
+      "path": "/actions/library/epss/get-score-history",
+      "result_str_template": "{epss_get_score_history,cve} has gone {epss_get_score_history,direction}.",
+      "returns": {
+        "properties": {
+          "change": {
+            "description": "How much the probability moved across the window, from -1 to 1. Negative when it fell.",
+            "type": "number"
+          },
+          "change_percent": {
+            "description": "The same movement in percentage points, so a rise from 4% to 36% reads as 32.",
+            "type": "number"
+          },
+          "cve": {
+            "description": "The CVE this history is for.",
+            "type": "string"
+          },
+          "day_count": {
+            "description": "How many days of scores came back. FIRST keeps about a month per CVE.",
+            "type": "integer"
+          },
+          "direction": {
+            "description": "'up', 'down' or 'unchanged', for branching a workflow on without doing the arithmetic.",
+            "type": "string"
+          },
+          "earliest": {
+            "description": "The oldest score in the window.",
+            "properties": {
+              "cve": {
+                "description": "The CVE identifier, for example 'CVE-2021-44228'.",
+                "type": "string"
+              },
+              "date": {
+                "description": "The day FIRST published this score, as YYYY-MM-DD.",
+                "type": "string"
+              },
+              "epss": {
+                "description": "The probability that this CVE will be exploited somewhere in the world in the next 30 days, from 0 to 1. This is FIRST's own number, as published.",
+                "type": "number"
+              },
+              "epss_percent": {
+                "description": "The same probability written as a percentage, from 0 to 100 - the unit every filter on this integration is set in.",
+                "type": "number"
+              },
+              "likelihood": {
+                "description": "The probability in one word, for branching a workflow on: 'very_high' at 50% or more, 'high' at 10%, 'medium' at 1%, 'low' below that. The bands are Lodol's reading of the score; FIRST publishes the number without them.",
+                "type": "string"
+              },
+              "nvd_url": {
+                "description": "This CVE's record in the NIST National Vulnerability Database.",
+                "type": "string"
+              },
+              "percentile": {
+                "description": "Where that probability sits among every CVE FIRST scores, from 0 to 1. A CVE at 0.95 is riskier than 95% of all scored CVEs, even if its own probability is small.",
+                "type": "number"
+              },
+              "percentile_rank": {
+                "description": "The same rank written as a percentage, from 0 to 100.",
+                "type": "number"
+              },
+              "summary": {
+                "description": "Both numbers said in plain English, ready to paste into a ticket or a message.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "highest": {
+            "description": "The day the score peaked in the window.",
+            "properties": {
+              "cve": {
+                "description": "The CVE identifier, for example 'CVE-2021-44228'.",
+                "type": "string"
+              },
+              "date": {
+                "description": "The day FIRST published this score, as YYYY-MM-DD.",
+                "type": "string"
+              },
+              "epss": {
+                "description": "The probability that this CVE will be exploited somewhere in the world in the next 30 days, from 0 to 1. This is FIRST's own number, as published.",
+                "type": "number"
+              },
+              "epss_percent": {
+                "description": "The same probability written as a percentage, from 0 to 100 - the unit every filter on this integration is set in.",
+                "type": "number"
+              },
+              "likelihood": {
+                "description": "The probability in one word, for branching a workflow on: 'very_high' at 50% or more, 'high' at 10%, 'medium' at 1%, 'low' below that. The bands are Lodol's reading of the score; FIRST publishes the number without them.",
+                "type": "string"
+              },
+              "nvd_url": {
+                "description": "This CVE's record in the NIST National Vulnerability Database.",
+                "type": "string"
+              },
+              "percentile": {
+                "description": "Where that probability sits among every CVE FIRST scores, from 0 to 1. A CVE at 0.95 is riskier than 95% of all scored CVEs, even if its own probability is small.",
+                "type": "number"
+              },
+              "percentile_rank": {
+                "description": "The same rank written as a percentage, from 0 to 100.",
+                "type": "number"
+              },
+              "summary": {
+                "description": "Both numbers said in plain English, ready to paste into a ticket or a message.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "history": {
+            "description": "One entry per day FIRST published a score, oldest first.",
+            "items": {
+              "properties": {
+                "cve": {
+                  "description": "The CVE identifier, for example 'CVE-2021-44228'.",
+                  "type": "string"
+                },
+                "date": {
+                  "description": "The day FIRST published this score, as YYYY-MM-DD.",
+                  "type": "string"
+                },
+                "epss": {
+                  "description": "The probability that this CVE will be exploited somewhere in the world in the next 30 days, from 0 to 1. This is FIRST's own number, as published.",
+                  "type": "number"
+                },
+                "epss_percent": {
+                  "description": "The same probability written as a percentage, from 0 to 100 - the unit every filter on this integration is set in.",
+                  "type": "number"
+                },
+                "likelihood": {
+                  "description": "The probability in one word, for branching a workflow on: 'very_high' at 50% or more, 'high' at 10%, 'medium' at 1%, 'low' below that. The bands are Lodol's reading of the score; FIRST publishes the number without them.",
+                  "type": "string"
+                },
+                "nvd_url": {
+                  "description": "This CVE's record in the NIST National Vulnerability Database.",
+                  "type": "string"
+                },
+                "percentile": {
+                  "description": "Where that probability sits among every CVE FIRST scores, from 0 to 1. A CVE at 0.95 is riskier than 95% of all scored CVEs, even if its own probability is small.",
+                  "type": "number"
+                },
+                "percentile_rank": {
+                  "description": "The same rank written as a percentage, from 0 to 100.",
+                  "type": "number"
+                },
+                "summary": {
+                  "description": "Both numbers said in plain English, ready to paste into a ticket or a message.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "latest": {
+            "description": "The most recent score in the window.",
+            "properties": {
+              "cve": {
+                "description": "The CVE identifier, for example 'CVE-2021-44228'.",
+                "type": "string"
+              },
+              "date": {
+                "description": "The day FIRST published this score, as YYYY-MM-DD.",
+                "type": "string"
+              },
+              "epss": {
+                "description": "The probability that this CVE will be exploited somewhere in the world in the next 30 days, from 0 to 1. This is FIRST's own number, as published.",
+                "type": "number"
+              },
+              "epss_percent": {
+                "description": "The same probability written as a percentage, from 0 to 100 - the unit every filter on this integration is set in.",
+                "type": "number"
+              },
+              "likelihood": {
+                "description": "The probability in one word, for branching a workflow on: 'very_high' at 50% or more, 'high' at 10%, 'medium' at 1%, 'low' below that. The bands are Lodol's reading of the score; FIRST publishes the number without them.",
+                "type": "string"
+              },
+              "nvd_url": {
+                "description": "This CVE's record in the NIST National Vulnerability Database.",
+                "type": "string"
+              },
+              "percentile": {
+                "description": "Where that probability sits among every CVE FIRST scores, from 0 to 1. A CVE at 0.95 is riskier than 95% of all scored CVEs, even if its own probability is small.",
+                "type": "number"
+              },
+              "percentile_rank": {
+                "description": "The same rank written as a percentage, from 0 to 100.",
+                "type": "number"
+              },
+              "summary": {
+                "description": "Both numbers said in plain English, ready to paste into a ticket or a message.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "lowest": {
+            "description": "The day it was lowest in the window.",
+            "properties": {
+              "cve": {
+                "description": "The CVE identifier, for example 'CVE-2021-44228'.",
+                "type": "string"
+              },
+              "date": {
+                "description": "The day FIRST published this score, as YYYY-MM-DD.",
+                "type": "string"
+              },
+              "epss": {
+                "description": "The probability that this CVE will be exploited somewhere in the world in the next 30 days, from 0 to 1. This is FIRST's own number, as published.",
+                "type": "number"
+              },
+              "epss_percent": {
+                "description": "The same probability written as a percentage, from 0 to 100 - the unit every filter on this integration is set in.",
+                "type": "number"
+              },
+              "likelihood": {
+                "description": "The probability in one word, for branching a workflow on: 'very_high' at 50% or more, 'high' at 10%, 'medium' at 1%, 'low' below that. The bands are Lodol's reading of the score; FIRST publishes the number without them.",
+                "type": "string"
+              },
+              "nvd_url": {
+                "description": "This CVE's record in the NIST National Vulnerability Database.",
+                "type": "string"
+              },
+              "percentile": {
+                "description": "Where that probability sits among every CVE FIRST scores, from 0 to 1. A CVE at 0.95 is riskier than 95% of all scored CVEs, even if its own probability is small.",
+                "type": "number"
+              },
+              "percentile_rank": {
+                "description": "The same rank written as a percentage, from 0 to 100.",
+                "type": "number"
+              },
+              "summary": {
+                "description": "Both numbers said in plain English, ready to paste into a ticket or a message.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "nvd_url": {
+            "description": "This CVE's record in the NIST National Vulnerability Database.",
+            "type": "string"
+          },
+          "retrieved_at": {
+            "description": "When this step read the API, in UTC.",
+            "type": "string"
+          },
+          "trend_summary": {
+            "description": "One sentence saying what the history shows, ready to paste into a ticket or a message.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_recently_scored": {
+      "description": "List the CVEs FIRST has newly scored or rescored in the last few days, so a scheduled workflow can report what changed since it last ran. Narrow it to a minimum probability to be told only about the ones that matter. No API key required.",
+      "display_name": "List recently scored CVEs",
+      "display_str_template": "List recently scored CVEs from EPSS.",
+      "handler": "actions.list_recently_scored",
+      "id": "epss_list_recently_scored",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "days": 7,
+        "offset": 0,
+        "retrieved_at": "2026-09-03T19:05:57Z",
+        "score_date": "2026-09-03",
+        "scores": [
+          {
+            "cve": "CVE-2021-44228",
+            "date": "2026-09-03",
+            "epss": 0.99999,
+            "epss_percent": 99.999,
+            "likelihood": "very_high",
+            "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+            "percentile": 1.0,
+            "percentile_rank": 100.0,
+            "summary": "CVE-2021-44228 has a 100% chance of exploitation in the next 30 days, which puts it at the 100% percentile of all scored CVEs."
+          },
+          {
+            "cve": "CVE-2026-9854",
+            "date": "2026-09-03",
+            "epss": 0.00122,
+            "epss_percent": 0.122,
+            "likelihood": "low",
+            "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2026-9854",
+            "percentile": 0.02245,
+            "percentile_rank": 2.245,
+            "summary": "CVE-2026-9854 has a 0.122% chance of exploitation in the next 30 days, which puts it at the 2.24% percentile of all scored CVEs."
+          }
+        ],
+        "since": "2026-08-27",
+        "sort": "probability_desc",
+        "total_count": 1119,
+        "truncated": true
+      },
+      "name": "list_recently_scored",
+      "output_formatter": "actions.format_recently_scored_output",
+      "parameters": [
+        {
+          "default": 7,
+          "description": "How far back to look. 7 covers a weekly report; 1 covers a daily one.",
+          "display_name": "Days to look back",
+          "maximum": 120,
+          "minimum": 1,
+          "name": "days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only CVEs with at least this chance of being exploited in the next 30 days, as a percentage. 10 keeps roughly the top 5% of all scored CVEs. Leave it empty for every probability.",
+          "display_name": "Minimum probability (%)",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "minimum_probability",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "probability_desc",
+          "description": "How to order the results. Most likely to be exploited first by default.",
+          "display_name": "Order by",
+          "name": "sort",
+          "options": [
+            {
+              "label": "Most likely to be exploited first",
+              "value": "probability_desc"
+            },
+            {
+              "label": "Least likely to be exploited first",
+              "value": "probability_asc"
+            },
+            {
+              "label": "Newest CVE ID first",
+              "value": "cve_desc"
+            },
+            {
+              "label": "Oldest CVE ID first",
+              "value": "cve_asc"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 25,
+          "description": "How many CVEs to return. The answer also carries the total number that matched, so a capped list never reads as a complete one.",
+          "display_name": "Maximum results",
+          "maximum": 500,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many matching CVEs to skip before returning any, for reading a long list a page at a time. Leave it at 0 for the first page.",
+          "display_name": "Skip",
+          "maximum": 10000,
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/epss/list-recently-scored",
+      "result_str_template": "Found {epss_list_recently_scored,total_count} recently scored CVEs.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many CVEs this step returned.",
+            "type": "integer"
+          },
+          "days": {
+            "description": "How many days back the step looked.",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "How many matches were skipped before this page.",
+            "type": "integer"
+          },
+          "retrieved_at": {
+            "description": "When this step read the API, in UTC.",
+            "type": "string"
+          },
+          "score_date": {
+            "description": "The day these scores were published, as YYYY-MM-DD. FIRST rescores every CVE daily, so an answer is only reproducible alongside its day.",
+            "type": "string"
+          },
+          "scores": {
+            "description": "The matching CVEs, in the order asked for.",
+            "items": {
+              "properties": {
+                "cve": {
+                  "description": "The CVE identifier, for example 'CVE-2021-44228'.",
+                  "type": "string"
+                },
+                "date": {
+                  "description": "The day FIRST published this score, as YYYY-MM-DD.",
+                  "type": "string"
+                },
+                "epss": {
+                  "description": "The probability that this CVE will be exploited somewhere in the world in the next 30 days, from 0 to 1. This is FIRST's own number, as published.",
+                  "type": "number"
+                },
+                "epss_percent": {
+                  "description": "The same probability written as a percentage, from 0 to 100 - the unit every filter on this integration is set in.",
+                  "type": "number"
+                },
+                "likelihood": {
+                  "description": "The probability in one word, for branching a workflow on: 'very_high' at 50% or more, 'high' at 10%, 'medium' at 1%, 'low' below that. The bands are Lodol's reading of the score; FIRST publishes the number without them.",
+                  "type": "string"
+                },
+                "nvd_url": {
+                  "description": "This CVE's record in the NIST National Vulnerability Database.",
+                  "type": "string"
+                },
+                "percentile": {
+                  "description": "Where that probability sits among every CVE FIRST scores, from 0 to 1. A CVE at 0.95 is riskier than 95% of all scored CVEs, even if its own probability is small.",
+                  "type": "number"
+                },
+                "percentile_rank": {
+                  "description": "The same rank written as a percentage, from 0 to 100.",
+                  "type": "number"
+                },
+                "summary": {
+                  "description": "Both numbers said in plain English, ready to paste into a ticket or a message.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "since": {
+            "description": "The first day of that window, as YYYY-MM-DD.",
+            "type": "string"
+          },
+          "sort": {
+            "description": "The order the CVEs came back in.",
+            "type": "string"
+          },
+          "total_count": {
+            "description": "How many CVEs matched in all, before the limit was applied.",
+            "type": "integer"
+          },
+          "truncated": {
+            "description": "True when matches were left out by the limit.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_scores": {
+      "description": "Browse the whole scored set through every filter it can be narrowed by: a probability range, a percentile range, a CVE ID fragment, and the day the scores were published. Order the results and page through them. This is the general-purpose browse action; the others answer one specific question each. No API key required.",
+      "display_name": "Browse EPSS scores",
+      "display_str_template": "Browse EPSS scores.",
+      "handler": "actions.list_scores",
+      "id": "epss_list_scores",
+      "method": "POST",
+      "mock_response": {
+        "as_of": "2026-09-03",
+        "count": 2,
+        "offset": 0,
+        "retrieved_at": "2026-09-03T19:05:57Z",
+        "score_date": "2026-09-03",
+        "scores": [
+          {
+            "cve": "CVE-2021-44228",
+            "date": "2026-09-03",
+            "epss": 0.99999,
+            "epss_percent": 99.999,
+            "likelihood": "very_high",
+            "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+            "percentile": 1.0,
+            "percentile_rank": 100.0,
+            "summary": "CVE-2021-44228 has a 100% chance of exploitation in the next 30 days, which puts it at the 100% percentile of all scored CVEs."
+          },
+          {
+            "cve": "CVE-2026-9854",
+            "date": "2026-09-03",
+            "epss": 0.00122,
+            "epss_percent": 0.122,
+            "likelihood": "low",
+            "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2026-9854",
+            "percentile": 0.02245,
+            "percentile_rank": 2.245,
+            "summary": "CVE-2026-9854 has a 0.122% chance of exploitation in the next 30 days, which puts it at the 2.24% percentile of all scored CVEs."
+          }
+        ],
+        "sort": "probability_desc",
+        "total_count": 367633,
+        "truncated": true
+      },
+      "name": "list_scores",
+      "output_formatter": "actions.format_scores_output",
+      "parameters": [
+        {
+          "description": "Read the scores FIRST published on this day rather than the newest ones. FIRST has published every day since 2021-04-14. Leave it empty for today's scores.",
+          "display_name": "Scores as of",
+          "name": "as_of",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only CVEs with at least this chance of being exploited in the next 30 days, as a percentage. 10 keeps roughly the top 5% of all scored CVEs. Leave it empty for every probability.",
+          "display_name": "Minimum probability (%)",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "minimum_probability",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only CVEs at or below this chance of being exploited in the next 30 days, as a percentage. Pair it with the minimum to look at one band at a time. Leave it empty for no upper limit.",
+          "display_name": "Maximum probability (%)",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "maximum_probability",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only CVEs ranked at or above this percentile of everything FIRST scores, from 0 to 100. 99 means the riskiest one percent. Use this when you want a fixed share of the catalog rather than a fixed probability. Leave it empty for every rank.",
+          "display_name": "Minimum percentile",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "minimum_percentile",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only CVEs ranked at or below this percentile, from 0 to 100. Leave it empty for no upper limit.",
+          "display_name": "Maximum percentile",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "maximum_percentile",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only CVEs whose identifier contains this text. It matches the ID alone: FIRST publishes a score and nothing else about a CVE, so there is no product or description here to search. FIRST also matches each part of the ID separately rather than the whole string, so '2021' finds CVE-2021-1234 and CVE-2011-2021 alike, and '44228' finds that number in any year.",
+          "display_name": "CVE ID contains",
+          "examples": [
+            {
+              "label": "A year",
+              "value": "2026"
+            },
+            {
+              "label": "A CVE number",
+              "value": "44228"
+            }
+          ],
+          "name": "cve_contains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "probability_desc",
+          "description": "How to order the results. Most likely to be exploited first by default.",
+          "display_name": "Order by",
+          "name": "sort",
+          "options": [
+            {
+              "label": "Most likely to be exploited first",
+              "value": "probability_desc"
+            },
+            {
+              "label": "Least likely to be exploited first",
+              "value": "probability_asc"
+            },
+            {
+              "label": "Newest CVE ID first",
+              "value": "cve_desc"
+            },
+            {
+              "label": "Oldest CVE ID first",
+              "value": "cve_asc"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 25,
+          "description": "How many CVEs to return. The answer also carries the total number that matched, so a capped list never reads as a complete one.",
+          "display_name": "Maximum results",
+          "maximum": 500,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many matching CVEs to skip before returning any, for reading a long list a page at a time. Leave it at 0 for the first page.",
+          "display_name": "Skip",
+          "maximum": 10000,
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/epss/list-scores",
+      "result_str_template": "Found {epss_list_scores,total_count} CVEs.",
+      "returns": {
+        "properties": {
+          "as_of": {
+            "description": "The day that was asked for, or empty when the newest scores were read.",
+            "type": "string"
+          },
+          "count": {
+            "description": "How many CVEs this step returned.",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "How many matches were skipped before this page.",
+            "type": "integer"
+          },
+          "retrieved_at": {
+            "description": "When this step read the API, in UTC.",
+            "type": "string"
+          },
+          "score_date": {
+            "description": "The day these scores were published, as YYYY-MM-DD. FIRST rescores every CVE daily, so an answer is only reproducible alongside its day.",
+            "type": "string"
+          },
+          "scores": {
+            "description": "The matching CVEs, in the order asked for.",
+            "items": {
+              "properties": {
+                "cve": {
+                  "description": "The CVE identifier, for example 'CVE-2021-44228'.",
+                  "type": "string"
+                },
+                "date": {
+                  "description": "The day FIRST published this score, as YYYY-MM-DD.",
+                  "type": "string"
+                },
+                "epss": {
+                  "description": "The probability that this CVE will be exploited somewhere in the world in the next 30 days, from 0 to 1. This is FIRST's own number, as published.",
+                  "type": "number"
+                },
+                "epss_percent": {
+                  "description": "The same probability written as a percentage, from 0 to 100 - the unit every filter on this integration is set in.",
+                  "type": "number"
+                },
+                "likelihood": {
+                  "description": "The probability in one word, for branching a workflow on: 'very_high' at 50% or more, 'high' at 10%, 'medium' at 1%, 'low' below that. The bands are Lodol's reading of the score; FIRST publishes the number without them.",
+                  "type": "string"
+                },
+                "nvd_url": {
+                  "description": "This CVE's record in the NIST National Vulnerability Database.",
+                  "type": "string"
+                },
+                "percentile": {
+                  "description": "Where that probability sits among every CVE FIRST scores, from 0 to 1. A CVE at 0.95 is riskier than 95% of all scored CVEs, even if its own probability is small.",
+                  "type": "number"
+                },
+                "percentile_rank": {
+                  "description": "The same rank written as a percentage, from 0 to 100.",
+                  "type": "number"
+                },
+                "summary": {
+                  "description": "Both numbers said in plain English, ready to paste into a ticket or a message.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "sort": {
+            "description": "The order the CVEs came back in.",
+            "type": "string"
+          },
+          "total_count": {
+            "description": "How many CVEs matched in all, before the limit was applied.",
+            "type": "integer"
+          },
+          "truncated": {
+            "description": "True when matches were left out by the limit.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_top_cves": {
+      "description": "List the CVEs most likely to be exploited right now, across everything FIRST scores, highest first. Run it with nothing filled in for today's top 25 at 10% or better. Use it for a weekly threat briefing, or to see whether anything in your estate has arrived at the top of the list. No API key required.",
+      "display_name": "List the highest-risk CVEs",
+      "display_str_template": "List the highest-risk CVEs by EPSS.",
+      "handler": "actions.list_top_cves",
+      "id": "epss_list_top_cves",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "minimum_probability": 10.0,
+        "offset": 0,
+        "retrieved_at": "2026-09-03T19:05:57Z",
+        "score_date": "2026-09-03",
+        "scores": [
+          {
+            "cve": "CVE-2021-44228",
+            "date": "2026-09-03",
+            "epss": 0.99999,
+            "epss_percent": 99.999,
+            "likelihood": "very_high",
+            "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+            "percentile": 1.0,
+            "percentile_rank": 100.0,
+            "summary": "CVE-2021-44228 has a 100% chance of exploitation in the next 30 days, which puts it at the 100% percentile of all scored CVEs."
+          },
+          {
+            "cve": "CVE-2026-9854",
+            "date": "2026-09-03",
+            "epss": 0.00122,
+            "epss_percent": 0.122,
+            "likelihood": "low",
+            "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2026-9854",
+            "percentile": 0.02245,
+            "percentile_rank": 2.245,
+            "summary": "CVE-2026-9854 has a 0.122% chance of exploitation in the next 30 days, which puts it at the 2.24% percentile of all scored CVEs."
+          }
+        ],
+        "sort": "probability_desc",
+        "total_count": 17356,
+        "truncated": true
+      },
+      "name": "list_top_cves",
+      "output_formatter": "actions.format_top_cves_output",
+      "parameters": [
+        {
+          "default": 10,
+          "description": "The chance of exploitation, as a percentage, a CVE must reach to be listed. Defaults to 10, which is roughly the riskiest 5% of everything scored. Lower it to widen the list.",
+          "display_name": "Minimum probability (%)",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "minimum_probability",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only CVEs ranked at or above this percentile of everything FIRST scores, from 0 to 100. 99 means the riskiest one percent. Use this when you want a fixed share of the catalog rather than a fixed probability. Leave it empty for every rank.",
+          "display_name": "Minimum percentile",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "minimum_percentile",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Read the scores FIRST published on this day rather than the newest ones. FIRST has published every day since 2021-04-14. Leave it empty for today's scores.",
+          "display_name": "Scores as of",
+          "name": "as_of",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "default": 25,
+          "description": "How many CVEs to return, riskiest first. The answer also carries how many cleared the bar in all.",
+          "display_name": "Maximum results",
+          "maximum": 500,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many matching CVEs to skip before returning any, for reading a long list a page at a time. Leave it at 0 for the first page.",
+          "display_name": "Skip",
+          "maximum": 10000,
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/epss/list-top-cves",
+      "result_str_template": "Found {epss_list_top_cves,total_count} CVEs at or above the threshold.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many CVEs this step returned.",
+            "type": "integer"
+          },
+          "minimum_probability": {
+            "description": "The threshold that was applied, as a percentage.",
+            "type": "number"
+          },
+          "offset": {
+            "description": "How many matches were skipped before this page.",
+            "type": "integer"
+          },
+          "retrieved_at": {
+            "description": "When this step read the API, in UTC.",
+            "type": "string"
+          },
+          "score_date": {
+            "description": "The day these scores were published, as YYYY-MM-DD. FIRST rescores every CVE daily, so an answer is only reproducible alongside its day.",
+            "type": "string"
+          },
+          "scores": {
+            "description": "The matching CVEs, in the order asked for.",
+            "items": {
+              "properties": {
+                "cve": {
+                  "description": "The CVE identifier, for example 'CVE-2021-44228'.",
+                  "type": "string"
+                },
+                "date": {
+                  "description": "The day FIRST published this score, as YYYY-MM-DD.",
+                  "type": "string"
+                },
+                "epss": {
+                  "description": "The probability that this CVE will be exploited somewhere in the world in the next 30 days, from 0 to 1. This is FIRST's own number, as published.",
+                  "type": "number"
+                },
+                "epss_percent": {
+                  "description": "The same probability written as a percentage, from 0 to 100 - the unit every filter on this integration is set in.",
+                  "type": "number"
+                },
+                "likelihood": {
+                  "description": "The probability in one word, for branching a workflow on: 'very_high' at 50% or more, 'high' at 10%, 'medium' at 1%, 'low' below that. The bands are Lodol's reading of the score; FIRST publishes the number without them.",
+                  "type": "string"
+                },
+                "nvd_url": {
+                  "description": "This CVE's record in the NIST National Vulnerability Database.",
+                  "type": "string"
+                },
+                "percentile": {
+                  "description": "Where that probability sits among every CVE FIRST scores, from 0 to 1. A CVE at 0.95 is riskier than 95% of all scored CVEs, even if its own probability is small.",
+                  "type": "number"
+                },
+                "percentile_rank": {
+                  "description": "The same rank written as a percentage, from 0 to 100.",
+                  "type": "number"
+                },
+                "summary": {
+                  "description": "Both numbers said in plain English, ready to paste into a ticket or a message.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "sort": {
+            "description": "The order the CVEs came back in.",
+            "type": "string"
+          },
+          "total_count": {
+            "description": "How many CVEs matched in all, before the limit was applied.",
+            "type": "integer"
+          },
+          "truncated": {
+            "description": "True when matches were left out by the limit.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "score_cves": {
+      "description": "Take a list of CVE IDs - a scanner export, a ticket queue, a vendor advisory - and get them back ordered by how likely each one is to be exploited in the next 30 days. The top of the list is the work to do first. Set a minimum probability and every result also says whether it clears the bar, with a flag a workflow can branch on. CVEs FIRST has not scored yet are listed separately rather than being mistaken for safe ones. No API key required.",
+      "display_name": "Score and rank a list of CVEs",
+      "display_str_template": "Score {0} against EPSS.",
+      "handler": "actions.score_cves",
+      "id": "epss_score_cves",
+      "method": "POST",
+      "mock_response": {
+        "above_threshold_count": 1,
+        "any_above_threshold": true,
+        "checked_count": 3,
+        "high_count": 0,
+        "highest_cve": "CVE-2021-44228",
+        "highest_epss_percent": 99.999,
+        "invalid": [
+          "not-a-cve"
+        ],
+        "low_count": 1,
+        "medium_count": 0,
+        "minimum_probability": 10.0,
+        "retrieved_at": "2026-09-03T19:05:57Z",
+        "score_date": "2026-09-03",
+        "scored_count": 2,
+        "scores": [
+          {
+            "cve": "CVE-2021-44228",
+            "date": "2026-09-03",
+            "epss": 0.99999,
+            "epss_percent": 99.999,
+            "likelihood": "very_high",
+            "meets_threshold": true,
+            "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+            "percentile": 1.0,
+            "percentile_rank": 100.0,
+            "summary": "CVE-2021-44228 has a 100% chance of exploitation in the next 30 days, which puts it at the 100% percentile of all scored CVEs."
+          },
+          {
+            "cve": "CVE-2026-9854",
+            "date": "2026-09-03",
+            "epss": 0.00122,
+            "epss_percent": 0.122,
+            "likelihood": "low",
+            "meets_threshold": false,
+            "nvd_url": "https://nvd.nist.gov/vuln/detail/CVE-2026-9854",
+            "percentile": 0.02245,
+            "percentile_rank": 2.245,
+            "summary": "CVE-2026-9854 has a 0.122% chance of exploitation in the next 30 days, which puts it at the 2.24% percentile of all scored CVEs."
+          }
+        ],
+        "unscored": [
+          "CVE-2026-99999"
+        ],
+        "unscored_count": 1,
+        "very_high_count": 1
+      },
+      "name": "score_cves",
+      "output_formatter": "actions.format_score_cves_output",
+      "parameters": [
+        {
+          "description": "The CVEs to score, up to 500. Any casing is accepted, and a value that is not a CVE ID is reported rather than failing the step.",
+          "display_name": "CVE IDs",
+          "name": "cve_ids",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "The chance of exploitation, as a percentage, at which a CVE is worth acting on. 10 is a common cut. Every result says whether it clears this bar, and the answer carries a single flag for branching on. Leave it empty to rank without judging.",
+          "display_name": "Act-on threshold (%)",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "minimum_probability",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/epss/score-cves",
+      "result_str_template": "{epss_score_cves,scored_count} of {epss_score_cves,checked_count} CVEs scored.",
+      "returns": {
+        "properties": {
+          "above_threshold_count": {
+            "description": "How many CVEs clear that threshold.",
+            "type": "integer"
+          },
+          "any_above_threshold": {
+            "description": "True when at least one CVE clears it, for branching a workflow on.",
+            "type": "boolean"
+          },
+          "checked_count": {
+            "description": "How many valid CVE IDs were looked up.",
+            "type": "integer"
+          },
+          "high_count": {
+            "description": "How many are between 10% and 50%.",
+            "type": "integer"
+          },
+          "highest_cve": {
+            "description": "The CVE most likely to be exploited.",
+            "type": "string"
+          },
+          "highest_epss_percent": {
+            "description": "That CVE's probability, as a percentage.",
+            "type": "number"
+          },
+          "invalid": {
+            "description": "The values that are not CVE IDs at all.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "low_count": {
+            "description": "How many are below 1%.",
+            "type": "integer"
+          },
+          "medium_count": {
+            "description": "How many are between 1% and 10%.",
+            "type": "integer"
+          },
+          "minimum_probability": {
+            "description": "The threshold this step was given, as a percentage, or empty when none was set.",
+            "type": "number"
+          },
+          "retrieved_at": {
+            "description": "When this step read the API, in UTC.",
+            "type": "string"
+          },
+          "score_date": {
+            "description": "The day these scores were published, as YYYY-MM-DD. FIRST rescores every CVE daily, so an answer is only reproducible alongside its day.",
+            "type": "string"
+          },
+          "scored_count": {
+            "description": "How many of the CVEs have a score.",
+            "type": "integer"
+          },
+          "scores": {
+            "description": "Every CVE that has a score, most likely to be exploited first. The top of this list is the work to do first.",
+            "items": {
+              "properties": {
+                "cve": {
+                  "description": "The CVE identifier, for example 'CVE-2021-44228'.",
+                  "type": "string"
+                },
+                "date": {
+                  "description": "The day FIRST published this score, as YYYY-MM-DD.",
+                  "type": "string"
+                },
+                "epss": {
+                  "description": "The probability that this CVE will be exploited somewhere in the world in the next 30 days, from 0 to 1. This is FIRST's own number, as published.",
+                  "type": "number"
+                },
+                "epss_percent": {
+                  "description": "The same probability written as a percentage, from 0 to 100 - the unit every filter on this integration is set in.",
+                  "type": "number"
+                },
+                "likelihood": {
+                  "description": "The probability in one word, for branching a workflow on: 'very_high' at 50% or more, 'high' at 10%, 'medium' at 1%, 'low' below that. The bands are Lodol's reading of the score; FIRST publishes the number without them.",
+                  "type": "string"
+                },
+                "meets_threshold": {
+                  "description": "True when this CVE reaches the minimum probability the step was given. False for every CVE when no minimum was set.",
+                  "type": "boolean"
+                },
+                "nvd_url": {
+                  "description": "This CVE's record in the NIST National Vulnerability Database.",
+                  "type": "string"
+                },
+                "percentile": {
+                  "description": "Where that probability sits among every CVE FIRST scores, from 0 to 1. A CVE at 0.95 is riskier than 95% of all scored CVEs, even if its own probability is small.",
+                  "type": "number"
+                },
+                "percentile_rank": {
+                  "description": "The same rank written as a percentage, from 0 to 100.",
+                  "type": "number"
+                },
+                "summary": {
+                  "description": "Both numbers said in plain English, ready to paste into a ticket or a message.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "unscored": {
+            "description": "The CVEs FIRST has no score for. Usually ones published too recently to have been scored yet, or withdrawn - not safe ones.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "unscored_count": {
+            "description": "How many do not.",
+            "type": "integer"
+          },
+          "very_high_count": {
+            "description": "How many are at 50% or more.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Work with EPSS, the Exploit Prediction Scoring System published by FIRST: a daily estimate, for every CVE, of how likely it is to be exploited in the wild in the next 30 days. Feed it a scanner export or a ticket queue and get the findings back ranked by real-world risk instead of by severity, watch a CVE's score climb as exploit code appears, see the highest-risk CVEs of the week, and export any of it as CSV. No account or API key required.",
+  "display_name": "EPSS",
+  "id": "epss"
+}

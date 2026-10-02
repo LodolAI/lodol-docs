@@ -1,0 +1,900 @@
+{
+  "actions": {
+    "check_service_status": {
+      "description": "Check whether the Coffee API is answering, how quickly, and how much of the rate limit is left. This is the one action that reports a problem as a value instead of failing the step, so a workflow can decide what to do about it. Being throttled is reported separately from being down.",
+      "display_name": "Check service status",
+      "display_str_template": "Check the Coffee API status.",
+      "handler": "actions.check_service_status",
+      "id": "coffee_api_check_service_status",
+      "method": "POST",
+      "mock_response": {
+        "message": "The Coffee API is up and serving drinks.",
+        "online": true,
+        "rate_limit": 5000,
+        "rate_limit_remaining": 4999,
+        "rate_limited": false,
+        "reachable": true,
+        "response_time_ms": 118.4,
+        "status_code": 200
+      },
+      "name": "check_service_status",
+      "output_formatter": "actions.format_status_output",
+      "parameters": [],
+      "path": "/actions/library/coffee-api/check-service-status",
+      "result_str_template": "Service status checked.",
+      "returns": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "rate_limit": {
+            "type": "number"
+          },
+          "rate_limit_remaining": {
+            "type": "number"
+          },
+          "rate_limited": {
+            "type": "boolean"
+          },
+          "reachable": {
+            "type": "boolean"
+          },
+          "response_time_ms": {
+            "type": "number"
+          },
+          "status_code": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_drink": {
+      "description": "Look up one drink and get its description, what goes into it, and a photo. Pick it from the list, or pass a name or a drink id in from an earlier step: an id costs one small request, and a name is matched against the menu, so 'cold brew' finds Cold Brew and a name that fits two drinks comes back saying which rather than guessing between them.",
+      "display_name": "Get a drink",
+      "display_str_template": "Get the {0} from the Coffee API.",
+      "handler": "actions.get_drink",
+      "id": "coffee_api_get_drink",
+      "method": "POST",
+      "mock_response": {
+        "drink": {
+          "base": "coffee",
+          "description": "As the most popular coffee drink out there, the latte is made with a shot of espresso and steamed milk, with just a touch of foam. It can be ordered plain or flavored with everything from vanilla to pumpkin spice.",
+          "drink_id": "hot-2",
+          "iced": false,
+          "image_url": "https://images.unsplash.com/photo-1561882468-9110e03e0f78?auto=format&fit=crop&q=60&w=800",
+          "ingredients": [
+            {
+              "name": "Espresso",
+              "optional": false
+            },
+            {
+              "name": "Steamed milk",
+              "optional": false
+            }
+          ],
+          "ingredients_text": "Espresso, Steamed milk",
+          "name": "Latte",
+          "test_entry": false
+        },
+        "matched_exactly": true,
+        "requested_drink": "Latte"
+      },
+      "name": "get_drink",
+      "output_formatter": "actions.format_drink_output",
+      "parameters": [
+        {
+          "description": "The drink to look up. Pick one from the list, or type a name (or a drink id such as hot-2) from an earlier step. A partial name works when only one drink matches it.",
+          "display_name": "Drink",
+          "dynamic_source": "drinks",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "A drink",
+              "value": "Cappuccino"
+            },
+            {
+              "label": "A partial name",
+              "value": "cold brew"
+            },
+            {
+              "label": "An id from an earlier step",
+              "value": "hot-2"
+            }
+          ],
+          "name": "drink",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/coffee-api/get-drink",
+      "result_str_template": "Drink retrieved.",
+      "returns": {
+        "properties": {
+          "drink": {
+            "properties": {
+              "base": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "drink_id": {
+                "type": "string"
+              },
+              "iced": {
+                "type": "boolean"
+              },
+              "image_url": {
+                "type": "string"
+              },
+              "ingredients": {
+                "items": {
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "optional": {
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ingredients_text": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "test_entry": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "matched_exactly": {
+            "type": "boolean"
+          },
+          "requested_drink": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_drink_of_the_day": {
+      "description": "Pick one drink for a day and keep picking that same drink all day. A random pick gives a different one on every call, so a daily workflow that retries, or that two people run an hour apart, posts two different drinks for the one day. This one is fixed by the date: the same date always gives the same drink, and tomorrow gives a different one. Add a seed of your own to have two workspaces post different drinks on the same day.",
+      "display_name": "Get the drink of the day",
+      "display_str_template": "Get the Coffee API drink of the day.",
+      "handler": "actions.get_drink_of_the_day",
+      "id": "coffee_api_get_drink_of_the_day",
+      "method": "POST",
+      "mock_response": {
+        "base": null,
+        "date": "2026-09-14",
+        "drink": {
+          "base": "coffee",
+          "description": "As the most popular coffee drink out there, the latte is made with a shot of espresso and steamed milk, with just a touch of foam. It can be ordered plain or flavored with everything from vanilla to pumpkin spice.",
+          "drink_id": "hot-2",
+          "iced": false,
+          "image_url": "https://images.unsplash.com/photo-1561882468-9110e03e0f78?auto=format&fit=crop&q=60&w=800",
+          "ingredients": [
+            {
+              "name": "Espresso",
+              "optional": false
+            },
+            {
+              "name": "Steamed milk",
+              "optional": false
+            }
+          ],
+          "ingredients_text": "Espresso, Steamed milk",
+          "name": "Latte",
+          "test_entry": false
+        },
+        "ice": null,
+        "pool_size": 26,
+        "seed": "2026-09-14"
+      },
+      "name": "get_drink_of_the_day",
+      "output_formatter": "actions.format_drink_of_the_day_output",
+      "parameters": [
+        {
+          "description": "The day to pick a drink for. Leave empty for today in UTC, which is what a scheduled step wants.",
+          "display_name": "Day",
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only keep drinks built on this. The menu is not all coffee (it also carries tea, hot chocolate, orange juice and lemonade), and the service records no such field, so this is read off each recipe: espresso or coffee makes it a coffee, tea or matcha a tea, chocolate or cocoa a chocolate. A mocha counts as a coffee. Leave empty for the whole menu.",
+          "display_name": "Made with",
+          "name": "base",
+          "options": [
+            {
+              "label": "Coffee",
+              "value": "coffee"
+            },
+            {
+              "label": "Tea",
+              "value": "tea"
+            },
+            {
+              "label": "Chocolate",
+              "value": "chocolate"
+            },
+            {
+              "label": "Everything else",
+              "value": "other"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only keep drinks that are, or are not, served over ice. Taken from the recipe rather than from which of the service's two lists a drink is filed under, because that filing is wrong for a sixth of the menu: Iced Latte and Frozen Lemonade both sit on its 'hot' list. Leave empty for both.",
+          "display_name": "Ice",
+          "name": "ice",
+          "options": [
+            {
+              "label": "Served over ice",
+              "value": "with_ice"
+            },
+            {
+              "label": "Served without ice",
+              "value": "without_ice"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Any text you like. Two runs given the same seed pick the same drink, which is what a test, a screenshot or a step that retries needs. Leave empty for a genuinely different drink each time.",
+          "display_name": "Seed",
+          "examples": [
+            {
+              "label": "A team name",
+              "value": "platform-standup"
+            }
+          ],
+          "name": "seed",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/coffee-api/get-drink-of-the-day",
+      "result_str_template": "Drink of the day retrieved.",
+      "returns": {
+        "properties": {
+          "base": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "drink": {
+            "properties": {
+              "base": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "drink_id": {
+                "type": "string"
+              },
+              "iced": {
+                "type": "boolean"
+              },
+              "image_url": {
+                "type": "string"
+              },
+              "ingredients": {
+                "items": {
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "optional": {
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ingredients_text": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "test_entry": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "ice": {
+            "type": "string"
+          },
+          "pool_size": {
+            "type": "number"
+          },
+          "seed": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_random_drink": {
+      "description": "Pick one drink at random (the answer to 'what should I order?') from the whole menu or from a corner of it. Different every call. Set a seed when two runs have to agree instead. For a pick that stays the same all day, use Get the drink of the day.",
+      "display_name": "Get a random drink",
+      "display_str_template": "Get a random drink from the Coffee API.",
+      "handler": "actions.get_random_drink",
+      "id": "coffee_api_get_random_drink",
+      "method": "POST",
+      "mock_response": {
+        "base": "coffee",
+        "drink": {
+          "base": "coffee",
+          "description": "Coffee that's steeped in cold water for at least 12 hours, which makes for a smoother, less acidic cup than hot-brewed coffee poured over ice.",
+          "drink_id": "iced-3",
+          "iced": true,
+          "image_url": "https://upload.wikimedia.org/wikipedia/commons/6/6a/Cold_brew_coffee.jpg",
+          "ingredients": [
+            {
+              "name": "Long steeped coffee",
+              "optional": false
+            },
+            {
+              "name": "Ice",
+              "optional": false
+            }
+          ],
+          "ingredients_text": "Long steeped coffee, Ice",
+          "name": "Cold Brew",
+          "test_entry": false
+        },
+        "ice": "with_ice",
+        "pool_size": 8,
+        "seed": null
+      },
+      "name": "get_random_drink",
+      "output_formatter": "actions.format_drink_output",
+      "parameters": [
+        {
+          "description": "Only keep drinks built on this. The menu is not all coffee (it also carries tea, hot chocolate, orange juice and lemonade), and the service records no such field, so this is read off each recipe: espresso or coffee makes it a coffee, tea or matcha a tea, chocolate or cocoa a chocolate. A mocha counts as a coffee. Leave empty for the whole menu.",
+          "display_name": "Made with",
+          "name": "base",
+          "options": [
+            {
+              "label": "Coffee",
+              "value": "coffee"
+            },
+            {
+              "label": "Tea",
+              "value": "tea"
+            },
+            {
+              "label": "Chocolate",
+              "value": "chocolate"
+            },
+            {
+              "label": "Everything else",
+              "value": "other"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only keep drinks that are, or are not, served over ice. Taken from the recipe rather than from which of the service's two lists a drink is filed under, because that filing is wrong for a sixth of the menu: Iced Latte and Frozen Lemonade both sit on its 'hot' list. Leave empty for both.",
+          "display_name": "Ice",
+          "name": "ice",
+          "options": [
+            {
+              "label": "Served over ice",
+              "value": "with_ice"
+            },
+            {
+              "label": "Served without ice",
+              "value": "without_ice"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Any text you like. Two runs given the same seed pick the same drink, which is what a test, a screenshot or a step that retries needs. Leave empty for a genuinely different drink each time.",
+          "display_name": "Seed",
+          "examples": [
+            {
+              "label": "A team name",
+              "value": "platform-standup"
+            }
+          ],
+          "name": "seed",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/coffee-api/get-random-drink",
+      "result_str_template": "Drink picked.",
+      "returns": {
+        "properties": {
+          "base": {
+            "type": "string"
+          },
+          "drink": {
+            "properties": {
+              "base": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "drink_id": {
+                "type": "string"
+              },
+              "iced": {
+                "type": "boolean"
+              },
+              "image_url": {
+                "type": "string"
+              },
+              "ingredients": {
+                "items": {
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "optional": {
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ingredients_text": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "test_entry": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "ice": {
+            "type": "string"
+          },
+          "pool_size": {
+            "type": "number"
+          },
+          "seed": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_drinks": {
+      "description": "Browse the whole menu, or just the part of it you want: search the names, recipes and descriptions for a word, keep only the coffees or only the teas, only the ones served over ice, only the ones containing particular ingredients, and order what is left. The service offers no search, no filter and no ordering that reaches across both of its lists, so both are read once and merged here, which is what lets all of that be one step. The number of drinks matching is always reported, however many are returned.",
+      "display_name": "Find drinks",
+      "display_str_template": "Find drinks on the Coffee API menu.",
+      "handler": "actions.list_drinks",
+      "id": "coffee_api_list_drinks",
+      "method": "POST",
+      "mock_response": {
+        "base": "coffee",
+        "drink_count": 2,
+        "drinks": [
+          {
+            "base": "coffee",
+            "description": "Coffee that's steeped in cold water for at least 12 hours, which makes for a smoother, less acidic cup than hot-brewed coffee poured over ice.",
+            "drink_id": "iced-3",
+            "iced": true,
+            "image_url": "https://upload.wikimedia.org/wikipedia/commons/6/6a/Cold_brew_coffee.jpg",
+            "ingredients": [
+              {
+                "name": "Long steeped coffee",
+                "optional": false
+              },
+              {
+                "name": "Ice",
+                "optional": false
+              }
+            ],
+            "ingredients_text": "Long steeped coffee, Ice",
+            "name": "Cold Brew",
+            "test_entry": false
+          },
+          {
+            "base": "coffee",
+            "description": "A coffee with ice, typically served with a dash of milk, cream or sweetener\u2014iced coffee is really as simple as that.",
+            "drink_id": "iced-1",
+            "iced": true,
+            "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Blue_Bottle%2C_Kyoto_Style_Ice_Coffee_%285909775445%29.jpg",
+            "ingredients": [
+              {
+                "name": "Coffee",
+                "optional": false
+              },
+              {
+                "name": "Ice",
+                "optional": false
+              },
+              {
+                "name": "Sugar",
+                "optional": true
+              },
+              {
+                "name": "Cream",
+                "optional": true
+              }
+            ],
+            "ingredients_text": "Coffee, Ice, Sugar (optional), Cream (optional)",
+            "name": "Iced Coffee",
+            "test_entry": false
+          }
+        ],
+        "hidden_count": 3,
+        "ice": "with_ice",
+        "include_test_entries": false,
+        "ingredients": [
+          "Ice"
+        ],
+        "menu_size": 26,
+        "requested_count": 25,
+        "search": null,
+        "sort": "name",
+        "total_matches": 2
+      },
+      "name": "list_drinks",
+      "output_formatter": "actions.format_drinks_output",
+      "parameters": [
+        {
+          "description": "A word to look for in the drink names, their recipes and their descriptions, 2 to 120 characters. Best match leads: a hit on the name outranks one in the recipe, which outranks one in the description. Leave empty to browse rather than search.",
+          "display_name": "Search for",
+          "examples": [
+            {
+              "label": "A drink",
+              "value": "mocha"
+            },
+            {
+              "label": "An ingredient",
+              "value": "caramel"
+            },
+            {
+              "label": "A style",
+              "value": "espresso"
+            }
+          ],
+          "name": "search",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only keep drinks built on this. The menu is not all coffee (it also carries tea, hot chocolate, orange juice and lemonade), and the service records no such field, so this is read off each recipe: espresso or coffee makes it a coffee, tea or matcha a tea, chocolate or cocoa a chocolate. A mocha counts as a coffee. Leave empty for the whole menu.",
+          "display_name": "Made with",
+          "name": "base",
+          "options": [
+            {
+              "label": "Coffee",
+              "value": "coffee"
+            },
+            {
+              "label": "Tea",
+              "value": "tea"
+            },
+            {
+              "label": "Chocolate",
+              "value": "chocolate"
+            },
+            {
+              "label": "Everything else",
+              "value": "other"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only keep drinks that are, or are not, served over ice. Taken from the recipe rather than from which of the service's two lists a drink is filed under, because that filing is wrong for a sixth of the menu: Iced Latte and Frozen Lemonade both sit on its 'hot' list. Leave empty for both.",
+          "display_name": "Ice",
+          "name": "ice",
+          "options": [
+            {
+              "label": "Served over ice",
+              "value": "with_ice"
+            },
+            {
+              "label": "Served without ice",
+              "value": "without_ice"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only keep drinks whose recipe contains every one of these. The list is the menu's own vocabulary, with the asterisk the service uses for an optional part already read off, so Sugar is one choice rather than two. Leave empty for any recipe.",
+          "display_name": "Must contain",
+          "dynamic_source": "ingredients",
+          "dynamic_source_allows_custom": true,
+          "multi_select": true,
+          "name": "ingredients",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": "name",
+          "description": "How to order the results. Ignored when you search, because a search is ordered by how well each drink matches. Defaults to name, A to Z.",
+          "display_name": "Order by",
+          "name": "sort",
+          "options": [
+            {
+              "label": "Name, A to Z",
+              "value": "name"
+            },
+            {
+              "label": "Name, Z to A",
+              "value": "name_desc"
+            },
+            {
+              "label": "Simplest first (fewest ingredients)",
+              "value": "simplest"
+            },
+            {
+              "label": "Richest first (most ingredients)",
+              "value": "richest"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 25,
+          "description": "How many drinks to return, from 1 to 100. Defaults to 25, which is more than the menu currently holds, so leaving it alone returns everything that matched.",
+          "display_name": "Number of drinks",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Show the rows people have left behind while trying out the service's write routes, which anyone can call. There are three today: one called 'Black CoffeeTest' and two called 'test', and they are hidden unless you switch this on. Every result says how many it hid.",
+          "display_name": "Include test entries",
+          "name": "include_test_entries",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/coffee-api/list-drinks",
+      "result_str_template": "Drinks found.",
+      "returns": {
+        "properties": {
+          "base": {
+            "type": "string"
+          },
+          "drink_count": {
+            "type": "number"
+          },
+          "drinks": {
+            "items": {
+              "properties": {
+                "base": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "drink_id": {
+                  "type": "string"
+                },
+                "iced": {
+                  "type": "boolean"
+                },
+                "image_url": {
+                  "type": "string"
+                },
+                "ingredients": {
+                  "items": {
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "optional": {
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "ingredients_text": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "test_entry": {
+                  "type": "boolean"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "hidden_count": {
+            "type": "number"
+          },
+          "ice": {
+            "type": "string"
+          },
+          "include_test_entries": {
+            "type": "boolean"
+          },
+          "ingredients": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "menu_size": {
+            "type": "number"
+          },
+          "requested_count": {
+            "type": "number"
+          },
+          "search": {
+            "type": "string"
+          },
+          "sort": {
+            "type": "string"
+          },
+          "total_matches": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_ingredients": {
+      "description": "List everything the menu is made of, with the drinks that use each thing and whether every one of them treats it as optional. The service publishes recipes but no ingredient list, so this is gathered from the menu: it is what a caf\u00e9 would order, or what a 'can we make this?' step checks against. Sugar and Sugar* are counted as the one ingredient they are.",
+      "display_name": "List ingredients",
+      "display_str_template": "List the Coffee API menu's ingredients.",
+      "handler": "actions.list_ingredients",
+      "id": "coffee_api_list_ingredients",
+      "method": "POST",
+      "mock_response": {
+        "hidden_count": 3,
+        "include_test_entries": false,
+        "ingredient_count": 3,
+        "ingredients": [
+          {
+            "always_optional": false,
+            "name": "Espresso",
+            "used_in": [
+              "Cappuccino",
+              "Frappuccino",
+              "Latte"
+            ],
+            "used_in_count": 11
+          },
+          {
+            "always_optional": false,
+            "name": "Ice",
+            "used_in": [
+              "Cold Brew",
+              "Iced Coffee",
+              "Iced Latte"
+            ],
+            "used_in_count": 9
+          },
+          {
+            "always_optional": true,
+            "name": "Cream",
+            "used_in": [
+              "Iced Coffee",
+              "Iced Espresso",
+              "Nitro"
+            ],
+            "used_in_count": 3
+          }
+        ],
+        "menu_size": 26,
+        "sort": "uses"
+      },
+      "name": "list_ingredients",
+      "output_formatter": "actions.format_ingredients_output",
+      "parameters": [
+        {
+          "default": "uses",
+          "description": "How to order the ingredients. Defaults to the most used first, which is the shopping list; A to Z is easier to read down.",
+          "display_name": "Order by",
+          "name": "sort",
+          "options": [
+            {
+              "label": "Used in the most drinks first",
+              "value": "uses"
+            },
+            {
+              "label": "Name, A to Z",
+              "value": "name"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Show the rows people have left behind while trying out the service's write routes, which anyone can call. There are three today: one called 'Black CoffeeTest' and two called 'test', and they are hidden unless you switch this on. Every result says how many it hid.",
+          "display_name": "Include test entries",
+          "name": "include_test_entries",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/coffee-api/list-ingredients",
+      "result_str_template": "Ingredients listed.",
+      "returns": {
+        "properties": {
+          "hidden_count": {
+            "type": "number"
+          },
+          "include_test_entries": {
+            "type": "boolean"
+          },
+          "ingredient_count": {
+            "type": "number"
+          },
+          "ingredients": {
+            "items": {
+              "properties": {
+                "always_optional": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "used_in": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "used_in_count": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "menu_size": {
+            "type": "number"
+          },
+          "sort": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Look up coffee-shop drinks (the description, the recipe and a photo for each) from the free, keyless Coffee API. Get one drink by name, search the menu by word, ingredient or style, pick one at random for a \"what should I order?\" post, or pick a drink of the day that stays the same all day so a scheduled post never names two. It also totals up what the whole menu is made of, ingredient by ingredient. The service files its drinks across two lists that do not mean what they are called, so whether a drink is iced and what it is built on are read off the recipe here instead, and the practice rows people have left in this public sandbox are kept off the menu.",
+  "display_name": "Coffee API",
+  "id": "coffee_api"
+}

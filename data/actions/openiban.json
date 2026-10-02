@@ -1,0 +1,1149 @@
+{
+  "actions": {
+    "calculate_iban": {
+      "description": "Build an IBAN from a country, a bank code and an account number, the conversion a record still holding a German Bankleitzahl and Kontonummer needs before it can be paid by SEPA transfer. openiban validates whatever it builds, so the answer carries the same checks a validation would, plus the bank's name and BIC where it has them. No API key required.",
+      "display_name": "Calculate an IBAN",
+      "display_str_template": "Calculate the {0} IBAN for account {2} at bank {1}.",
+      "handler": "actions.calculate_iban",
+      "id": "openiban_calculate_iban",
+      "method": "POST",
+      "mock_response": {
+        "bank": {
+          "bank_code": "37040044",
+          "bic": "COBADEFFXXX",
+          "city": "K\u00f6ln",
+          "found": true,
+          "name": "Commerzbank",
+          "postal_code": "50447"
+        },
+        "bank_code_checked": true,
+        "bank_code_valid": true,
+        "bank_data_available_for_country": true,
+        "bank_looked_up": true,
+        "bban": "370400440532013000",
+        "check_digits": "89",
+        "checksum_valid": true,
+        "country_code": "DE",
+        "format_valid": true,
+        "iban": "DE89370400440532013000",
+        "iban_formatted": "DE89 3704 0044 0532 0130 00",
+        "input_account_number": "0532013000",
+        "input_bank_code": "37040044",
+        "messages": [
+          "Bank code valid: 37040044"
+        ],
+        "valid": true
+      },
+      "name": "calculate_iban",
+      "parameters": [
+        {
+          "description": "The country the account is held in. The list comes from openiban's own country map; the seven countries it holds bank data for are listed first.",
+          "display_name": "Country",
+          "dynamic_source": "countries",
+          "name": "country_code",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The bank's domestic code: a German Bankleitzahl (37040044), a Dutch bank's four letters (ABNA), a Swiss clearing number. Spaces are ignored.",
+          "display_name": "Bank code",
+          "examples": [
+            {
+              "label": "Commerzbank (Germany)",
+              "value": "37040044"
+            },
+            {
+              "label": "ABN AMRO (Netherlands)",
+              "value": "ABNA"
+            }
+          ],
+          "name": "bank_code",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The domestic account number, exactly as the bank writes it, leading zeros included. Spaces are ignored.",
+          "display_name": "Account number",
+          "examples": [
+            {
+              "label": "A German Kontonummer",
+              "value": "0532013000"
+            }
+          ],
+          "name": "account_number",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Also check the bank code and return the bank's name, BIC, city and postcode alongside the IBAN. On by default. Turning it off uses openiban's smaller calculate endpoint, which returns the IBAN alone and does not check that the bank code exists.",
+          "display_name": "Look up the bank",
+          "name": "look_up_bank",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/openiban/calculate-iban",
+      "result_str_template": "Calculated IBAN {openiban_calculate_iban,iban_formatted}.",
+      "returns": {
+        "description": "One calculated IBAN and everything openiban reports about it.",
+        "properties": {
+          "bank": {
+            "description": "The bank behind the IBAN. Every field is null when openiban holds no data for that country.",
+            "properties": {
+              "bank_code": {
+                "description": "The bank's domestic code as it appears inside the IBAN, for example '37040044'. Null when unknown.",
+                "type": "string"
+              },
+              "bic": {
+                "description": "The bank's BIC (SWIFT code), for example 'COBADEFFXXX'. This is the code an international transfer asks for. Null when unknown.",
+                "type": "string"
+              },
+              "city": {
+                "description": "The city the branch is registered in. Null when unknown.",
+                "type": "string"
+              },
+              "found": {
+                "description": "True when openiban returned anything about the bank. False means either that the country is not one of the seven it holds data for, or that the bank code is not in its data.",
+                "type": "boolean"
+              },
+              "name": {
+                "description": "The bank's name, for example 'Commerzbank'. Null when unknown.",
+                "type": "string"
+              },
+              "postal_code": {
+                "description": "The branch's postcode. Null when unknown.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "bank_code_checked": {
+            "description": "Whether the bank code was checked on this call.",
+            "type": "boolean"
+          },
+          "bank_code_valid": {
+            "description": "Whether the bank code is one that really exists. Null when the bank lookup was turned off, or when openiban holds no bank codes for the country.",
+            "type": "boolean"
+          },
+          "bank_data_available_for_country": {
+            "description": "Whether openiban holds bank codes and BICs for this country at all. False means an empty bank block says nothing about the account.",
+            "type": "boolean"
+          },
+          "bank_looked_up": {
+            "description": "Whether the bank lookup was asked for on this call.",
+            "type": "boolean"
+          },
+          "bban": {
+            "description": "Everything after the check digits: the domestic account number as it sits inside the IBAN, usually the account number padded out.",
+            "type": "string"
+          },
+          "check_digits": {
+            "description": "The two check digits openiban computed.",
+            "type": "string"
+          },
+          "checksum_valid": {
+            "description": "Whether the built IBAN's check digits verify, by ISO 13616's mod-97 rule. Effectively always true, since openiban computed them; it is here so a calculated IBAN reads exactly like a validated one.",
+            "type": "boolean"
+          },
+          "country_code": {
+            "description": "The country code the IBAN was built for, for example 'DE'.",
+            "type": "string"
+          },
+          "format_valid": {
+            "description": "Whether the built IBAN has the shape ISO 13616 requires.",
+            "type": "boolean"
+          },
+          "iban": {
+            "description": "The IBAN openiban built, in its compact electronic form.",
+            "type": "string"
+          },
+          "iban_formatted": {
+            "description": "The same IBAN in groups of four, the way it is written.",
+            "type": "string"
+          },
+          "input_account_number": {
+            "description": "The account number this IBAN was built from, tidied up, so a batch answer can be matched back to the row it came from.",
+            "type": "string"
+          },
+          "input_bank_code": {
+            "description": "The bank code this IBAN was built from, tidied up, so a batch answer can be matched back to the row it came from.",
+            "type": "string"
+          },
+          "messages": {
+            "description": "openiban's own notes about the IBAN it built, verbatim.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "valid": {
+            "description": "openiban's verdict on the IBAN it just built: true only when every check it ran passed. False generally means the bank code is not one it recognises.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "calculate_ibans": {
+      "description": "Build IBANs for a whole list of accounts in one country, in one step: the migration action for a customer or payroll table that still holds bank codes and account numbers. Each row comes back with the IBAN, the checks openiban ran on it, and the bank code and account number it was built from, so the answers line up with the rows they came from. Up to 50 at a time. No API key required.",
+      "display_name": "Calculate several IBANs",
+      "display_str_template": "Calculate IBANs for a list of {0} accounts.",
+      "handler": "actions.calculate_ibans",
+      "id": "openiban_calculate_ibans",
+      "method": "POST",
+      "mock_response": {
+        "all_valid": true,
+        "count": 1,
+        "country_code": "DE",
+        "invalid_count": 0,
+        "invalid_ibans": [],
+        "results": [
+          {
+            "bank": {
+              "bank_code": "37040044",
+              "bic": "COBADEFFXXX",
+              "city": "K\u00f6ln",
+              "found": true,
+              "name": "Commerzbank",
+              "postal_code": "50447"
+            },
+            "bank_code_checked": true,
+            "bank_code_valid": true,
+            "bank_data_available_for_country": true,
+            "bank_looked_up": true,
+            "bban": "370400440532013000",
+            "check_digits": "89",
+            "checksum_valid": true,
+            "country_code": "DE",
+            "format_valid": true,
+            "iban": "DE89370400440532013000",
+            "iban_formatted": "DE89 3704 0044 0532 0130 00",
+            "input_account_number": "0532013000",
+            "input_bank_code": "37040044",
+            "messages": [
+              "Bank code valid: 37040044"
+            ],
+            "valid": true
+          }
+        ],
+        "valid_count": 1,
+        "valid_ibans": [
+          "DE89370400440532013000"
+        ]
+      },
+      "name": "calculate_ibans",
+      "parameters": [
+        {
+          "description": "The country the account is held in. The list comes from openiban's own country map; the seven countries it holds bank data for are listed first.",
+          "display_name": "Country",
+          "dynamic_source": "countries",
+          "name": "country_code",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The accounts to build IBANs for, up to 50 in one step. Each needs the bank's domestic code and the account number; they must all be in the country chosen above.",
+          "display_name": "Accounts",
+          "name": "accounts",
+          "required": true,
+          "schema": {
+            "properties": {
+              "account_number": {
+                "description": "The domestic account number, leading zeros included.",
+                "type": "string"
+              },
+              "bank_code": {
+                "description": "The bank's domestic code, e.g. 37040044 for Commerzbank.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "bank_code",
+              "account_number"
+            ],
+            "type": "object"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": true,
+          "description": "Also check the bank code and return the bank's name, BIC, city and postcode alongside the IBAN. On by default. Turning it off uses openiban's smaller calculate endpoint, which returns the IBAN alone and does not check that the bank code exists.",
+          "display_name": "Look up the bank",
+          "name": "look_up_bank",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/openiban/calculate-ibans",
+      "result_str_template": "Calculated {openiban_calculate_ibans,count} IBANs ({openiban_calculate_ibans,valid_count} valid).",
+      "returns": {
+        "properties": {
+          "all_valid": {
+            "description": "True when every row came back valid: the single flag to branch a workflow on before releasing a payment run.",
+            "type": "boolean"
+          },
+          "count": {
+            "description": "How many rows the step returned.",
+            "type": "integer"
+          },
+          "country_code": {
+            "description": "The country every IBAN was built for.",
+            "type": "string"
+          },
+          "invalid_count": {
+            "description": "How many of them openiban did not report as valid.",
+            "type": "integer"
+          },
+          "invalid_ibans": {
+            "description": "Just the IBANs that did not come back valid: the list to put in front of a person.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "results": {
+            "description": "One result per account, in the order they were given.",
+            "items": {
+              "description": "One calculated IBAN and everything openiban reports about it.",
+              "properties": {
+                "bank": {
+                  "description": "The bank behind the IBAN. Every field is null when openiban holds no data for that country.",
+                  "properties": {
+                    "bank_code": {
+                      "description": "The bank's domestic code as it appears inside the IBAN, for example '37040044'. Null when unknown.",
+                      "type": "string"
+                    },
+                    "bic": {
+                      "description": "The bank's BIC (SWIFT code), for example 'COBADEFFXXX'. This is the code an international transfer asks for. Null when unknown.",
+                      "type": "string"
+                    },
+                    "city": {
+                      "description": "The city the branch is registered in. Null when unknown.",
+                      "type": "string"
+                    },
+                    "found": {
+                      "description": "True when openiban returned anything about the bank. False means either that the country is not one of the seven it holds data for, or that the bank code is not in its data.",
+                      "type": "boolean"
+                    },
+                    "name": {
+                      "description": "The bank's name, for example 'Commerzbank'. Null when unknown.",
+                      "type": "string"
+                    },
+                    "postal_code": {
+                      "description": "The branch's postcode. Null when unknown.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "bank_code_checked": {
+                  "description": "Whether the bank code was checked on this call.",
+                  "type": "boolean"
+                },
+                "bank_code_valid": {
+                  "description": "Whether the bank code is one that really exists. Null when the bank lookup was turned off, or when openiban holds no bank codes for the country.",
+                  "type": "boolean"
+                },
+                "bank_data_available_for_country": {
+                  "description": "Whether openiban holds bank codes and BICs for this country at all. False means an empty bank block says nothing about the account.",
+                  "type": "boolean"
+                },
+                "bank_looked_up": {
+                  "description": "Whether the bank lookup was asked for on this call.",
+                  "type": "boolean"
+                },
+                "bban": {
+                  "description": "Everything after the check digits: the domestic account number as it sits inside the IBAN, usually the account number padded out.",
+                  "type": "string"
+                },
+                "check_digits": {
+                  "description": "The two check digits openiban computed.",
+                  "type": "string"
+                },
+                "checksum_valid": {
+                  "description": "Whether the built IBAN's check digits verify, by ISO 13616's mod-97 rule. Effectively always true, since openiban computed them; it is here so a calculated IBAN reads exactly like a validated one.",
+                  "type": "boolean"
+                },
+                "country_code": {
+                  "description": "The country code the IBAN was built for, for example 'DE'.",
+                  "type": "string"
+                },
+                "format_valid": {
+                  "description": "Whether the built IBAN has the shape ISO 13616 requires.",
+                  "type": "boolean"
+                },
+                "iban": {
+                  "description": "The IBAN openiban built, in its compact electronic form.",
+                  "type": "string"
+                },
+                "iban_formatted": {
+                  "description": "The same IBAN in groups of four, the way it is written.",
+                  "type": "string"
+                },
+                "input_account_number": {
+                  "description": "The account number this IBAN was built from, tidied up, so a batch answer can be matched back to the row it came from.",
+                  "type": "string"
+                },
+                "input_bank_code": {
+                  "description": "The bank code this IBAN was built from, tidied up, so a batch answer can be matched back to the row it came from.",
+                  "type": "string"
+                },
+                "messages": {
+                  "description": "openiban's own notes about the IBAN it built, verbatim.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "valid": {
+                  "description": "openiban's verdict on the IBAN it just built: true only when every check it ran passed. False generally means the bank code is not one it recognises.",
+                  "type": "boolean"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "valid_count": {
+            "description": "How many of them openiban reported as valid.",
+            "type": "integer"
+          },
+          "valid_ibans": {
+            "description": "Just the IBANs that came back valid, in the order given.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_bank_details": {
+      "description": "Look up the bank behind an IBAN: its BIC (SWIFT code), name, city and postcode. This is the step for filling in the BIC an international transfer asks for, or for showing a customer which bank they just entered. openiban holds bank data for Austria, Belgium, Germany, Liechtenstein, Luxembourg, the Netherlands and Switzerland, and the answer says plainly when a country is not one of them. No API key required.",
+      "display_name": "Get bank details for an IBAN",
+      "display_str_template": "Get bank details for IBAN {0}.",
+      "handler": "actions.get_bank_details",
+      "id": "openiban_get_bank_details",
+      "method": "POST",
+      "mock_response": {
+        "bank": {
+          "bank_code": "37040044",
+          "bic": "COBADEFFXXX",
+          "city": "K\u00f6ln",
+          "found": true,
+          "name": "Commerzbank",
+          "postal_code": "50447"
+        },
+        "bank_data_available_for_country": true,
+        "checksum_valid": true,
+        "country_code": "DE",
+        "iban": "DE89370400440532013000",
+        "iban_formatted": "DE89 3704 0044 0532 0130 00",
+        "messages": [],
+        "valid": true
+      },
+      "name": "get_bank_details",
+      "parameters": [
+        {
+          "description": "The IBAN to check. Paste it however it was written: spaces, hyphens and lower case are all fine, and it is tidied up before it is sent.",
+          "display_name": "IBAN",
+          "examples": [
+            {
+              "label": "Germany",
+              "value": "DE89 3704 0044 0532 0130 00"
+            },
+            {
+              "label": "Netherlands",
+              "value": "NL91ABNA0417164300"
+            },
+            {
+              "label": "France",
+              "value": "FR1420041010050500013M02606"
+            }
+          ],
+          "name": "iban",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openiban/get-bank-details",
+      "result_str_template": "Bank for {openiban_get_bank_details,iban_formatted}: {openiban_get_bank_details,bank,name}.",
+      "returns": {
+        "properties": {
+          "bank": {
+            "description": "The bank behind the IBAN. Every field is null when openiban holds no data for that country.",
+            "properties": {
+              "bank_code": {
+                "description": "The bank's domestic code as it appears inside the IBAN, for example '37040044'. Null when unknown.",
+                "type": "string"
+              },
+              "bic": {
+                "description": "The bank's BIC (SWIFT code), for example 'COBADEFFXXX'. This is the code an international transfer asks for. Null when unknown.",
+                "type": "string"
+              },
+              "city": {
+                "description": "The city the branch is registered in. Null when unknown.",
+                "type": "string"
+              },
+              "found": {
+                "description": "True when openiban returned anything about the bank. False means either that the country is not one of the seven it holds data for, or that the bank code is not in its data.",
+                "type": "boolean"
+              },
+              "name": {
+                "description": "The bank's name, for example 'Commerzbank'. Null when unknown.",
+                "type": "string"
+              },
+              "postal_code": {
+                "description": "The branch's postcode. Null when unknown.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "bank_data_available_for_country": {
+            "description": "Whether openiban holds bank data for this country at all. False means an empty bank block says nothing about the account.",
+            "type": "boolean"
+          },
+          "checksum_valid": {
+            "description": "Whether the IBAN's check digits verify, by ISO 13616's mod-97 rule.",
+            "type": "boolean"
+          },
+          "country_code": {
+            "description": "The IBAN's first two letters: the country the account is held in.",
+            "type": "string"
+          },
+          "iban": {
+            "description": "The IBAN that was looked up, in its compact electronic form.",
+            "type": "string"
+          },
+          "iban_formatted": {
+            "description": "The same IBAN in groups of four.",
+            "type": "string"
+          },
+          "messages": {
+            "description": "openiban's own notes, verbatim, for example 'Cannot get BIC. No information available.'",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "valid": {
+            "description": "Whether openiban considers the IBAN itself sound. The bank-code check is deliberately not run here, so this reflects the IBAN's own structure only.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_country": {
+      "description": "Look one country up by name or by code, and get back the two-letter code an IBAN from there starts with. Use it when the country arrives as a name from somewhere else in the workflow, a CRM field saying 'Germany', and the next step needs 'DE'. It also says whether openiban holds bank data there. No API key required.",
+      "display_name": "Get a country",
+      "display_str_template": "Look up the country {0}.",
+      "handler": "actions.get_country",
+      "id": "openiban_get_country",
+      "method": "POST",
+      "mock_response": {
+        "bank_data_available": true,
+        "code": "DE",
+        "code_is_shared": false,
+        "country": {
+          "bank_data_available": true,
+          "code": "DE",
+          "name": "Germany"
+        },
+        "matched_by": "name",
+        "name": "Germany",
+        "names_for_this_code": [
+          "Germany"
+        ],
+        "other_names_for_this_code": []
+      },
+      "name": "get_country",
+      "parameters": [
+        {
+          "description": "The country to look up. Pick one from the list, or type a value coming from an earlier step: a name ('Germany'), a code ('DE'), or part of a name ('Nether' finds the Netherlands). A name is matched first, then a code.",
+          "display_name": "Country name or code",
+          "dynamic_source": "country_names",
+          "examples": [
+            {
+              "label": "By name",
+              "value": "Germany"
+            },
+            {
+              "label": "By code",
+              "value": "NL"
+            }
+          ],
+          "name": "country",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openiban/get-country",
+      "result_str_template": "{openiban_get_country,name} is country code {openiban_get_country,code}.",
+      "returns": {
+        "properties": {
+          "bank_data_available": {
+            "description": "Whether openiban holds bank codes and BICs for this country.",
+            "type": "boolean"
+          },
+          "code": {
+            "description": "The two-letter country code, ready to hand to the calculate actions.",
+            "type": "string"
+          },
+          "code_is_shared": {
+            "description": "True when openiban files more than one name under this code, which it does for France's 'FR' and the United Kingdom's 'GB'. The code is still the right one to hand to the calculate actions.",
+            "type": "boolean"
+          },
+          "country": {
+            "description": "One country openiban knows about.",
+            "properties": {
+              "bank_data_available": {
+                "description": "Whether openiban holds bank codes and BICs for this country, so a validation there comes back with the bank's name and BIC.",
+                "type": "boolean"
+              },
+              "code": {
+                "description": "The two-letter ISO country code an IBAN from this country starts with, e.g. 'DE'. This is what the calculate actions take.",
+                "type": "string"
+              },
+              "name": {
+                "description": "The country's name as openiban spells it, e.g. 'Germany'.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "matched_by": {
+            "description": "Which spelling matched: 'name' when the value was a country name or part of one, 'code' when it was a two-letter code.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The country's name as openiban spells it. When the lookup was by code and several names share that code, this is the first of them alphabetically rather than the sovereign state: check 'code_is_shared' and read 'names_for_this_code'.",
+            "type": "string"
+          },
+          "names_for_this_code": {
+            "description": "Every name openiban files under this code, alphabetically, including the matched one.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "other_names_for_this_code": {
+            "description": "The same list without the matched name, for example Martinique and R\u00e9union under France's 'FR'. Usually empty.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_countries": {
+      "description": "List every country openiban knows, with the two-letter code an IBAN from there starts with and whether openiban holds bank codes and BICs for it. Use it to fill a dropdown, to check a country is covered before building a workflow around it, or to find the exact code the calculate actions take. No API key required.",
+      "display_name": "List countries",
+      "display_str_template": "List the countries OpenIBAN knows.",
+      "handler": "actions.list_countries",
+      "id": "openiban_list_countries",
+      "method": "POST",
+      "mock_response": {
+        "bank_data_country_codes": [
+          "AT",
+          "BE",
+          "CH",
+          "DE",
+          "LI",
+          "LU",
+          "NL"
+        ],
+        "count": 1,
+        "countries": [
+          {
+            "bank_data_available": true,
+            "code": "DE",
+            "name": "Germany"
+          }
+        ],
+        "country_code_count": 1
+      },
+      "name": "list_countries",
+      "parameters": [
+        {
+          "description": "Only countries whose name or code contains this text. Not case sensitive. Leave it empty for all of them.",
+          "display_name": "Name or code contains",
+          "examples": [
+            {
+              "label": "A country",
+              "value": "Germany"
+            },
+            {
+              "label": "A code",
+              "value": "NL"
+            }
+          ],
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Return only the seven countries openiban holds bank codes and BICs for. Off by default.",
+          "display_name": "Only countries with bank data",
+          "name": "bank_data_only",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": "name_asc",
+          "description": "How to order the list. Alphabetically by country name by default.",
+          "display_name": "Order by",
+          "name": "sort",
+          "options": [
+            {
+              "label": "Country name (A to Z)",
+              "value": "name_asc"
+            },
+            {
+              "label": "Country name (Z to A)",
+              "value": "name_desc"
+            },
+            {
+              "label": "Country code (A to Z)",
+              "value": "code_asc"
+            },
+            {
+              "label": "Country code (Z to A)",
+              "value": "code_desc"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openiban/list-countries",
+      "result_str_template": "Retrieved {openiban_list_countries,count} countries.",
+      "returns": {
+        "properties": {
+          "bank_data_country_codes": {
+            "description": "The codes of the countries openiban holds bank codes and BICs for, whatever the filters above were set to.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many countries matched.",
+            "type": "integer"
+          },
+          "countries": {
+            "description": "The countries that matched.",
+            "items": {
+              "description": "One country openiban knows about.",
+              "properties": {
+                "bank_data_available": {
+                  "description": "Whether openiban holds bank codes and BICs for this country, so a validation there comes back with the bank's name and BIC.",
+                  "type": "boolean"
+                },
+                "code": {
+                  "description": "The two-letter ISO country code an IBAN from this country starts with, e.g. 'DE'. This is what the calculate actions take.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The country's name as openiban spells it, e.g. 'Germany'.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "country_code_count": {
+            "description": "How many distinct country codes those names resolve to. It is the smaller number: openiban files Martinique and R\u00e9union under France's 'FR', and Jersey and the Isle of Man under the United Kingdom's 'GB'.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "validate_iban": {
+      "description": "Check that an IBAN is a real one before you pay it: the check digits, the country's own length rule, and whether the bank code inside it exists. Where openiban holds bank data it also returns the bank's name and BIC, so one step both validates the account and tells you who it belongs to. No API key required.",
+      "display_name": "Validate an IBAN",
+      "display_str_template": "Validate IBAN {0}.",
+      "handler": "actions.validate_iban",
+      "id": "openiban_validate_iban",
+      "method": "POST",
+      "mock_response": {
+        "bank": {
+          "bank_code": "37040044",
+          "bic": "COBADEFFXXX",
+          "city": "K\u00f6ln",
+          "found": true,
+          "name": "Commerzbank",
+          "postal_code": "50447"
+        },
+        "bank_code_checked": true,
+        "bank_code_valid": true,
+        "bank_data_available_for_country": true,
+        "bank_looked_up": true,
+        "bban": "370400440532013000",
+        "check_digits": "89",
+        "checksum_valid": true,
+        "country_code": "DE",
+        "format_valid": true,
+        "iban": "DE89370400440532013000",
+        "iban_formatted": "DE89 3704 0044 0532 0130 00",
+        "messages": [
+          "Bank code valid: 37040044"
+        ],
+        "valid": true
+      },
+      "name": "validate_iban",
+      "parameters": [
+        {
+          "description": "The IBAN to check. Paste it however it was written: spaces, hyphens and lower case are all fine, and it is tidied up before it is sent.",
+          "display_name": "IBAN",
+          "examples": [
+            {
+              "label": "Germany",
+              "value": "DE89 3704 0044 0532 0130 00"
+            },
+            {
+              "label": "Netherlands",
+              "value": "NL91ABNA0417164300"
+            },
+            {
+              "label": "France",
+              "value": "FR1420041010050500013M02606"
+            }
+          ],
+          "name": "iban",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Also check that the bank code inside the IBAN is one that really exists. On by default. openiban holds bank codes for Austria, Belgium, Germany, Liechtenstein, Luxembourg, the Netherlands and Switzerland only; elsewhere this check simply reports that it has no data.",
+          "display_name": "Check the bank code",
+          "name": "check_bank_code",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": true,
+          "description": "Also return the bank's name, BIC, city and postcode. On by default. Available for the same seven countries; elsewhere the bank comes back empty.",
+          "display_name": "Look up the bank",
+          "name": "look_up_bank",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/openiban/validate-iban",
+      "result_str_template": "IBAN {openiban_validate_iban,iban_formatted} checked (valid: {openiban_validate_iban,valid}).",
+      "returns": {
+        "description": "One IBAN and everything openiban reports about it.",
+        "properties": {
+          "bank": {
+            "description": "The bank behind the IBAN. Every field is null when openiban holds no data for that country.",
+            "properties": {
+              "bank_code": {
+                "description": "The bank's domestic code as it appears inside the IBAN, for example '37040044'. Null when unknown.",
+                "type": "string"
+              },
+              "bic": {
+                "description": "The bank's BIC (SWIFT code), for example 'COBADEFFXXX'. This is the code an international transfer asks for. Null when unknown.",
+                "type": "string"
+              },
+              "city": {
+                "description": "The city the branch is registered in. Null when unknown.",
+                "type": "string"
+              },
+              "found": {
+                "description": "True when openiban returned anything about the bank. False means either that the country is not one of the seven it holds data for, or that the bank code is not in its data.",
+                "type": "boolean"
+              },
+              "name": {
+                "description": "The bank's name, for example 'Commerzbank'. Null when unknown.",
+                "type": "string"
+              },
+              "postal_code": {
+                "description": "The branch's postcode. Null when unknown.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "bank_code_checked": {
+            "description": "Whether the bank-code check was asked for on this call.",
+            "type": "boolean"
+          },
+          "bank_code_valid": {
+            "description": "Whether the bank code inside the IBAN is one that really exists. Null when the check was not requested, and null (not false) for a country openiban holds no bank codes for, so an IBAN from outside its seven countries is never reported as having a bad bank code.",
+            "type": "boolean"
+          },
+          "bank_data_available_for_country": {
+            "description": "Whether openiban holds bank codes and BICs for this country at all. It covers Austria, Belgium, Germany, Liechtenstein, Luxembourg, the Netherlands and Switzerland. False means an empty bank block says nothing about the account.",
+            "type": "boolean"
+          },
+          "bank_looked_up": {
+            "description": "Whether the bank lookup was asked for on this call.",
+            "type": "boolean"
+          },
+          "bban": {
+            "description": "Everything after the check digits: the country's own account number, which is what a domestic transfer uses. Null when the IBAN is not shaped like one.",
+            "type": "string"
+          },
+          "check_digits": {
+            "description": "The IBAN's third and fourth characters, the two check digits. Null when the IBAN is not shaped like one.",
+            "type": "string"
+          },
+          "checksum_valid": {
+            "description": "Whether the IBAN's check digits verify, by ISO 13616's mod-97 rule. This is what catches a mistyped digit, and it is the same answer in every country, whether or not openiban holds bank data for it.",
+            "type": "boolean"
+          },
+          "country_code": {
+            "description": "The IBAN's first two letters: the ISO country code of the country the account is held in, for example 'DE'.",
+            "type": "string"
+          },
+          "format_valid": {
+            "description": "Whether the IBAN has the general shape ISO 13616 requires: two letters, two digits, then 11 to 30 more letters or digits.",
+            "type": "boolean"
+          },
+          "iban": {
+            "description": "The IBAN with spaces and punctuation removed and letters upper cased: the electronic form, and the one to store.",
+            "type": "string"
+          },
+          "iban_formatted": {
+            "description": "The same IBAN in groups of four, the way it is written on paper: 'DE89 3704 0044 0532 0130 00'.",
+            "type": "string"
+          },
+          "messages": {
+            "description": "openiban's own notes about this IBAN, verbatim, for example 'Bank code valid: 37040044' or 'Cannot get BIC. No information available.'",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "valid": {
+            "description": "openiban's overall verdict: true only when every check it ran passed. It is false for a structurally perfect IBAN whose bank code openiban does not recognise, so branch on 'checksum_valid' and 'bank_code_valid' when you need to tell those apart.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "validate_ibans": {
+      "description": "Check a whole list of IBANs in one step (a payment file, a supplier list, a column out of a spreadsheet) and get back each result plus the counts to branch on. A bad IBAN comes back as a row saying so, not as a failed step, and the invalid ones are collected into their own list ready to put in front of a person. Up to 50 at a time. No API key required.",
+      "display_name": "Validate several IBANs",
+      "display_str_template": "Validate a list of IBANs.",
+      "handler": "actions.validate_ibans",
+      "id": "openiban_validate_ibans",
+      "method": "POST",
+      "mock_response": {
+        "all_valid": true,
+        "count": 1,
+        "invalid_count": 0,
+        "invalid_ibans": [],
+        "results": [
+          {
+            "bank": {
+              "bank_code": "37040044",
+              "bic": "COBADEFFXXX",
+              "city": "K\u00f6ln",
+              "found": true,
+              "name": "Commerzbank",
+              "postal_code": "50447"
+            },
+            "bank_code_checked": true,
+            "bank_code_valid": true,
+            "bank_data_available_for_country": true,
+            "bank_looked_up": true,
+            "bban": "370400440532013000",
+            "check_digits": "89",
+            "checksum_valid": true,
+            "country_code": "DE",
+            "format_valid": true,
+            "iban": "DE89370400440532013000",
+            "iban_formatted": "DE89 3704 0044 0532 0130 00",
+            "messages": [
+              "Bank code valid: 37040044"
+            ],
+            "valid": true
+          }
+        ],
+        "valid_count": 1,
+        "valid_ibans": [
+          "DE89370400440532013000"
+        ]
+      },
+      "name": "validate_ibans",
+      "parameters": [
+        {
+          "description": "The IBANs to check, up to 50 in one step. Each is tidied up before it is sent, and anything that fails (a bad check digit, or a cell that is not an IBAN at all) is reported as a row rather than failing the whole step.",
+          "display_name": "IBANs",
+          "name": "ibans",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": true,
+          "description": "Also check that the bank code inside the IBAN is one that really exists. On by default. openiban holds bank codes for Austria, Belgium, Germany, Liechtenstein, Luxembourg, the Netherlands and Switzerland only; elsewhere this check simply reports that it has no data.",
+          "display_name": "Check the bank code",
+          "name": "check_bank_code",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": true,
+          "description": "Also return the bank's name, BIC, city and postcode. On by default. Available for the same seven countries; elsewhere the bank comes back empty.",
+          "display_name": "Look up the bank",
+          "name": "look_up_bank",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/openiban/validate-ibans",
+      "result_str_template": "{openiban_validate_ibans,valid_count} of {openiban_validate_ibans,count} IBANs are valid.",
+      "returns": {
+        "properties": {
+          "all_valid": {
+            "description": "True when every row came back valid: the single flag to branch a workflow on before releasing a payment run.",
+            "type": "boolean"
+          },
+          "count": {
+            "description": "How many rows the step returned.",
+            "type": "integer"
+          },
+          "invalid_count": {
+            "description": "How many of them openiban did not report as valid.",
+            "type": "integer"
+          },
+          "invalid_ibans": {
+            "description": "Just the IBANs that did not come back valid: the list to put in front of a person.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "results": {
+            "description": "One result per IBAN, in the order they were given. An entry that is not an IBAN at all gets a row too, with every check false and the reason in its messages, so the rows line up with the list that was sent.",
+            "items": {
+              "description": "One IBAN and everything openiban reports about it.",
+              "properties": {
+                "bank": {
+                  "description": "The bank behind the IBAN. Every field is null when openiban holds no data for that country.",
+                  "properties": {
+                    "bank_code": {
+                      "description": "The bank's domestic code as it appears inside the IBAN, for example '37040044'. Null when unknown.",
+                      "type": "string"
+                    },
+                    "bic": {
+                      "description": "The bank's BIC (SWIFT code), for example 'COBADEFFXXX'. This is the code an international transfer asks for. Null when unknown.",
+                      "type": "string"
+                    },
+                    "city": {
+                      "description": "The city the branch is registered in. Null when unknown.",
+                      "type": "string"
+                    },
+                    "found": {
+                      "description": "True when openiban returned anything about the bank. False means either that the country is not one of the seven it holds data for, or that the bank code is not in its data.",
+                      "type": "boolean"
+                    },
+                    "name": {
+                      "description": "The bank's name, for example 'Commerzbank'. Null when unknown.",
+                      "type": "string"
+                    },
+                    "postal_code": {
+                      "description": "The branch's postcode. Null when unknown.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "bank_code_checked": {
+                  "description": "Whether the bank-code check was asked for on this call.",
+                  "type": "boolean"
+                },
+                "bank_code_valid": {
+                  "description": "Whether the bank code inside the IBAN is one that really exists. Null when the check was not requested, and null (not false) for a country openiban holds no bank codes for, so an IBAN from outside its seven countries is never reported as having a bad bank code.",
+                  "type": "boolean"
+                },
+                "bank_data_available_for_country": {
+                  "description": "Whether openiban holds bank codes and BICs for this country at all. It covers Austria, Belgium, Germany, Liechtenstein, Luxembourg, the Netherlands and Switzerland. False means an empty bank block says nothing about the account.",
+                  "type": "boolean"
+                },
+                "bank_looked_up": {
+                  "description": "Whether the bank lookup was asked for on this call.",
+                  "type": "boolean"
+                },
+                "bban": {
+                  "description": "Everything after the check digits: the country's own account number, which is what a domestic transfer uses. Null when the IBAN is not shaped like one.",
+                  "type": "string"
+                },
+                "check_digits": {
+                  "description": "The IBAN's third and fourth characters, the two check digits. Null when the IBAN is not shaped like one.",
+                  "type": "string"
+                },
+                "checksum_valid": {
+                  "description": "Whether the IBAN's check digits verify, by ISO 13616's mod-97 rule. This is what catches a mistyped digit, and it is the same answer in every country, whether or not openiban holds bank data for it.",
+                  "type": "boolean"
+                },
+                "country_code": {
+                  "description": "The IBAN's first two letters: the ISO country code of the country the account is held in, for example 'DE'.",
+                  "type": "string"
+                },
+                "format_valid": {
+                  "description": "Whether the IBAN has the general shape ISO 13616 requires: two letters, two digits, then 11 to 30 more letters or digits.",
+                  "type": "boolean"
+                },
+                "iban": {
+                  "description": "The IBAN with spaces and punctuation removed and letters upper cased: the electronic form, and the one to store.",
+                  "type": "string"
+                },
+                "iban_formatted": {
+                  "description": "The same IBAN in groups of four, the way it is written on paper: 'DE89 3704 0044 0532 0130 00'.",
+                  "type": "string"
+                },
+                "messages": {
+                  "description": "openiban's own notes about this IBAN, verbatim, for example 'Bank code valid: 37040044' or 'Cannot get BIC. No information available.'",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "valid": {
+                  "description": "openiban's overall verdict: true only when every check it ran passed. It is false for a structurally perfect IBAN whose bank code openiban does not recognise, so branch on 'checksum_valid' and 'bank_code_valid' when you need to tell those apart.",
+                  "type": "boolean"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "valid_count": {
+            "description": "How many of them openiban reported as valid.",
+            "type": "integer"
+          },
+          "valid_ibans": {
+            "description": "Just the IBANs that came back valid, in the order given.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Validate IBANs and look up the bank behind them. Check one IBAN or a whole payment file at once (the check digits, the country's length rule and whether the bank code really exists) and get back the bank's name and BIC (SWIFT code) for Austria, Belgium, Germany, Liechtenstein, Luxembourg, the Netherlands and Switzerland. Build IBANs from a bank code and an account number to migrate records that still hold domestic account details, and list the countries and country codes the service knows. No account or API key required.",
+  "display_name": "OpenIBAN",
+  "id": "openiban"
+}

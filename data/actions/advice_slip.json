@@ -1,0 +1,455 @@
+{
+  "actions": {
+    "check_service_status": {
+      "description": "Check whether the Advice Slip API is answering, and how quickly. This is the one action that reports a problem as a value instead of failing the step, so a workflow can decide what to do about it. Being throttled is reported separately from being down.",
+      "display_name": "Check service status",
+      "display_str_template": "Check the Advice Slip API status.",
+      "handler": "actions.check_service_status",
+      "id": "advice_slip_check_service_status",
+      "method": "POST",
+      "mock_response": {
+        "message": "The Advice Slip API is up and answering.",
+        "online": true,
+        "rate_limited": false,
+        "reachable": true,
+        "response_time_ms": 74.2,
+        "status_code": 200
+      },
+      "name": "check_service_status",
+      "output_formatter": "actions.format_status_output",
+      "parameters": [],
+      "path": "/actions/library/advice-slip/check-service-status",
+      "result_str_template": "Service status checked.",
+      "returns": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "rate_limited": {
+            "type": "boolean"
+          },
+          "reachable": {
+            "type": "boolean"
+          },
+          "response_time_ms": {
+            "type": "number"
+          },
+          "status_code": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_advice_by_id": {
+      "description": "Get one specific piece of advice by its id, for re-posting something an earlier step found. Ids are whole numbers the service assigns once, so an id stored last month still means the same advice. A full Advice Slip URL is accepted in place of the bare id.",
+      "display_name": "Get advice by ID",
+      "display_str_template": "Get advice slip {0}.",
+      "handler": "actions.get_advice_by_id",
+      "id": "advice_slip_get_advice_by_id",
+      "method": "POST",
+      "mock_response": {
+        "slip": {
+          "advice": "Don't be afraid to ask questions.",
+          "slip_id": 117,
+          "url": "https://api.adviceslip.com/advice/117"
+        }
+      },
+      "name": "get_advice_by_id",
+      "output_formatter": "actions.format_advice_output",
+      "parameters": [
+        {
+          "description": "The slip's id, or the full Advice Slip link to it. Usually this comes from an earlier step: every action here returns the id of each slip it hands back, and ids are assigned once, so one stored last month still means the same advice.",
+          "display_name": "Slip ID",
+          "examples": [
+            {
+              "label": "Slip id",
+              "value": "42"
+            },
+            {
+              "label": "Slip URL",
+              "value": "https://api.adviceslip.com/advice/42"
+            }
+          ],
+          "name": "slip_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/advice-slip/get-advice-by-id",
+      "result_str_template": "Advice retrieved.",
+      "returns": {
+        "properties": {
+          "slip": {
+            "properties": {
+              "advice": {
+                "type": "string"
+              },
+              "slip_id": {
+                "type": "number"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_advice_of_the_day": {
+      "description": "Pick one piece of advice for a day and keep picking that same one all day. A random draw gives something different on every call, so a daily workflow that retries, or that two people run an hour apart, posts two different slips for the one day. This one is fixed by the date: the same date always gives the same advice, and tomorrow gives different advice. Add a seed of your own to have two workspaces post different advice on the same day. For the service's own published pick, which is the same for everyone and only ever covers today, use Get today's published advice instead.",
+      "display_name": "Get advice for a day",
+      "display_str_template": "Get the advice for {0}.",
+      "handler": "actions.get_advice_of_the_day",
+      "id": "advice_slip_get_advice_of_the_day",
+      "method": "POST",
+      "mock_response": {
+        "date": "2026-09-15",
+        "pool_size": 148,
+        "seed": "2026-09-15",
+        "slip": {
+          "advice": "Sleep on a big decision before you make it.",
+          "slip_id": 204,
+          "url": "https://api.adviceslip.com/advice/204"
+        }
+      },
+      "name": "get_advice_of_the_day",
+      "output_formatter": "actions.format_advice_of_the_day_output",
+      "parameters": [
+        {
+          "description": "The day to pick advice for. Leave empty for today in UTC, which is what a scheduled step wants. Any date works, past or future.",
+          "display_name": "Day",
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Any text you like, mixed into the day so that two workspaces running this on the same day get different advice. Leave empty to share the day's advice with everyone else running it unseeded.",
+          "display_name": "Seed",
+          "examples": [
+            {
+              "label": "A team name",
+              "value": "platform-standup"
+            }
+          ],
+          "name": "seed",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/advice-slip/get-advice-for-a-day",
+      "result_str_template": "Advice of the day retrieved.",
+      "returns": {
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "pool_size": {
+            "type": "number"
+          },
+          "seed": {
+            "type": "string"
+          },
+          "slip": {
+            "properties": {
+              "advice": {
+                "type": "string"
+              },
+              "slip_id": {
+                "type": "number"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_daily_advice_feed": {
+      "description": "Read the one piece of advice the service itself publishes each day, from its daily RSS feed. Everyone reading it that day gets the same advice, and it only ever covers today. To pick advice for a date of your own, or to give each workspace its own, use Get advice for a day instead.",
+      "display_name": "Get today's published advice",
+      "display_str_template": "Get today's published advice.",
+      "handler": "actions.get_daily_advice_feed",
+      "id": "advice_slip_get_daily_advice_feed",
+      "method": "POST",
+      "mock_response": {
+        "slip": {
+          "advice": "Don't be afraid to ask questions.",
+          "feed_title": "Advice Slip",
+          "published_at": "Tue, 15 Sep 2026 00:00:00 +0000",
+          "slip_id": 117,
+          "title": "Advice #117",
+          "url": "https://api.adviceslip.com/advice/117"
+        }
+      },
+      "name": "get_daily_advice_feed",
+      "output_formatter": "actions.format_daily_feed_output",
+      "parameters": [],
+      "path": "/actions/library/advice-slip/get-daily-advice-feed",
+      "result_str_template": "Advice of the day retrieved.",
+      "returns": {
+        "properties": {
+          "slip": {
+            "properties": {
+              "advice": {
+                "type": "string"
+              },
+              "feed_title": {
+                "type": "string"
+              },
+              "published_at": {
+                "type": "string"
+              },
+              "slip_id": {
+                "type": "number"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_random_advice": {
+      "description": "Get one random piece of advice, ready to post, with a link back to it. The service caches its random pick for two seconds, so two steps run back to back get the same slip; hand back the id you posted last time to draw a different one instead.",
+      "display_name": "Get random advice",
+      "display_str_template": "Get a random piece of advice.",
+      "handler": "actions.get_random_advice",
+      "id": "advice_slip_get_random_advice",
+      "method": "POST",
+      "mock_response": {
+        "avoided_slip_id": null,
+        "is_repeat": false,
+        "redraws": 0,
+        "slip": {
+          "advice": "Don't be afraid to ask questions.",
+          "slip_id": 117,
+          "url": "https://api.adviceslip.com/advice/117"
+        }
+      },
+      "name": "get_random_advice",
+      "output_formatter": "actions.format_advice_output",
+      "parameters": [
+        {
+          "description": "The id of a slip you have already posted. The draw is repeated until it lands on something else, which costs about two and a half seconds per re-draw because of the service's own cache. Leave empty to take whatever comes. If every re-draw still lands on it, the slip is returned anyway with 'is_repeat' set rather than failing the step.",
+          "display_name": "Don't repeat this slip",
+          "examples": [
+            {
+              "label": "A slip id",
+              "value": "42"
+            }
+          ],
+          "name": "avoid_slip_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/advice-slip/get-random-advice",
+      "result_str_template": "Advice retrieved.",
+      "returns": {
+        "properties": {
+          "avoided_slip_id": {
+            "type": "number"
+          },
+          "is_repeat": {
+            "type": "boolean"
+          },
+          "redraws": {
+            "type": "number"
+          },
+          "slip": {
+            "properties": {
+              "advice": {
+                "type": "string"
+              },
+              "slip_id": {
+                "type": "number"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_random_advice_batch": {
+      "description": "Get several different pieces of advice at once, up to 10. No slip is drawn twice in the same batch. The service returns one random slip per request and caches it for two seconds, so a batch waits that out between draws and takes roughly two and a half seconds per slip after the first, which is exactly why the same loop built by hand returns the same slip over and over.",
+      "display_name": "Get several pieces of advice",
+      "display_str_template": "Get {0} random pieces of advice.",
+      "handler": "actions.get_random_advice_batch",
+      "id": "advice_slip_get_random_advice_batch",
+      "method": "POST",
+      "mock_response": {
+        "requested_count": 3,
+        "slip_count": 3,
+        "slips": [
+          {
+            "advice": "Always drink a glass of water before your morning coffee.",
+            "slip_id": 58,
+            "url": "https://api.adviceslip.com/advice/58"
+          },
+          {
+            "advice": "Don't be afraid to ask questions.",
+            "slip_id": 117,
+            "url": "https://api.adviceslip.com/advice/117"
+          },
+          {
+            "advice": "Sleep on a big decision before you make it.",
+            "slip_id": 204,
+            "url": "https://api.adviceslip.com/advice/204"
+          }
+        ]
+      },
+      "name": "get_random_advice_batch",
+      "output_formatter": "actions.format_advice_batch_output",
+      "parameters": [
+        {
+          "description": "How many pieces of advice to draw, from 1 to 10. Defaults to 3. Each one after the first adds about two and a half seconds to the step.",
+          "display_name": "Number of slips",
+          "maximum": 10,
+          "minimum": 1,
+          "name": "count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/advice-slip/get-random-advice-batch",
+      "result_str_template": "Advice retrieved.",
+      "returns": {
+        "properties": {
+          "requested_count": {
+            "type": "number"
+          },
+          "slip_count": {
+            "type": "number"
+          },
+          "slips": {
+            "items": {
+              "properties": {
+                "advice": {
+                  "type": "string"
+                },
+                "slip_id": {
+                  "type": "number"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_advice": {
+      "description": "Find the advice that mentions something: a subject, a habit or a word, best match first. The service publishes no relevance of its own, so matches are ranked here with a whole-word hit worth far more than one buried inside a longer word. A search that matches nothing comes back as an empty result rather than failing the step.",
+      "display_name": "Search advice",
+      "display_str_template": "Search advice for {0}.",
+      "handler": "actions.search_advice",
+      "id": "advice_slip_search_advice",
+      "method": "POST",
+      "mock_response": {
+        "match_count": 1,
+        "matches": [
+          {
+            "advice": "Always drink a glass of water before your morning coffee.",
+            "slip_id": 58,
+            "url": "https://api.adviceslip.com/advice/58"
+          }
+        ],
+        "query": "coffee",
+        "returned_all": true,
+        "total_matches": 1
+      },
+      "name": "search_advice",
+      "output_formatter": "actions.format_search_output",
+      "parameters": [
+        {
+          "description": "The word or phrase to look for in the advice. It travels in the URL path, so it is limited to 100 characters.",
+          "display_name": "Search for",
+          "examples": [
+            {
+              "label": "A subject",
+              "value": "coffee"
+            },
+            {
+              "label": "A habit",
+              "value": "sleep"
+            }
+          ],
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many matches to return, from 1 to 100. Defaults to 10. The service's own total is always reported, however many are returned.",
+          "display_name": "Number of results",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/advice-slip/search-advice",
+      "result_str_template": "Advice search complete.",
+      "returns": {
+        "properties": {
+          "match_count": {
+            "type": "number"
+          },
+          "matches": {
+            "items": {
+              "properties": {
+                "advice": {
+                  "type": "string"
+                },
+                "slip_id": {
+                  "type": "number"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "query": {
+            "type": "string"
+          },
+          "returned_all": {
+            "type": "boolean"
+          },
+          "total_matches": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Pull one-line advice from the Advice Slip API, the free keyless collection behind adviceslip.com. Draw a piece at random or several at once, search the collection for a subject, look one up by id, read the advice the service publishes each day, or pick advice for a date that stays the same all day so a scheduled post never tells two. The service caches its random pick for two seconds, which is handled here rather than left to surprise a workflow.",
+  "display_name": "Advice Slip",
+  "id": "advice_slip"
+}

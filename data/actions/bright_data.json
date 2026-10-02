@@ -1,0 +1,827 @@
+{
+  "actions": {
+    "collect_data": {
+      "description": "Point one of Bright Data's site scrapers at a handful of pages and get structured records back in this step - a product with its price, stock and rating; a profile with its job history. Reach for this when the workflow needs the data now and there are tens of pages, not thousands. Bright Data allows a minute; a run that takes longer keeps going and hands back a job to pick up with 'Check a collection job'.",
+      "display_name": "Collect data from a site",
+      "display_str_template": "Collect data from a site with Bright Data.",
+      "handler": "actions.collect_data",
+      "id": "bright_data_collect_data",
+      "method": "POST",
+      "mock_response": {
+        "dataset_id": "gd_l7q7dkf244hwjntr0",
+        "finished": true,
+        "input_count": 2,
+        "job_id": null,
+        "record_count": 2,
+        "records": [
+          {
+            "availability": "In Stock",
+            "brand": "Aurora",
+            "currency": "USD",
+            "final_price": 449.0,
+            "rating": 4.6,
+            "reviews_count": 1284,
+            "title": "Aurora Bar 9 Espresso Machine",
+            "url": "https://www.example-shop.com/dp/B0EXAMPLE1"
+          },
+          {
+            "availability": "In Stock",
+            "brand": "Aurora",
+            "currency": "USD",
+            "final_price": 199.0,
+            "rating": 4.4,
+            "reviews_count": 803,
+            "title": "Aurora Grind Pro Burr Grinder",
+            "url": "https://www.example-shop.com/dp/B0EXAMPLE2"
+          }
+        ]
+      },
+      "name": "collect_data",
+      "output_formatter": "actions.format_collect_output",
+      "parameters": [
+        {
+          "description": "Which of Bright Data's scrapers to use - one per site, such as 'Amazon - Products' or 'LinkedIn - People profiles'. Pick one from the list, or paste a scraper id if it is newer than this list.",
+          "display_name": "Site",
+          "dynamic_source": "scrapers",
+          "dynamic_source_allows_custom": true,
+          "name": "dataset_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The page addresses to collect from, one per entry - product pages, profiles, listings. Each must start with http:// or https://. This is what almost every scraper takes; up to 1000 at a time.",
+          "display_name": "Pages to collect",
+          "name": "urls",
+          "required": false,
+          "schema": {
+            "type": "string"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Use this instead of 'Pages to collect' for a scraper that takes something other than a page address - a search keyword, a category. Each entry is a set of fields, such as {\"keyword\": \"running shoes\"}. Run 'Get a scraper's fields' to see what a scraper accepts.",
+          "display_name": "Other inputs",
+          "name": "inputs",
+          "required": false,
+          "schema": {
+            "type": "object"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "How this scraper should run. Leave it empty to collect the pages you name above, which is what most workflows want. The other choices discover pages first - from a keyword, a category or a best-sellers list - and then collect what they find; each one takes its own inputs, which 'Get a scraper's fields' will show you.",
+          "display_name": "How to collect",
+          "dynamic_source": "collection_methods",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "dataset_id"
+          ],
+          "name": "collection_method",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Names of the fields to keep on each record, one per entry. Leave empty to get everything the scraper collects, which is often a hundred fields or more. 'Get a scraper's fields' lists the names.",
+          "display_name": "Only return these fields",
+          "name": "fields",
+          "required": false,
+          "schema": {
+            "type": "string"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Caps how many records each entry above can produce. Matters for a scraper pointed at a listing or a search, where one input can produce thousands. Leave empty for no cap.",
+          "display_name": "Most records per input",
+          "maximum": 100000,
+          "minimum": 1,
+          "name": "limit_per_input",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Turn this on to get a row for every input the scraper could not collect, alongside the ones it could. Useful when the run has to account for every address it was given.",
+          "display_name": "Include pages that failed",
+          "name": "include_errors",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/bright-data/collect-data",
+      "result_str_template": "Records collected.",
+      "returns": {
+        "properties": {
+          "dataset_id": {
+            "description": "The scraper that ran",
+            "type": "string"
+          },
+          "finished": {
+            "description": "True when the records are in this step's result. False when the collection ran long and became a job instead",
+            "type": "boolean"
+          },
+          "input_count": {
+            "description": "How many inputs this step sent",
+            "type": "number"
+          },
+          "job_id": {
+            "description": "The job to check when 'finished' is false, and empty otherwise",
+            "type": "string"
+          },
+          "record_count": {
+            "description": "How many records came back",
+            "type": "number"
+          },
+          "records": {
+            "description": "The collected records",
+            "items": {
+              "description": "One collected record. Which fields it has depends on the site - run 'Get a scraper's fields' to see them before building on them",
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_job_results": {
+      "description": "Download the records a collection job produced. Asking before it has finished is not an error: the step comes back with 'ready' set to false and no records, so a workflow can check again on a schedule without a failed run in between.",
+      "display_name": "Get collection job results",
+      "display_str_template": "Get a Bright Data collection job's results.",
+      "handler": "actions.get_job_results",
+      "id": "bright_data_get_job_results",
+      "method": "POST",
+      "mock_response": {
+        "job_id": "s_m4x7enmven8djfqak",
+        "ready": true,
+        "record_count": 2,
+        "records": [
+          {
+            "availability": "In Stock",
+            "brand": "Aurora",
+            "currency": "USD",
+            "final_price": 449.0,
+            "rating": 4.6,
+            "reviews_count": 1284,
+            "title": "Aurora Bar 9 Espresso Machine",
+            "url": "https://www.example-shop.com/dp/B0EXAMPLE1"
+          },
+          {
+            "availability": "In Stock",
+            "brand": "Aurora",
+            "currency": "USD",
+            "final_price": 199.0,
+            "rating": 4.4,
+            "reviews_count": 803,
+            "title": "Aurora Grind Pro Burr Grinder",
+            "url": "https://www.example-shop.com/dp/B0EXAMPLE2"
+          }
+        ],
+        "status": "ready"
+      },
+      "name": "get_job_results",
+      "output_formatter": "actions.format_job_results_output",
+      "parameters": [
+        {
+          "description": "The collection job to look at. This is the id 'Start a collection job' returned - or the one 'Collect data from a site' hands back when the collection ran long enough that it stopped waiting.",
+          "display_name": "Job",
+          "name": "job_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/bright-data/get-job-results",
+      "result_str_template": "Job results retrieved.",
+      "returns": {
+        "properties": {
+          "job_id": {
+            "description": "The job these records came from",
+            "type": "string"
+          },
+          "ready": {
+            "description": "True when the job had finished and the records are here",
+            "type": "boolean"
+          },
+          "record_count": {
+            "description": "How many records came back",
+            "type": "number"
+          },
+          "records": {
+            "description": "The collected records",
+            "items": {
+              "description": "One collected record. Which fields it has depends on the site - run 'Get a scraper's fields' to see them before building on them",
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "Where the job is, when it was not ready yet",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_job_status": {
+      "description": "See whether a collection job has finished and whether it worked. Answers with 'finished' and 'succeeded' as well as Bright Data's own status word, so a workflow can branch on them directly - wait and check again while it is running, download the results once it is ready, and report the reason if it failed.",
+      "display_name": "Check a collection job",
+      "display_str_template": "Check a Bright Data collection job.",
+      "handler": "actions.get_job_status",
+      "id": "bright_data_get_job_status",
+      "method": "POST",
+      "mock_response": {
+        "dataset_id": "gd_l7q7dkf244hwjntr0",
+        "error_message": null,
+        "finished": true,
+        "job_id": "s_m4x7enmven8djfqak",
+        "record_count": 2,
+        "status": "ready",
+        "succeeded": true
+      },
+      "name": "get_job_status",
+      "output_formatter": "actions.format_job_status_output",
+      "parameters": [
+        {
+          "description": "The collection job to look at. This is the id 'Start a collection job' returned - or the one 'Collect data from a site' hands back when the collection ran long enough that it stopped waiting.",
+          "display_name": "Job",
+          "name": "job_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/bright-data/get-job-status",
+      "result_str_template": "Job status retrieved.",
+      "returns": {
+        "properties": {
+          "dataset_id": {
+            "description": "The scraper it ran",
+            "type": "string"
+          },
+          "error_message": {
+            "description": "Why it failed, when it did",
+            "type": "string"
+          },
+          "finished": {
+            "description": "True once the job has stopped, whether or not it worked",
+            "type": "boolean"
+          },
+          "job_id": {
+            "description": "The job this describes",
+            "type": "string"
+          },
+          "record_count": {
+            "description": "How many records it has collected",
+            "type": "number"
+          },
+          "status": {
+            "description": "starting, running, ready, failed or canceled",
+            "type": "string"
+          },
+          "succeeded": {
+            "description": "True only when the job finished with results to download",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_scraper_fields": {
+      "description": "Show what one site's scraper needs and what it gives back: the inputs it takes, which of them are required, an example you can paste straight into a collection step, and every field on a collected record. A scraper can often be run more than one way - Amazon's takes a product address, or a search keyword - and this describes one of them and lists the rest.",
+      "display_name": "Get a scraper's fields",
+      "display_str_template": "Get a Bright Data scraper's fields.",
+      "handler": "actions.get_scraper_fields",
+      "id": "bright_data_get_scraper_fields",
+      "method": "POST",
+      "mock_response": {
+        "collection_method": "collect_by_url",
+        "collection_methods": [
+          "collect_by_url",
+          "discover_by_keyword",
+          "discover_by_category_url"
+        ],
+        "configuration_url": "https://brightdata.com/cp/scrapers/gd_l7q7dkf244hwjntr0/pdp/configuration",
+        "dataset_id": "gd_l7q7dkf244hwjntr0",
+        "domain": "amazon.com",
+        "example_input": {
+          "url": "https://www.amazon.com/dp/B0CRMZHDG8",
+          "zipcode": "94107"
+        },
+        "field_count": 3,
+        "fields": [
+          {
+            "description": "Product title",
+            "name": "title",
+            "type": "text"
+          },
+          {
+            "description": "Product brand",
+            "name": "brand",
+            "type": "text"
+          },
+          {
+            "description": "The price shown on the page, after any discount",
+            "name": "final_price",
+            "type": "price"
+          }
+        ],
+        "inputs": [
+          {
+            "description": "The product page to collect",
+            "name": "url",
+            "required": true,
+            "type": "url"
+          },
+          {
+            "description": "Postcode to price and stock the product for",
+            "name": "zipcode",
+            "required": false,
+            "type": "text"
+          }
+        ],
+        "name": "Amazon products",
+        "required_inputs": [
+          "url"
+        ]
+      },
+      "name": "get_scraper_fields",
+      "output_formatter": "actions.format_scraper_fields_output",
+      "parameters": [
+        {
+          "description": "Which of Bright Data's scrapers to use - one per site, such as 'Amazon - Products' or 'LinkedIn - People profiles'. Pick one from the list, or paste a scraper id if it is newer than this list.",
+          "display_name": "Site",
+          "dynamic_source": "scrapers",
+          "dynamic_source_allows_custom": true,
+          "name": "dataset_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which way of running this scraper to describe. Leave it empty for the usual one - collecting the pages you name.",
+          "display_name": "How to collect",
+          "dynamic_source": "collection_methods",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "dataset_id"
+          ],
+          "name": "collection_method",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/bright-data/get-scraper-fields",
+      "result_str_template": "Scraper fields retrieved.",
+      "returns": {
+        "properties": {
+          "collection_method": {
+            "description": "Which way of running it this describes",
+            "type": "string"
+          },
+          "collection_methods": {
+            "description": "Every way this scraper can be run",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "configuration_url": {
+            "description": "This scraper's page in the Bright Data control panel",
+            "type": "string"
+          },
+          "dataset_id": {
+            "description": "The scraper this describes",
+            "type": "string"
+          },
+          "domain": {
+            "description": "The site it collects from",
+            "type": "string"
+          },
+          "example_input": {
+            "description": "One ready-made input, straight from Bright Data. Paste it into 'Other inputs' on a collection step to try the scraper out",
+            "type": "object"
+          },
+          "field_count": {
+            "description": "How many fields that is",
+            "type": "number"
+          },
+          "fields": {
+            "description": "Every field a collected record can have",
+            "items": {
+              "properties": {
+                "description": {
+                  "description": "What the field means",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The field's name, as it appears on every collected record",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "What the field holds - text, number, url, price, image",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "inputs": {
+            "description": "What this way of running it accepts as input",
+            "items": {
+              "properties": {
+                "description": {
+                  "description": "What it means",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The input's name, as a key in 'Other inputs'",
+                  "type": "string"
+                },
+                "required": {
+                  "description": "True when every input must carry this one",
+                  "type": "boolean"
+                },
+                "type": {
+                  "description": "What it holds - url, text, number, boolean, date",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "What the scraper collects",
+            "type": "string"
+          },
+          "required_inputs": {
+            "description": "The inputs it will not run without",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_jobs": {
+      "description": "List the collection jobs run for one site, newest first, with each one's status and how many records it holds. Use it to pick up a job an earlier run started, to find yesterday's results, or to check how a scheduled collection has been doing. Narrow it by status or by the days it ran.",
+      "display_name": "List collection jobs",
+      "display_str_template": "List Bright Data collection jobs.",
+      "handler": "actions.list_jobs",
+      "id": "bright_data_list_jobs",
+      "method": "POST",
+      "mock_response": {
+        "dataset_id": "gd_l7q7dkf244hwjntr0",
+        "job_count": 2,
+        "jobs": [
+          {
+            "created": "2026-09-14T08:12:44.201Z",
+            "dataset_id": "gd_l7q7dkf244hwjntr0",
+            "finished": true,
+            "job_id": "s_m4x7enmven8djfqak",
+            "record_count": 2,
+            "started_by": "API",
+            "status": "ready"
+          },
+          {
+            "created": "2026-09-15T06:03:10.888Z",
+            "dataset_id": "gd_l7q7dkf244hwjntr0",
+            "finished": false,
+            "job_id": "s_m4x7f1q2wc93hdl0p",
+            "record_count": 0,
+            "started_by": "API",
+            "status": "running"
+          }
+        ]
+      },
+      "name": "list_jobs",
+      "output_formatter": "actions.format_jobs_output",
+      "parameters": [
+        {
+          "description": "Which of Bright Data's scrapers to use - one per site, such as 'Amazon - Products' or 'LinkedIn - People profiles'. Pick one from the list, or paste a scraper id if it is newer than this list.",
+          "display_name": "Site",
+          "dynamic_source": "scrapers",
+          "dynamic_source_allows_custom": true,
+          "name": "dataset_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Keep only the jobs in this state. Leave empty for all of them.",
+          "display_name": "Only jobs that are",
+          "name": "status",
+          "options": [
+            {
+              "label": "Starting",
+              "value": "starting"
+            },
+            {
+              "label": "Running",
+              "value": "running"
+            },
+            {
+              "label": "Ready",
+              "value": "ready"
+            },
+            {
+              "label": "Failed",
+              "value": "failed"
+            },
+            {
+              "label": "Canceled",
+              "value": "canceled"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only jobs started on this day or later. Leave empty for no earliest day.",
+          "display_name": "Started on or after",
+          "name": "from_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only jobs started on this day or earlier. Leave empty for no latest day.",
+          "display_name": "Started on or before",
+          "name": "to_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "default": 50,
+          "description": "The most jobs to return, newest first. Defaults to 50.",
+          "display_name": "How many to return",
+          "maximum": 5000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/bright-data/list-jobs",
+      "result_str_template": "Collection jobs retrieved.",
+      "returns": {
+        "properties": {
+          "dataset_id": {
+            "description": "The scraper these jobs ran",
+            "type": "string"
+          },
+          "job_count": {
+            "description": "How many matched",
+            "type": "number"
+          },
+          "jobs": {
+            "description": "The matching jobs",
+            "items": {
+              "properties": {
+                "created": {
+                  "description": "When the job was started",
+                  "type": "string"
+                },
+                "dataset_id": {
+                  "description": "The scraper this job ran",
+                  "type": "string"
+                },
+                "finished": {
+                  "description": "True once the job has stopped, whether or not it worked",
+                  "type": "boolean"
+                },
+                "job_id": {
+                  "description": "The job's id, which 'Check a collection job' takes",
+                  "type": "string"
+                },
+                "record_count": {
+                  "description": "How many records it has collected so far",
+                  "type": "number"
+                },
+                "started_by": {
+                  "description": "How the job was started: 'API' from a workflow or a script, 'CP' from the Bright Data control panel",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "starting, running, ready, failed or canceled",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_scrapers": {
+      "description": "List the sites Bright Data already knows how to collect structured data from - thousands of them, covering Amazon, LinkedIn, Instagram, TikTok, YouTube, Google Maps and more. Filter by name to find one. You do not need this to build a workflow, because every collection step offers the same list as a dropdown; it is here for a workflow that has to look a site up while it runs.",
+      "display_name": "List site scrapers",
+      "display_str_template": "List Bright Data's site scrapers.",
+      "handler": "actions.list_scrapers",
+      "id": "bright_data_list_scrapers",
+      "method": "POST",
+      "mock_response": {
+        "scraper_count": 2,
+        "scrapers": [
+          {
+            "collection_methods": [
+              "collect_by_url",
+              "discover_by_keyword",
+              "discover_by_category_url"
+            ],
+            "dataset_id": "gd_l7q7dkf244hwjntr0",
+            "description": "eCommerce product data for amazon.com and its categories",
+            "domain": "amazon.com",
+            "name": "Amazon products",
+            "record_count": 300000000
+          },
+          {
+            "collection_methods": [
+              "collect_by_url",
+              "discover_by_keyword"
+            ],
+            "dataset_id": "gd_l1viktl72bvl7bjuj0",
+            "description": "Public profile data: roles, employers and education",
+            "domain": "linkedin.com",
+            "name": "LinkedIn people profiles",
+            "record_count": 690000000
+          }
+        ],
+        "search": null
+      },
+      "name": "list_scrapers",
+      "output_formatter": "actions.format_scrapers_output",
+      "parameters": [
+        {
+          "description": "Keep only the scrapers whose name, site or id contains this - 'amazon', 'linkedin.com', 'profile'. Leave empty for all of them.",
+          "display_name": "Filter by name",
+          "name": "search",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/bright-data/list-scrapers",
+      "result_str_template": "Scrapers retrieved.",
+      "returns": {
+        "properties": {
+          "scraper_count": {
+            "description": "How many matched",
+            "type": "number"
+          },
+          "scrapers": {
+            "description": "The matching scrapers, in name order",
+            "items": {
+              "properties": {
+                "collection_methods": {
+                  "description": "The ways this scraper can be run - collecting pages you name, or discovering them from a keyword, a category or a best-sellers list",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "dataset_id": {
+                  "description": "The scraper's id. This is what the other actions take as 'Site'",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "What the scraper returns, in Bright Data's words",
+                  "type": "string"
+                },
+                "domain": {
+                  "description": "The site it collects from, e.g. 'amazon.com'",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "What the scraper collects, e.g. 'Amazon products'",
+                  "type": "string"
+                },
+                "record_count": {
+                  "description": "How many records Bright Data already holds for this site",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "search": {
+            "description": "The filter that was applied, if any",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "start_collection_job": {
+      "description": "Set a site scraper running over a large batch without waiting for it. Returns a job id straight away; the collection keeps going on Bright Data's side, and 'Check a collection job' and 'Get collection job results' pick it up - in this workflow or in a scheduled one that runs later. Use this for hundreds or thousands of pages, where waiting in a step is not an option.",
+      "display_name": "Start a collection job",
+      "display_str_template": "Start a Bright Data collection job.",
+      "handler": "actions.start_collection_job",
+      "id": "bright_data_start_collection_job",
+      "method": "POST",
+      "mock_response": {
+        "dataset_id": "gd_l7q7dkf244hwjntr0",
+        "input_count": 2,
+        "job_id": "s_m4x7enmven8djfqak",
+        "status": "starting"
+      },
+      "name": "start_collection_job",
+      "output_formatter": "actions.format_job_started_output",
+      "parameters": [
+        {
+          "description": "Which of Bright Data's scrapers to use - one per site, such as 'Amazon - Products' or 'LinkedIn - People profiles'. Pick one from the list, or paste a scraper id if it is newer than this list.",
+          "display_name": "Site",
+          "dynamic_source": "scrapers",
+          "dynamic_source_allows_custom": true,
+          "name": "dataset_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The page addresses to collect from, one per entry - product pages, profiles, listings. Each must start with http:// or https://. This is what almost every scraper takes; up to 1000 at a time.",
+          "display_name": "Pages to collect",
+          "name": "urls",
+          "required": false,
+          "schema": {
+            "type": "string"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Use this instead of 'Pages to collect' for a scraper that takes something other than a page address - a search keyword, a category. Each entry is a set of fields, such as {\"keyword\": \"running shoes\"}. Run 'Get a scraper's fields' to see what a scraper accepts.",
+          "display_name": "Other inputs",
+          "name": "inputs",
+          "required": false,
+          "schema": {
+            "type": "object"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "How this scraper should run. Leave it empty to collect the pages you name above, which is what most workflows want. The other choices discover pages first - from a keyword, a category or a best-sellers list - and then collect what they find; each one takes its own inputs, which 'Get a scraper's fields' will show you.",
+          "display_name": "How to collect",
+          "dynamic_source": "collection_methods",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "dataset_id"
+          ],
+          "name": "collection_method",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Names of the fields to keep on each record, one per entry. Leave empty to get everything the scraper collects, which is often a hundred fields or more. 'Get a scraper's fields' lists the names.",
+          "display_name": "Only return these fields",
+          "name": "fields",
+          "required": false,
+          "schema": {
+            "type": "string"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Caps how many records each entry above can produce. Matters for a scraper pointed at a listing or a search, where one input can produce thousands. Leave empty for no cap.",
+          "display_name": "Most records per input",
+          "maximum": 100000,
+          "minimum": 1,
+          "name": "limit_per_input",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Turn this on to get a row for every input the scraper could not collect, alongside the ones it could. Useful when the run has to account for every address it was given.",
+          "display_name": "Include pages that failed",
+          "name": "include_errors",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/bright-data/start-collection-job",
+      "result_str_template": "Collection job started.",
+      "returns": {
+        "properties": {
+          "dataset_id": {
+            "description": "The scraper it is running",
+            "type": "string"
+          },
+          "input_count": {
+            "description": "How many inputs it was given",
+            "type": "number"
+          },
+          "job_id": {
+            "description": "The new job's id. Every other job action takes this",
+            "type": "string"
+          },
+          "status": {
+            "description": "Always 'starting' - the job has just begun",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Get structured data out of a website without writing a scraper. Bright Data maintains ready-made scrapers for Amazon, LinkedIn, Instagram, TikTok, YouTube, Google Maps and thousands of other sites: point one at some pages and get back proper fields - price, stock, rating, job history - either in the step or from a job that finishes later.",
+  "display_name": "Bright Data",
+  "id": "bright_data"
+}

@@ -1,0 +1,457 @@
+{
+  "actions": {
+    "check_links_in_text": {
+      "description": "Read every link out of a block of text, such as an email body, a support ticket or a form answer, and check them all at once. Use it to hold back a message whose links Google has flagged. None of the links are sent to Google.",
+      "display_name": "Check the links in text",
+      "display_str_template": "Check the links in text with Google Safe Browsing.",
+      "handler": "actions.check_links_in_text",
+      "id": "google_safe_browsing_check_links_in_text",
+      "method": "POST",
+      "mock_response": {
+        "all_safe": false,
+        "checked_count": 2,
+        "dangerous_count": 1,
+        "dangerous_urls": [
+          "http://malware.testing.google.test/testing/malware/"
+        ],
+        "invalid_urls": [],
+        "link_count": 2,
+        "results": [
+          {
+            "is_safe": true,
+            "report_url": "https://transparencyreport.google.com/safe-browsing/search?url=https%3A%2F%2Fwww.google.com%2F",
+            "summary": "Google Safe Browsing has nothing on file against this link.",
+            "threats": [],
+            "url": "https://www.google.com/"
+          },
+          {
+            "is_safe": false,
+            "report_url": "https://transparencyreport.google.com/safe-browsing/search?url=http%3A%2F%2Fmalware.testing.google.test%2Ftesting%2Fmalware%2F",
+            "summary": "Google Safe Browsing flags this link for malware.",
+            "threats": [
+              {
+                "label": "Malware",
+                "matched_url": "malware.testing.google.test/testing/malware/",
+                "threat_type": "MALWARE"
+              }
+            ],
+            "url": "http://malware.testing.google.test/testing/malware/"
+          }
+        ]
+      },
+      "name": "check_links_in_text",
+      "parameters": [
+        {
+          "description": "The text to read the links out of. Anything starting with http://, https:// or www. counts as a link; a bare 'example.com' is left alone, because so are 'README.md' and 'config.py'.",
+          "display_name": "Text",
+          "multiline": true,
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": [
+            "MALWARE",
+            "SOCIAL_ENGINEERING",
+            "UNWANTED_SOFTWARE",
+            "POTENTIALLY_HARMFUL_APPLICATION"
+          ],
+          "description": "Which kinds of threat should make a link come back as unsafe. Leave all four chosen unless you only want to act on some of them.",
+          "display_name": "Treat as dangerous",
+          "multi_select": true,
+          "name": "threat_types",
+          "options": [
+            {
+              "label": "Malware",
+              "value": "MALWARE"
+            },
+            {
+              "label": "Phishing and deceptive sites",
+              "value": "SOCIAL_ENGINEERING"
+            },
+            {
+              "label": "Unwanted software",
+              "value": "UNWANTED_SOFTWARE"
+            },
+            {
+              "label": "Harmful Android apps",
+              "value": "POTENTIALLY_HARMFUL_APPLICATION"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-safe-browsing/check-links-in-text",
+      "result_str_template": "{google_safe_browsing_check_links_in_text,dangerous_count} of {google_safe_browsing_check_links_in_text,checked_count} links are dangerous.",
+      "returns": {
+        "properties": {
+          "all_safe": {
+            "description": "True when Google flagged none of the links it checked. This is the field to branch on.",
+            "type": "boolean"
+          },
+          "checked_count": {
+            "description": "How many of them were actually checked. Lower than link_count when some were not web addresses, or when there were more than 100 of them.",
+            "type": "number"
+          },
+          "dangerous_count": {
+            "description": "How many of the checked links Google flagged.",
+            "type": "number"
+          },
+          "dangerous_urls": {
+            "description": "Just the flagged links, ready to drop into a message without looping over the results.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "invalid_urls": {
+            "description": "Anything that was not a web address and so could not be checked either way. Usually empty.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "link_count": {
+            "description": "How many separate links there were in total, after duplicates were removed.",
+            "type": "number"
+          },
+          "results": {
+            "description": "One verdict per checked link, in the order given.",
+            "items": {
+              "properties": {
+                "is_safe": {
+                  "description": "True when Google holds nothing against this link. This is the field to branch on.",
+                  "type": "boolean"
+                },
+                "report_url": {
+                  "description": "A link that opens Google's own site status page for this address, so a person can read the verdict first-hand.",
+                  "type": "string"
+                },
+                "summary": {
+                  "description": "The verdict in one sentence, ready to put in a message.",
+                  "type": "string"
+                },
+                "threats": {
+                  "description": "What Google has against the link, one entry per kind of threat. Empty when the link is safe.",
+                  "items": {
+                    "properties": {
+                      "label": {
+                        "description": "The same threat written out, for example 'Phishing and deceptive sites'.",
+                        "type": "string"
+                      },
+                      "matched_url": {
+                        "description": "What Google actually has on file, which may be broader than the link that was checked. 'example.com/' means the whole site is listed, not just this page.",
+                        "type": "string"
+                      },
+                      "threat_type": {
+                        "description": "Google's own name for the threat: MALWARE, SOCIAL_ENGINEERING, UNWANTED_SOFTWARE or POTENTIALLY_HARMFUL_APPLICATION.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "url": {
+                  "description": "The link that was checked, exactly as it was given.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "check_url": {
+      "description": "Ask Google whether a link is dangerous, and get back what it holds against it: malware, phishing, unwanted software or a harmful Android app. The link itself is never sent to Google.",
+      "display_name": "Check a link",
+      "display_str_template": "Check {0} with Google Safe Browsing.",
+      "handler": "actions.check_url",
+      "id": "google_safe_browsing_check_url",
+      "method": "POST",
+      "mock_response": {
+        "is_safe": false,
+        "report_url": "https://transparencyreport.google.com/safe-browsing/search?url=http%3A%2F%2Fmalware.testing.google.test%2Ftesting%2Fmalware%2F",
+        "summary": "Google Safe Browsing flags this link for malware.",
+        "threats": [
+          {
+            "label": "Malware",
+            "matched_url": "malware.testing.google.test/testing/malware/",
+            "threat_type": "MALWARE"
+          }
+        ],
+        "url": "http://malware.testing.google.test/testing/malware/"
+      },
+      "name": "check_url",
+      "parameters": [
+        {
+          "description": "The web address to check, for example https://example.com/page. It does not have to be reachable: Google answers from its lists rather than by loading the page.",
+          "display_name": "Link",
+          "name": "url",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": [
+            "MALWARE",
+            "SOCIAL_ENGINEERING",
+            "UNWANTED_SOFTWARE",
+            "POTENTIALLY_HARMFUL_APPLICATION"
+          ],
+          "description": "Which kinds of threat should make a link come back as unsafe. Leave all four chosen unless you only want to act on some of them.",
+          "display_name": "Treat as dangerous",
+          "multi_select": true,
+          "name": "threat_types",
+          "options": [
+            {
+              "label": "Malware",
+              "value": "MALWARE"
+            },
+            {
+              "label": "Phishing and deceptive sites",
+              "value": "SOCIAL_ENGINEERING"
+            },
+            {
+              "label": "Unwanted software",
+              "value": "UNWANTED_SOFTWARE"
+            },
+            {
+              "label": "Harmful Android apps",
+              "value": "POTENTIALLY_HARMFUL_APPLICATION"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-safe-browsing/check-link",
+      "result_str_template": "{google_safe_browsing_check_url,summary}",
+      "returns": {
+        "properties": {
+          "is_safe": {
+            "description": "True when Google holds nothing against this link. This is the field to branch on.",
+            "type": "boolean"
+          },
+          "report_url": {
+            "description": "A link that opens Google's own site status page for this address, so a person can read the verdict first-hand.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "The verdict in one sentence, ready to put in a message.",
+            "type": "string"
+          },
+          "threats": {
+            "description": "What Google has against the link, one entry per kind of threat. Empty when the link is safe.",
+            "items": {
+              "properties": {
+                "label": {
+                  "description": "The same threat written out, for example 'Phishing and deceptive sites'.",
+                  "type": "string"
+                },
+                "matched_url": {
+                  "description": "What Google actually has on file, which may be broader than the link that was checked. 'example.com/' means the whole site is listed, not just this page.",
+                  "type": "string"
+                },
+                "threat_type": {
+                  "description": "Google's own name for the threat: MALWARE, SOCIAL_ENGINEERING, UNWANTED_SOFTWARE or POTENTIALLY_HARMFUL_APPLICATION.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "url": {
+            "description": "The link that was checked, exactly as it was given.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "check_urls": {
+      "description": "Check a whole list of links in one step and get a verdict for each, plus the flagged ones on their own so a workflow can act without looping. Up to 100 links. None of them are sent to Google.",
+      "display_name": "Check several links",
+      "display_str_template": "Check links with Google Safe Browsing.",
+      "handler": "actions.check_urls",
+      "id": "google_safe_browsing_check_urls",
+      "method": "POST",
+      "mock_response": {
+        "all_safe": false,
+        "checked_count": 2,
+        "dangerous_count": 1,
+        "dangerous_urls": [
+          "http://malware.testing.google.test/testing/malware/"
+        ],
+        "invalid_urls": [],
+        "link_count": 2,
+        "results": [
+          {
+            "is_safe": true,
+            "report_url": "https://transparencyreport.google.com/safe-browsing/search?url=https%3A%2F%2Fwww.google.com%2F",
+            "summary": "Google Safe Browsing has nothing on file against this link.",
+            "threats": [],
+            "url": "https://www.google.com/"
+          },
+          {
+            "is_safe": false,
+            "report_url": "https://transparencyreport.google.com/safe-browsing/search?url=http%3A%2F%2Fmalware.testing.google.test%2Ftesting%2Fmalware%2F",
+            "summary": "Google Safe Browsing flags this link for malware.",
+            "threats": [
+              {
+                "label": "Malware",
+                "matched_url": "malware.testing.google.test/testing/malware/",
+                "threat_type": "MALWARE"
+              }
+            ],
+            "url": "http://malware.testing.google.test/testing/malware/"
+          }
+        ]
+      },
+      "name": "check_urls",
+      "parameters": [
+        {
+          "description": "The web addresses to check. Add them one at a time, or pass a list from an earlier step. Pasted text separated by spaces or new lines works too.",
+          "display_name": "Links",
+          "examples": [
+            {
+              "label": "A few links",
+              "value": "https://www.google.com/ http://malware.testing.google.test/testing/malware/"
+            }
+          ],
+          "name": "urls",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": [
+            "MALWARE",
+            "SOCIAL_ENGINEERING",
+            "UNWANTED_SOFTWARE",
+            "POTENTIALLY_HARMFUL_APPLICATION"
+          ],
+          "description": "Which kinds of threat should make a link come back as unsafe. Leave all four chosen unless you only want to act on some of them.",
+          "display_name": "Treat as dangerous",
+          "multi_select": true,
+          "name": "threat_types",
+          "options": [
+            {
+              "label": "Malware",
+              "value": "MALWARE"
+            },
+            {
+              "label": "Phishing and deceptive sites",
+              "value": "SOCIAL_ENGINEERING"
+            },
+            {
+              "label": "Unwanted software",
+              "value": "UNWANTED_SOFTWARE"
+            },
+            {
+              "label": "Harmful Android apps",
+              "value": "POTENTIALLY_HARMFUL_APPLICATION"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-safe-browsing/check-links",
+      "result_str_template": "{google_safe_browsing_check_urls,dangerous_count} of {google_safe_browsing_check_urls,checked_count} links are dangerous.",
+      "returns": {
+        "properties": {
+          "all_safe": {
+            "description": "True when Google flagged none of the links it checked. This is the field to branch on.",
+            "type": "boolean"
+          },
+          "checked_count": {
+            "description": "How many of them were actually checked. Lower than link_count when some were not web addresses, or when there were more than 100 of them.",
+            "type": "number"
+          },
+          "dangerous_count": {
+            "description": "How many of the checked links Google flagged.",
+            "type": "number"
+          },
+          "dangerous_urls": {
+            "description": "Just the flagged links, ready to drop into a message without looping over the results.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "invalid_urls": {
+            "description": "Anything that was not a web address and so could not be checked either way. Usually empty.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "link_count": {
+            "description": "How many separate links there were in total, after duplicates were removed.",
+            "type": "number"
+          },
+          "results": {
+            "description": "One verdict per checked link, in the order given.",
+            "items": {
+              "properties": {
+                "is_safe": {
+                  "description": "True when Google holds nothing against this link. This is the field to branch on.",
+                  "type": "boolean"
+                },
+                "report_url": {
+                  "description": "A link that opens Google's own site status page for this address, so a person can read the verdict first-hand.",
+                  "type": "string"
+                },
+                "summary": {
+                  "description": "The verdict in one sentence, ready to put in a message.",
+                  "type": "string"
+                },
+                "threats": {
+                  "description": "What Google has against the link, one entry per kind of threat. Empty when the link is safe.",
+                  "items": {
+                    "properties": {
+                      "label": {
+                        "description": "The same threat written out, for example 'Phishing and deceptive sites'.",
+                        "type": "string"
+                      },
+                      "matched_url": {
+                        "description": "What Google actually has on file, which may be broader than the link that was checked. 'example.com/' means the whole site is listed, not just this page.",
+                        "type": "string"
+                      },
+                      "threat_type": {
+                        "description": "Google's own name for the threat: MALWARE, SOCIAL_ENGINEERING, UNWANTED_SOFTWARE or POTENTIALLY_HARMFUL_APPLICATION.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "url": {
+                  "description": "The link that was checked, exactly as it was given.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Check whether Google considers a link dangerous before your workflow acts on it. Check one link, a whole list, or every link inside an email or a message, and get back whether Google flags it for malware, phishing, unwanted software or a harmful Android app. The links are never sent to Google: only a few bytes of each one's fingerprint leave the workflow, which is the same protection Chrome itself uses.",
+  "display_name": "Google Safe Browsing",
+  "id": "google_safe_browsing"
+}

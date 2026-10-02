@@ -1,0 +1,4079 @@
+{
+  "actions": {
+    "check_service_status": {
+      "description": "Check whether GDACS is answering, and how quickly. This is the one action that reports a problem as a value instead of failing the step, so a scheduled workflow can decide what to do about it - skip today's digest, wait, or say the data is stale rather than dying halfway through. Being rate limited is reported separately from being down.",
+      "display_name": "Check service status",
+      "display_str_template": "Check whether GDACS is answering.",
+      "handler": "actions.check_service_status",
+      "id": "gdacs_check_service_status",
+      "method": "POST",
+      "mock_response": {
+        "active_disasters": 100,
+        "message": "GDACS is up, with 100 active disaster alerts.",
+        "online": true,
+        "rate_limited": false,
+        "reachable": true,
+        "response_time_ms": 412.5,
+        "status_code": 200
+      },
+      "name": "check_service_status",
+      "output_formatter": "actions.format_status_output",
+      "parameters": [],
+      "path": "/actions/library/gdacs/check-service-status",
+      "result_str_template": "Service status checked.",
+      "returns": {
+        "properties": {
+          "active_disasters": {
+            "description": "How many alerts were open when it answered.",
+            "type": "number"
+          },
+          "message": {
+            "description": "One sentence saying what the answer was.",
+            "type": "string"
+          },
+          "online": {
+            "description": "Whether GDACS answered properly. Branch on this.",
+            "type": "boolean"
+          },
+          "rate_limited": {
+            "type": "boolean"
+          },
+          "reachable": {
+            "description": "Whether it answered at all, which separates a network problem from a service problem.",
+            "type": "boolean"
+          },
+          "response_time_ms": {
+            "type": "number"
+          },
+          "status_code": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "count_disasters": {
+      "description": "Count the disasters in a window, split by hazard and by alert level, without fetching any of them. One small answer however big the number, which makes it the cheap way for a schedule to ask 'was there anything serious?' before doing the expensive part - and the way to size a search before running it. There is deliberately no country here: GDACS can only narrow a count by matching a country's name as text, which would count Nigeria's floods as Niger's, and a wrong total is worse than none. Search disasters filters countries exactly and reports how many it found.",
+      "display_name": "Count disasters",
+      "display_str_template": "Count GDACS disasters.",
+      "handler": "actions.count_disasters",
+      "id": "gdacs_count_disasters",
+      "method": "POST",
+      "mock_response": {
+        "alert_levels": [
+          "Green",
+          "Orange",
+          "Red"
+        ],
+        "by_alert_level": [
+          {
+            "alert_level": "Green",
+            "total": 2899
+          },
+          {
+            "alert_level": "Orange",
+            "total": 16
+          },
+          {
+            "alert_level": "Red",
+            "total": 4
+          }
+        ],
+        "by_hazard": [
+          {
+            "hazard": "Wildfire",
+            "total": 2072
+          },
+          {
+            "hazard": "Earthquake",
+            "total": 713
+          },
+          {
+            "hazard": "Flood",
+            "total": 95
+          },
+          {
+            "hazard": "Tropical cyclone",
+            "total": 25
+          },
+          {
+            "hazard": "Drought",
+            "total": 10
+          },
+          {
+            "hazard": "Volcano",
+            "total": 4
+          }
+        ],
+        "from_date": "2026-08-01",
+        "hazard_types": [],
+        "to_date": "2026-09-12",
+        "total": 2919
+      },
+      "name": "count_disasters",
+      "output_formatter": "actions.format_count_output",
+      "parameters": [
+        {
+          "description": "Which hazards to include. Leave every box clear to include all six, which is what most workflows want.",
+          "display_name": "Hazards",
+          "multi_select": true,
+          "name": "hazard_types",
+          "options": [
+            {
+              "label": "Earthquake",
+              "value": "EQ"
+            },
+            {
+              "label": "Tropical cyclone",
+              "value": "TC"
+            },
+            {
+              "label": "Flood",
+              "value": "FL"
+            },
+            {
+              "label": "Volcano",
+              "value": "VO"
+            },
+            {
+              "label": "Wildfire",
+              "value": "WF"
+            },
+            {
+              "label": "Drought",
+              "value": "DR"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Which alert levels to include. The level is GDACS's estimate of humanitarian impact, not of size: a magnitude 7 under an empty ocean is green and a magnitude 6 under a city is red, so this is the filter that decides whether a result is worth waking someone for. Leave every box clear to include all three.",
+          "display_name": "Alert levels",
+          "multi_select": true,
+          "name": "alert_levels",
+          "options": [
+            {
+              "label": "Green - Little or no humanitarian impact expected.",
+              "value": "Green"
+            },
+            {
+              "label": "Orange - Moderate humanitarian impact expected; a national response is likely.",
+              "value": "Orange"
+            },
+            {
+              "label": "Red - Severe humanitarian impact expected; international help is likely needed.",
+              "value": "Red"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only include disasters that started on or after this date.",
+          "display_name": "From",
+          "name": "from_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only include disasters that started on or before this date.",
+          "display_name": "To",
+          "name": "to_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        }
+      ],
+      "path": "/actions/library/gdacs/count-disasters",
+      "result_str_template": "Disaster counts retrieved.",
+      "returns": {
+        "properties": {
+          "alert_levels": {
+            "description": "The alert levels filtered to.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "by_alert_level": {
+            "description": "The same total split into green, orange and red.",
+            "items": {
+              "properties": {
+                "alert_level": {
+                  "type": "string"
+                },
+                "total": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "by_hazard": {
+            "description": "The same total split by hazard, busiest first.",
+            "items": {
+              "properties": {
+                "hazard": {
+                  "type": "string"
+                },
+                "total": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "from_date": {
+            "type": "string"
+          },
+          "hazard_types": {
+            "description": "The hazards filtered to; empty means all six.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "to_date": {
+            "type": "string"
+          },
+          "total": {
+            "description": "How many disasters matched, in total.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_disasters_affecting_place": {
+      "description": "Find the disasters whose affected area covers a place - an office, a warehouse, a supplier, a customer's address - nearest first, each with how far away its centre is and in which direction. GDACS does the covering test itself against the real mapped shapes: a flood's inundated area, an earthquake's shaking contours, a cyclone's wind swath. That is the difference between 'an earthquake happened 200 km away' and 'this site is inside the strong-shaking zone'. 'is_affected' is the single true or false to branch on. Testing a place against every mapped shape is real work, so this one takes a few seconds where the others take under one.",
+      "display_name": "Find disasters affecting a place",
+      "display_str_template": "Find the disasters affecting {0}, {1}.",
+      "handler": "actions.find_disasters_affecting_place",
+      "id": "gdacs_find_disasters_affecting_place",
+      "method": "POST",
+      "mock_response": {
+        "days": 7,
+        "disaster_count": 1,
+        "disasters": [
+          {
+            "alert_level": "Orange",
+            "alert_meaning": "Moderate humanitarian impact expected; a national response is likely.",
+            "countries": [
+              "China"
+            ],
+            "country": "China",
+            "country_codes": [
+              "CHN"
+            ],
+            "direction": "north",
+            "distance_km": 0.0,
+            "ended_at": "2026-09-07T01:00:00Z",
+            "episode_id": 17,
+            "event_id": 1104081,
+            "event_name": null,
+            "glide_number": "FL-2026-000148-CHN",
+            "hazard": "Flood",
+            "hazard_code": "FL",
+            "is_ongoing": true,
+            "is_provisional": false,
+            "latitude": 28.0,
+            "longitude": 116.0,
+            "report_url": "https://www.gdacs.org/report.aspx?eventid=1104081&episodeid=17&eventtype=FL",
+            "severity": "Magnitude 0",
+            "severity_unit": null,
+            "severity_value": 0.0,
+            "source": "GLOFAS",
+            "started_at": "2026-07-31T01:00:00Z",
+            "summary": "Orange Flood in China from: 31 Jul 2026 to: 07 Sep 2026.",
+            "title": "Flood in China",
+            "updated_at": "2026-09-06T06:23:52Z"
+          }
+        ],
+        "hazard_types": [],
+        "highest_alert_level": "Orange",
+        "is_affected": true,
+        "latitude": 29.2752,
+        "longitude": 105.229,
+        "radius_km": null
+      },
+      "name": "find_disasters_affecting_place",
+      "output_formatter": "actions.format_place_output",
+      "parameters": [
+        {
+          "description": "The place's latitude, between -90 and 90.",
+          "display_name": "Latitude",
+          "examples": [
+            {
+              "label": "Tokyo",
+              "value": "35.6762"
+            }
+          ],
+          "maximum": 90,
+          "minimum": -90,
+          "name": "latitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The place's longitude, between -180 and 180.",
+          "display_name": "Longitude",
+          "examples": [
+            {
+              "label": "Tokyo",
+              "value": "139.6503"
+            }
+          ],
+          "maximum": 180,
+          "minimum": -180,
+          "name": "longitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Widen the question from the exact point to everything within this many kilometres of it. Leave it empty to ask about the point itself, which is the precise question: is this address inside an affected area?",
+          "display_name": "Radius (km)",
+          "examples": [
+            {
+              "label": "A city and its outskirts",
+              "value": "50"
+            },
+            {
+              "label": "A region",
+              "value": "250"
+            }
+          ],
+          "maximum": 2000.0,
+          "minimum": 0,
+          "name": "radius_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How far back to look, up to the 30 days GDACS keeps for this. Defaults to 7. Match it to how often the workflow runs, with room to spare, so nothing is missed because a run was late.",
+          "display_name": "Days to look back",
+          "maximum": 30,
+          "minimum": 1,
+          "name": "days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Which hazards to include. Leave every box clear to include all six, which is what most workflows want.",
+          "display_name": "Hazards",
+          "multi_select": true,
+          "name": "hazard_types",
+          "options": [
+            {
+              "label": "Earthquake",
+              "value": "EQ"
+            },
+            {
+              "label": "Tropical cyclone",
+              "value": "TC"
+            },
+            {
+              "label": "Flood",
+              "value": "FL"
+            },
+            {
+              "label": "Volcano",
+              "value": "VO"
+            },
+            {
+              "label": "Wildfire",
+              "value": "WF"
+            },
+            {
+              "label": "Drought",
+              "value": "DR"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "How many disasters to return, after the filters and the ordering. Defaults to 50.",
+          "display_name": "Number of disasters",
+          "maximum": 500,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/gdacs/find-disasters-affecting-place",
+      "result_str_template": "Disasters affecting that place retrieved.",
+      "returns": {
+        "properties": {
+          "days": {
+            "type": "number"
+          },
+          "disaster_count": {
+            "type": "number"
+          },
+          "disasters": {
+            "items": {
+              "properties": {
+                "alert_level": {
+                  "description": "Green, Orange or Red - the expected humanitarian impact.",
+                  "type": "string"
+                },
+                "alert_meaning": {
+                  "description": "What that colour means, in words, for putting in a message.",
+                  "type": "string"
+                },
+                "countries": {
+                  "description": "Every country the event is recorded against.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "country": {
+                  "description": "Where GDACS places the event, in its own words.",
+                  "type": "string"
+                },
+                "country_codes": {
+                  "description": "The same countries as ISO three-letter codes.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "direction": {
+                  "description": "Which way that centre lies, such as 'north-east'.",
+                  "type": "string"
+                },
+                "distance_km": {
+                  "description": "How far the event's centre is from the place asked about.",
+                  "type": "number"
+                },
+                "ended_at": {
+                  "description": "When it ended, in UTC. The same as the start for an instant event like an earthquake, and the latest update for one still running.",
+                  "type": "string"
+                },
+                "episode_id": {
+                  "description": "Which update of the event this is. A cyclone gets a new episode with every forecast; an earthquake usually has one.",
+                  "type": "number"
+                },
+                "event_id": {
+                  "description": "The event's GDACS ID, unique within its hazard.",
+                  "type": "number"
+                },
+                "event_name": {
+                  "description": "The name, where it has one - cyclones do, earthquakes do not.",
+                  "type": "string"
+                },
+                "glide_number": {
+                  "description": "The international GLIDE identifier, where one has been assigned - how relief agencies refer to the same disaster.",
+                  "type": "string"
+                },
+                "hazard": {
+                  "description": "Earthquake, Tropical cyclone, Flood, Volcano, Wildfire or Drought.",
+                  "type": "string"
+                },
+                "hazard_code": {
+                  "description": "GDACS's two-letter code for the hazard, which its own links use.",
+                  "type": "string"
+                },
+                "is_ongoing": {
+                  "description": "Whether GDACS still counts this as an active alert.",
+                  "type": "boolean"
+                },
+                "is_provisional": {
+                  "description": "Whether this is a first automatic estimate that may still be revised or withdrawn.",
+                  "type": "boolean"
+                },
+                "latitude": {
+                  "type": "number"
+                },
+                "longitude": {
+                  "type": "number"
+                },
+                "report_url": {
+                  "description": "The event's page on gdacs.org, for a person to open.",
+                  "type": "string"
+                },
+                "severity": {
+                  "description": "The size in the hazard's own terms, such as 'Magnitude 7.7M, Depth:10km' or 'Tropical Storm (maximum wind speed of 130 km/h)'.",
+                  "type": "string"
+                },
+                "severity_unit": {
+                  "description": "What that number is in - M, km/h, ha or km2.",
+                  "type": "string"
+                },
+                "severity_value": {
+                  "description": "The same size as a number, to compare against a threshold.",
+                  "type": "number"
+                },
+                "source": {
+                  "description": "Which monitoring network detected it, such as NEIC or GLOFAS.",
+                  "type": "string"
+                },
+                "started_at": {
+                  "description": "When it began, in UTC.",
+                  "type": "string"
+                },
+                "summary": {
+                  "description": "One sentence: the level, the size, the place and the time.",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "For example 'Earthquake in China'.",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "When GDACS last revised it.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "hazard_types": {
+            "description": "The hazards filtered to; empty means all six.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "highest_alert_level": {
+            "type": "string"
+          },
+          "is_affected": {
+            "description": "Whether any disaster's area covers that place.",
+            "type": "boolean"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "radius_km": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_active_volcanoes": {
+      "description": "Get the volcanoes that have reported activity recently - ash plumes, sulphur dioxide, aviation advisories - most recently reported first. A volcano only becomes a GDACS alert once there is an eruption to alert on; this is the watch list underneath that, which is what aviation, shipping and travel workflows need before it gets that far.",
+      "display_name": "Get active volcanoes",
+      "display_str_template": "Get the active volcanoes from GDACS.",
+      "handler": "actions.get_active_volcanoes",
+      "id": "gdacs_get_active_volcanoes",
+      "method": "POST",
+      "mock_response": {
+        "days": 30,
+        "since": "2026-08-13",
+        "total_active": 31,
+        "volcano_count": 1,
+        "volcanoes": [
+          {
+            "activity_score": null,
+            "advisory_count": 121,
+            "ash_plume_height_m": 4800.0,
+            "country": "Guatemala",
+            "highest_eruption_index": 4,
+            "last_reported_at": "2026-09-12T01:58:00Z",
+            "latitude": 14.473,
+            "longitude": -90.88,
+            "name": "Fuego",
+            "sulphur_dioxide_tonnes": null,
+            "volcano_id": 342090,
+            "volcano_type": "Stratovolcano(es)"
+          }
+        ]
+      },
+      "name": "get_active_volcanoes",
+      "output_formatter": "actions.format_volcanoes_output",
+      "parameters": [
+        {
+          "description": "How far back activity counts as recent. Defaults to 30 days; a shorter window is the ones restless right now.",
+          "display_name": "Days to look back",
+          "maximum": 365,
+          "minimum": 1,
+          "name": "days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many volcanoes to return, after the filters and the ordering. Defaults to 50.",
+          "display_name": "Number of volcanoes",
+          "maximum": 500,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/gdacs/get-active-volcanoes",
+      "result_str_template": "Active volcanoes retrieved.",
+      "returns": {
+        "properties": {
+          "days": {
+            "type": "number"
+          },
+          "since": {
+            "description": "The date the window starts, worked out from days.",
+            "type": "string"
+          },
+          "total_active": {
+            "description": "How many were active in the window before the limit, so a short list is never a mystery.",
+            "type": "number"
+          },
+          "volcano_count": {
+            "type": "number"
+          },
+          "volcanoes": {
+            "items": {
+              "properties": {
+                "activity_score": {
+                  "description": "GDACS's own combined measure of how restless it is.",
+                  "type": "number"
+                },
+                "advisory_count": {
+                  "description": "How many aviation ash advisories it drew in the window.",
+                  "type": "number"
+                },
+                "ash_plume_height_m": {
+                  "description": "How high the ash plume reached, in metres.",
+                  "type": "number"
+                },
+                "country": {
+                  "type": "string"
+                },
+                "highest_eruption_index": {
+                  "description": "The largest eruption it is known to have produced, on the 0-8 volcanic explosivity index.",
+                  "type": "number"
+                },
+                "last_reported_at": {
+                  "description": "When activity was last reported, in UTC.",
+                  "type": "string"
+                },
+                "latitude": {
+                  "type": "number"
+                },
+                "longitude": {
+                  "type": "number"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "sulphur_dioxide_tonnes": {
+                  "description": "How much sulphur dioxide it is giving off, in tonnes.",
+                  "type": "number"
+                },
+                "volcano_id": {
+                  "type": "number"
+                },
+                "volcano_type": {
+                  "description": "Its shape and build, such as 'Stratovolcano'.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_affected_area": {
+      "description": "Get how far a disaster reaches, zone by zone: an earthquake's shaking-intensity bands, a flood's inundated area, a cyclone's wind swath. Each zone comes back with its edges, its centre and how many kilometres it spans - the numbers for a briefing or a map, rather than the outline itself, which for a flood runs to megabytes of coordinates. The link to those shapes is included for anything that does want them.",
+      "display_name": "Get the affected area",
+      "display_str_template": "Get the area affected by GDACS event {1}.",
+      "handler": "actions.get_affected_area",
+      "id": "gdacs_get_affected_area",
+      "method": "POST",
+      "mock_response": {
+        "event_id": 1558059,
+        "hazard": "Earthquake",
+        "hazard_code": "EQ",
+        "map_url": "https://www.gdacs.org/report.aspx?eventtype=EQ&eventid=1558059",
+        "shapes_url": "https://www.gdacs.org/gdacsapi/api/polygons/getgeometry?eventtype=EQ&eventid=1558059",
+        "widest_zone": "Intensity 5",
+        "zone_count": 1,
+        "zones": [
+          {
+            "centre_latitude": -8.5776,
+            "centre_longitude": 120.9843,
+            "east": 122.9672,
+            "height_km": 333.6,
+            "mapped_at": "2026-08-14T23:10:00Z",
+            "north": -7.0776,
+            "south": -10.0776,
+            "west": 119.0013,
+            "width_km": 436.1,
+            "zone": "Intensity 5"
+          }
+        ]
+      },
+      "name": "get_affected_area",
+      "output_formatter": "actions.format_area_output",
+      "parameters": [
+        {
+          "description": "Which hazard the event is. An ID only identifies an event together with its hazard - there is an earthquake 1104081 and a flood 1104081 - so this has to match the event you mean. Every disaster returned anywhere here carries its own hazard.",
+          "display_name": "Hazard",
+          "name": "hazard_type",
+          "options": [
+            {
+              "label": "Earthquake",
+              "value": "EQ"
+            },
+            {
+              "label": "Tropical cyclone",
+              "value": "TC"
+            },
+            {
+              "label": "Flood",
+              "value": "FL"
+            },
+            {
+              "label": "Volcano",
+              "value": "VO"
+            },
+            {
+              "label": "Wildfire",
+              "value": "WF"
+            },
+            {
+              "label": "Drought",
+              "value": "DR"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The GDACS event ID, which every disaster returned here carries. A link to the event's GDACS report works too, so a report someone sent you can be pasted straight in.",
+          "display_name": "Event ID",
+          "examples": [
+            {
+              "label": "An event ID",
+              "value": "1558059"
+            },
+            {
+              "label": "A report link",
+              "value": "https://www.gdacs.org/report.aspx?eventtype=EQ&eventid=1558059"
+            }
+          ],
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/gdacs/get-affected-area",
+      "result_str_template": "Affected area retrieved.",
+      "returns": {
+        "properties": {
+          "event_id": {
+            "type": "number"
+          },
+          "hazard": {
+            "type": "string"
+          },
+          "hazard_code": {
+            "type": "string"
+          },
+          "map_url": {
+            "description": "The event's map on gdacs.org, for a person.",
+            "type": "string"
+          },
+          "shapes_url": {
+            "description": "The full outlines as GeoJSON, for a mapping tool that wants to draw them.",
+            "type": "string"
+          },
+          "widest_zone": {
+            "description": "The label of the zone that reaches furthest.",
+            "type": "string"
+          },
+          "zone_count": {
+            "type": "number"
+          },
+          "zones": {
+            "items": {
+              "properties": {
+                "centre_latitude": {
+                  "type": "number"
+                },
+                "centre_longitude": {
+                  "type": "number"
+                },
+                "east": {
+                  "description": "The zone's eastern edge.",
+                  "type": "number"
+                },
+                "height_km": {
+                  "description": "How far it reaches north to south.",
+                  "type": "number"
+                },
+                "mapped_at": {
+                  "description": "When GDACS last drew this zone, where it says.",
+                  "type": "string"
+                },
+                "north": {
+                  "description": "The zone's northern edge.",
+                  "type": "number"
+                },
+                "south": {
+                  "description": "The zone's southern edge.",
+                  "type": "number"
+                },
+                "west": {
+                  "description": "The zone's western edge.",
+                  "type": "number"
+                },
+                "width_km": {
+                  "description": "How far it reaches east to west.",
+                  "type": "number"
+                },
+                "zone": {
+                  "description": "What the zone is, in GDACS's own labels - a shaking intensity for an earthquake, 'Affected area' for a flood.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_country_disaster_history": {
+      "description": "Get a country's recorded natural disasters going back to 1900, with the deaths, the people affected and the damage in US dollars - and the totals across everything that matched. This is the counted record, from EM-DAT, rather than the live alerts: what a flood in this country has historically cost, which is the question behind siting a warehouse, pricing a risk or writing a country brief.",
+      "display_name": "Get a country's disaster history",
+      "display_str_template": "Get the disaster history for {0}.",
+      "handler": "actions.get_country_disaster_history",
+      "id": "gdacs_get_country_disaster_history",
+      "method": "POST",
+      "mock_response": {
+        "country": "Bangladesh",
+        "country_code": "BGD",
+        "disaster_count": 1,
+        "disaster_types": [
+          "Flood"
+        ],
+        "disasters": [
+          {
+            "affected": 1280039,
+            "country": "Bangladesh",
+            "country_code": "BGD",
+            "damage_usd": null,
+            "deaths": 59,
+            "disaster_type": "Flood",
+            "ended_on": "2026-07-23",
+            "homeless": null,
+            "injured": 39,
+            "latitude": null,
+            "location": "Bandarban, Chattogram, Cox's Bazar, Khagrachhari and Rangamati",
+            "longitude": null,
+            "name": null,
+            "record_id": "2026-0443-BGD",
+            "started_on": "2026-07-05"
+          }
+        ],
+        "earliest_on": "2000-09-08",
+        "from_date": "2000-01-01",
+        "latest_on": "2026-07-05",
+        "to_date": null,
+        "total_affected": 114807501,
+        "total_damage_usd": 2296000000,
+        "total_deaths": 3640,
+        "total_recorded": 47
+      },
+      "name": "get_country_disaster_history",
+      "output_formatter": "actions.format_history_output",
+      "parameters": [
+        {
+          "description": "Whose history to read.",
+          "display_name": "Country",
+          "name": "country",
+          "options": [
+            {
+              "label": "Afghanistan",
+              "value": "AFG"
+            },
+            {
+              "label": "Albania",
+              "value": "ALB"
+            },
+            {
+              "label": "Algeria",
+              "value": "DZA"
+            },
+            {
+              "label": "American Samoa",
+              "value": "ASM"
+            },
+            {
+              "label": "Andorra",
+              "value": "AND"
+            },
+            {
+              "label": "Angola",
+              "value": "AGO"
+            },
+            {
+              "label": "Anguilla",
+              "value": "AIA"
+            },
+            {
+              "label": "Antarctica",
+              "value": "ATA"
+            },
+            {
+              "label": "Antigua and Barbuda",
+              "value": "ATG"
+            },
+            {
+              "label": "Argentina",
+              "value": "ARG"
+            },
+            {
+              "label": "Armenia",
+              "value": "ARM"
+            },
+            {
+              "label": "Aruba",
+              "value": "ABW"
+            },
+            {
+              "label": "Australia",
+              "value": "AUS"
+            },
+            {
+              "label": "Austria",
+              "value": "AUT"
+            },
+            {
+              "label": "Azerbaijan",
+              "value": "AZE"
+            },
+            {
+              "label": "Bahamas",
+              "value": "BHS"
+            },
+            {
+              "label": "Bahrain",
+              "value": "BHR"
+            },
+            {
+              "label": "Bangladesh",
+              "value": "BGD"
+            },
+            {
+              "label": "Barbados",
+              "value": "BRB"
+            },
+            {
+              "label": "Belarus",
+              "value": "BLR"
+            },
+            {
+              "label": "Belgium",
+              "value": "BEL"
+            },
+            {
+              "label": "Belize",
+              "value": "BLZ"
+            },
+            {
+              "label": "Benin",
+              "value": "BEN"
+            },
+            {
+              "label": "Bermuda",
+              "value": "BMU"
+            },
+            {
+              "label": "Bhutan",
+              "value": "BTN"
+            },
+            {
+              "label": "Bolivia",
+              "value": "BOL"
+            },
+            {
+              "label": "Bonaire, Sint Eustatius and Saba",
+              "value": "BES"
+            },
+            {
+              "label": "Bosnia and Herzegovina",
+              "value": "BIH"
+            },
+            {
+              "label": "Botswana",
+              "value": "BWA"
+            },
+            {
+              "label": "Brazil",
+              "value": "BRA"
+            },
+            {
+              "label": "British Indian Ocean Territory",
+              "value": "IOT"
+            },
+            {
+              "label": "British Virgin Islands",
+              "value": "VGB"
+            },
+            {
+              "label": "Brunei",
+              "value": "BRN"
+            },
+            {
+              "label": "Bulgaria",
+              "value": "BGR"
+            },
+            {
+              "label": "Burkina Faso",
+              "value": "BFA"
+            },
+            {
+              "label": "Burundi",
+              "value": "BDI"
+            },
+            {
+              "label": "Cabo Verde",
+              "value": "CPV"
+            },
+            {
+              "label": "Cambodia",
+              "value": "KHM"
+            },
+            {
+              "label": "Cameroon",
+              "value": "CMR"
+            },
+            {
+              "label": "Canada",
+              "value": "CAN"
+            },
+            {
+              "label": "Cayman Islands",
+              "value": "CYM"
+            },
+            {
+              "label": "Central African Republic",
+              "value": "CAF"
+            },
+            {
+              "label": "Chad",
+              "value": "TCD"
+            },
+            {
+              "label": "Chile",
+              "value": "CHL"
+            },
+            {
+              "label": "China",
+              "value": "CHN"
+            },
+            {
+              "label": "Christmas Island",
+              "value": "CXR"
+            },
+            {
+              "label": "Cocos (Keeling) Islands",
+              "value": "CCK"
+            },
+            {
+              "label": "Colombia",
+              "value": "COL"
+            },
+            {
+              "label": "Comoros",
+              "value": "COM"
+            },
+            {
+              "label": "Cook Islands",
+              "value": "COK"
+            },
+            {
+              "label": "Costa Rica",
+              "value": "CRI"
+            },
+            {
+              "label": "Cote d'Ivoire",
+              "value": "CIV"
+            },
+            {
+              "label": "Croatia",
+              "value": "HRV"
+            },
+            {
+              "label": "Cuba",
+              "value": "CUB"
+            },
+            {
+              "label": "Curacao",
+              "value": "CUW"
+            },
+            {
+              "label": "Cyprus",
+              "value": "CYP"
+            },
+            {
+              "label": "Czechia",
+              "value": "CZE"
+            },
+            {
+              "label": "Democratic Republic of the Congo",
+              "value": "COD"
+            },
+            {
+              "label": "Denmark",
+              "value": "DNK"
+            },
+            {
+              "label": "Djibouti",
+              "value": "DJI"
+            },
+            {
+              "label": "Dominica",
+              "value": "DMA"
+            },
+            {
+              "label": "Dominican Republic",
+              "value": "DOM"
+            },
+            {
+              "label": "Ecuador",
+              "value": "ECU"
+            },
+            {
+              "label": "Egypt",
+              "value": "EGY"
+            },
+            {
+              "label": "El Salvador",
+              "value": "SLV"
+            },
+            {
+              "label": "Equatorial Guinea",
+              "value": "GNQ"
+            },
+            {
+              "label": "Eritrea",
+              "value": "ERI"
+            },
+            {
+              "label": "Estonia",
+              "value": "EST"
+            },
+            {
+              "label": "Eswatini",
+              "value": "SWZ"
+            },
+            {
+              "label": "Ethiopia",
+              "value": "ETH"
+            },
+            {
+              "label": "Falkland Islands",
+              "value": "FLK"
+            },
+            {
+              "label": "Faroe Islands",
+              "value": "FRO"
+            },
+            {
+              "label": "Fiji",
+              "value": "FJI"
+            },
+            {
+              "label": "Finland",
+              "value": "FIN"
+            },
+            {
+              "label": "France",
+              "value": "FRA"
+            },
+            {
+              "label": "French Guiana",
+              "value": "GUF"
+            },
+            {
+              "label": "French Polynesia",
+              "value": "PYF"
+            },
+            {
+              "label": "Gabon",
+              "value": "GAB"
+            },
+            {
+              "label": "Gambia",
+              "value": "GMB"
+            },
+            {
+              "label": "Georgia",
+              "value": "GEO"
+            },
+            {
+              "label": "Germany",
+              "value": "DEU"
+            },
+            {
+              "label": "Ghana",
+              "value": "GHA"
+            },
+            {
+              "label": "Gibraltar",
+              "value": "GIB"
+            },
+            {
+              "label": "Greece",
+              "value": "GRC"
+            },
+            {
+              "label": "Greenland",
+              "value": "GRL"
+            },
+            {
+              "label": "Grenada",
+              "value": "GRD"
+            },
+            {
+              "label": "Guadeloupe",
+              "value": "GLP"
+            },
+            {
+              "label": "Guam",
+              "value": "GUM"
+            },
+            {
+              "label": "Guatemala",
+              "value": "GTM"
+            },
+            {
+              "label": "Guernsey",
+              "value": "GGY"
+            },
+            {
+              "label": "Guinea",
+              "value": "GIN"
+            },
+            {
+              "label": "Guinea-Bissau",
+              "value": "GNB"
+            },
+            {
+              "label": "Guyana",
+              "value": "GUY"
+            },
+            {
+              "label": "Haiti",
+              "value": "HTI"
+            },
+            {
+              "label": "Honduras",
+              "value": "HND"
+            },
+            {
+              "label": "Hong Kong",
+              "value": "HKG"
+            },
+            {
+              "label": "Hungary",
+              "value": "HUN"
+            },
+            {
+              "label": "Iceland",
+              "value": "ISL"
+            },
+            {
+              "label": "India",
+              "value": "IND"
+            },
+            {
+              "label": "Indonesia",
+              "value": "IDN"
+            },
+            {
+              "label": "Iran",
+              "value": "IRN"
+            },
+            {
+              "label": "Iraq",
+              "value": "IRQ"
+            },
+            {
+              "label": "Ireland",
+              "value": "IRL"
+            },
+            {
+              "label": "Isle of Man",
+              "value": "IMN"
+            },
+            {
+              "label": "Israel",
+              "value": "ISR"
+            },
+            {
+              "label": "Italy",
+              "value": "ITA"
+            },
+            {
+              "label": "Jamaica",
+              "value": "JAM"
+            },
+            {
+              "label": "Japan",
+              "value": "JPN"
+            },
+            {
+              "label": "Jersey",
+              "value": "JEY"
+            },
+            {
+              "label": "Jordan",
+              "value": "JOR"
+            },
+            {
+              "label": "Kazakhstan",
+              "value": "KAZ"
+            },
+            {
+              "label": "Kenya",
+              "value": "KEN"
+            },
+            {
+              "label": "Kiribati",
+              "value": "KIR"
+            },
+            {
+              "label": "Kosovo",
+              "value": "XXK"
+            },
+            {
+              "label": "Kuwait",
+              "value": "KWT"
+            },
+            {
+              "label": "Kyrgyzstan",
+              "value": "KGZ"
+            },
+            {
+              "label": "Laos",
+              "value": "LAO"
+            },
+            {
+              "label": "Latvia",
+              "value": "LVA"
+            },
+            {
+              "label": "Lebanon",
+              "value": "LBN"
+            },
+            {
+              "label": "Lesotho",
+              "value": "LSO"
+            },
+            {
+              "label": "Liberia",
+              "value": "LBR"
+            },
+            {
+              "label": "Libya",
+              "value": "LBY"
+            },
+            {
+              "label": "Liechtenstein",
+              "value": "LIE"
+            },
+            {
+              "label": "Lithuania",
+              "value": "LTU"
+            },
+            {
+              "label": "Luxembourg",
+              "value": "LUX"
+            },
+            {
+              "label": "Macao",
+              "value": "MAC"
+            },
+            {
+              "label": "Madagascar",
+              "value": "MDG"
+            },
+            {
+              "label": "Malawi",
+              "value": "MWI"
+            },
+            {
+              "label": "Malaysia",
+              "value": "MYS"
+            },
+            {
+              "label": "Maldives",
+              "value": "MDV"
+            },
+            {
+              "label": "Mali",
+              "value": "MLI"
+            },
+            {
+              "label": "Malta",
+              "value": "MLT"
+            },
+            {
+              "label": "Marshall Islands",
+              "value": "MHL"
+            },
+            {
+              "label": "Martinique",
+              "value": "MTQ"
+            },
+            {
+              "label": "Mauritania",
+              "value": "MRT"
+            },
+            {
+              "label": "Mauritius",
+              "value": "MUS"
+            },
+            {
+              "label": "Mayotte",
+              "value": "MYT"
+            },
+            {
+              "label": "Mexico",
+              "value": "MEX"
+            },
+            {
+              "label": "Micronesia",
+              "value": "FSM"
+            },
+            {
+              "label": "Moldova",
+              "value": "MDA"
+            },
+            {
+              "label": "Monaco",
+              "value": "MCO"
+            },
+            {
+              "label": "Mongolia",
+              "value": "MNG"
+            },
+            {
+              "label": "Montenegro",
+              "value": "MNE"
+            },
+            {
+              "label": "Montserrat",
+              "value": "MSR"
+            },
+            {
+              "label": "Morocco",
+              "value": "MAR"
+            },
+            {
+              "label": "Mozambique",
+              "value": "MOZ"
+            },
+            {
+              "label": "Myanmar",
+              "value": "MMR"
+            },
+            {
+              "label": "Namibia",
+              "value": "NAM"
+            },
+            {
+              "label": "Nauru",
+              "value": "NRU"
+            },
+            {
+              "label": "Nepal",
+              "value": "NPL"
+            },
+            {
+              "label": "Netherlands",
+              "value": "NLD"
+            },
+            {
+              "label": "Netherlands Antilles",
+              "value": "ANT"
+            },
+            {
+              "label": "New Caledonia",
+              "value": "NCL"
+            },
+            {
+              "label": "New Zealand",
+              "value": "NZL"
+            },
+            {
+              "label": "Nicaragua",
+              "value": "NIC"
+            },
+            {
+              "label": "Niger",
+              "value": "NER"
+            },
+            {
+              "label": "Nigeria",
+              "value": "NGA"
+            },
+            {
+              "label": "Niue",
+              "value": "NIU"
+            },
+            {
+              "label": "Norfolk Island",
+              "value": "NFK"
+            },
+            {
+              "label": "North Korea",
+              "value": "PRK"
+            },
+            {
+              "label": "North Macedonia",
+              "value": "MKD"
+            },
+            {
+              "label": "Northern Mariana Islands",
+              "value": "MNP"
+            },
+            {
+              "label": "Norway",
+              "value": "NOR"
+            },
+            {
+              "label": "Oman",
+              "value": "OMN"
+            },
+            {
+              "label": "Pakistan",
+              "value": "PAK"
+            },
+            {
+              "label": "Palau",
+              "value": "PLW"
+            },
+            {
+              "label": "Palestine",
+              "value": "PSE"
+            },
+            {
+              "label": "Panama",
+              "value": "PAN"
+            },
+            {
+              "label": "Papua New Guinea",
+              "value": "PNG"
+            },
+            {
+              "label": "Paraguay",
+              "value": "PRY"
+            },
+            {
+              "label": "Peru",
+              "value": "PER"
+            },
+            {
+              "label": "Philippines",
+              "value": "PHL"
+            },
+            {
+              "label": "Pitcairn Islands",
+              "value": "PCN"
+            },
+            {
+              "label": "Poland",
+              "value": "POL"
+            },
+            {
+              "label": "Portugal",
+              "value": "PRT"
+            },
+            {
+              "label": "Puerto Rico",
+              "value": "PRI"
+            },
+            {
+              "label": "Qatar",
+              "value": "QAT"
+            },
+            {
+              "label": "Republic of the Congo",
+              "value": "COG"
+            },
+            {
+              "label": "Reunion",
+              "value": "REU"
+            },
+            {
+              "label": "Romania",
+              "value": "ROU"
+            },
+            {
+              "label": "Russia",
+              "value": "RUS"
+            },
+            {
+              "label": "Rwanda",
+              "value": "RWA"
+            },
+            {
+              "label": "Saint Barthelemy",
+              "value": "BLM"
+            },
+            {
+              "label": "Saint Helena",
+              "value": "SHN"
+            },
+            {
+              "label": "Saint Kitts and Nevis",
+              "value": "KNA"
+            },
+            {
+              "label": "Saint Lucia",
+              "value": "LCA"
+            },
+            {
+              "label": "Saint Martin",
+              "value": "MAF"
+            },
+            {
+              "label": "Saint Pierre and Miquelon",
+              "value": "SPM"
+            },
+            {
+              "label": "Saint Vincent and the Grenadines",
+              "value": "VCT"
+            },
+            {
+              "label": "Samoa",
+              "value": "WSM"
+            },
+            {
+              "label": "San Marino",
+              "value": "SMR"
+            },
+            {
+              "label": "Sao Tome and Principe",
+              "value": "STP"
+            },
+            {
+              "label": "Saudi Arabia",
+              "value": "SAU"
+            },
+            {
+              "label": "Senegal",
+              "value": "SEN"
+            },
+            {
+              "label": "Serbia",
+              "value": "SRB"
+            },
+            {
+              "label": "Seychelles",
+              "value": "SYC"
+            },
+            {
+              "label": "Sierra Leone",
+              "value": "SLE"
+            },
+            {
+              "label": "Singapore",
+              "value": "SGP"
+            },
+            {
+              "label": "Sint Maarten",
+              "value": "SXM"
+            },
+            {
+              "label": "Slovakia",
+              "value": "SVK"
+            },
+            {
+              "label": "Slovenia",
+              "value": "SVN"
+            },
+            {
+              "label": "Solomon Islands",
+              "value": "SLB"
+            },
+            {
+              "label": "Somalia",
+              "value": "SOM"
+            },
+            {
+              "label": "South Africa",
+              "value": "ZAF"
+            },
+            {
+              "label": "South Korea",
+              "value": "KOR"
+            },
+            {
+              "label": "South Sudan",
+              "value": "SSD"
+            },
+            {
+              "label": "Spain",
+              "value": "ESP"
+            },
+            {
+              "label": "Sri Lanka",
+              "value": "LKA"
+            },
+            {
+              "label": "Sudan",
+              "value": "SDN"
+            },
+            {
+              "label": "Suriname",
+              "value": "SUR"
+            },
+            {
+              "label": "Sweden",
+              "value": "SWE"
+            },
+            {
+              "label": "Switzerland",
+              "value": "CHE"
+            },
+            {
+              "label": "Syria",
+              "value": "SYR"
+            },
+            {
+              "label": "Taiwan",
+              "value": "TWN"
+            },
+            {
+              "label": "Tajikistan",
+              "value": "TJK"
+            },
+            {
+              "label": "Tanzania",
+              "value": "TZA"
+            },
+            {
+              "label": "Thailand",
+              "value": "THA"
+            },
+            {
+              "label": "Timor-Leste",
+              "value": "TLS"
+            },
+            {
+              "label": "Togo",
+              "value": "TGO"
+            },
+            {
+              "label": "Tokelau",
+              "value": "TKL"
+            },
+            {
+              "label": "Tonga",
+              "value": "TON"
+            },
+            {
+              "label": "Trinidad and Tobago",
+              "value": "TTO"
+            },
+            {
+              "label": "Tunisia",
+              "value": "TUN"
+            },
+            {
+              "label": "T\u00fcrkiye",
+              "value": "TUR"
+            },
+            {
+              "label": "Turkmenistan",
+              "value": "TKM"
+            },
+            {
+              "label": "Turks and Caicos Islands",
+              "value": "TCA"
+            },
+            {
+              "label": "Tuvalu",
+              "value": "TUV"
+            },
+            {
+              "label": "Uganda",
+              "value": "UGA"
+            },
+            {
+              "label": "Ukraine",
+              "value": "UKR"
+            },
+            {
+              "label": "United Arab Emirates",
+              "value": "ARE"
+            },
+            {
+              "label": "United Kingdom",
+              "value": "GBR"
+            },
+            {
+              "label": "United States",
+              "value": "USA"
+            },
+            {
+              "label": "United States Minor Outlying Islands",
+              "value": "UMI"
+            },
+            {
+              "label": "United States Virgin Islands",
+              "value": "VIR"
+            },
+            {
+              "label": "Uruguay",
+              "value": "URY"
+            },
+            {
+              "label": "Uzbekistan",
+              "value": "UZB"
+            },
+            {
+              "label": "Vanuatu",
+              "value": "VUT"
+            },
+            {
+              "label": "Vatican City",
+              "value": "VAT"
+            },
+            {
+              "label": "Venezuela",
+              "value": "VEN"
+            },
+            {
+              "label": "Vietnam",
+              "value": "VNM"
+            },
+            {
+              "label": "Western Sahara",
+              "value": "ESH"
+            },
+            {
+              "label": "Yemen",
+              "value": "YEM"
+            },
+            {
+              "label": "Zambia",
+              "value": "ZMB"
+            },
+            {
+              "label": "Zimbabwe",
+              "value": "ZWE"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which kinds of disaster to include. Leave every box clear to include them all.",
+          "display_name": "Disaster types",
+          "multi_select": true,
+          "name": "disaster_types",
+          "options": [
+            {
+              "label": "Drought",
+              "value": "Drought"
+            },
+            {
+              "label": "Earthquake",
+              "value": "Earthquake"
+            },
+            {
+              "label": "Epidemic",
+              "value": "Epidemic"
+            },
+            {
+              "label": "Extreme temperature",
+              "value": "Extreme temperature"
+            },
+            {
+              "label": "Flood",
+              "value": "Flood"
+            },
+            {
+              "label": "Fog",
+              "value": "Fog"
+            },
+            {
+              "label": "Glacial lake outburst flood",
+              "value": "Glacial lake outburst flood"
+            },
+            {
+              "label": "Infestation",
+              "value": "Infestation"
+            },
+            {
+              "label": "Landslide (dry)",
+              "value": "Mass movement (dry)"
+            },
+            {
+              "label": "Landslide or mudslide",
+              "value": "Mass movement (wet)"
+            },
+            {
+              "label": "Meteorite impact",
+              "value": "Impact"
+            },
+            {
+              "label": "Storm",
+              "value": "Storm"
+            },
+            {
+              "label": "Volcanic activity",
+              "value": "Volcanic activity"
+            },
+            {
+              "label": "Wildfire",
+              "value": "Wildfire"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only include disasters that started on or after this date.",
+          "display_name": "From",
+          "name": "from_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only include disasters that started on or before this date.",
+          "display_name": "To",
+          "name": "to_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "How many disasters to return, after the filters and the ordering. Defaults to 50.",
+          "display_name": "Number of disasters",
+          "maximum": 500,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/gdacs/get-country-disaster-history",
+      "result_str_template": "Disaster history retrieved.",
+      "returns": {
+        "properties": {
+          "country": {
+            "type": "string"
+          },
+          "country_code": {
+            "type": "string"
+          },
+          "disaster_count": {
+            "type": "number"
+          },
+          "disaster_types": {
+            "description": "The types filtered to; empty means all of them.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "disasters": {
+            "items": {
+              "properties": {
+                "affected": {
+                  "description": "Everyone affected - injured, made homeless or otherwise.",
+                  "type": "number"
+                },
+                "country": {
+                  "type": "string"
+                },
+                "country_code": {
+                  "type": "string"
+                },
+                "damage_usd": {
+                  "description": "Total recorded damage in US dollars, where it was costed.",
+                  "type": "number"
+                },
+                "deaths": {
+                  "type": "number"
+                },
+                "disaster_type": {
+                  "type": "string"
+                },
+                "ended_on": {
+                  "type": "string"
+                },
+                "homeless": {
+                  "type": "number"
+                },
+                "injured": {
+                  "type": "number"
+                },
+                "latitude": {
+                  "type": "number"
+                },
+                "location": {
+                  "description": "The provinces or districts affected, where recorded.",
+                  "type": "string"
+                },
+                "longitude": {
+                  "type": "number"
+                },
+                "name": {
+                  "description": "The disaster's name, where it was given one.",
+                  "type": "string"
+                },
+                "record_id": {
+                  "description": "The EM-DAT disaster number, such as '2026-0443-BGD'.",
+                  "type": "string"
+                },
+                "started_on": {
+                  "description": "When it began. Older records are known only to the month or the year, and then say only that much.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "earliest_on": {
+            "type": "string"
+          },
+          "from_date": {
+            "type": "string"
+          },
+          "latest_on": {
+            "type": "string"
+          },
+          "to_date": {
+            "type": "string"
+          },
+          "total_affected": {
+            "type": "number"
+          },
+          "total_damage_usd": {
+            "description": "Total recorded damage in US dollars. Only some disasters are ever costed, so this is a floor.",
+            "type": "number"
+          },
+          "total_deaths": {
+            "type": "number"
+          },
+          "total_recorded": {
+            "description": "How many records matched in total, however many the limit returned. The totals below cover all of them.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_current_disasters": {
+      "description": "Get every disaster GDACS has an open alert for right now - earthquakes, tropical cyclones, floods, volcanoes, wildfires and droughts together, most severe first. This is the action for anything on a schedule: it needs nothing filled in, and it reads the same live list GDACS's own app shows, so one request answers 'is anything happening?' for the whole world. Narrow it to the hazards you care about, or to orange and red only, if a green alert is not worth a message.",
+      "display_name": "Get current disasters",
+      "display_str_template": "Get the current disasters from GDACS.",
+      "handler": "actions.get_current_disasters",
+      "id": "gdacs_get_current_disasters",
+      "method": "POST",
+      "mock_response": {
+        "disaster_count": 2,
+        "disasters": [
+          {
+            "alert_level": "Red",
+            "alert_meaning": "Severe humanitarian impact expected; international help is likely needed.",
+            "countries": [
+              "Indonesia"
+            ],
+            "country": "Indonesia",
+            "country_codes": [
+              "IDN"
+            ],
+            "ended_at": "2026-08-14T21:58:21Z",
+            "episode_id": 1725109,
+            "event_id": 1558059,
+            "event_name": null,
+            "glide_number": "EQ-2026-000151-IDN",
+            "hazard": "Earthquake",
+            "hazard_code": "EQ",
+            "is_ongoing": false,
+            "is_provisional": false,
+            "latitude": -8.3101,
+            "longitude": 121.3517,
+            "report_url": "https://www.gdacs.org/report.aspx?eventid=1558059&episodeid=1725109&eventtype=EQ",
+            "severity": "Magnitude 7.7M, Depth:10km",
+            "severity_unit": "M",
+            "severity_value": 7.7,
+            "source": "NEIC",
+            "started_at": "2026-08-14T21:58:21Z",
+            "summary": "Red M 7.7 Earthquake in Indonesia at: 14 Aug 2026 21:58:21.",
+            "title": "Earthquake in Indonesia",
+            "updated_at": "2026-08-15T02:05:19Z"
+          },
+          {
+            "alert_level": "Orange",
+            "alert_meaning": "Moderate humanitarian impact expected; a national response is likely.",
+            "countries": [
+              "China"
+            ],
+            "country": "China",
+            "country_codes": [
+              "CHN"
+            ],
+            "ended_at": "2026-09-07T01:00:00Z",
+            "episode_id": 17,
+            "event_id": 1104081,
+            "event_name": null,
+            "glide_number": "FL-2026-000148-CHN",
+            "hazard": "Flood",
+            "hazard_code": "FL",
+            "is_ongoing": true,
+            "is_provisional": false,
+            "latitude": 28.0,
+            "longitude": 116.0,
+            "report_url": "https://www.gdacs.org/report.aspx?eventid=1104081&episodeid=17&eventtype=FL",
+            "severity": "Magnitude 0",
+            "severity_unit": null,
+            "severity_value": 0.0,
+            "source": "GLOFAS",
+            "started_at": "2026-07-31T01:00:00Z",
+            "summary": "Orange Flood in China from: 31 Jul 2026 to: 07 Sep 2026.",
+            "title": "Flood in China",
+            "updated_at": "2026-09-06T06:23:52Z"
+          }
+        ],
+        "hazard_types": [],
+        "highest_alert_level": "Red",
+        "minimum_alert_level": "Green",
+        "total_active": 100
+      },
+      "name": "get_current_disasters",
+      "output_formatter": "actions.format_disasters_output",
+      "parameters": [
+        {
+          "description": "Which hazards to include. Leave every box clear to include all six, which is what most workflows want.",
+          "display_name": "Hazards",
+          "multi_select": true,
+          "name": "hazard_types",
+          "options": [
+            {
+              "label": "Earthquake",
+              "value": "EQ"
+            },
+            {
+              "label": "Tropical cyclone",
+              "value": "TC"
+            },
+            {
+              "label": "Flood",
+              "value": "FL"
+            },
+            {
+              "label": "Volcano",
+              "value": "VO"
+            },
+            {
+              "label": "Wildfire",
+              "value": "WF"
+            },
+            {
+              "label": "Drought",
+              "value": "DR"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": "Green",
+          "description": "How serious an alert has to be to be included. GDACS rates likely humanitarian impact rather than size, so 'orange and red only' is the setting for a workflow that should message a person. Most alerts at any moment are green.",
+          "display_name": "Alert level",
+          "name": "minimum_alert_level",
+          "options": [
+            {
+              "label": "Any alert",
+              "value": "Green"
+            },
+            {
+              "label": "Orange and red only",
+              "value": "Orange"
+            },
+            {
+              "label": "Red only",
+              "value": "Red"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many disasters to return, after the filters and the ordering. Defaults to 50.",
+          "display_name": "Number of disasters",
+          "maximum": 500,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/gdacs/get-current-disasters",
+      "result_str_template": "Current disasters retrieved.",
+      "returns": {
+        "properties": {
+          "disaster_count": {
+            "type": "number"
+          },
+          "disasters": {
+            "items": {
+              "properties": {
+                "alert_level": {
+                  "description": "Green, Orange or Red - the expected humanitarian impact.",
+                  "type": "string"
+                },
+                "alert_meaning": {
+                  "description": "What that colour means, in words, for putting in a message.",
+                  "type": "string"
+                },
+                "countries": {
+                  "description": "Every country the event is recorded against.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "country": {
+                  "description": "Where GDACS places the event, in its own words.",
+                  "type": "string"
+                },
+                "country_codes": {
+                  "description": "The same countries as ISO three-letter codes.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "ended_at": {
+                  "description": "When it ended, in UTC. The same as the start for an instant event like an earthquake, and the latest update for one still running.",
+                  "type": "string"
+                },
+                "episode_id": {
+                  "description": "Which update of the event this is. A cyclone gets a new episode with every forecast; an earthquake usually has one.",
+                  "type": "number"
+                },
+                "event_id": {
+                  "description": "The event's GDACS ID, unique within its hazard.",
+                  "type": "number"
+                },
+                "event_name": {
+                  "description": "The name, where it has one - cyclones do, earthquakes do not.",
+                  "type": "string"
+                },
+                "glide_number": {
+                  "description": "The international GLIDE identifier, where one has been assigned - how relief agencies refer to the same disaster.",
+                  "type": "string"
+                },
+                "hazard": {
+                  "description": "Earthquake, Tropical cyclone, Flood, Volcano, Wildfire or Drought.",
+                  "type": "string"
+                },
+                "hazard_code": {
+                  "description": "GDACS's two-letter code for the hazard, which its own links use.",
+                  "type": "string"
+                },
+                "is_ongoing": {
+                  "description": "Whether GDACS still counts this as an active alert.",
+                  "type": "boolean"
+                },
+                "is_provisional": {
+                  "description": "Whether this is a first automatic estimate that may still be revised or withdrawn.",
+                  "type": "boolean"
+                },
+                "latitude": {
+                  "type": "number"
+                },
+                "longitude": {
+                  "type": "number"
+                },
+                "report_url": {
+                  "description": "The event's page on gdacs.org, for a person to open.",
+                  "type": "string"
+                },
+                "severity": {
+                  "description": "The size in the hazard's own terms, such as 'Magnitude 7.7M, Depth:10km' or 'Tropical Storm (maximum wind speed of 130 km/h)'.",
+                  "type": "string"
+                },
+                "severity_unit": {
+                  "description": "What that number is in - M, km/h, ha or km2.",
+                  "type": "string"
+                },
+                "severity_value": {
+                  "description": "The same size as a number, to compare against a threshold.",
+                  "type": "number"
+                },
+                "source": {
+                  "description": "Which monitoring network detected it, such as NEIC or GLOFAS.",
+                  "type": "string"
+                },
+                "started_at": {
+                  "description": "When it began, in UTC.",
+                  "type": "string"
+                },
+                "summary": {
+                  "description": "One sentence: the level, the size, the place and the time.",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "For example 'Earthquake in China'.",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "When GDACS last revised it.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "hazard_types": {
+            "description": "The hazards filtered to; empty means all six.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "highest_alert_level": {
+            "description": "The most serious level in the result - the one value to branch a workflow on.",
+            "type": "string"
+          },
+          "minimum_alert_level": {
+            "type": "string"
+          },
+          "total_active": {
+            "description": "How many alerts were open before any filtering, so a short list is never a mystery.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_disaster": {
+      "description": "Get everything GDACS holds on one disaster: where and when, how big, how many people it exposed, what has actually been reported on the ground - deaths, displacement, evacuations - and a map image to put in a message. Use it to fill out an alert an earlier step found, or to re-read an event someone linked to; a GDACS report link can be pasted straight into the ID.",
+      "display_name": "Get disaster details",
+      "display_str_template": "Get the GDACS details for event {1}.",
+      "handler": "actions.get_disaster",
+      "id": "gdacs_get_disaster",
+      "method": "POST",
+      "mock_response": {
+        "alert_level": "Red",
+        "alert_meaning": "Severe humanitarian impact expected; international help is likely needed.",
+        "countries": [
+          "Indonesia"
+        ],
+        "country": "Indonesia",
+        "country_codes": [
+          "IDN"
+        ],
+        "depth_km": 10.0,
+        "ended_at": "2026-08-14T21:58:21Z",
+        "episode_id": 1725109,
+        "eruption_details": null,
+        "event_id": 1558059,
+        "event_name": null,
+        "exposure_summary": "20 thousand (in MMI>=VII)",
+        "glide_number": "EQ-2026-000151-IDN",
+        "hazard": "Earthquake",
+        "hazard_code": "EQ",
+        "is_ongoing": false,
+        "is_provisional": false,
+        "latitude": -8.3101,
+        "longitude": 121.3517,
+        "magnitude": 7.7,
+        "map_image_url": "https://www.gdacs.org/contentdata/resources/EQ/1558059/eq1725109_2.png",
+        "news_url": "https://www.gdacs.org/gdacsapi/api/emm/getemmnewsbykey?eventtype=EQ&eventid=1558059",
+        "population_exposed": 23526,
+        "report_url": "https://www.gdacs.org/report.aspx?eventid=1558059&episodeid=1725109&eventtype=EQ",
+        "reported_impact": [
+          {
+            "area": "East Nusa Tenggara",
+            "country": "Indonesia",
+            "description": "32 deaths in East Nusa Tenggara, Indonesia",
+            "figure": "deaths",
+            "is_latest": true,
+            "reported_at": "2026-08-16T08:20:00Z",
+            "value": 32.0
+          }
+        ],
+        "severity": "Magnitude 7.7M, Depth:10km",
+        "severity_unit": "M",
+        "severity_value": 7.7,
+        "source": "NEIC",
+        "started_at": "2026-08-14T21:58:21Z",
+        "summary": "Red M 7.7 Earthquake in Indonesia at: 14 Aug 2026 21:58:21.",
+        "title": "Earthquake in Indonesia",
+        "updated_at": "2026-08-15T02:05:19Z"
+      },
+      "name": "get_disaster",
+      "output_formatter": "actions.format_disaster_output",
+      "parameters": [
+        {
+          "description": "Which hazard the event is. An ID only identifies an event together with its hazard - there is an earthquake 1104081 and a flood 1104081 - so this has to match the event you mean. Every disaster returned anywhere here carries its own hazard.",
+          "display_name": "Hazard",
+          "name": "hazard_type",
+          "options": [
+            {
+              "label": "Earthquake",
+              "value": "EQ"
+            },
+            {
+              "label": "Tropical cyclone",
+              "value": "TC"
+            },
+            {
+              "label": "Flood",
+              "value": "FL"
+            },
+            {
+              "label": "Volcano",
+              "value": "VO"
+            },
+            {
+              "label": "Wildfire",
+              "value": "WF"
+            },
+            {
+              "label": "Drought",
+              "value": "DR"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The GDACS event ID, which every disaster returned here carries. A link to the event's GDACS report works too, so a report someone sent you can be pasted straight in.",
+          "display_name": "Event ID",
+          "examples": [
+            {
+              "label": "An event ID",
+              "value": "1558059"
+            },
+            {
+              "label": "A report link",
+              "value": "https://www.gdacs.org/report.aspx?eventtype=EQ&eventid=1558059"
+            }
+          ],
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/gdacs/get-disaster",
+      "result_str_template": "Disaster details retrieved.",
+      "returns": {
+        "properties": {
+          "alert_level": {
+            "description": "Green, Orange or Red - the expected humanitarian impact.",
+            "type": "string"
+          },
+          "alert_meaning": {
+            "description": "What that colour means, in words, for putting in a message.",
+            "type": "string"
+          },
+          "countries": {
+            "description": "Every country the event is recorded against.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "country": {
+            "description": "Where GDACS places the event, in its own words.",
+            "type": "string"
+          },
+          "country_codes": {
+            "description": "The same countries as ISO three-letter codes.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "depth_km": {
+            "description": "How deep the earthquake was. A shallow one shakes far harder than a deep one of the same magnitude.",
+            "type": "number"
+          },
+          "ended_at": {
+            "description": "When it ended, in UTC. The same as the start for an instant event like an earthquake, and the latest update for one still running.",
+            "type": "string"
+          },
+          "episode_id": {
+            "description": "Which update of the event this is. A cyclone gets a new episode with every forecast; an earthquake usually has one.",
+            "type": "number"
+          },
+          "eruption_details": {
+            "description": "What the volcano is doing, for volcanoes.",
+            "type": "string"
+          },
+          "event_id": {
+            "description": "The event's GDACS ID, unique within its hazard.",
+            "type": "number"
+          },
+          "event_name": {
+            "description": "The name, where it has one - cyclones do, earthquakes do not.",
+            "type": "string"
+          },
+          "exposure_summary": {
+            "description": "That estimate in words, such as '20 thousand (in MMI>=VII)'.",
+            "type": "string"
+          },
+          "glide_number": {
+            "description": "The international GLIDE identifier, where one has been assigned - how relief agencies refer to the same disaster.",
+            "type": "string"
+          },
+          "hazard": {
+            "description": "Earthquake, Tropical cyclone, Flood, Volcano, Wildfire or Drought.",
+            "type": "string"
+          },
+          "hazard_code": {
+            "description": "GDACS's two-letter code for the hazard, which its own links use.",
+            "type": "string"
+          },
+          "is_ongoing": {
+            "description": "Whether GDACS still counts this as an active alert.",
+            "type": "boolean"
+          },
+          "is_provisional": {
+            "description": "Whether this is a first automatic estimate that may still be revised or withdrawn.",
+            "type": "boolean"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "magnitude": {
+            "description": "The earthquake's magnitude, for earthquakes.",
+            "type": "number"
+          },
+          "map_image_url": {
+            "description": "A map of the event, ready to put in a message.",
+            "type": "string"
+          },
+          "news_url": {
+            "type": "string"
+          },
+          "population_exposed": {
+            "description": "How many people GDACS estimates were exposed. Modelled from population data, not counted.",
+            "type": "number"
+          },
+          "report_url": {
+            "description": "The event's page on gdacs.org, for a person to open.",
+            "type": "string"
+          },
+          "reported_impact": {
+            "description": "What has been reported from the ground - the only figures here that were counted rather than modelled. Empty until reports come in, which for a new event means for a while.",
+            "items": {
+              "properties": {
+                "area": {
+                  "type": "string"
+                },
+                "country": {
+                  "type": "string"
+                },
+                "description": {
+                  "description": "The figure as a readable sentence.",
+                  "type": "string"
+                },
+                "figure": {
+                  "description": "What was counted, such as 'deaths'.",
+                  "type": "string"
+                },
+                "is_latest": {
+                  "description": "Whether this supersedes the earlier counts of the same thing.",
+                  "type": "boolean"
+                },
+                "reported_at": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "severity": {
+            "description": "The size in the hazard's own terms, such as 'Magnitude 7.7M, Depth:10km' or 'Tropical Storm (maximum wind speed of 130 km/h)'.",
+            "type": "string"
+          },
+          "severity_unit": {
+            "description": "What that number is in - M, km/h, ha or km2.",
+            "type": "string"
+          },
+          "severity_value": {
+            "description": "The same size as a number, to compare against a threshold.",
+            "type": "number"
+          },
+          "source": {
+            "description": "Which monitoring network detected it, such as NEIC or GLOFAS.",
+            "type": "string"
+          },
+          "started_at": {
+            "description": "When it began, in UTC.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "One sentence: the level, the size, the place and the time.",
+            "type": "string"
+          },
+          "title": {
+            "description": "For example 'Earthquake in China'.",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When GDACS last revised it.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_disaster_news": {
+      "description": "Get the news coverage GDACS has gathered about one disaster, newest first - the European Commission's media monitor watching thousands of outlets worldwide. Use it to put context under an alert, or to see whether a disaster is being reported at all. A new event has no coverage for the first hours, which comes back as an empty list rather than an error.",
+      "display_name": "Get disaster news",
+      "display_str_template": "Get GDACS news about event {1}.",
+      "handler": "actions.get_disaster_news",
+      "id": "gdacs_get_disaster_news",
+      "method": "POST",
+      "mock_response": {
+        "article_count": 1,
+        "articles": [
+          {
+            "published_at": "2026-08-15T09:12:00Z",
+            "source": "reuters",
+            "summary": "Article content is not available. Please refer to the linked source",
+            "title": "Indonesia earthquake: rescue teams reach worst-hit villages",
+            "url": "https://example.com/indonesia-earthquake"
+          }
+        ],
+        "event_id": 1558059,
+        "hazard": "Earthquake",
+        "hazard_code": "EQ"
+      },
+      "name": "get_disaster_news",
+      "output_formatter": "actions.format_news_output",
+      "parameters": [
+        {
+          "description": "Which hazard the event is. An ID only identifies an event together with its hazard - there is an earthquake 1104081 and a flood 1104081 - so this has to match the event you mean. Every disaster returned anywhere here carries its own hazard.",
+          "display_name": "Hazard",
+          "name": "hazard_type",
+          "options": [
+            {
+              "label": "Earthquake",
+              "value": "EQ"
+            },
+            {
+              "label": "Tropical cyclone",
+              "value": "TC"
+            },
+            {
+              "label": "Flood",
+              "value": "FL"
+            },
+            {
+              "label": "Volcano",
+              "value": "VO"
+            },
+            {
+              "label": "Wildfire",
+              "value": "WF"
+            },
+            {
+              "label": "Drought",
+              "value": "DR"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The GDACS event ID, which every disaster returned here carries. A link to the event's GDACS report works too, so a report someone sent you can be pasted straight in.",
+          "display_name": "Event ID",
+          "examples": [
+            {
+              "label": "An event ID",
+              "value": "1558059"
+            },
+            {
+              "label": "A report link",
+              "value": "https://www.gdacs.org/report.aspx?eventtype=EQ&eventid=1558059"
+            }
+          ],
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many articles to return, newest first. Defaults to 20.",
+          "display_name": "Number of articles",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/gdacs/get-disaster-news",
+      "result_str_template": "Disaster news retrieved.",
+      "returns": {
+        "properties": {
+          "article_count": {
+            "type": "number"
+          },
+          "articles": {
+            "items": {
+              "properties": {
+                "published_at": {
+                  "type": "string"
+                },
+                "source": {
+                  "description": "Which outlet published it.",
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "event_id": {
+            "type": "number"
+          },
+          "hazard": {
+            "type": "string"
+          },
+          "hazard_code": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_disasters": {
+      "description": "Search the GDACS archive by hazard, alert level, dates and country. This is the action for a specific question about a window or a place - 'the orange and red floods in Pakistan this year' - while Get current disasters is the one for watching on a schedule. Countries are matched exactly, which takes some doing on GDACS's side: its own filter matches names as text, so Niger would otherwise return Nigeria.",
+      "display_name": "Search disasters",
+      "display_str_template": "Search GDACS for disasters.",
+      "handler": "actions.search_disasters",
+      "id": "gdacs_search_disasters",
+      "method": "POST",
+      "mock_response": {
+        "alert_levels": [
+          "Orange",
+          "Red"
+        ],
+        "country": "China",
+        "country_code": "CHN",
+        "disaster_count": 1,
+        "disasters": [
+          {
+            "alert_level": "Orange",
+            "alert_meaning": "Moderate humanitarian impact expected; a national response is likely.",
+            "countries": [
+              "China"
+            ],
+            "country": "China",
+            "country_codes": [
+              "CHN"
+            ],
+            "ended_at": "2026-09-07T01:00:00Z",
+            "episode_id": 17,
+            "event_id": 1104081,
+            "event_name": null,
+            "glide_number": "FL-2026-000148-CHN",
+            "hazard": "Flood",
+            "hazard_code": "FL",
+            "is_ongoing": true,
+            "is_provisional": false,
+            "latitude": 28.0,
+            "longitude": 116.0,
+            "report_url": "https://www.gdacs.org/report.aspx?eventid=1104081&episodeid=17&eventtype=FL",
+            "severity": "Magnitude 0",
+            "severity_unit": null,
+            "severity_value": 0.0,
+            "source": "GLOFAS",
+            "started_at": "2026-07-31T01:00:00Z",
+            "summary": "Orange Flood in China from: 31 Jul 2026 to: 07 Sep 2026.",
+            "title": "Flood in China",
+            "updated_at": "2026-09-06T06:23:52Z"
+          }
+        ],
+        "from_date": "2026-01-01",
+        "hazard_types": [
+          "Flood"
+        ],
+        "more_available": false,
+        "sort": "severity",
+        "to_date": "2026-09-12"
+      },
+      "name": "search_disasters",
+      "output_formatter": "actions.format_disasters_output",
+      "parameters": [
+        {
+          "description": "Which hazards to include. Leave every box clear to include all six, which is what most workflows want.",
+          "display_name": "Hazards",
+          "multi_select": true,
+          "name": "hazard_types",
+          "options": [
+            {
+              "label": "Earthquake",
+              "value": "EQ"
+            },
+            {
+              "label": "Tropical cyclone",
+              "value": "TC"
+            },
+            {
+              "label": "Flood",
+              "value": "FL"
+            },
+            {
+              "label": "Volcano",
+              "value": "VO"
+            },
+            {
+              "label": "Wildfire",
+              "value": "WF"
+            },
+            {
+              "label": "Drought",
+              "value": "DR"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Which alert levels to include. The level is GDACS's estimate of humanitarian impact, not of size: a magnitude 7 under an empty ocean is green and a magnitude 6 under a city is red, so this is the filter that decides whether a result is worth waking someone for. Leave every box clear to include all three.",
+          "display_name": "Alert levels",
+          "multi_select": true,
+          "name": "alert_levels",
+          "options": [
+            {
+              "label": "Green - Little or no humanitarian impact expected.",
+              "value": "Green"
+            },
+            {
+              "label": "Orange - Moderate humanitarian impact expected; a national response is likely.",
+              "value": "Orange"
+            },
+            {
+              "label": "Red - Severe humanitarian impact expected; international help is likely needed.",
+              "value": "Red"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only include disasters that started on or after this date.",
+          "display_name": "From",
+          "name": "from_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only include disasters that started on or before this date.",
+          "display_name": "To",
+          "name": "to_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only include disasters affecting this country. An event that crosses borders - a cyclone, a drought - counts for every country it touches, not just the one GDACS names it after.",
+          "display_name": "Country",
+          "name": "country",
+          "options": [
+            {
+              "label": "Afghanistan",
+              "value": "AFG"
+            },
+            {
+              "label": "Albania",
+              "value": "ALB"
+            },
+            {
+              "label": "Algeria",
+              "value": "DZA"
+            },
+            {
+              "label": "American Samoa",
+              "value": "ASM"
+            },
+            {
+              "label": "Andorra",
+              "value": "AND"
+            },
+            {
+              "label": "Angola",
+              "value": "AGO"
+            },
+            {
+              "label": "Anguilla",
+              "value": "AIA"
+            },
+            {
+              "label": "Antarctica",
+              "value": "ATA"
+            },
+            {
+              "label": "Antigua and Barbuda",
+              "value": "ATG"
+            },
+            {
+              "label": "Argentina",
+              "value": "ARG"
+            },
+            {
+              "label": "Armenia",
+              "value": "ARM"
+            },
+            {
+              "label": "Aruba",
+              "value": "ABW"
+            },
+            {
+              "label": "Australia",
+              "value": "AUS"
+            },
+            {
+              "label": "Austria",
+              "value": "AUT"
+            },
+            {
+              "label": "Azerbaijan",
+              "value": "AZE"
+            },
+            {
+              "label": "Bahamas",
+              "value": "BHS"
+            },
+            {
+              "label": "Bahrain",
+              "value": "BHR"
+            },
+            {
+              "label": "Bangladesh",
+              "value": "BGD"
+            },
+            {
+              "label": "Barbados",
+              "value": "BRB"
+            },
+            {
+              "label": "Belarus",
+              "value": "BLR"
+            },
+            {
+              "label": "Belgium",
+              "value": "BEL"
+            },
+            {
+              "label": "Belize",
+              "value": "BLZ"
+            },
+            {
+              "label": "Benin",
+              "value": "BEN"
+            },
+            {
+              "label": "Bermuda",
+              "value": "BMU"
+            },
+            {
+              "label": "Bhutan",
+              "value": "BTN"
+            },
+            {
+              "label": "Bolivia",
+              "value": "BOL"
+            },
+            {
+              "label": "Bonaire, Sint Eustatius and Saba",
+              "value": "BES"
+            },
+            {
+              "label": "Bosnia and Herzegovina",
+              "value": "BIH"
+            },
+            {
+              "label": "Botswana",
+              "value": "BWA"
+            },
+            {
+              "label": "Brazil",
+              "value": "BRA"
+            },
+            {
+              "label": "British Indian Ocean Territory",
+              "value": "IOT"
+            },
+            {
+              "label": "British Virgin Islands",
+              "value": "VGB"
+            },
+            {
+              "label": "Brunei",
+              "value": "BRN"
+            },
+            {
+              "label": "Bulgaria",
+              "value": "BGR"
+            },
+            {
+              "label": "Burkina Faso",
+              "value": "BFA"
+            },
+            {
+              "label": "Burundi",
+              "value": "BDI"
+            },
+            {
+              "label": "Cabo Verde",
+              "value": "CPV"
+            },
+            {
+              "label": "Cambodia",
+              "value": "KHM"
+            },
+            {
+              "label": "Cameroon",
+              "value": "CMR"
+            },
+            {
+              "label": "Canada",
+              "value": "CAN"
+            },
+            {
+              "label": "Cayman Islands",
+              "value": "CYM"
+            },
+            {
+              "label": "Central African Republic",
+              "value": "CAF"
+            },
+            {
+              "label": "Chad",
+              "value": "TCD"
+            },
+            {
+              "label": "Chile",
+              "value": "CHL"
+            },
+            {
+              "label": "China",
+              "value": "CHN"
+            },
+            {
+              "label": "Christmas Island",
+              "value": "CXR"
+            },
+            {
+              "label": "Cocos (Keeling) Islands",
+              "value": "CCK"
+            },
+            {
+              "label": "Colombia",
+              "value": "COL"
+            },
+            {
+              "label": "Comoros",
+              "value": "COM"
+            },
+            {
+              "label": "Cook Islands",
+              "value": "COK"
+            },
+            {
+              "label": "Costa Rica",
+              "value": "CRI"
+            },
+            {
+              "label": "Cote d'Ivoire",
+              "value": "CIV"
+            },
+            {
+              "label": "Croatia",
+              "value": "HRV"
+            },
+            {
+              "label": "Cuba",
+              "value": "CUB"
+            },
+            {
+              "label": "Curacao",
+              "value": "CUW"
+            },
+            {
+              "label": "Cyprus",
+              "value": "CYP"
+            },
+            {
+              "label": "Czechia",
+              "value": "CZE"
+            },
+            {
+              "label": "Democratic Republic of the Congo",
+              "value": "COD"
+            },
+            {
+              "label": "Denmark",
+              "value": "DNK"
+            },
+            {
+              "label": "Djibouti",
+              "value": "DJI"
+            },
+            {
+              "label": "Dominica",
+              "value": "DMA"
+            },
+            {
+              "label": "Dominican Republic",
+              "value": "DOM"
+            },
+            {
+              "label": "Ecuador",
+              "value": "ECU"
+            },
+            {
+              "label": "Egypt",
+              "value": "EGY"
+            },
+            {
+              "label": "El Salvador",
+              "value": "SLV"
+            },
+            {
+              "label": "Equatorial Guinea",
+              "value": "GNQ"
+            },
+            {
+              "label": "Eritrea",
+              "value": "ERI"
+            },
+            {
+              "label": "Estonia",
+              "value": "EST"
+            },
+            {
+              "label": "Eswatini",
+              "value": "SWZ"
+            },
+            {
+              "label": "Ethiopia",
+              "value": "ETH"
+            },
+            {
+              "label": "Falkland Islands",
+              "value": "FLK"
+            },
+            {
+              "label": "Faroe Islands",
+              "value": "FRO"
+            },
+            {
+              "label": "Fiji",
+              "value": "FJI"
+            },
+            {
+              "label": "Finland",
+              "value": "FIN"
+            },
+            {
+              "label": "France",
+              "value": "FRA"
+            },
+            {
+              "label": "French Guiana",
+              "value": "GUF"
+            },
+            {
+              "label": "French Polynesia",
+              "value": "PYF"
+            },
+            {
+              "label": "Gabon",
+              "value": "GAB"
+            },
+            {
+              "label": "Gambia",
+              "value": "GMB"
+            },
+            {
+              "label": "Georgia",
+              "value": "GEO"
+            },
+            {
+              "label": "Germany",
+              "value": "DEU"
+            },
+            {
+              "label": "Ghana",
+              "value": "GHA"
+            },
+            {
+              "label": "Gibraltar",
+              "value": "GIB"
+            },
+            {
+              "label": "Greece",
+              "value": "GRC"
+            },
+            {
+              "label": "Greenland",
+              "value": "GRL"
+            },
+            {
+              "label": "Grenada",
+              "value": "GRD"
+            },
+            {
+              "label": "Guadeloupe",
+              "value": "GLP"
+            },
+            {
+              "label": "Guam",
+              "value": "GUM"
+            },
+            {
+              "label": "Guatemala",
+              "value": "GTM"
+            },
+            {
+              "label": "Guernsey",
+              "value": "GGY"
+            },
+            {
+              "label": "Guinea",
+              "value": "GIN"
+            },
+            {
+              "label": "Guinea-Bissau",
+              "value": "GNB"
+            },
+            {
+              "label": "Guyana",
+              "value": "GUY"
+            },
+            {
+              "label": "Haiti",
+              "value": "HTI"
+            },
+            {
+              "label": "Honduras",
+              "value": "HND"
+            },
+            {
+              "label": "Hong Kong",
+              "value": "HKG"
+            },
+            {
+              "label": "Hungary",
+              "value": "HUN"
+            },
+            {
+              "label": "Iceland",
+              "value": "ISL"
+            },
+            {
+              "label": "India",
+              "value": "IND"
+            },
+            {
+              "label": "Indonesia",
+              "value": "IDN"
+            },
+            {
+              "label": "Iran",
+              "value": "IRN"
+            },
+            {
+              "label": "Iraq",
+              "value": "IRQ"
+            },
+            {
+              "label": "Ireland",
+              "value": "IRL"
+            },
+            {
+              "label": "Isle of Man",
+              "value": "IMN"
+            },
+            {
+              "label": "Israel",
+              "value": "ISR"
+            },
+            {
+              "label": "Italy",
+              "value": "ITA"
+            },
+            {
+              "label": "Jamaica",
+              "value": "JAM"
+            },
+            {
+              "label": "Japan",
+              "value": "JPN"
+            },
+            {
+              "label": "Jersey",
+              "value": "JEY"
+            },
+            {
+              "label": "Jordan",
+              "value": "JOR"
+            },
+            {
+              "label": "Kazakhstan",
+              "value": "KAZ"
+            },
+            {
+              "label": "Kenya",
+              "value": "KEN"
+            },
+            {
+              "label": "Kiribati",
+              "value": "KIR"
+            },
+            {
+              "label": "Kosovo",
+              "value": "XXK"
+            },
+            {
+              "label": "Kuwait",
+              "value": "KWT"
+            },
+            {
+              "label": "Kyrgyzstan",
+              "value": "KGZ"
+            },
+            {
+              "label": "Laos",
+              "value": "LAO"
+            },
+            {
+              "label": "Latvia",
+              "value": "LVA"
+            },
+            {
+              "label": "Lebanon",
+              "value": "LBN"
+            },
+            {
+              "label": "Lesotho",
+              "value": "LSO"
+            },
+            {
+              "label": "Liberia",
+              "value": "LBR"
+            },
+            {
+              "label": "Libya",
+              "value": "LBY"
+            },
+            {
+              "label": "Liechtenstein",
+              "value": "LIE"
+            },
+            {
+              "label": "Lithuania",
+              "value": "LTU"
+            },
+            {
+              "label": "Luxembourg",
+              "value": "LUX"
+            },
+            {
+              "label": "Macao",
+              "value": "MAC"
+            },
+            {
+              "label": "Madagascar",
+              "value": "MDG"
+            },
+            {
+              "label": "Malawi",
+              "value": "MWI"
+            },
+            {
+              "label": "Malaysia",
+              "value": "MYS"
+            },
+            {
+              "label": "Maldives",
+              "value": "MDV"
+            },
+            {
+              "label": "Mali",
+              "value": "MLI"
+            },
+            {
+              "label": "Malta",
+              "value": "MLT"
+            },
+            {
+              "label": "Marshall Islands",
+              "value": "MHL"
+            },
+            {
+              "label": "Martinique",
+              "value": "MTQ"
+            },
+            {
+              "label": "Mauritania",
+              "value": "MRT"
+            },
+            {
+              "label": "Mauritius",
+              "value": "MUS"
+            },
+            {
+              "label": "Mayotte",
+              "value": "MYT"
+            },
+            {
+              "label": "Mexico",
+              "value": "MEX"
+            },
+            {
+              "label": "Micronesia",
+              "value": "FSM"
+            },
+            {
+              "label": "Moldova",
+              "value": "MDA"
+            },
+            {
+              "label": "Monaco",
+              "value": "MCO"
+            },
+            {
+              "label": "Mongolia",
+              "value": "MNG"
+            },
+            {
+              "label": "Montenegro",
+              "value": "MNE"
+            },
+            {
+              "label": "Montserrat",
+              "value": "MSR"
+            },
+            {
+              "label": "Morocco",
+              "value": "MAR"
+            },
+            {
+              "label": "Mozambique",
+              "value": "MOZ"
+            },
+            {
+              "label": "Myanmar",
+              "value": "MMR"
+            },
+            {
+              "label": "Namibia",
+              "value": "NAM"
+            },
+            {
+              "label": "Nauru",
+              "value": "NRU"
+            },
+            {
+              "label": "Nepal",
+              "value": "NPL"
+            },
+            {
+              "label": "Netherlands",
+              "value": "NLD"
+            },
+            {
+              "label": "Netherlands Antilles",
+              "value": "ANT"
+            },
+            {
+              "label": "New Caledonia",
+              "value": "NCL"
+            },
+            {
+              "label": "New Zealand",
+              "value": "NZL"
+            },
+            {
+              "label": "Nicaragua",
+              "value": "NIC"
+            },
+            {
+              "label": "Niger",
+              "value": "NER"
+            },
+            {
+              "label": "Nigeria",
+              "value": "NGA"
+            },
+            {
+              "label": "Niue",
+              "value": "NIU"
+            },
+            {
+              "label": "Norfolk Island",
+              "value": "NFK"
+            },
+            {
+              "label": "North Korea",
+              "value": "PRK"
+            },
+            {
+              "label": "North Macedonia",
+              "value": "MKD"
+            },
+            {
+              "label": "Northern Mariana Islands",
+              "value": "MNP"
+            },
+            {
+              "label": "Norway",
+              "value": "NOR"
+            },
+            {
+              "label": "Oman",
+              "value": "OMN"
+            },
+            {
+              "label": "Pakistan",
+              "value": "PAK"
+            },
+            {
+              "label": "Palau",
+              "value": "PLW"
+            },
+            {
+              "label": "Palestine",
+              "value": "PSE"
+            },
+            {
+              "label": "Panama",
+              "value": "PAN"
+            },
+            {
+              "label": "Papua New Guinea",
+              "value": "PNG"
+            },
+            {
+              "label": "Paraguay",
+              "value": "PRY"
+            },
+            {
+              "label": "Peru",
+              "value": "PER"
+            },
+            {
+              "label": "Philippines",
+              "value": "PHL"
+            },
+            {
+              "label": "Pitcairn Islands",
+              "value": "PCN"
+            },
+            {
+              "label": "Poland",
+              "value": "POL"
+            },
+            {
+              "label": "Portugal",
+              "value": "PRT"
+            },
+            {
+              "label": "Puerto Rico",
+              "value": "PRI"
+            },
+            {
+              "label": "Qatar",
+              "value": "QAT"
+            },
+            {
+              "label": "Republic of the Congo",
+              "value": "COG"
+            },
+            {
+              "label": "Reunion",
+              "value": "REU"
+            },
+            {
+              "label": "Romania",
+              "value": "ROU"
+            },
+            {
+              "label": "Russia",
+              "value": "RUS"
+            },
+            {
+              "label": "Rwanda",
+              "value": "RWA"
+            },
+            {
+              "label": "Saint Barthelemy",
+              "value": "BLM"
+            },
+            {
+              "label": "Saint Helena",
+              "value": "SHN"
+            },
+            {
+              "label": "Saint Kitts and Nevis",
+              "value": "KNA"
+            },
+            {
+              "label": "Saint Lucia",
+              "value": "LCA"
+            },
+            {
+              "label": "Saint Martin",
+              "value": "MAF"
+            },
+            {
+              "label": "Saint Pierre and Miquelon",
+              "value": "SPM"
+            },
+            {
+              "label": "Saint Vincent and the Grenadines",
+              "value": "VCT"
+            },
+            {
+              "label": "Samoa",
+              "value": "WSM"
+            },
+            {
+              "label": "San Marino",
+              "value": "SMR"
+            },
+            {
+              "label": "Sao Tome and Principe",
+              "value": "STP"
+            },
+            {
+              "label": "Saudi Arabia",
+              "value": "SAU"
+            },
+            {
+              "label": "Senegal",
+              "value": "SEN"
+            },
+            {
+              "label": "Serbia",
+              "value": "SRB"
+            },
+            {
+              "label": "Seychelles",
+              "value": "SYC"
+            },
+            {
+              "label": "Sierra Leone",
+              "value": "SLE"
+            },
+            {
+              "label": "Singapore",
+              "value": "SGP"
+            },
+            {
+              "label": "Sint Maarten",
+              "value": "SXM"
+            },
+            {
+              "label": "Slovakia",
+              "value": "SVK"
+            },
+            {
+              "label": "Slovenia",
+              "value": "SVN"
+            },
+            {
+              "label": "Solomon Islands",
+              "value": "SLB"
+            },
+            {
+              "label": "Somalia",
+              "value": "SOM"
+            },
+            {
+              "label": "South Africa",
+              "value": "ZAF"
+            },
+            {
+              "label": "South Korea",
+              "value": "KOR"
+            },
+            {
+              "label": "South Sudan",
+              "value": "SSD"
+            },
+            {
+              "label": "Spain",
+              "value": "ESP"
+            },
+            {
+              "label": "Sri Lanka",
+              "value": "LKA"
+            },
+            {
+              "label": "Sudan",
+              "value": "SDN"
+            },
+            {
+              "label": "Suriname",
+              "value": "SUR"
+            },
+            {
+              "label": "Sweden",
+              "value": "SWE"
+            },
+            {
+              "label": "Switzerland",
+              "value": "CHE"
+            },
+            {
+              "label": "Syria",
+              "value": "SYR"
+            },
+            {
+              "label": "Taiwan",
+              "value": "TWN"
+            },
+            {
+              "label": "Tajikistan",
+              "value": "TJK"
+            },
+            {
+              "label": "Tanzania",
+              "value": "TZA"
+            },
+            {
+              "label": "Thailand",
+              "value": "THA"
+            },
+            {
+              "label": "Timor-Leste",
+              "value": "TLS"
+            },
+            {
+              "label": "Togo",
+              "value": "TGO"
+            },
+            {
+              "label": "Tokelau",
+              "value": "TKL"
+            },
+            {
+              "label": "Tonga",
+              "value": "TON"
+            },
+            {
+              "label": "Trinidad and Tobago",
+              "value": "TTO"
+            },
+            {
+              "label": "Tunisia",
+              "value": "TUN"
+            },
+            {
+              "label": "T\u00fcrkiye",
+              "value": "TUR"
+            },
+            {
+              "label": "Turkmenistan",
+              "value": "TKM"
+            },
+            {
+              "label": "Turks and Caicos Islands",
+              "value": "TCA"
+            },
+            {
+              "label": "Tuvalu",
+              "value": "TUV"
+            },
+            {
+              "label": "Uganda",
+              "value": "UGA"
+            },
+            {
+              "label": "Ukraine",
+              "value": "UKR"
+            },
+            {
+              "label": "United Arab Emirates",
+              "value": "ARE"
+            },
+            {
+              "label": "United Kingdom",
+              "value": "GBR"
+            },
+            {
+              "label": "United States",
+              "value": "USA"
+            },
+            {
+              "label": "United States Minor Outlying Islands",
+              "value": "UMI"
+            },
+            {
+              "label": "United States Virgin Islands",
+              "value": "VIR"
+            },
+            {
+              "label": "Uruguay",
+              "value": "URY"
+            },
+            {
+              "label": "Uzbekistan",
+              "value": "UZB"
+            },
+            {
+              "label": "Vanuatu",
+              "value": "VUT"
+            },
+            {
+              "label": "Vatican City",
+              "value": "VAT"
+            },
+            {
+              "label": "Venezuela",
+              "value": "VEN"
+            },
+            {
+              "label": "Vietnam",
+              "value": "VNM"
+            },
+            {
+              "label": "Western Sahara",
+              "value": "ESH"
+            },
+            {
+              "label": "Yemen",
+              "value": "YEM"
+            },
+            {
+              "label": "Zambia",
+              "value": "ZMB"
+            },
+            {
+              "label": "Zimbabwe",
+              "value": "ZWE"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "severity",
+          "description": "How to order the results. Defaults to most severe first, which puts the one that matters at the top.",
+          "display_name": "Order by",
+          "name": "sort",
+          "options": [
+            {
+              "label": "Most severe first",
+              "value": "severity"
+            },
+            {
+              "label": "Most recently active first",
+              "value": "recent"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many disasters to return, after the filters and the ordering. Defaults to 50.",
+          "display_name": "Number of disasters",
+          "maximum": 500,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/gdacs/search-disasters",
+      "result_str_template": "Disasters retrieved.",
+      "returns": {
+        "properties": {
+          "alert_levels": {
+            "description": "The alert levels filtered to.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "country": {
+            "type": "string"
+          },
+          "country_code": {
+            "type": "string"
+          },
+          "disaster_count": {
+            "type": "number"
+          },
+          "disasters": {
+            "items": {
+              "properties": {
+                "alert_level": {
+                  "description": "Green, Orange or Red - the expected humanitarian impact.",
+                  "type": "string"
+                },
+                "alert_meaning": {
+                  "description": "What that colour means, in words, for putting in a message.",
+                  "type": "string"
+                },
+                "countries": {
+                  "description": "Every country the event is recorded against.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "country": {
+                  "description": "Where GDACS places the event, in its own words.",
+                  "type": "string"
+                },
+                "country_codes": {
+                  "description": "The same countries as ISO three-letter codes.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "ended_at": {
+                  "description": "When it ended, in UTC. The same as the start for an instant event like an earthquake, and the latest update for one still running.",
+                  "type": "string"
+                },
+                "episode_id": {
+                  "description": "Which update of the event this is. A cyclone gets a new episode with every forecast; an earthquake usually has one.",
+                  "type": "number"
+                },
+                "event_id": {
+                  "description": "The event's GDACS ID, unique within its hazard.",
+                  "type": "number"
+                },
+                "event_name": {
+                  "description": "The name, where it has one - cyclones do, earthquakes do not.",
+                  "type": "string"
+                },
+                "glide_number": {
+                  "description": "The international GLIDE identifier, where one has been assigned - how relief agencies refer to the same disaster.",
+                  "type": "string"
+                },
+                "hazard": {
+                  "description": "Earthquake, Tropical cyclone, Flood, Volcano, Wildfire or Drought.",
+                  "type": "string"
+                },
+                "hazard_code": {
+                  "description": "GDACS's two-letter code for the hazard, which its own links use.",
+                  "type": "string"
+                },
+                "is_ongoing": {
+                  "description": "Whether GDACS still counts this as an active alert.",
+                  "type": "boolean"
+                },
+                "is_provisional": {
+                  "description": "Whether this is a first automatic estimate that may still be revised or withdrawn.",
+                  "type": "boolean"
+                },
+                "latitude": {
+                  "type": "number"
+                },
+                "longitude": {
+                  "type": "number"
+                },
+                "report_url": {
+                  "description": "The event's page on gdacs.org, for a person to open.",
+                  "type": "string"
+                },
+                "severity": {
+                  "description": "The size in the hazard's own terms, such as 'Magnitude 7.7M, Depth:10km' or 'Tropical Storm (maximum wind speed of 130 km/h)'.",
+                  "type": "string"
+                },
+                "severity_unit": {
+                  "description": "What that number is in - M, km/h, ha or km2.",
+                  "type": "string"
+                },
+                "severity_value": {
+                  "description": "The same size as a number, to compare against a threshold.",
+                  "type": "number"
+                },
+                "source": {
+                  "description": "Which monitoring network detected it, such as NEIC or GLOFAS.",
+                  "type": "string"
+                },
+                "started_at": {
+                  "description": "When it began, in UTC.",
+                  "type": "string"
+                },
+                "summary": {
+                  "description": "One sentence: the level, the size, the place and the time.",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "For example 'Earthquake in China'.",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "When GDACS last revised it.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "from_date": {
+            "type": "string"
+          },
+          "hazard_types": {
+            "description": "The hazards filtered to; empty means all six.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "more_available": {
+            "description": "Whether GDACS had more matches than the limit asked for, so a full-looking result is never mistaken for the whole answer.",
+            "type": "boolean"
+          },
+          "sort": {
+            "type": "string"
+          },
+          "to_date": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Watch the world's natural disasters through GDACS, the Global Disaster Alert and Coordination System run by the European Commission's Joint Research Centre and the United Nations. It monitors earthquakes, tropical cyclones, floods, volcanoes, wildfires and droughts worldwide and rates each one green, orange or red for the humanitarian impact it expects - so a workflow can tell a magnitude 7 under an empty ocean from a magnitude 6 under a city. See what is happening right now, search the archive by hazard, severity, dates and country, check whether a specific address sits inside a disaster's mapped area, read the details and the news coverage, measure how far an event reaches, and look up a country's counted disaster history back to 1900. No API key, no sign-up and no quota.",
+  "display_name": "GDACS",
+  "id": "gdacs"
+}

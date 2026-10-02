@@ -1,0 +1,565 @@
+{
+  "actions": {
+    "check_service_status": {
+      "description": "Check whether ColorMagic is answering, and how quickly, by running a small search. This is the one action that reports a problem as a value instead of failing the step, so a workflow can branch on it and fall back to a saved palette when the service is down. Being throttled is reported separately from being down. No API key required.",
+      "display_name": "Check service status",
+      "display_str_template": "Check whether ColorMagic is up.",
+      "handler": "actions.check_service_status",
+      "id": "colormagic_check_service_status",
+      "method": "POST",
+      "mock_response": {
+        "message": "ColorMagic is up and serving palettes: 20 matched 'blue'.",
+        "online": true,
+        "palettes_found": 20,
+        "rate_limited": false,
+        "reachable": true,
+        "response_time_ms": 42.7,
+        "status_code": 200
+      },
+      "name": "check_service_status",
+      "parameters": [],
+      "path": "/actions/library/colormagic/check-service-status",
+      "result_str_template": "{colormagic_check_service_status,message}",
+      "returns": {
+        "properties": {
+          "message": {
+            "description": "What happened, in a sentence worth posting.",
+            "type": "string"
+          },
+          "online": {
+            "description": "True when the service answered with a list of palettes. This is the field to branch on.",
+            "type": "boolean"
+          },
+          "palettes_found": {
+            "description": "How many palettes the probe search for blue matched, or null when the service did not answer with a list.",
+            "type": "integer"
+          },
+          "rate_limited": {
+            "description": "True when the answer was a throttle (HTTP 429). Being throttled is not the same as being down.",
+            "type": "boolean"
+          },
+          "reachable": {
+            "description": "True when something answered at all, even with an error. False means the request never landed.",
+            "type": "boolean"
+          },
+          "response_time_ms": {
+            "description": "How long the request took, in milliseconds, or null when nothing came back.",
+            "type": "number"
+          },
+          "status_code": {
+            "description": "The HTTP status that came back, or null when nothing did.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_palette": {
+      "description": "Get the one palette on ColorMagic that best fits a search: the most liked match by default, or the newest, or the first the service returns. The step for a workflow that wants a palette to use rather than a list to choose from. Keep only palettes carrying one tag. Fails when nothing matches, so a step downstream never posts an empty palette. No API key required.",
+      "display_name": "Find a palette",
+      "display_str_template": "Find a ColorMagic palette for {0}.",
+      "handler": "actions.find_palette",
+      "id": "colormagic_find_palette",
+      "method": "POST",
+      "mock_response": {
+        "palette": {
+          "colors": [
+            "#44562f",
+            "#83934d",
+            "#b7c88d",
+            "#e9dfb4",
+            "#efbfb3"
+          ],
+          "colors_text": "#44562f, #83934d, #b7c88d, #e9dfb4, #efbfb3",
+          "created_at": "2024-10-28T18:20:29.406Z",
+          "id": "671fd5edab6cc866507fe7cf",
+          "likes": 454,
+          "name": "Florest Moth",
+          "normalized_hash": "a2ff2c8e68ef3cf69ee27ded00c4ad5e7d5deed82b05688f3976801b960482ea",
+          "tags": [
+            "earthy",
+            "olive",
+            "green",
+            "khaki",
+            "beige",
+            "pastel",
+            "soft",
+            "muted",
+            "neutral",
+            "warm"
+          ],
+          "url": "https://colormagic.app/palette/671fd5edab6cc866507fe7cf"
+        },
+        "pick": "most_liked",
+        "query": "green",
+        "tag": null,
+        "total_matches": 5
+      },
+      "name": "find_palette",
+      "parameters": [
+        {
+          "description": "A word or short phrase to search palettes for. ColorMagic matches it against palette names and tags, so a color (green), a mood (calm), a season (autumn), a style (retro, pastel, 70s) or a subject (ocean, wedding, coffee shop) all work.",
+          "display_name": "Search for",
+          "examples": [
+            {
+              "label": "Green",
+              "value": "green"
+            },
+            {
+              "label": "Pastel",
+              "value": "pastel"
+            },
+            {
+              "label": "Sunset",
+              "value": "sunset"
+            },
+            {
+              "label": "Retro",
+              "value": "retro"
+            }
+          ],
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Keep only the palettes that carry this tag, as it appears in a palette's tags: a color, a mood, a season or a style, such as pastel, warm, spring or vintage. Case does not matter. Use it to narrow a broad search, e.g. search for green and keep only pastel.",
+          "display_name": "Must carry the tag",
+          "name": "tag",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "most_liked",
+          "description": "Optional. Which of the matching palettes to return. Most liked is the one the most people liked; newest is the most recently generated; first is the top result in ColorMagic's own order. Most liked by default.",
+          "display_name": "Pick",
+          "name": "pick",
+          "options": [
+            {
+              "label": "Most liked",
+              "value": "most_liked"
+            },
+            {
+              "label": "Newest",
+              "value": "newest"
+            },
+            {
+              "label": "First result",
+              "value": "first"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/colormagic/find-palette",
+      "result_str_template": "Picked {colormagic_find_palette,palette,name} ({colormagic_find_palette,palette,colors_text}) from {colormagic_find_palette,total_matches} palettes matching {colormagic_find_palette,query}.",
+      "returns": {
+        "properties": {
+          "palette": {
+            "description": "One palette: five colors with a name, tags and likes.",
+            "properties": {
+              "colors": {
+                "description": "The palette's five colors as hex codes with the # on, lower-case, in the order ColorMagic arranges them, e.g. #44562f.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "colors_text": {
+                "description": "The same five colors as one comma-separated line, ready to post: #44562f, #83934d, #b7c88d, #e9dfb4, #efbfb3.",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When the palette was generated, as an ISO 8601 timestamp.",
+                "type": "string"
+              },
+              "id": {
+                "description": "The palette's id on ColorMagic.",
+                "type": "string"
+              },
+              "likes": {
+                "description": "How many people have liked the palette on ColorMagic.",
+                "type": "integer"
+              },
+              "name": {
+                "description": "The palette's name, as ColorMagic generated it, e.g. Florest Moth.",
+                "type": "string"
+              },
+              "normalized_hash": {
+                "description": "A fingerprint of the palette's colors, the same for two palettes made of the same colors, so a workflow can spot a duplicate it has already used.",
+                "type": "string"
+              },
+              "tags": {
+                "description": "The tags the palette carries, lower-case: colors, moods, seasons and styles such as green, pastel, spring or retro. Any of them can be searched for or filtered on.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "url": {
+                "description": "The palette's own page on ColorMagic, e.g. https://colormagic.app/palette/671fd5edab6cc866507fe7cf.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "pick": {
+            "description": "How the palette was chosen: most_liked, newest or first.",
+            "type": "string"
+          },
+          "query": {
+            "description": "The search that was run, as it was sent.",
+            "type": "string"
+          },
+          "tag": {
+            "description": "The tag the palettes were required to carry, lower-case, or null when none was asked for.",
+            "type": "string"
+          },
+          "total_matches": {
+            "description": "How many palettes ColorMagic matched to the search, before the tag filter and any limit.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_random_palette": {
+      "description": "Get one palette chosen at random from those on ColorMagic matching a search. A different palette every run, so a palette of the day for a channel, a newsletter or a mood board does not repeat itself. Keep only palettes carrying one tag. Fails when nothing matches. No API key required.",
+      "display_name": "Get a random palette",
+      "display_str_template": "Get a random ColorMagic palette for {0}.",
+      "handler": "actions.get_random_palette",
+      "id": "colormagic_get_random_palette",
+      "method": "POST",
+      "mock_response": {
+        "palette": {
+          "colors": [
+            "#44562f",
+            "#83934d",
+            "#b7c88d",
+            "#e9dfb4",
+            "#efbfb3"
+          ],
+          "colors_text": "#44562f, #83934d, #b7c88d, #e9dfb4, #efbfb3",
+          "created_at": "2024-10-28T18:20:29.406Z",
+          "id": "671fd5edab6cc866507fe7cf",
+          "likes": 454,
+          "name": "Florest Moth",
+          "normalized_hash": "a2ff2c8e68ef3cf69ee27ded00c4ad5e7d5deed82b05688f3976801b960482ea",
+          "tags": [
+            "earthy",
+            "olive",
+            "green",
+            "khaki",
+            "beige",
+            "pastel",
+            "soft",
+            "muted",
+            "neutral",
+            "warm"
+          ],
+          "url": "https://colormagic.app/palette/671fd5edab6cc866507fe7cf"
+        },
+        "query": "green",
+        "tag": null,
+        "total_matches": 5
+      },
+      "name": "get_random_palette",
+      "parameters": [
+        {
+          "description": "A word or short phrase to search palettes for. ColorMagic matches it against palette names and tags, so a color (green), a mood (calm), a season (autumn), a style (retro, pastel, 70s) or a subject (ocean, wedding, coffee shop) all work.",
+          "display_name": "Search for",
+          "examples": [
+            {
+              "label": "Green",
+              "value": "green"
+            },
+            {
+              "label": "Pastel",
+              "value": "pastel"
+            },
+            {
+              "label": "Sunset",
+              "value": "sunset"
+            },
+            {
+              "label": "Retro",
+              "value": "retro"
+            }
+          ],
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Keep only the palettes that carry this tag, as it appears in a palette's tags: a color, a mood, a season or a style, such as pastel, warm, spring or vintage. Case does not matter. Use it to narrow a broad search, e.g. search for green and keep only pastel.",
+          "display_name": "Must carry the tag",
+          "name": "tag",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/colormagic/get-random-palette",
+      "result_str_template": "Picked {colormagic_get_random_palette,palette,name} ({colormagic_get_random_palette,palette,colors_text}) at random from {colormagic_get_random_palette,total_matches} palettes matching {colormagic_get_random_palette,query}.",
+      "returns": {
+        "properties": {
+          "palette": {
+            "description": "One palette: five colors with a name, tags and likes.",
+            "properties": {
+              "colors": {
+                "description": "The palette's five colors as hex codes with the # on, lower-case, in the order ColorMagic arranges them, e.g. #44562f.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "colors_text": {
+                "description": "The same five colors as one comma-separated line, ready to post: #44562f, #83934d, #b7c88d, #e9dfb4, #efbfb3.",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When the palette was generated, as an ISO 8601 timestamp.",
+                "type": "string"
+              },
+              "id": {
+                "description": "The palette's id on ColorMagic.",
+                "type": "string"
+              },
+              "likes": {
+                "description": "How many people have liked the palette on ColorMagic.",
+                "type": "integer"
+              },
+              "name": {
+                "description": "The palette's name, as ColorMagic generated it, e.g. Florest Moth.",
+                "type": "string"
+              },
+              "normalized_hash": {
+                "description": "A fingerprint of the palette's colors, the same for two palettes made of the same colors, so a workflow can spot a duplicate it has already used.",
+                "type": "string"
+              },
+              "tags": {
+                "description": "The tags the palette carries, lower-case: colors, moods, seasons and styles such as green, pastel, spring or retro. Any of them can be searched for or filtered on.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "url": {
+                "description": "The palette's own page on ColorMagic, e.g. https://colormagic.app/palette/671fd5edab6cc866507fe7cf.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "query": {
+            "description": "The search that was run, as it was sent.",
+            "type": "string"
+          },
+          "tag": {
+            "description": "The tag the palettes were required to carry, lower-case, or null when none was asked for.",
+            "type": "string"
+          },
+          "total_matches": {
+            "description": "How many palettes ColorMagic matched to the search, before the tag filter and any limit.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_palettes": {
+      "description": "Search the palettes people have generated on ColorMagic by a word or phrase: a color, a mood, a season, a style or a subject, such as ocean, pastel, 70s or wedding. Each palette comes back with its five hex codes, its name, its tags, its likes and a link to its page. Keep only palettes carrying one tag, sort them by relevance, likes or age, and choose how many to return. No API key required.",
+      "display_name": "Search palettes",
+      "display_str_template": "Search ColorMagic palettes for {0}.",
+      "handler": "actions.search_palettes",
+      "id": "colormagic_search_palettes",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "palettes": [
+          {
+            "colors": [
+              "#44562f",
+              "#83934d",
+              "#b7c88d",
+              "#e9dfb4",
+              "#efbfb3"
+            ],
+            "colors_text": "#44562f, #83934d, #b7c88d, #e9dfb4, #efbfb3",
+            "created_at": "2024-10-28T18:20:29.406Z",
+            "id": "671fd5edab6cc866507fe7cf",
+            "likes": 454,
+            "name": "Florest Moth",
+            "normalized_hash": "a2ff2c8e68ef3cf69ee27ded00c4ad5e7d5deed82b05688f3976801b960482ea",
+            "tags": [
+              "earthy",
+              "olive",
+              "green",
+              "khaki",
+              "beige",
+              "pastel",
+              "soft",
+              "muted",
+              "neutral",
+              "warm"
+            ],
+            "url": "https://colormagic.app/palette/671fd5edab6cc866507fe7cf"
+          }
+        ],
+        "query": "green",
+        "sort": "relevance",
+        "tag": null,
+        "total_matches": 5
+      },
+      "name": "search_palettes",
+      "parameters": [
+        {
+          "description": "A word or short phrase to search palettes for. ColorMagic matches it against palette names and tags, so a color (green), a mood (calm), a season (autumn), a style (retro, pastel, 70s) or a subject (ocean, wedding, coffee shop) all work.",
+          "display_name": "Search for",
+          "examples": [
+            {
+              "label": "Green",
+              "value": "green"
+            },
+            {
+              "label": "Pastel",
+              "value": "pastel"
+            },
+            {
+              "label": "Sunset",
+              "value": "sunset"
+            },
+            {
+              "label": "Retro",
+              "value": "retro"
+            }
+          ],
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Keep only the palettes that carry this tag, as it appears in a palette's tags: a color, a mood, a season or a style, such as pastel, warm, spring or vintage. Case does not matter. Use it to narrow a broad search, e.g. search for green and keep only pastel.",
+          "display_name": "Must carry the tag",
+          "name": "tag",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "relevance",
+          "description": "Optional. The order to return the palettes in. Relevance is ColorMagic's own order; most liked puts the palettes the most people liked first; newest puts the most recently generated first. Relevance by default.",
+          "display_name": "Sort by",
+          "name": "sort",
+          "options": [
+            {
+              "label": "Relevance",
+              "value": "relevance"
+            },
+            {
+              "label": "Most liked",
+              "value": "most_liked"
+            },
+            {
+              "label": "Newest",
+              "value": "newest"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 20,
+          "description": "Optional. At most how many palettes to return, between 1 and 100; 20 by default. ColorMagic decides how many a search matches; this only trims the list.",
+          "display_name": "Number of palettes",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/colormagic/search-palettes",
+      "result_str_template": "Found {colormagic_search_palettes,total_matches} palettes for {colormagic_search_palettes,query}; returning {colormagic_search_palettes,count}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many palettes are in the list, after the tag filter and the limit.",
+            "type": "integer"
+          },
+          "palettes": {
+            "description": "The palettes, in the order asked for.",
+            "items": {
+              "description": "One palette: five colors with a name, tags and likes.",
+              "properties": {
+                "colors": {
+                  "description": "The palette's five colors as hex codes with the # on, lower-case, in the order ColorMagic arranges them, e.g. #44562f.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "colors_text": {
+                  "description": "The same five colors as one comma-separated line, ready to post: #44562f, #83934d, #b7c88d, #e9dfb4, #efbfb3.",
+                  "type": "string"
+                },
+                "created_at": {
+                  "description": "When the palette was generated, as an ISO 8601 timestamp.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The palette's id on ColorMagic.",
+                  "type": "string"
+                },
+                "likes": {
+                  "description": "How many people have liked the palette on ColorMagic.",
+                  "type": "integer"
+                },
+                "name": {
+                  "description": "The palette's name, as ColorMagic generated it, e.g. Florest Moth.",
+                  "type": "string"
+                },
+                "normalized_hash": {
+                  "description": "A fingerprint of the palette's colors, the same for two palettes made of the same colors, so a workflow can spot a duplicate it has already used.",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "The tags the palette carries, lower-case: colors, moods, seasons and styles such as green, pastel, spring or retro. Any of them can be searched for or filtered on.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "url": {
+                  "description": "The palette's own page on ColorMagic, e.g. https://colormagic.app/palette/671fd5edab6cc866507fe7cf.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "query": {
+            "description": "The search that was run, as it was sent.",
+            "type": "string"
+          },
+          "sort": {
+            "description": "The order the palettes are in: relevance, most_liked or newest.",
+            "type": "string"
+          },
+          "tag": {
+            "description": "The tag the palettes were required to carry, lower-case, or null when none was asked for.",
+            "type": "string"
+          },
+          "total_matches": {
+            "description": "How many palettes ColorMagic matched to the search, before the tag filter and any limit.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Search the color palettes people have generated on ColorMagic, the free AI color palette generator, by mood, theme, season, style or color: ocean, pastel, 70s, wedding. Every palette comes back as five hex codes ready for a design brief, a slide, a chart or a CSS variable, with its name, its tags, how many people liked it and a link to it on ColorMagic. Take the whole list, the most liked match, or one at random for a palette of the day. No account or API key required.",
+  "display_name": "ColorMagic",
+  "id": "colormagic"
+}

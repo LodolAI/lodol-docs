@@ -1,0 +1,1544 @@
+{
+  "actions": {
+    "check_service_status": {
+      "description": "See whether VIES is up and which countries' VAT systems are answering right now. Countries go offline for maintenance regularly, and a number from one of them cannot be checked while it is - so a nightly run can look here first and wait rather than fill a customer list with rows it could not check. This is the one step that reports trouble as a value instead of failing, so a workflow can branch on it. No account or API key required.",
+      "display_name": "Check which countries are answering",
+      "display_str_template": "Check which VIES countries are answering.",
+      "handler": "actions.check_service_status",
+      "id": "eu_vies_check_service_status",
+      "method": "POST",
+      "mock_response": {
+        "all_available": false,
+        "available_count": 1,
+        "countries": [
+          {
+            "availability": "Available",
+            "available": true,
+            "country": "Germany",
+            "country_code": "DE"
+          },
+          {
+            "availability": "Unavailable",
+            "available": false,
+            "country": "Italy",
+            "country_code": "IT"
+          }
+        ],
+        "summary": "VIES is up, but Italy is not answering. Numbers from that country cannot be checked right now.",
+        "unavailable": [
+          "Italy"
+        ],
+        "vies_online": true
+      },
+      "name": "check_service_status",
+      "parameters": [
+        {
+          "description": "Optional. Report on only these countries. Leave blank for all 28.",
+          "display_name": "Countries",
+          "multi_select": true,
+          "name": "countries",
+          "options": [
+            {
+              "label": "Austria (AT)",
+              "value": "AT"
+            },
+            {
+              "label": "Belgium (BE)",
+              "value": "BE"
+            },
+            {
+              "label": "Bulgaria (BG)",
+              "value": "BG"
+            },
+            {
+              "label": "Croatia (HR)",
+              "value": "HR"
+            },
+            {
+              "label": "Cyprus (CY)",
+              "value": "CY"
+            },
+            {
+              "label": "Czechia (CZ)",
+              "value": "CZ"
+            },
+            {
+              "label": "Denmark (DK)",
+              "value": "DK"
+            },
+            {
+              "label": "Estonia (EE)",
+              "value": "EE"
+            },
+            {
+              "label": "Finland (FI)",
+              "value": "FI"
+            },
+            {
+              "label": "France (FR)",
+              "value": "FR"
+            },
+            {
+              "label": "Germany (DE)",
+              "value": "DE"
+            },
+            {
+              "label": "Greece (EL)",
+              "value": "EL"
+            },
+            {
+              "label": "Hungary (HU)",
+              "value": "HU"
+            },
+            {
+              "label": "Ireland (IE)",
+              "value": "IE"
+            },
+            {
+              "label": "Italy (IT)",
+              "value": "IT"
+            },
+            {
+              "label": "Latvia (LV)",
+              "value": "LV"
+            },
+            {
+              "label": "Lithuania (LT)",
+              "value": "LT"
+            },
+            {
+              "label": "Luxembourg (LU)",
+              "value": "LU"
+            },
+            {
+              "label": "Malta (MT)",
+              "value": "MT"
+            },
+            {
+              "label": "Netherlands (NL)",
+              "value": "NL"
+            },
+            {
+              "label": "Northern Ireland (XI)",
+              "value": "XI"
+            },
+            {
+              "label": "Poland (PL)",
+              "value": "PL"
+            },
+            {
+              "label": "Portugal (PT)",
+              "value": "PT"
+            },
+            {
+              "label": "Romania (RO)",
+              "value": "RO"
+            },
+            {
+              "label": "Slovakia (SK)",
+              "value": "SK"
+            },
+            {
+              "label": "Slovenia (SI)",
+              "value": "SI"
+            },
+            {
+              "label": "Spain (ES)",
+              "value": "ES"
+            },
+            {
+              "label": "Sweden (SE)",
+              "value": "SE"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/eu-vies/check-service-status",
+      "result_str_template": "{eu_vies_check_service_status,summary}",
+      "returns": {
+        "properties": {
+          "all_available": {
+            "description": "True when VIES is up and every country asked about is answering. The one field to branch on before a batch run.",
+            "type": "boolean"
+          },
+          "available_count": {
+            "description": "How many of them are answering.",
+            "type": "integer"
+          },
+          "countries": {
+            "description": "One line per country.",
+            "items": {
+              "properties": {
+                "availability": {
+                  "description": "What VIES calls it, e.g. Available or Unavailable.",
+                  "type": "string"
+                },
+                "available": {
+                  "description": "Whether this country's VAT system is answering right now.",
+                  "type": "boolean"
+                },
+                "country": {
+                  "description": "The country in full, e.g. Ireland.",
+                  "type": "string"
+                },
+                "country_code": {
+                  "description": "The country's VAT prefix, e.g. IE. Greece's is EL, not GR.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "The answer in one sentence, ready to put in an email or a log, e.g. \"IE6388047V is registered to GOOGLE IRELAND LIMITED.\"",
+            "type": "string"
+          },
+          "unavailable": {
+            "description": "The countries that are not, named in full, ready to put in a message.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "vies_online": {
+            "description": "Whether VIES itself is answering.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "check_vat_format": {
+      "description": "Check whether a VAT number has the shape its country publishes - nine digits for Germany, U and eight for Austria - without contacting VIES at all. Instant, and free of the rate limits a real check runs into, so it is the right thing to put behind a signup form or in front of a long list. It is a guide, not a verdict: only Validate a VAT number can say whether a number is actually registered. No account or API key required.",
+      "display_name": "Check a VAT number's format",
+      "display_str_template": "Check the format of VAT number {0}.",
+      "handler": "actions.check_vat_format",
+      "id": "eu_vies_check_vat_format",
+      "method": "POST",
+      "mock_response": {
+        "country": "Germany",
+        "country_code": "DE",
+        "example": "DE123456789",
+        "expected_format": "DE, then 9 digits",
+        "input": "DE 123 456 789",
+        "number": "123456789",
+        "problem": null,
+        "summary": "DE123456789 has the shape of a VAT number from Germany. Nothing has been checked with VIES.",
+        "vat_number": "DE123456789",
+        "well_formed": true
+      },
+      "name": "check_vat_format",
+      "parameters": [
+        {
+          "description": "The VAT number to look at, with its country code, like IE6388047V.",
+          "display_name": "VAT number",
+          "examples": [
+            {
+              "label": "Google Ireland",
+              "value": "IE6388047V"
+            }
+          ],
+          "name": "vat_number",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only needed when the VAT number arrives without its country code in front - a spreadsheet column that keeps the two apart, say. Leave blank and the country the number starts with is used.",
+          "display_name": "Country",
+          "name": "country",
+          "options": [
+            {
+              "label": "Austria (AT)",
+              "value": "AT"
+            },
+            {
+              "label": "Belgium (BE)",
+              "value": "BE"
+            },
+            {
+              "label": "Bulgaria (BG)",
+              "value": "BG"
+            },
+            {
+              "label": "Croatia (HR)",
+              "value": "HR"
+            },
+            {
+              "label": "Cyprus (CY)",
+              "value": "CY"
+            },
+            {
+              "label": "Czechia (CZ)",
+              "value": "CZ"
+            },
+            {
+              "label": "Denmark (DK)",
+              "value": "DK"
+            },
+            {
+              "label": "Estonia (EE)",
+              "value": "EE"
+            },
+            {
+              "label": "Finland (FI)",
+              "value": "FI"
+            },
+            {
+              "label": "France (FR)",
+              "value": "FR"
+            },
+            {
+              "label": "Germany (DE)",
+              "value": "DE"
+            },
+            {
+              "label": "Greece (EL)",
+              "value": "EL"
+            },
+            {
+              "label": "Hungary (HU)",
+              "value": "HU"
+            },
+            {
+              "label": "Ireland (IE)",
+              "value": "IE"
+            },
+            {
+              "label": "Italy (IT)",
+              "value": "IT"
+            },
+            {
+              "label": "Latvia (LV)",
+              "value": "LV"
+            },
+            {
+              "label": "Lithuania (LT)",
+              "value": "LT"
+            },
+            {
+              "label": "Luxembourg (LU)",
+              "value": "LU"
+            },
+            {
+              "label": "Malta (MT)",
+              "value": "MT"
+            },
+            {
+              "label": "Netherlands (NL)",
+              "value": "NL"
+            },
+            {
+              "label": "Northern Ireland (XI)",
+              "value": "XI"
+            },
+            {
+              "label": "Poland (PL)",
+              "value": "PL"
+            },
+            {
+              "label": "Portugal (PT)",
+              "value": "PT"
+            },
+            {
+              "label": "Romania (RO)",
+              "value": "RO"
+            },
+            {
+              "label": "Slovakia (SK)",
+              "value": "SK"
+            },
+            {
+              "label": "Slovenia (SI)",
+              "value": "SI"
+            },
+            {
+              "label": "Spain (ES)",
+              "value": "ES"
+            },
+            {
+              "label": "Sweden (SE)",
+              "value": "SE"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/eu-vies/check-vat-format",
+      "result_str_template": "{eu_vies_check_vat_format,summary}",
+      "returns": {
+        "properties": {
+          "country": {
+            "description": "The country in full, e.g. Ireland.",
+            "type": "string"
+          },
+          "country_code": {
+            "description": "The country's VAT prefix, e.g. IE. Greece's is EL, not GR.",
+            "type": "string"
+          },
+          "example": {
+            "description": "A correctly shaped number for that country.",
+            "type": "string"
+          },
+          "expected_format": {
+            "description": "The shape this country's VAT numbers take, in words, e.g. \"DE, then 9 digits\".",
+            "type": "string"
+          },
+          "input": {
+            "description": "The number exactly as it was given.",
+            "type": "string"
+          },
+          "number": {
+            "description": "The number without its country code.",
+            "type": "string"
+          },
+          "problem": {
+            "description": "What looks wrong, in a sentence you can show someone filling in a form. Empty when nothing does.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "The answer in one sentence, ready to put in an email or a log, e.g. \"IE6388047V is registered to GOOGLE IRELAND LIMITED.\"",
+            "type": "string"
+          },
+          "vat_number": {
+            "description": "The number in its one canonical spelling - country code, then number, no spaces, upper case (IE6388047V) - whatever was typed. Safe to save back to a customer record.",
+            "type": "string"
+          },
+          "well_formed": {
+            "description": "Whether the number matches the shape its country publishes. Nothing was checked with VIES.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_member_states": {
+      "description": "List every country whose VAT numbers can be checked - the 27 EU member states plus Northern Ireland - and which of them will also compare a company's name and address. Useful for filling a country picker in a form, and for knowing before you ask whether Check a company's name and address will actually compare anything. No account or API key required.",
+      "display_name": "List the countries VIES covers",
+      "display_str_template": "List the countries VIES covers.",
+      "handler": "actions.list_member_states",
+      "id": "eu_vies_list_member_states",
+      "method": "POST",
+      "mock_response": {
+        "company_detail_countries": [
+          "Spain"
+        ],
+        "count": 2,
+        "countries": [
+          {
+            "checks_company_details": false,
+            "country": "Germany",
+            "country_code": "DE"
+          },
+          {
+            "checks_company_details": true,
+            "country": "Spain",
+            "country_code": "ES"
+          }
+        ],
+        "summary": "VIES covers 2 countries, of which Spain also compares a company's name and address."
+      },
+      "name": "list_member_states",
+      "parameters": [],
+      "path": "/actions/library/eu-vies/list-member-states",
+      "result_str_template": "{eu_vies_list_member_states,summary}",
+      "returns": {
+        "properties": {
+          "company_detail_countries": {
+            "description": "The countries that compare a company's name and address, named in full.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many countries VIES covers.",
+            "type": "integer"
+          },
+          "countries": {
+            "description": "One line per country.",
+            "items": {
+              "properties": {
+                "checks_company_details": {
+                  "description": "Whether this country compares a company's name and address when the step of that name asks it to. Most do not.",
+                  "type": "boolean"
+                },
+                "country": {
+                  "description": "The country in full, e.g. Ireland.",
+                  "type": "string"
+                },
+                "country_code": {
+                  "description": "The country's VAT prefix, e.g. IE. Greece's is EL, not GR.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "The answer in one sentence, ready to put in an email or a log, e.g. \"IE6388047V is registered to GOOGLE IRELAND LIMITED.\"",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "simulate_validation": {
+      "description": "Ask VIES's own test service for a chosen outcome - registered, not registered, the country's system down, VIES too busy - and see exactly what your workflow would get, including the message it would show. The way to build and prove the branch that handles a bad VAT number or an outage without waiting for one to happen. Nothing real is checked, and unlike every other step here this one hands a failure back as data instead of stopping. No account or API key required.",
+      "display_name": "Simulate a validation result",
+      "display_str_template": "Simulate a VIES result.",
+      "handler": "actions.simulate_validation",
+      "id": "eu_vies_simulate_validation",
+      "method": "POST",
+      "mock_response": {
+        "address": null,
+        "address_lines": [],
+        "checked_at": null,
+        "consultation_number": null,
+        "country": "Germany",
+        "country_code": "DE",
+        "name": null,
+        "number": "301",
+        "outcome": "country_unavailable",
+        "outcome_label": "The country's VAT system is unavailable",
+        "succeeded": false,
+        "summary": "Germany: the VAT system is not responding. This says nothing about the VAT number - it was never checked. Try again shortly, or check which countries are answering first.",
+        "valid": null,
+        "vat_number": "DE301",
+        "would_stop_the_step": true
+      },
+      "name": "simulate_validation",
+      "parameters": [
+        {
+          "default": "valid",
+          "description": "Which answer VIES should come back with. A valid number by default.",
+          "display_name": "Outcome",
+          "name": "outcome",
+          "options": [
+            {
+              "label": "Valid - the number is registered",
+              "value": "valid"
+            },
+            {
+              "label": "Not registered - no such VAT number",
+              "value": "not_registered"
+            },
+            {
+              "label": "Unusable number - VIES will not accept it",
+              "value": "unusable_number"
+            },
+            {
+              "label": "Your own VAT number is rejected",
+              "value": "requester_rejected"
+            },
+            {
+              "label": "VIES itself is unavailable",
+              "value": "vies_unavailable"
+            },
+            {
+              "label": "The country's VAT system is unavailable",
+              "value": "country_unavailable"
+            },
+            {
+              "label": "The country's VAT system times out",
+              "value": "country_timeout"
+            },
+            {
+              "label": "The country will not answer checks of this number",
+              "value": "number_blocked"
+            },
+            {
+              "label": "VIES has blocked this workspace",
+              "value": "workspace_blocked"
+            },
+            {
+              "label": "VIES is too busy to check anything",
+              "value": "too_busy"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Which country the simulated answer should come from. It changes nothing but the country in the answer, which is useful when the branch you are testing reads it.",
+          "display_name": "Country",
+          "name": "country",
+          "options": [
+            {
+              "label": "Austria (AT)",
+              "value": "AT"
+            },
+            {
+              "label": "Belgium (BE)",
+              "value": "BE"
+            },
+            {
+              "label": "Bulgaria (BG)",
+              "value": "BG"
+            },
+            {
+              "label": "Croatia (HR)",
+              "value": "HR"
+            },
+            {
+              "label": "Cyprus (CY)",
+              "value": "CY"
+            },
+            {
+              "label": "Czechia (CZ)",
+              "value": "CZ"
+            },
+            {
+              "label": "Denmark (DK)",
+              "value": "DK"
+            },
+            {
+              "label": "Estonia (EE)",
+              "value": "EE"
+            },
+            {
+              "label": "Finland (FI)",
+              "value": "FI"
+            },
+            {
+              "label": "France (FR)",
+              "value": "FR"
+            },
+            {
+              "label": "Germany (DE)",
+              "value": "DE"
+            },
+            {
+              "label": "Greece (EL)",
+              "value": "EL"
+            },
+            {
+              "label": "Hungary (HU)",
+              "value": "HU"
+            },
+            {
+              "label": "Ireland (IE)",
+              "value": "IE"
+            },
+            {
+              "label": "Italy (IT)",
+              "value": "IT"
+            },
+            {
+              "label": "Latvia (LV)",
+              "value": "LV"
+            },
+            {
+              "label": "Lithuania (LT)",
+              "value": "LT"
+            },
+            {
+              "label": "Luxembourg (LU)",
+              "value": "LU"
+            },
+            {
+              "label": "Malta (MT)",
+              "value": "MT"
+            },
+            {
+              "label": "Netherlands (NL)",
+              "value": "NL"
+            },
+            {
+              "label": "Northern Ireland (XI)",
+              "value": "XI"
+            },
+            {
+              "label": "Poland (PL)",
+              "value": "PL"
+            },
+            {
+              "label": "Portugal (PT)",
+              "value": "PT"
+            },
+            {
+              "label": "Romania (RO)",
+              "value": "RO"
+            },
+            {
+              "label": "Slovakia (SK)",
+              "value": "SK"
+            },
+            {
+              "label": "Slovenia (SI)",
+              "value": "SI"
+            },
+            {
+              "label": "Spain (ES)",
+              "value": "ES"
+            },
+            {
+              "label": "Sweden (SE)",
+              "value": "SE"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/eu-vies/simulate-validation",
+      "result_str_template": "{eu_vies_simulate_validation,summary}",
+      "returns": {
+        "properties": {
+          "address": {
+            "description": "The registered address, as the country publishes it. Empty for countries that do not publish addresses.",
+            "type": "string"
+          },
+          "address_lines": {
+            "description": "The same address split into its lines, for writing into address fields rather than into one box.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "checked_at": {
+            "description": "When the check was made, e.g. 2026-09-03T19:34:45.496Z.",
+            "type": "string"
+          },
+          "consultation_number": {
+            "description": "The consultation number VIES issues as proof of the check - what a tax authority asks for. Present only when your own VAT number is saved with this connection; empty otherwise.",
+            "type": "string"
+          },
+          "country": {
+            "description": "The country in full, e.g. Ireland.",
+            "type": "string"
+          },
+          "country_code": {
+            "description": "The country's VAT prefix, e.g. IE. Greece's is EL, not GR.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The business the number is registered to, as the country publishes it. Empty for countries that do not publish names, and for a number that is not registered.",
+            "type": "string"
+          },
+          "number": {
+            "description": "The number without its country code, e.g. 6388047V.",
+            "type": "string"
+          },
+          "outcome": {
+            "description": "The outcome that was asked for.",
+            "type": "string"
+          },
+          "outcome_label": {
+            "description": "That outcome in words.",
+            "type": "string"
+          },
+          "succeeded": {
+            "description": "Whether VIES produced an answer. False for every outcome that stands for a problem.",
+            "type": "boolean"
+          },
+          "summary": {
+            "description": "The answer in one sentence, ready to put in an email or a log, e.g. \"IE6388047V is registered to GOOGLE IRELAND LIMITED.\"",
+            "type": "string"
+          },
+          "valid": {
+            "description": "Whether the country's tax administration confirmed the number is registered. This is only ever the country's own answer: if VIES or the country could not be reached, the step stops with an error instead of reporting false.",
+            "type": "boolean"
+          },
+          "vat_number": {
+            "description": "The number in its one canonical spelling - country code, then number, no spaces, upper case (IE6388047V) - whatever was typed. Safe to save back to a customer record.",
+            "type": "string"
+          },
+          "would_stop_the_step": {
+            "description": "Whether a real check meeting this outcome would stop the workflow with an error rather than return a result.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "validate_company_details": {
+      "description": "Check a VAT number and, at the same time, ask the country whether the company name and address you hold match the ones on its register - the check that catches a number that is real but belongs to somebody else. Only some countries compare details; the rest confirm the number and compare nothing, which the answer says plainly rather than reporting as a mismatch. List the countries VIES covers to see which ones do. No account or API key required.",
+      "display_name": "Check a company's name and address",
+      "display_str_template": "Check the company behind VAT number {0}.",
+      "handler": "actions.validate_company_details",
+      "id": "eu_vies_validate_company_details",
+      "method": "POST",
+      "mock_response": {
+        "address": null,
+        "address_lines": [],
+        "all_details_match": true,
+        "checked_at": "2026-09-03T19:34:45.496Z",
+        "city_match": "not checked",
+        "company_name_match": "matches",
+        "consultation_number": "WAPIAAAAaBoxRVnF",
+        "country": "Spain",
+        "country_code": "ES",
+        "details_checked": true,
+        "name": null,
+        "number": "A12345674",
+        "postal_code_match": "matches",
+        "registered_city": null,
+        "registered_name": "EJEMPLO SL",
+        "registered_postal_code": "28013",
+        "registered_street": "CALLE MAYOR 1",
+        "street_match": "matches",
+        "summary": "ESA12345674 is registered and every detail matches.",
+        "valid": true,
+        "vat_number": "ESA12345674"
+      },
+      "name": "validate_company_details",
+      "parameters": [
+        {
+          "description": "The VAT number to check, with its country code, like IE6388047V.",
+          "display_name": "VAT number",
+          "examples": [
+            {
+              "label": "Google Ireland",
+              "value": "IE6388047V"
+            }
+          ],
+          "name": "vat_number",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The company name you hold, to compare with the register.",
+          "display_name": "Company name",
+          "name": "company_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The street of the registered address, house number and all.",
+          "display_name": "Street",
+          "name": "street",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The postal code of the registered address.",
+          "display_name": "Postal code",
+          "name": "postal_code",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The city of the registered address.",
+          "display_name": "City",
+          "name": "city",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only needed when the VAT number arrives without its country code in front - a spreadsheet column that keeps the two apart, say. Leave blank and the country the number starts with is used.",
+          "display_name": "Country",
+          "name": "country",
+          "options": [
+            {
+              "label": "Austria (AT)",
+              "value": "AT"
+            },
+            {
+              "label": "Belgium (BE)",
+              "value": "BE"
+            },
+            {
+              "label": "Bulgaria (BG)",
+              "value": "BG"
+            },
+            {
+              "label": "Croatia (HR)",
+              "value": "HR"
+            },
+            {
+              "label": "Cyprus (CY)",
+              "value": "CY"
+            },
+            {
+              "label": "Czechia (CZ)",
+              "value": "CZ"
+            },
+            {
+              "label": "Denmark (DK)",
+              "value": "DK"
+            },
+            {
+              "label": "Estonia (EE)",
+              "value": "EE"
+            },
+            {
+              "label": "Finland (FI)",
+              "value": "FI"
+            },
+            {
+              "label": "France (FR)",
+              "value": "FR"
+            },
+            {
+              "label": "Germany (DE)",
+              "value": "DE"
+            },
+            {
+              "label": "Greece (EL)",
+              "value": "EL"
+            },
+            {
+              "label": "Hungary (HU)",
+              "value": "HU"
+            },
+            {
+              "label": "Ireland (IE)",
+              "value": "IE"
+            },
+            {
+              "label": "Italy (IT)",
+              "value": "IT"
+            },
+            {
+              "label": "Latvia (LV)",
+              "value": "LV"
+            },
+            {
+              "label": "Lithuania (LT)",
+              "value": "LT"
+            },
+            {
+              "label": "Luxembourg (LU)",
+              "value": "LU"
+            },
+            {
+              "label": "Malta (MT)",
+              "value": "MT"
+            },
+            {
+              "label": "Netherlands (NL)",
+              "value": "NL"
+            },
+            {
+              "label": "Northern Ireland (XI)",
+              "value": "XI"
+            },
+            {
+              "label": "Poland (PL)",
+              "value": "PL"
+            },
+            {
+              "label": "Portugal (PT)",
+              "value": "PT"
+            },
+            {
+              "label": "Romania (RO)",
+              "value": "RO"
+            },
+            {
+              "label": "Slovakia (SK)",
+              "value": "SK"
+            },
+            {
+              "label": "Slovenia (SI)",
+              "value": "SI"
+            },
+            {
+              "label": "Spain (ES)",
+              "value": "ES"
+            },
+            {
+              "label": "Sweden (SE)",
+              "value": "SE"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/eu-vies/validate-company-details",
+      "result_str_template": "{eu_vies_validate_company_details,summary}",
+      "returns": {
+        "properties": {
+          "address": {
+            "description": "The registered address, as the country publishes it. Empty for countries that do not publish addresses.",
+            "type": "string"
+          },
+          "address_lines": {
+            "description": "The same address split into its lines, for writing into address fields rather than into one box.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "all_details_match": {
+            "description": "True when every detail you gave matches the register, false when one does not, and empty when the country compared nothing. Branch on this rather than on the fields below.",
+            "type": "boolean"
+          },
+          "checked_at": {
+            "description": "When the check was made, e.g. 2026-09-03T19:34:45.496Z.",
+            "type": "string"
+          },
+          "city_match": {
+            "description": "The city: \"matches\", \"does not match\", or \"not checked\" when the country does not compare this detail.",
+            "type": "string"
+          },
+          "company_name_match": {
+            "description": "The company name: \"matches\", \"does not match\", or \"not checked\" when the country does not compare this detail.",
+            "type": "string"
+          },
+          "consultation_number": {
+            "description": "The consultation number VIES issues as proof of the check - what a tax authority asks for. Present only when your own VAT number is saved with this connection; empty otherwise.",
+            "type": "string"
+          },
+          "country": {
+            "description": "The country in full, e.g. Ireland.",
+            "type": "string"
+          },
+          "country_code": {
+            "description": "The country's VAT prefix, e.g. IE. Greece's is EL, not GR.",
+            "type": "string"
+          },
+          "details_checked": {
+            "description": "Whether the country compared anything at all. Most do not, and that is not a mismatch - check this before acting on the match fields.",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "The business the number is registered to, as the country publishes it. Empty for countries that do not publish names, and for a number that is not registered.",
+            "type": "string"
+          },
+          "number": {
+            "description": "The number without its country code, e.g. 6388047V.",
+            "type": "string"
+          },
+          "postal_code_match": {
+            "description": "The postal code: \"matches\", \"does not match\", or \"not checked\" when the country does not compare this detail.",
+            "type": "string"
+          },
+          "registered_city": {
+            "description": "The city held on the register, when returned.",
+            "type": "string"
+          },
+          "registered_name": {
+            "description": "The company name held on the register, when the country returns it alongside the comparison.",
+            "type": "string"
+          },
+          "registered_postal_code": {
+            "description": "The postal code held on the register, when returned.",
+            "type": "string"
+          },
+          "registered_street": {
+            "description": "The street held on the register, when returned.",
+            "type": "string"
+          },
+          "street_match": {
+            "description": "The street: \"matches\", \"does not match\", or \"not checked\" when the country does not compare this detail.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "The answer in one sentence, ready to put in an email or a log, e.g. \"IE6388047V is registered to GOOGLE IRELAND LIMITED.\"",
+            "type": "string"
+          },
+          "valid": {
+            "description": "Whether the country's tax administration confirmed the number is registered. This is only ever the country's own answer: if VIES or the country could not be reached, the step stops with an error instead of reporting false.",
+            "type": "boolean"
+          },
+          "vat_number": {
+            "description": "The number in its one canonical spelling - country code, then number, no spaces, upper case (IE6388047V) - whatever was typed. Safe to save back to a customer record.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "validate_vat_number": {
+      "description": "Check an EU VAT number against the official register of the country that issued it, and get back whether it is registered, along with the business's name and address where that country publishes them. This is the check that lets you zero-rate a cross-border sale, so it never guesses: if VIES or the country cannot be reached, the step stops and says so rather than reporting the number as invalid. Paste the number as it is written on the invoice - IE6388047V, spaces and all. No account or API key required.",
+      "display_name": "Validate a VAT number",
+      "display_str_template": "Validate VAT number {0}.",
+      "handler": "actions.validate_vat_number",
+      "id": "eu_vies_validate_vat_number",
+      "method": "POST",
+      "mock_response": {
+        "address": "3RD FLOOR, GORDON HOUSE, BARROW STREET, DUBLIN 4",
+        "address_lines": [
+          "3RD FLOOR, GORDON HOUSE, BARROW STREET, DUBLIN 4"
+        ],
+        "checked_at": "2026-09-03T19:34:45.496Z",
+        "consultation_number": "WAPIAAAAaBoxRVnF",
+        "country": "Ireland",
+        "country_code": "IE",
+        "name": "GOOGLE IRELAND LIMITED",
+        "number": "6388047V",
+        "summary": "IE6388047V is registered to GOOGLE IRELAND LIMITED.",
+        "valid": true,
+        "vat_number": "IE6388047V"
+      },
+      "name": "validate_vat_number",
+      "parameters": [
+        {
+          "description": "The VAT number to check, written the way it appears on an invoice: country code and all, like IE6388047V. Spaces, dots and dashes are ignored, and GR is understood for Greece.",
+          "display_name": "VAT number",
+          "examples": [
+            {
+              "label": "Google Ireland",
+              "value": "IE6388047V"
+            }
+          ],
+          "name": "vat_number",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only needed when the VAT number arrives without its country code in front - a spreadsheet column that keeps the two apart, say. Leave blank and the country the number starts with is used.",
+          "display_name": "Country",
+          "name": "country",
+          "options": [
+            {
+              "label": "Austria (AT)",
+              "value": "AT"
+            },
+            {
+              "label": "Belgium (BE)",
+              "value": "BE"
+            },
+            {
+              "label": "Bulgaria (BG)",
+              "value": "BG"
+            },
+            {
+              "label": "Croatia (HR)",
+              "value": "HR"
+            },
+            {
+              "label": "Cyprus (CY)",
+              "value": "CY"
+            },
+            {
+              "label": "Czechia (CZ)",
+              "value": "CZ"
+            },
+            {
+              "label": "Denmark (DK)",
+              "value": "DK"
+            },
+            {
+              "label": "Estonia (EE)",
+              "value": "EE"
+            },
+            {
+              "label": "Finland (FI)",
+              "value": "FI"
+            },
+            {
+              "label": "France (FR)",
+              "value": "FR"
+            },
+            {
+              "label": "Germany (DE)",
+              "value": "DE"
+            },
+            {
+              "label": "Greece (EL)",
+              "value": "EL"
+            },
+            {
+              "label": "Hungary (HU)",
+              "value": "HU"
+            },
+            {
+              "label": "Ireland (IE)",
+              "value": "IE"
+            },
+            {
+              "label": "Italy (IT)",
+              "value": "IT"
+            },
+            {
+              "label": "Latvia (LV)",
+              "value": "LV"
+            },
+            {
+              "label": "Lithuania (LT)",
+              "value": "LT"
+            },
+            {
+              "label": "Luxembourg (LU)",
+              "value": "LU"
+            },
+            {
+              "label": "Malta (MT)",
+              "value": "MT"
+            },
+            {
+              "label": "Netherlands (NL)",
+              "value": "NL"
+            },
+            {
+              "label": "Northern Ireland (XI)",
+              "value": "XI"
+            },
+            {
+              "label": "Poland (PL)",
+              "value": "PL"
+            },
+            {
+              "label": "Portugal (PT)",
+              "value": "PT"
+            },
+            {
+              "label": "Romania (RO)",
+              "value": "RO"
+            },
+            {
+              "label": "Slovakia (SK)",
+              "value": "SK"
+            },
+            {
+              "label": "Slovenia (SI)",
+              "value": "SI"
+            },
+            {
+              "label": "Spain (ES)",
+              "value": "ES"
+            },
+            {
+              "label": "Sweden (SE)",
+              "value": "SE"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/eu-vies/validate-vat-number",
+      "result_str_template": "{eu_vies_validate_vat_number,summary}",
+      "returns": {
+        "properties": {
+          "address": {
+            "description": "The registered address, as the country publishes it. Empty for countries that do not publish addresses.",
+            "type": "string"
+          },
+          "address_lines": {
+            "description": "The same address split into its lines, for writing into address fields rather than into one box.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "checked_at": {
+            "description": "When the check was made, e.g. 2026-09-03T19:34:45.496Z.",
+            "type": "string"
+          },
+          "consultation_number": {
+            "description": "The consultation number VIES issues as proof of the check - what a tax authority asks for. Present only when your own VAT number is saved with this connection; empty otherwise.",
+            "type": "string"
+          },
+          "country": {
+            "description": "The country in full, e.g. Ireland.",
+            "type": "string"
+          },
+          "country_code": {
+            "description": "The country's VAT prefix, e.g. IE. Greece's is EL, not GR.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The business the number is registered to, as the country publishes it. Empty for countries that do not publish names, and for a number that is not registered.",
+            "type": "string"
+          },
+          "number": {
+            "description": "The number without its country code, e.g. 6388047V.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "The answer in one sentence, ready to put in an email or a log, e.g. \"IE6388047V is registered to GOOGLE IRELAND LIMITED.\"",
+            "type": "string"
+          },
+          "valid": {
+            "description": "Whether the country's tax administration confirmed the number is registered. This is only ever the country's own answer: if VIES or the country could not be reached, the step stops with an error instead of reporting false.",
+            "type": "boolean"
+          },
+          "vat_number": {
+            "description": "The number in its one canonical spelling - country code, then number, no spaces, upper case (IE6388047V) - whatever was typed. Safe to save back to a customer record.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "validate_vat_numbers": {
+      "description": "Check a whole list of VAT numbers in one step - a customer export, a signup batch, a quarterly re-check of everyone you invoice - and get one row per number saying valid, not registered, or not checked. A country going quiet halfway through costs that one row and not the run, and a row that could not be checked says so plainly rather than being counted as invalid. Up to 50 numbers at a time, checked at a pace VIES is happy to serve. No account or API key required.",
+      "display_name": "Validate several VAT numbers",
+      "display_str_template": "Validate a list of VAT numbers.",
+      "handler": "actions.validate_vat_numbers",
+      "id": "eu_vies_validate_vat_numbers",
+      "method": "POST",
+      "mock_response": {
+        "all_valid": false,
+        "count": 2,
+        "not_checked_count": 0,
+        "not_registered_count": 1,
+        "results": [
+          {
+            "address": "3RD FLOOR, GORDON HOUSE, BARROW STREET, DUBLIN 4",
+            "address_lines": [
+              "3RD FLOOR, GORDON HOUSE, BARROW STREET, DUBLIN 4"
+            ],
+            "checked_at": "2026-09-03T19:34:45.496Z",
+            "consultation_number": "WAPIAAAAaBoxRVnF",
+            "country": "Ireland",
+            "country_code": "IE",
+            "input": "IE 6388047V",
+            "name": "GOOGLE IRELAND LIMITED",
+            "note": null,
+            "number": "6388047V",
+            "status": "valid",
+            "valid": true,
+            "vat_number": "IE6388047V"
+          },
+          {
+            "address": null,
+            "address_lines": [],
+            "checked_at": "2026-09-03T19:34:46.102Z",
+            "consultation_number": "WAPIAAAAaBoxRVnG",
+            "country": "Germany",
+            "country_code": "DE",
+            "input": "DE999999999",
+            "name": null,
+            "note": null,
+            "number": "999999999",
+            "status": "not_registered",
+            "valid": false,
+            "vat_number": "DE999999999"
+          }
+        ],
+        "summary": "1 of 2 valid, 1 not registered.",
+        "valid_count": 1
+      },
+      "name": "validate_vat_numbers",
+      "parameters": [
+        {
+          "description": "The numbers to check, each written with its country code (IE6388047V). Point this at a list from an earlier step, or type one per line. Up to 50.",
+          "display_name": "VAT numbers",
+          "name": "vat_numbers",
+          "required": true,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Only needed when the VAT number arrives without its country code in front - a spreadsheet column that keeps the two apart, say. Leave blank and the country the number starts with is used.",
+          "display_name": "Country",
+          "name": "country",
+          "options": [
+            {
+              "label": "Austria (AT)",
+              "value": "AT"
+            },
+            {
+              "label": "Belgium (BE)",
+              "value": "BE"
+            },
+            {
+              "label": "Bulgaria (BG)",
+              "value": "BG"
+            },
+            {
+              "label": "Croatia (HR)",
+              "value": "HR"
+            },
+            {
+              "label": "Cyprus (CY)",
+              "value": "CY"
+            },
+            {
+              "label": "Czechia (CZ)",
+              "value": "CZ"
+            },
+            {
+              "label": "Denmark (DK)",
+              "value": "DK"
+            },
+            {
+              "label": "Estonia (EE)",
+              "value": "EE"
+            },
+            {
+              "label": "Finland (FI)",
+              "value": "FI"
+            },
+            {
+              "label": "France (FR)",
+              "value": "FR"
+            },
+            {
+              "label": "Germany (DE)",
+              "value": "DE"
+            },
+            {
+              "label": "Greece (EL)",
+              "value": "EL"
+            },
+            {
+              "label": "Hungary (HU)",
+              "value": "HU"
+            },
+            {
+              "label": "Ireland (IE)",
+              "value": "IE"
+            },
+            {
+              "label": "Italy (IT)",
+              "value": "IT"
+            },
+            {
+              "label": "Latvia (LV)",
+              "value": "LV"
+            },
+            {
+              "label": "Lithuania (LT)",
+              "value": "LT"
+            },
+            {
+              "label": "Luxembourg (LU)",
+              "value": "LU"
+            },
+            {
+              "label": "Malta (MT)",
+              "value": "MT"
+            },
+            {
+              "label": "Netherlands (NL)",
+              "value": "NL"
+            },
+            {
+              "label": "Northern Ireland (XI)",
+              "value": "XI"
+            },
+            {
+              "label": "Poland (PL)",
+              "value": "PL"
+            },
+            {
+              "label": "Portugal (PT)",
+              "value": "PT"
+            },
+            {
+              "label": "Romania (RO)",
+              "value": "RO"
+            },
+            {
+              "label": "Slovakia (SK)",
+              "value": "SK"
+            },
+            {
+              "label": "Slovenia (SI)",
+              "value": "SI"
+            },
+            {
+              "label": "Spain (ES)",
+              "value": "ES"
+            },
+            {
+              "label": "Sweden (SE)",
+              "value": "SE"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/eu-vies/validate-vat-numbers",
+      "result_str_template": "{eu_vies_validate_vat_numbers,summary}",
+      "returns": {
+        "properties": {
+          "all_valid": {
+            "description": "True only when every number came back registered.",
+            "type": "boolean"
+          },
+          "count": {
+            "description": "How many numbers were in the list.",
+            "type": "integer"
+          },
+          "not_checked_count": {
+            "description": "How many could not be checked at all. Worth branching on: these are unknown, not invalid.",
+            "type": "integer"
+          },
+          "not_registered_count": {
+            "description": "How many the country said are not registered.",
+            "type": "integer"
+          },
+          "results": {
+            "description": "One row per number, in the order given.",
+            "items": {
+              "description": "One number's result, in the order the numbers were given.",
+              "properties": {
+                "address": {
+                  "description": "The registered address, as the country publishes it. Empty for countries that do not publish addresses.",
+                  "type": "string"
+                },
+                "address_lines": {
+                  "description": "The same address split into its lines, for writing into address fields rather than into one box.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "checked_at": {
+                  "description": "When the check was made, e.g. 2026-09-03T19:34:45.496Z.",
+                  "type": "string"
+                },
+                "consultation_number": {
+                  "description": "The consultation number VIES issues as proof of the check - what a tax authority asks for. Present only when your own VAT number is saved with this connection; empty otherwise.",
+                  "type": "string"
+                },
+                "country": {
+                  "description": "The country in full, e.g. Ireland.",
+                  "type": "string"
+                },
+                "country_code": {
+                  "description": "The country's VAT prefix, e.g. IE. Greece's is EL, not GR.",
+                  "type": "string"
+                },
+                "input": {
+                  "description": "The number exactly as it was given, for matching rows back to a source list.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The business the number is registered to, as the country publishes it. Empty for countries that do not publish names, and for a number that is not registered.",
+                  "type": "string"
+                },
+                "note": {
+                  "description": "Why a row could not be checked, in a sentence. Empty on a row that was.",
+                  "type": "string"
+                },
+                "number": {
+                  "description": "The number without its country code.",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "\"valid\", \"not_registered\", or \"not_checked\" when the check could not be made. Never treat not_checked as invalid - the note says what stopped it.",
+                  "type": "string"
+                },
+                "valid": {
+                  "description": "True or false for a row that was checked, empty for one that was not.",
+                  "type": "boolean"
+                },
+                "vat_number": {
+                  "description": "The number in its one canonical spelling - country code, then number, no spaces, upper case (IE6388047V) - whatever was typed. Safe to save back to a customer record.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "The answer in one sentence, ready to put in an email or a log, e.g. \"IE6388047V is registered to GOOGLE IRELAND LIMITED.\"",
+            "type": "string"
+          },
+          "valid_count": {
+            "description": "How many are registered.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Confirm that an EU VAT number is genuinely registered, straight from the European Commission's VIES service - the official source, which passes every check live to the tax administration of the country that issued the number. Validate one number or a whole customer list, get the registered business name and address back where the country publishes them, compare a company's name and address with the register, and check the number's format offline before you ever contact VIES. Add your own VAT number once and every check comes back with the consultation number tax authorities accept as proof you verified a customer. A check that could not be made is never reported as an invalid number. No account or API key required.",
+  "display_name": "EU VIES",
+  "id": "eu_vies"
+}

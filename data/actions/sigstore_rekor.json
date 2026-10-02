@@ -1,0 +1,2703 @@
+{
+  "actions": {
+    "find_artifact": {
+      "description": "Check whether a file has been signed, and by whom. Paste its SHA-256 - the output of 'shasum -a 256', or the digest out of a container image reference - and this returns every entry in the public Sigstore log that signs it or attests to it, each one decoded down to who signed it, when, and for a build, which repository and commit it came from. Nothing found means the file was never signed with Sigstore, which is an answer worth having. No account or API key required.",
+      "display_name": "Find an artifact by its checksum",
+      "display_str_template": "Find {0} in the Sigstore transparency log.",
+      "handler": "actions.find_artifact",
+      "id": "sigstore_rekor_find_artifact",
+      "method": "POST",
+      "mock_response": {
+        "algorithm": "sha256",
+        "digest": "20ac9dda4f46161dbfec1e395ac0eedec7ae323106aafc6a5bf766eb763fe41c",
+        "entries": [
+          {
+            "artifact_digest": "sha256:20ac9dda4f46161dbfec1e395ac0eedec7ae323106aafc6a5bf766eb763fe41c",
+            "entry_id": "108e9186e8c5677aad33982fe2e968181b0527564df04e1d536ec0570791870a70bb8074dd8f78b9",
+            "identity_kind": "email",
+            "integrated_at": "2025-10-28T06:44:33Z",
+            "issuer": "https://accounts.google.com",
+            "issuer_name": "Google",
+            "kind": "hashedrekord",
+            "kind_label": "Artifact signature",
+            "log_index": 647892280,
+            "shard_tree_id": "1193050959916656506",
+            "signed_by": "release@example.com",
+            "signer_count": 1,
+            "summary": "release@example.com, vouched for by Google",
+            "url": "https://search.sigstore.dev/?uuid=108e9186e8c5677aad33982fe2e968181b0527564df04e1d536ec0570791870a70bb8074dd8f78b9",
+            "what_was_signed": "an artifact with digest sha256:20ac9dda4f46161dbfec1e395ac0eedec7ae323106aafc6a5bf766eb763fe41c"
+          }
+        ],
+        "found": true,
+        "log_url": "https://rekor.sigstore.dev",
+        "match_count": 1,
+        "matched_on": "checksum",
+        "ordering_note": "",
+        "returned": 1,
+        "sampled": false,
+        "searched_for": "sha256:20ac9dda4f46161dbfec1e395ac0eedec7ae323106aafc6a5bf766eb763fe41c",
+        "signers": [
+          "release@example.com"
+        ]
+      },
+      "name": "find_artifact",
+      "output_formatter": "actions.format_find_artifact_output",
+      "parameters": [
+        {
+          "description": "The SHA-256 of the file, as 64 hexadecimal characters. SHA-1 and SHA-512 work too, and the 'sha256:' prefix is optional - paste the digest however you have it.",
+          "display_name": "Checksum",
+          "examples": [
+            {
+              "label": "A SHA-256",
+              "value": "fbec44c273d9db180a6669467dd0ba2a281a78e502fc4b0ae2a3687236163570"
+            },
+            {
+              "label": "From an image reference",
+              "value": "sha256:20ac9dda4f46161dbfec1e395ac0eedec7ae323106aafc6a5bf766eb763fe41c"
+            }
+          ],
+          "name": "checksum",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 10,
+          "description": "How many entries to return. Most artifacts have one or two; a widely mirrored release can have more.",
+          "display_name": "How many to return",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/sigstore-rekor/find-artifact",
+      "result_str_template": "{sigstore_rekor_find_artifact,match_count} entries in the Sigstore log for this artifact.",
+      "returns": {
+        "properties": {
+          "algorithm": {
+            "description": "Which hash the checksum turned out to be",
+            "type": "string"
+          },
+          "digest": {
+            "description": "The checksum, lowercased",
+            "type": "string"
+          },
+          "entries": {
+            "description": "The matching entries, newest first",
+            "items": {
+              "properties": {
+                "api_version": {
+                  "description": "The version of that kind's schema",
+                  "type": "string"
+                },
+                "artifact_digest": {
+                  "description": "The digest of the file that was signed, for entries that sign a file directly. Empty for an attestation, whose digests are in 'hashes' with what each one is a hash of",
+                  "type": "string"
+                },
+                "attestation": {
+                  "description": "The in-toto statement behind the entry, where the log returned one. Null otherwise, which is the common case",
+                  "properties": {
+                    "predicate_type": {
+                      "description": "What the attestation claims, e.g. a SLSA provenance or an SBOM",
+                      "type": "string"
+                    },
+                    "statement_type": {
+                      "description": "The in-toto statement type",
+                      "type": "string"
+                    },
+                    "subject_count": {
+                      "description": "How many artifacts it names in total",
+                      "type": "integer"
+                    },
+                    "subjects": {
+                      "description": "The artifacts the attestation is about",
+                      "items": {
+                        "properties": {
+                          "digest": {
+                            "description": "Its digest",
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "The artifact's name",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "entry_id": {
+                  "description": "The entry's permanent identifier. Its last 64 characters are the hash of the entry's own contents",
+                  "type": "string"
+                },
+                "has_inclusion_proof": {
+                  "description": "Whether the log returned a proof alongside this entry",
+                  "type": "boolean"
+                },
+                "hashes": {
+                  "description": "Every hash the entry records, each labelled",
+                  "items": {
+                    "description": "One hash the entry records, and what it is a hash of",
+                    "properties": {
+                      "algorithm": {
+                        "description": "e.g. 'sha256'",
+                        "type": "string"
+                      },
+                      "digest": {
+                        "description": "The two together, 'sha256:...'",
+                        "type": "string"
+                      },
+                      "role": {
+                        "description": "'artifact' when this is the file that was signed, or 'attestation payload'/'attestation envelope' when the entry signs a statement about an artifact rather than the artifact",
+                        "type": "string"
+                      },
+                      "value": {
+                        "description": "The hash in hex",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "identity_kind": {
+                  "description": "'email', 'workflow', 'username' or 'key'",
+                  "type": "string"
+                },
+                "integrated_at": {
+                  "description": "When the log accepted it, ISO 8601 in UTC",
+                  "type": "string"
+                },
+                "integrated_timestamp": {
+                  "description": "The same moment as a Unix timestamp",
+                  "type": "integer"
+                },
+                "issuer": {
+                  "description": "The identity provider that vouched",
+                  "type": "string"
+                },
+                "issuer_name": {
+                  "description": "That provider by name",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "What kind of record it is: 'hashedrekord', 'dsse', ...",
+                  "type": "string"
+                },
+                "kind_label": {
+                  "description": "That kind in plain words",
+                  "type": "string"
+                },
+                "leaf_hash": {
+                  "description": "The hash of the entry's contents, as stored in the tree",
+                  "type": "string"
+                },
+                "log_id": {
+                  "description": "The shard's public key hash",
+                  "type": "string"
+                },
+                "log_index": {
+                  "description": "Its position in the log, counting across every shard",
+                  "type": "integer"
+                },
+                "shard_tree_id": {
+                  "description": "Which of the log's trees holds it",
+                  "type": "string"
+                },
+                "signed_by": {
+                  "description": "Who signed it, from the first signer",
+                  "type": "string"
+                },
+                "signer_count": {
+                  "description": "How many signed it",
+                  "type": "integer"
+                },
+                "signers": {
+                  "description": "Every signer, with the full certificate for each",
+                  "items": {
+                    "description": "One signer on the entry",
+                    "properties": {
+                      "certificate": {
+                        "description": "The full certificate, or null for a plain key",
+                        "properties": {
+                          "build_config_uri": {
+                            "description": "The workflow file that ran the build",
+                            "type": "string"
+                          },
+                          "build_trigger": {
+                            "description": "What started it: push, pull_request, schedule, release",
+                            "type": "string"
+                          },
+                          "code_signing": {
+                            "description": "Whether the certificate is marked for code signing",
+                            "type": "boolean"
+                          },
+                          "fingerprint_sha256": {
+                            "description": "SHA-256 of the certificate itself",
+                            "type": "string"
+                          },
+                          "github_workflow_name": {
+                            "description": "The workflow's name, for a GitHub Actions build",
+                            "type": "string"
+                          },
+                          "issuer": {
+                            "description": "The full name of the CA that signed it, which for Sigstore is always Fulcio",
+                            "type": "string"
+                          },
+                          "not_after": {
+                            "description": "When it expired. Sigstore certificates live ten minutes; an expired one does not invalidate the signature, because the log records that the signing happened while it was valid",
+                            "type": "string"
+                          },
+                          "not_before": {
+                            "description": "When the certificate became valid, ISO 8601 in UTC",
+                            "type": "string"
+                          },
+                          "oidc_issuer": {
+                            "description": "The identity provider that authenticated the signer, e.g. https://token.actions.githubusercontent.com",
+                            "type": "string"
+                          },
+                          "run_invocation_uri": {
+                            "description": "A link to the build run itself, where the provider gives one",
+                            "type": "string"
+                          },
+                          "runner_environment": {
+                            "description": "Whether the build ran on infrastructure the platform hosts or on a self-hosted runner",
+                            "type": "string"
+                          },
+                          "san_emails": {
+                            "description": "Email identities on the certificate",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "san_uris": {
+                            "description": "Identity URLs on the certificate, such as a workflow's",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "serial_number": {
+                            "description": "The certificate's serial number, in hex",
+                            "type": "string"
+                          },
+                          "source_repository_digest": {
+                            "description": "The exact commit it was built from",
+                            "type": "string"
+                          },
+                          "source_repository_ref": {
+                            "description": "The branch or tag it was built from",
+                            "type": "string"
+                          },
+                          "source_repository_uri": {
+                            "description": "The repository the build came from",
+                            "type": "string"
+                          },
+                          "source_repository_visibility": {
+                            "description": "Whether the repository was public or private when it was signed",
+                            "type": "string"
+                          },
+                          "token_subject": {
+                            "description": "The raw subject claim from the identity token",
+                            "type": "string"
+                          },
+                          "validity_seconds": {
+                            "description": "How long it was valid for, in seconds",
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "certificate_authority": {
+                        "description": "The CA that issued the certificate",
+                        "type": "string"
+                      },
+                      "identity_kind": {
+                        "description": "'email', 'workflow', 'username' or 'key'",
+                        "type": "string"
+                      },
+                      "issuer": {
+                        "description": "The identity provider that vouched for the signer",
+                        "type": "string"
+                      },
+                      "issuer_name": {
+                        "description": "That provider by name, e.g. 'GitHub Actions'",
+                        "type": "string"
+                      },
+                      "key_fingerprint_sha256": {
+                        "description": "SHA-256 of the certificate or key, for comparing signers",
+                        "type": "string"
+                      },
+                      "key_type": {
+                        "description": "'certificate' for keyless Sigstore signing, otherwise the key format: 'pgp', 'ssh', 'minisign', 'public_key'",
+                        "type": "string"
+                      },
+                      "signed_by": {
+                        "description": "Who signed: an email address, or the identity URL of a build workflow. Empty when the entry was signed with a plain key, which names nobody",
+                        "type": "string"
+                      },
+                      "summary": {
+                        "description": "One sentence naming who signed and who vouched for them",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "summary": {
+                  "description": "One sentence naming who signed and who vouched for them",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "Where to open this entry in Sigstore's search site",
+                  "type": "string"
+                },
+                "what_was_signed": {
+                  "description": "One phrase saying what this entry is a record of",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "found": {
+            "description": "Whether anything matched",
+            "type": "boolean"
+          },
+          "log_url": {
+            "description": "The log that answered",
+            "type": "string"
+          },
+          "match_count": {
+            "description": "How many entries matched in total, before the limit",
+            "type": "integer"
+          },
+          "matched_on": {
+            "description": "Which field was searched",
+            "type": "string"
+          },
+          "ordering_note": {
+            "description": "That caveat spelled out, or empty when everything came back",
+            "type": "string"
+          },
+          "returned": {
+            "description": "How many came back",
+            "type": "integer"
+          },
+          "sampled": {
+            "description": "True when more matched than were returned. The log's search returns matches in no particular order, so what came back is a sample rather than the newest",
+            "type": "boolean"
+          },
+          "searched_for": {
+            "description": "The value as it was sent, after normalising",
+            "type": "string"
+          },
+          "signers": {
+            "description": "Everyone who signed it, without repeats",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_by_key": {
+      "description": "See everything signed with one key, for projects that sign with their own key rather than with a Sigstore identity - PGP releases, SSH-signed tags, minisign, and packages from Alpine and RPM. Paste the public key and say which kind it is. Entries signed this way record that the key signed, not who holds it, which is the difference between key signing and Sigstore's keyless signing. No account or API key required.",
+      "display_name": "Find what a signing key has published",
+      "display_str_template": "Find what a {1} key has signed.",
+      "handler": "actions.find_by_key",
+      "id": "sigstore_rekor_find_by_key",
+      "method": "POST",
+      "mock_response": {
+        "entries": [],
+        "found": true,
+        "key_format": "pgp",
+        "log_url": "https://rekor.sigstore.dev",
+        "match_count": 0,
+        "matched_on": "pgp public key",
+        "ordering_note": "",
+        "returned": 0,
+        "sampled": false,
+        "searched_for": "a pgp key"
+      },
+      "name": "find_by_key",
+      "output_formatter": "actions.format_find_by_key_output",
+      "parameters": [
+        {
+          "description": "The public key itself, pasted whole. Whatever the project publishes: a PGP block, a line from an authorized_keys file, a PEM certificate, or the contents of a minisign .pub file.",
+          "display_name": "Public key",
+          "examples": [
+            {
+              "label": "An SSH key",
+              "value": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
+            },
+            {
+              "label": "A PGP key",
+              "value": "-----BEGIN PGP PUBLIC KEY BLOCK-----\n..."
+            }
+          ],
+          "multiline": true,
+          "name": "public_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "pgp",
+          "description": "What kind of key it is. The log indexes each format separately, so this has to match what the key actually is.",
+          "display_name": "Key format",
+          "name": "key_format",
+          "options": [
+            {
+              "label": "PGP - an armoured block beginning BEGIN PGP PUBLIC KEY",
+              "value": "pgp"
+            },
+            {
+              "label": "X.509 - a PEM certificate or public key",
+              "value": "x509"
+            },
+            {
+              "label": "SSH - a line beginning ssh-ed25519, ssh-rsa or similar",
+              "value": "ssh"
+            },
+            {
+              "label": "minisign - the contents of a .pub file",
+              "value": "minisign"
+            },
+            {
+              "label": "TUF - a key from a TUF root",
+              "value": "tuf"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 10,
+          "description": "How many entries to return. A key used by a package repository can have thousands in the log.",
+          "display_name": "How many to return",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/sigstore-rekor/find-by-key",
+      "result_str_template": "{sigstore_rekor_find_by_key,match_count} entries signed by this key.",
+      "returns": {
+        "properties": {
+          "entries": {
+            "description": "The matching entries, newest first",
+            "items": {
+              "properties": {
+                "api_version": {
+                  "description": "The version of that kind's schema",
+                  "type": "string"
+                },
+                "artifact_digest": {
+                  "description": "The digest of the file that was signed, for entries that sign a file directly. Empty for an attestation, whose digests are in 'hashes' with what each one is a hash of",
+                  "type": "string"
+                },
+                "attestation": {
+                  "description": "The in-toto statement behind the entry, where the log returned one. Null otherwise, which is the common case",
+                  "properties": {
+                    "predicate_type": {
+                      "description": "What the attestation claims, e.g. a SLSA provenance or an SBOM",
+                      "type": "string"
+                    },
+                    "statement_type": {
+                      "description": "The in-toto statement type",
+                      "type": "string"
+                    },
+                    "subject_count": {
+                      "description": "How many artifacts it names in total",
+                      "type": "integer"
+                    },
+                    "subjects": {
+                      "description": "The artifacts the attestation is about",
+                      "items": {
+                        "properties": {
+                          "digest": {
+                            "description": "Its digest",
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "The artifact's name",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "entry_id": {
+                  "description": "The entry's permanent identifier. Its last 64 characters are the hash of the entry's own contents",
+                  "type": "string"
+                },
+                "has_inclusion_proof": {
+                  "description": "Whether the log returned a proof alongside this entry",
+                  "type": "boolean"
+                },
+                "hashes": {
+                  "description": "Every hash the entry records, each labelled",
+                  "items": {
+                    "description": "One hash the entry records, and what it is a hash of",
+                    "properties": {
+                      "algorithm": {
+                        "description": "e.g. 'sha256'",
+                        "type": "string"
+                      },
+                      "digest": {
+                        "description": "The two together, 'sha256:...'",
+                        "type": "string"
+                      },
+                      "role": {
+                        "description": "'artifact' when this is the file that was signed, or 'attestation payload'/'attestation envelope' when the entry signs a statement about an artifact rather than the artifact",
+                        "type": "string"
+                      },
+                      "value": {
+                        "description": "The hash in hex",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "identity_kind": {
+                  "description": "'email', 'workflow', 'username' or 'key'",
+                  "type": "string"
+                },
+                "integrated_at": {
+                  "description": "When the log accepted it, ISO 8601 in UTC",
+                  "type": "string"
+                },
+                "integrated_timestamp": {
+                  "description": "The same moment as a Unix timestamp",
+                  "type": "integer"
+                },
+                "issuer": {
+                  "description": "The identity provider that vouched",
+                  "type": "string"
+                },
+                "issuer_name": {
+                  "description": "That provider by name",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "What kind of record it is: 'hashedrekord', 'dsse', ...",
+                  "type": "string"
+                },
+                "kind_label": {
+                  "description": "That kind in plain words",
+                  "type": "string"
+                },
+                "leaf_hash": {
+                  "description": "The hash of the entry's contents, as stored in the tree",
+                  "type": "string"
+                },
+                "log_id": {
+                  "description": "The shard's public key hash",
+                  "type": "string"
+                },
+                "log_index": {
+                  "description": "Its position in the log, counting across every shard",
+                  "type": "integer"
+                },
+                "shard_tree_id": {
+                  "description": "Which of the log's trees holds it",
+                  "type": "string"
+                },
+                "signed_by": {
+                  "description": "Who signed it, from the first signer",
+                  "type": "string"
+                },
+                "signer_count": {
+                  "description": "How many signed it",
+                  "type": "integer"
+                },
+                "signers": {
+                  "description": "Every signer, with the full certificate for each",
+                  "items": {
+                    "description": "One signer on the entry",
+                    "properties": {
+                      "certificate": {
+                        "description": "The full certificate, or null for a plain key",
+                        "properties": {
+                          "build_config_uri": {
+                            "description": "The workflow file that ran the build",
+                            "type": "string"
+                          },
+                          "build_trigger": {
+                            "description": "What started it: push, pull_request, schedule, release",
+                            "type": "string"
+                          },
+                          "code_signing": {
+                            "description": "Whether the certificate is marked for code signing",
+                            "type": "boolean"
+                          },
+                          "fingerprint_sha256": {
+                            "description": "SHA-256 of the certificate itself",
+                            "type": "string"
+                          },
+                          "github_workflow_name": {
+                            "description": "The workflow's name, for a GitHub Actions build",
+                            "type": "string"
+                          },
+                          "issuer": {
+                            "description": "The full name of the CA that signed it, which for Sigstore is always Fulcio",
+                            "type": "string"
+                          },
+                          "not_after": {
+                            "description": "When it expired. Sigstore certificates live ten minutes; an expired one does not invalidate the signature, because the log records that the signing happened while it was valid",
+                            "type": "string"
+                          },
+                          "not_before": {
+                            "description": "When the certificate became valid, ISO 8601 in UTC",
+                            "type": "string"
+                          },
+                          "oidc_issuer": {
+                            "description": "The identity provider that authenticated the signer, e.g. https://token.actions.githubusercontent.com",
+                            "type": "string"
+                          },
+                          "run_invocation_uri": {
+                            "description": "A link to the build run itself, where the provider gives one",
+                            "type": "string"
+                          },
+                          "runner_environment": {
+                            "description": "Whether the build ran on infrastructure the platform hosts or on a self-hosted runner",
+                            "type": "string"
+                          },
+                          "san_emails": {
+                            "description": "Email identities on the certificate",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "san_uris": {
+                            "description": "Identity URLs on the certificate, such as a workflow's",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "serial_number": {
+                            "description": "The certificate's serial number, in hex",
+                            "type": "string"
+                          },
+                          "source_repository_digest": {
+                            "description": "The exact commit it was built from",
+                            "type": "string"
+                          },
+                          "source_repository_ref": {
+                            "description": "The branch or tag it was built from",
+                            "type": "string"
+                          },
+                          "source_repository_uri": {
+                            "description": "The repository the build came from",
+                            "type": "string"
+                          },
+                          "source_repository_visibility": {
+                            "description": "Whether the repository was public or private when it was signed",
+                            "type": "string"
+                          },
+                          "token_subject": {
+                            "description": "The raw subject claim from the identity token",
+                            "type": "string"
+                          },
+                          "validity_seconds": {
+                            "description": "How long it was valid for, in seconds",
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "certificate_authority": {
+                        "description": "The CA that issued the certificate",
+                        "type": "string"
+                      },
+                      "identity_kind": {
+                        "description": "'email', 'workflow', 'username' or 'key'",
+                        "type": "string"
+                      },
+                      "issuer": {
+                        "description": "The identity provider that vouched for the signer",
+                        "type": "string"
+                      },
+                      "issuer_name": {
+                        "description": "That provider by name, e.g. 'GitHub Actions'",
+                        "type": "string"
+                      },
+                      "key_fingerprint_sha256": {
+                        "description": "SHA-256 of the certificate or key, for comparing signers",
+                        "type": "string"
+                      },
+                      "key_type": {
+                        "description": "'certificate' for keyless Sigstore signing, otherwise the key format: 'pgp', 'ssh', 'minisign', 'public_key'",
+                        "type": "string"
+                      },
+                      "signed_by": {
+                        "description": "Who signed: an email address, or the identity URL of a build workflow. Empty when the entry was signed with a plain key, which names nobody",
+                        "type": "string"
+                      },
+                      "summary": {
+                        "description": "One sentence naming who signed and who vouched for them",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "summary": {
+                  "description": "One sentence naming who signed and who vouched for them",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "Where to open this entry in Sigstore's search site",
+                  "type": "string"
+                },
+                "what_was_signed": {
+                  "description": "One phrase saying what this entry is a record of",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "found": {
+            "description": "Whether anything matched",
+            "type": "boolean"
+          },
+          "key_format": {
+            "description": "The format that was searched",
+            "type": "string"
+          },
+          "log_url": {
+            "description": "The log that answered",
+            "type": "string"
+          },
+          "match_count": {
+            "description": "How many entries matched in total, before the limit",
+            "type": "integer"
+          },
+          "matched_on": {
+            "description": "Which field was searched",
+            "type": "string"
+          },
+          "ordering_note": {
+            "description": "That caveat spelled out, or empty when everything came back",
+            "type": "string"
+          },
+          "returned": {
+            "description": "How many came back",
+            "type": "integer"
+          },
+          "sampled": {
+            "description": "True when more matched than were returned. The log's search returns matches in no particular order, so what came back is a sample rather than the newest",
+            "type": "boolean"
+          },
+          "searched_for": {
+            "description": "The value as it was sent, after normalising",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_by_signer": {
+      "description": "See everything one identity has signed. That identity is either an email address, for a person who signed interactively, or the identity URL of a build workflow - the form GitHub Actions uses, ending in the git ref the build ran on. Useful for watching a release pipeline: run it on a schedule and you will see what your own workflow published, and anything published in its name that you did not expect. No account or API key required.",
+      "display_name": "Find what a signer has published",
+      "display_str_template": "Find what {0} has signed.",
+      "handler": "actions.find_by_signer",
+      "id": "sigstore_rekor_find_by_signer",
+      "method": "POST",
+      "mock_response": {
+        "entries": [
+          {
+            "entry_id": "108e9186e8c5677afe975549c9911f1a66c3e0fe6019269f09621eb1c2621e9f73f98f696f81c3cf",
+            "identity_kind": "workflow",
+            "integrated_at": "2026-06-21T05:53:51Z",
+            "issuer": "https://token.actions.githubusercontent.com",
+            "issuer_name": "GitHub Actions",
+            "kind": "dsse",
+            "kind_label": "DSSE envelope",
+            "log_index": 1892581158,
+            "shard_tree_id": "1193050959916656506",
+            "signed_by": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/builder_go_slsa3.yml@refs/tags/v2.0.0",
+            "signer_count": 1,
+            "summary": "builder_go_slsa3.yml in slsa-framework/slsa-github-generator (tag v2.0.0), vouched for by GitHub Actions",
+            "url": "https://search.sigstore.dev/?uuid=108e9186e8c5677afe975549c9911f1a66c3e0fe6019269f09621eb1c2621e9f73f98f696f81c3cf",
+            "what_was_signed": "a DSSE envelope whose payload hashes to sha256:a68e7e8299219fa3e7f97c900f363803bbd32acb8aa2df1cac1b46632e15a58b"
+          }
+        ],
+        "found": true,
+        "identity": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/builder_go_slsa3.yml@refs/tags/v2.0.0",
+        "identity_kind": "identity",
+        "log_url": "https://rekor.sigstore.dev",
+        "match_count": 18413,
+        "matched_on": "identity",
+        "normalised": false,
+        "ordering_note": "The log's search returns matches in no particular order, so these 1 are a sample of the 18413 that matched, not the most recent.",
+        "returned": 1,
+        "sampled": true,
+        "searched_for": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/builder_go_slsa3.yml@refs/tags/v2.0.0"
+      },
+      "name": "find_by_signer",
+      "output_formatter": "actions.format_find_by_signer_output",
+      "parameters": [
+        {
+          "description": "The email address, or the workflow identity URL. Matched exactly and in full, because that is all the log's index can do - a workflow identity has to include the '@' and the git ref at the end of it. Every entry this integration returns carries the identity that signed it under 'signed_by', in exactly the form this field wants.",
+          "display_name": "Signer",
+          "examples": [
+            {
+              "label": "A release workflow at a tag",
+              "value": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/builder_go_slsa3.yml@refs/tags/v2.0.0"
+            },
+            {
+              "label": "A person",
+              "value": "release@example.com"
+            }
+          ],
+          "name": "identity",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 10,
+          "description": "How many entries to return. A busy workflow can have tens of thousands in the log, and the log's search returns them in no particular order, so a larger number gives a bigger sample rather than a more recent one - the result always says how many matched in total.",
+          "display_name": "How many to return",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/sigstore-rekor/find-by-signer",
+      "result_str_template": "{sigstore_rekor_find_by_signer,match_count} entries signed by this identity.",
+      "returns": {
+        "properties": {
+          "entries": {
+            "description": "The matching entries, newest first",
+            "items": {
+              "properties": {
+                "api_version": {
+                  "description": "The version of that kind's schema",
+                  "type": "string"
+                },
+                "artifact_digest": {
+                  "description": "The digest of the file that was signed, for entries that sign a file directly. Empty for an attestation, whose digests are in 'hashes' with what each one is a hash of",
+                  "type": "string"
+                },
+                "attestation": {
+                  "description": "The in-toto statement behind the entry, where the log returned one. Null otherwise, which is the common case",
+                  "properties": {
+                    "predicate_type": {
+                      "description": "What the attestation claims, e.g. a SLSA provenance or an SBOM",
+                      "type": "string"
+                    },
+                    "statement_type": {
+                      "description": "The in-toto statement type",
+                      "type": "string"
+                    },
+                    "subject_count": {
+                      "description": "How many artifacts it names in total",
+                      "type": "integer"
+                    },
+                    "subjects": {
+                      "description": "The artifacts the attestation is about",
+                      "items": {
+                        "properties": {
+                          "digest": {
+                            "description": "Its digest",
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "The artifact's name",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "entry_id": {
+                  "description": "The entry's permanent identifier. Its last 64 characters are the hash of the entry's own contents",
+                  "type": "string"
+                },
+                "has_inclusion_proof": {
+                  "description": "Whether the log returned a proof alongside this entry",
+                  "type": "boolean"
+                },
+                "hashes": {
+                  "description": "Every hash the entry records, each labelled",
+                  "items": {
+                    "description": "One hash the entry records, and what it is a hash of",
+                    "properties": {
+                      "algorithm": {
+                        "description": "e.g. 'sha256'",
+                        "type": "string"
+                      },
+                      "digest": {
+                        "description": "The two together, 'sha256:...'",
+                        "type": "string"
+                      },
+                      "role": {
+                        "description": "'artifact' when this is the file that was signed, or 'attestation payload'/'attestation envelope' when the entry signs a statement about an artifact rather than the artifact",
+                        "type": "string"
+                      },
+                      "value": {
+                        "description": "The hash in hex",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "identity_kind": {
+                  "description": "'email', 'workflow', 'username' or 'key'",
+                  "type": "string"
+                },
+                "integrated_at": {
+                  "description": "When the log accepted it, ISO 8601 in UTC",
+                  "type": "string"
+                },
+                "integrated_timestamp": {
+                  "description": "The same moment as a Unix timestamp",
+                  "type": "integer"
+                },
+                "issuer": {
+                  "description": "The identity provider that vouched",
+                  "type": "string"
+                },
+                "issuer_name": {
+                  "description": "That provider by name",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "What kind of record it is: 'hashedrekord', 'dsse', ...",
+                  "type": "string"
+                },
+                "kind_label": {
+                  "description": "That kind in plain words",
+                  "type": "string"
+                },
+                "leaf_hash": {
+                  "description": "The hash of the entry's contents, as stored in the tree",
+                  "type": "string"
+                },
+                "log_id": {
+                  "description": "The shard's public key hash",
+                  "type": "string"
+                },
+                "log_index": {
+                  "description": "Its position in the log, counting across every shard",
+                  "type": "integer"
+                },
+                "shard_tree_id": {
+                  "description": "Which of the log's trees holds it",
+                  "type": "string"
+                },
+                "signed_by": {
+                  "description": "Who signed it, from the first signer",
+                  "type": "string"
+                },
+                "signer_count": {
+                  "description": "How many signed it",
+                  "type": "integer"
+                },
+                "signers": {
+                  "description": "Every signer, with the full certificate for each",
+                  "items": {
+                    "description": "One signer on the entry",
+                    "properties": {
+                      "certificate": {
+                        "description": "The full certificate, or null for a plain key",
+                        "properties": {
+                          "build_config_uri": {
+                            "description": "The workflow file that ran the build",
+                            "type": "string"
+                          },
+                          "build_trigger": {
+                            "description": "What started it: push, pull_request, schedule, release",
+                            "type": "string"
+                          },
+                          "code_signing": {
+                            "description": "Whether the certificate is marked for code signing",
+                            "type": "boolean"
+                          },
+                          "fingerprint_sha256": {
+                            "description": "SHA-256 of the certificate itself",
+                            "type": "string"
+                          },
+                          "github_workflow_name": {
+                            "description": "The workflow's name, for a GitHub Actions build",
+                            "type": "string"
+                          },
+                          "issuer": {
+                            "description": "The full name of the CA that signed it, which for Sigstore is always Fulcio",
+                            "type": "string"
+                          },
+                          "not_after": {
+                            "description": "When it expired. Sigstore certificates live ten minutes; an expired one does not invalidate the signature, because the log records that the signing happened while it was valid",
+                            "type": "string"
+                          },
+                          "not_before": {
+                            "description": "When the certificate became valid, ISO 8601 in UTC",
+                            "type": "string"
+                          },
+                          "oidc_issuer": {
+                            "description": "The identity provider that authenticated the signer, e.g. https://token.actions.githubusercontent.com",
+                            "type": "string"
+                          },
+                          "run_invocation_uri": {
+                            "description": "A link to the build run itself, where the provider gives one",
+                            "type": "string"
+                          },
+                          "runner_environment": {
+                            "description": "Whether the build ran on infrastructure the platform hosts or on a self-hosted runner",
+                            "type": "string"
+                          },
+                          "san_emails": {
+                            "description": "Email identities on the certificate",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "san_uris": {
+                            "description": "Identity URLs on the certificate, such as a workflow's",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "serial_number": {
+                            "description": "The certificate's serial number, in hex",
+                            "type": "string"
+                          },
+                          "source_repository_digest": {
+                            "description": "The exact commit it was built from",
+                            "type": "string"
+                          },
+                          "source_repository_ref": {
+                            "description": "The branch or tag it was built from",
+                            "type": "string"
+                          },
+                          "source_repository_uri": {
+                            "description": "The repository the build came from",
+                            "type": "string"
+                          },
+                          "source_repository_visibility": {
+                            "description": "Whether the repository was public or private when it was signed",
+                            "type": "string"
+                          },
+                          "token_subject": {
+                            "description": "The raw subject claim from the identity token",
+                            "type": "string"
+                          },
+                          "validity_seconds": {
+                            "description": "How long it was valid for, in seconds",
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "certificate_authority": {
+                        "description": "The CA that issued the certificate",
+                        "type": "string"
+                      },
+                      "identity_kind": {
+                        "description": "'email', 'workflow', 'username' or 'key'",
+                        "type": "string"
+                      },
+                      "issuer": {
+                        "description": "The identity provider that vouched for the signer",
+                        "type": "string"
+                      },
+                      "issuer_name": {
+                        "description": "That provider by name, e.g. 'GitHub Actions'",
+                        "type": "string"
+                      },
+                      "key_fingerprint_sha256": {
+                        "description": "SHA-256 of the certificate or key, for comparing signers",
+                        "type": "string"
+                      },
+                      "key_type": {
+                        "description": "'certificate' for keyless Sigstore signing, otherwise the key format: 'pgp', 'ssh', 'minisign', 'public_key'",
+                        "type": "string"
+                      },
+                      "signed_by": {
+                        "description": "Who signed: an email address, or the identity URL of a build workflow. Empty when the entry was signed with a plain key, which names nobody",
+                        "type": "string"
+                      },
+                      "summary": {
+                        "description": "One sentence naming who signed and who vouched for them",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "summary": {
+                  "description": "One sentence naming who signed and who vouched for them",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "Where to open this entry in Sigstore's search site",
+                  "type": "string"
+                },
+                "what_was_signed": {
+                  "description": "One phrase saying what this entry is a record of",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "found": {
+            "description": "Whether anything matched",
+            "type": "boolean"
+          },
+          "identity": {
+            "description": "The identity that was searched for",
+            "type": "string"
+          },
+          "identity_kind": {
+            "description": "'email' or 'identity' - which of the log's two index fields the search used",
+            "type": "string"
+          },
+          "log_url": {
+            "description": "The log that answered",
+            "type": "string"
+          },
+          "match_count": {
+            "description": "How many entries matched in total, before the limit",
+            "type": "integer"
+          },
+          "matched_on": {
+            "description": "Which field was searched",
+            "type": "string"
+          },
+          "normalised": {
+            "description": "Whether the value was tidied before searching, such as a trailing slash removed",
+            "type": "boolean"
+          },
+          "ordering_note": {
+            "description": "That caveat spelled out, or empty when everything came back",
+            "type": "string"
+          },
+          "returned": {
+            "description": "How many came back",
+            "type": "integer"
+          },
+          "sampled": {
+            "description": "True when more matched than were returned. The log's search returns matches in no particular order, so what came back is a sample rather than the newest",
+            "type": "boolean"
+          },
+          "searched_for": {
+            "description": "The value as it was sent, after normalising",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_entry": {
+      "description": "Read one entry in full. Everything the log holds about it, decoded: what was signed, who signed it and who vouched for them, when the log accepted it, the whole signing certificate with the repository, commit, workflow run and runner behind it, and the entry's own record as the log stored it. Takes either the entry's identifier or its position in the log. No account or API key required.",
+      "display_name": "Get a log entry",
+      "display_str_template": "Get Sigstore log entry {0}.",
+      "handler": "actions.get_entry",
+      "id": "sigstore_rekor_get_entry",
+      "method": "POST",
+      "mock_response": {
+        "entry": {
+          "entry_id": "108e9186e8c5677afe975549c9911f1a66c3e0fe6019269f09621eb1c2621e9f73f98f696f81c3cf",
+          "identity_kind": "workflow",
+          "integrated_at": "2026-06-21T05:53:51Z",
+          "issuer": "https://token.actions.githubusercontent.com",
+          "issuer_name": "GitHub Actions",
+          "kind": "dsse",
+          "kind_label": "DSSE envelope",
+          "log_index": 1892581158,
+          "shard_tree_id": "1193050959916656506",
+          "signed_by": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/builder_go_slsa3.yml@refs/tags/v2.0.0",
+          "signer_count": 1,
+          "summary": "builder_go_slsa3.yml in slsa-framework/slsa-github-generator (tag v2.0.0), vouched for by GitHub Actions",
+          "url": "https://search.sigstore.dev/?uuid=108e9186e8c5677afe975549c9911f1a66c3e0fe6019269f09621eb1c2621e9f73f98f696f81c3cf",
+          "what_was_signed": "a DSSE envelope whose payload hashes to sha256:a68e7e8299219fa3e7f97c900f363803bbd32acb8aa2df1cac1b46632e15a58b"
+        },
+        "found": true,
+        "log_url": "https://rekor.sigstore.dev",
+        "looked_up": "1892581158",
+        "looked_up_by": "log position",
+        "message": "DSSE envelope #1,892,581,158, added 2026-06-21 05:53:51 UTC. builder_go_slsa3.yml in slsa-framework/slsa-github-generator (tag v2.0.0), vouched for by GitHub Actions"
+      },
+      "name": "get_entry",
+      "output_formatter": "actions.format_entry_output",
+      "parameters": [
+        {
+          "description": "Which entry to read. Paste either its identifier - the long hexadecimal string Sigstore's tools and the search site call a UUID - or its position in the log, which is a plain number. Whichever you have works; there is no need to say which kind it is.",
+          "display_name": "Entry",
+          "examples": [
+            {
+              "label": "An entry identifier",
+              "value": "108e9186e8c5677afe975549c9911f1a66c3e0fe6019269f09621eb1c2621e9f73f98f696f81c3cf"
+            },
+            {
+              "label": "A position in the log",
+              "value": "1892581158"
+            }
+          ],
+          "name": "entry",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/sigstore-rekor/get-entry",
+      "result_str_template": "{sigstore_rekor_get_entry,message}",
+      "returns": {
+        "properties": {
+          "entry": {
+            "description": "The entry, or null when there is none",
+            "properties": {
+              "api_version": {
+                "description": "The version of that kind's schema",
+                "type": "string"
+              },
+              "artifact_digest": {
+                "description": "The digest of the file that was signed, for entries that sign a file directly. Empty for an attestation, whose digests are in 'hashes' with what each one is a hash of",
+                "type": "string"
+              },
+              "attestation": {
+                "description": "The in-toto statement behind the entry, where the log returned one. Null otherwise, which is the common case",
+                "properties": {
+                  "predicate_type": {
+                    "description": "What the attestation claims, e.g. a SLSA provenance or an SBOM",
+                    "type": "string"
+                  },
+                  "statement_type": {
+                    "description": "The in-toto statement type",
+                    "type": "string"
+                  },
+                  "subject_count": {
+                    "description": "How many artifacts it names in total",
+                    "type": "integer"
+                  },
+                  "subjects": {
+                    "description": "The artifacts the attestation is about",
+                    "items": {
+                      "properties": {
+                        "digest": {
+                          "description": "Its digest",
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "The artifact's name",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "entry_id": {
+                "description": "The entry's permanent identifier. Its last 64 characters are the hash of the entry's own contents",
+                "type": "string"
+              },
+              "has_inclusion_proof": {
+                "description": "Whether the log returned a proof alongside this entry",
+                "type": "boolean"
+              },
+              "hashes": {
+                "description": "Every hash the entry records, each labelled",
+                "items": {
+                  "description": "One hash the entry records, and what it is a hash of",
+                  "properties": {
+                    "algorithm": {
+                      "description": "e.g. 'sha256'",
+                      "type": "string"
+                    },
+                    "digest": {
+                      "description": "The two together, 'sha256:...'",
+                      "type": "string"
+                    },
+                    "role": {
+                      "description": "'artifact' when this is the file that was signed, or 'attestation payload'/'attestation envelope' when the entry signs a statement about an artifact rather than the artifact",
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "The hash in hex",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "identity_kind": {
+                "description": "'email', 'workflow', 'username' or 'key'",
+                "type": "string"
+              },
+              "integrated_at": {
+                "description": "When the log accepted it, ISO 8601 in UTC",
+                "type": "string"
+              },
+              "integrated_timestamp": {
+                "description": "The same moment as a Unix timestamp",
+                "type": "integer"
+              },
+              "issuer": {
+                "description": "The identity provider that vouched",
+                "type": "string"
+              },
+              "issuer_name": {
+                "description": "That provider by name",
+                "type": "string"
+              },
+              "kind": {
+                "description": "What kind of record it is: 'hashedrekord', 'dsse', ...",
+                "type": "string"
+              },
+              "kind_label": {
+                "description": "That kind in plain words",
+                "type": "string"
+              },
+              "leaf_hash": {
+                "description": "The hash of the entry's contents, as stored in the tree",
+                "type": "string"
+              },
+              "log_id": {
+                "description": "The shard's public key hash",
+                "type": "string"
+              },
+              "log_index": {
+                "description": "Its position in the log, counting across every shard",
+                "type": "integer"
+              },
+              "shard_tree_id": {
+                "description": "Which of the log's trees holds it",
+                "type": "string"
+              },
+              "signed_by": {
+                "description": "Who signed it, from the first signer",
+                "type": "string"
+              },
+              "signer_count": {
+                "description": "How many signed it",
+                "type": "integer"
+              },
+              "signers": {
+                "description": "Every signer, with the full certificate for each",
+                "items": {
+                  "description": "One signer on the entry",
+                  "properties": {
+                    "certificate": {
+                      "description": "The full certificate, or null for a plain key",
+                      "properties": {
+                        "build_config_uri": {
+                          "description": "The workflow file that ran the build",
+                          "type": "string"
+                        },
+                        "build_trigger": {
+                          "description": "What started it: push, pull_request, schedule, release",
+                          "type": "string"
+                        },
+                        "code_signing": {
+                          "description": "Whether the certificate is marked for code signing",
+                          "type": "boolean"
+                        },
+                        "fingerprint_sha256": {
+                          "description": "SHA-256 of the certificate itself",
+                          "type": "string"
+                        },
+                        "github_workflow_name": {
+                          "description": "The workflow's name, for a GitHub Actions build",
+                          "type": "string"
+                        },
+                        "issuer": {
+                          "description": "The full name of the CA that signed it, which for Sigstore is always Fulcio",
+                          "type": "string"
+                        },
+                        "not_after": {
+                          "description": "When it expired. Sigstore certificates live ten minutes; an expired one does not invalidate the signature, because the log records that the signing happened while it was valid",
+                          "type": "string"
+                        },
+                        "not_before": {
+                          "description": "When the certificate became valid, ISO 8601 in UTC",
+                          "type": "string"
+                        },
+                        "oidc_issuer": {
+                          "description": "The identity provider that authenticated the signer, e.g. https://token.actions.githubusercontent.com",
+                          "type": "string"
+                        },
+                        "run_invocation_uri": {
+                          "description": "A link to the build run itself, where the provider gives one",
+                          "type": "string"
+                        },
+                        "runner_environment": {
+                          "description": "Whether the build ran on infrastructure the platform hosts or on a self-hosted runner",
+                          "type": "string"
+                        },
+                        "san_emails": {
+                          "description": "Email identities on the certificate",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "san_uris": {
+                          "description": "Identity URLs on the certificate, such as a workflow's",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "serial_number": {
+                          "description": "The certificate's serial number, in hex",
+                          "type": "string"
+                        },
+                        "source_repository_digest": {
+                          "description": "The exact commit it was built from",
+                          "type": "string"
+                        },
+                        "source_repository_ref": {
+                          "description": "The branch or tag it was built from",
+                          "type": "string"
+                        },
+                        "source_repository_uri": {
+                          "description": "The repository the build came from",
+                          "type": "string"
+                        },
+                        "source_repository_visibility": {
+                          "description": "Whether the repository was public or private when it was signed",
+                          "type": "string"
+                        },
+                        "token_subject": {
+                          "description": "The raw subject claim from the identity token",
+                          "type": "string"
+                        },
+                        "validity_seconds": {
+                          "description": "How long it was valid for, in seconds",
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "certificate_authority": {
+                      "description": "The CA that issued the certificate",
+                      "type": "string"
+                    },
+                    "identity_kind": {
+                      "description": "'email', 'workflow', 'username' or 'key'",
+                      "type": "string"
+                    },
+                    "issuer": {
+                      "description": "The identity provider that vouched for the signer",
+                      "type": "string"
+                    },
+                    "issuer_name": {
+                      "description": "That provider by name, e.g. 'GitHub Actions'",
+                      "type": "string"
+                    },
+                    "key_fingerprint_sha256": {
+                      "description": "SHA-256 of the certificate or key, for comparing signers",
+                      "type": "string"
+                    },
+                    "key_type": {
+                      "description": "'certificate' for keyless Sigstore signing, otherwise the key format: 'pgp', 'ssh', 'minisign', 'public_key'",
+                      "type": "string"
+                    },
+                    "signed_by": {
+                      "description": "Who signed: an email address, or the identity URL of a build workflow. Empty when the entry was signed with a plain key, which names nobody",
+                      "type": "string"
+                    },
+                    "summary": {
+                      "description": "One sentence naming who signed and who vouched for them",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "summary": {
+                "description": "One sentence naming who signed and who vouched for them",
+                "type": "string"
+              },
+              "url": {
+                "description": "Where to open this entry in Sigstore's search site",
+                "type": "string"
+              },
+              "what_was_signed": {
+                "description": "One phrase saying what this entry is a record of",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "found": {
+            "description": "Whether the log holds such an entry",
+            "type": "boolean"
+          },
+          "log_url": {
+            "description": "The log that answered",
+            "type": "string"
+          },
+          "looked_up": {
+            "description": "What was asked for",
+            "type": "string"
+          },
+          "looked_up_by": {
+            "description": "'entry identifier' or 'log position' - which kind of value it turned out to be",
+            "type": "string"
+          },
+          "message": {
+            "description": "The entry in one line",
+            "type": "string"
+          },
+          "raw_entry": {
+            "description": "The record exactly as the log stored it, for a field this integration does not name by itself - a JAR's manifest, an RPM's headers, a TUF root",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_log_status": {
+      "description": "Read how big the public Sigstore log is right now, the root hash of its tree, the public key it signs with, and its checkpoint - the short signed statement of its size and root. Save that checkpoint. Handing it back to 'Check the log has not been rewritten' on a later run is what proves nothing published in between was altered or removed. No account or API key required.",
+      "display_name": "Get the log's current state",
+      "display_str_template": "Get the Sigstore transparency log's state.",
+      "handler": "actions.get_log_status",
+      "id": "sigstore_rekor_get_log_status",
+      "method": "POST",
+      "mock_response": {
+        "checkpoint": "rekor.sigstore.dev - 1193050959916656506\n2701923494\nG2jd6RFAWNXNOdEP2p+9KqhthcOcYU6Lv3NAb7a0NLk=\n\n\u2014 rekor.sigstore.dev wNI9ajBFAiEA+HWgHpxEAOSuCVGjWbqitI6jDwzkYVcc619IS31k2LgCICUuPkr1LP8xDX42C7n0CSCeVYnvTUD1jxmFV7Uqngy+",
+        "checkpoint_log": "rekor.sigstore.dev",
+        "keep_this": "Save the checkpoint. Handing it back to 'Check the log has not been rewritten' on a later run proves that everything published up to this moment is still there, unchanged.",
+        "log_url": "https://rekor.sigstore.dev",
+        "message": "The Sigstore transparency log holds 2,823,827,756 entries. Its current shard is at 2,701,923,494.",
+        "public_key": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2G2Y+2tabdTV5BcGiBIx0a9fAFwr\nkBbmLSGtks4L3qX6yYY0zufBnhC8Ur/iy55GhWP/9A/bY2LhC30M9+RYtw==\n-----END PUBLIC KEY-----",
+        "read_at": "2026-09-14T00:43:58Z",
+        "retired_shards": 2,
+        "root_hash": "1b68dde9114058d5cd39d10fda9fbd2aa86d85c39c614e8bbf73406fb6b434b9",
+        "shards": [
+          {
+            "active": false,
+            "root_hash": "4d006aa46efcb607dd51d900b1213754c50cc9251c3405c6c2561d9d6a2f3239",
+            "tree_id": "3904496407287907110",
+            "tree_size": 4163431
+          },
+          {
+            "active": true,
+            "root_hash": "1b68dde9114058d5cd39d10fda9fbd2aa86d85c39c614e8bbf73406fb6b434b9",
+            "tree_id": "1193050959916656506",
+            "tree_size": 2701923494
+          }
+        ],
+        "total_entries": 2823827756,
+        "tree_id": "1193050959916656506",
+        "tree_size": 2701923494
+      },
+      "name": "get_log_status",
+      "output_formatter": "actions.format_log_status_output",
+      "parameters": [],
+      "path": "/actions/library/sigstore-rekor/get-log-status",
+      "result_str_template": "The Sigstore log holds {sigstore_rekor_get_log_status,total_entries} entries.",
+      "returns": {
+        "properties": {
+          "checkpoint": {
+            "description": "The log's signed statement of its size and root. This is the value to save and hand back later",
+            "type": "string"
+          },
+          "checkpoint_log": {
+            "description": "Which log signed that checkpoint",
+            "type": "string"
+          },
+          "keep_this": {
+            "description": "What the checkpoint is for",
+            "type": "string"
+          },
+          "log_url": {
+            "description": "The log that answered",
+            "type": "string"
+          },
+          "message": {
+            "description": "The log's size in one line",
+            "type": "string"
+          },
+          "public_key": {
+            "description": "The PEM public key the log signs with",
+            "type": "string"
+          },
+          "read_at": {
+            "description": "When this was read, ISO 8601 in UTC",
+            "type": "string"
+          },
+          "retired_shards": {
+            "description": "How many of those are frozen",
+            "type": "integer"
+          },
+          "root_hash": {
+            "description": "The root of that tree's Merkle tree",
+            "type": "string"
+          },
+          "shards": {
+            "description": "Every tree the log has had. It starts a new one periodically and freezes the old, which is why an entry's position and its position within its own tree are different numbers",
+            "items": {
+              "description": "One of the log's trees",
+              "properties": {
+                "active": {
+                  "description": "Whether new entries are still being added to it",
+                  "type": "boolean"
+                },
+                "root_hash": {
+                  "description": "The root of its Merkle tree",
+                  "type": "string"
+                },
+                "tree_id": {
+                  "description": "The tree's identifier",
+                  "type": "string"
+                },
+                "tree_size": {
+                  "description": "How many entries it holds",
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_entries": {
+            "description": "Every entry the log has ever held, across all of its trees",
+            "type": "integer"
+          },
+          "tree_id": {
+            "description": "The tree new entries are going into",
+            "type": "string"
+          },
+          "tree_size": {
+            "description": "How many entries that tree holds",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_recent_entries": {
+      "description": "Read back from the newest entry in the log, newest first, to see what the world is signing right now - each one decoded down to who signed it and what. Filter by the kind of record, or ask only for entries added after some moment. The log takes roughly a hundred entries a second, so a step reads a bounded window of the newest ones and always says how far back it reached. No account or API key required.",
+      "display_name": "List the newest entries",
+      "display_str_template": "List the newest entries in the Sigstore log.",
+      "handler": "actions.list_recent_entries",
+      "id": "sigstore_rekor_list_recent_entries",
+      "method": "POST",
+      "mock_response": {
+        "added_after": "",
+        "entries": [
+          {
+            "entry_id": "108e9186e8c5677afe975549c9911f1a66c3e0fe6019269f09621eb1c2621e9f73f98f696f81c3cf",
+            "identity_kind": "workflow",
+            "integrated_at": "2026-06-21T05:53:51Z",
+            "issuer": "https://token.actions.githubusercontent.com",
+            "issuer_name": "GitHub Actions",
+            "kind": "dsse",
+            "kind_label": "DSSE envelope",
+            "log_index": 1892581158,
+            "shard_tree_id": "1193050959916656506",
+            "signed_by": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/builder_go_slsa3.yml@refs/tags/v2.0.0",
+            "signer_count": 1,
+            "summary": "builder_go_slsa3.yml in slsa-framework/slsa-github-generator (tag v2.0.0), vouched for by GitHub Actions",
+            "url": "https://search.sigstore.dev/?uuid=108e9186e8c5677afe975549c9911f1a66c3e0fe6019269f09621eb1c2621e9f73f98f696f81c3cf",
+            "what_was_signed": "a DSSE envelope whose payload hashes to sha256:a68e7e8299219fa3e7f97c900f363803bbd32acb8aa2df1cac1b46632e15a58b"
+          },
+          {
+            "artifact_digest": "sha256:20ac9dda4f46161dbfec1e395ac0eedec7ae323106aafc6a5bf766eb763fe41c",
+            "entry_id": "108e9186e8c5677aad33982fe2e968181b0527564df04e1d536ec0570791870a70bb8074dd8f78b9",
+            "identity_kind": "email",
+            "integrated_at": "2025-10-28T06:44:33Z",
+            "issuer": "https://accounts.google.com",
+            "issuer_name": "Google",
+            "kind": "hashedrekord",
+            "kind_label": "Artifact signature",
+            "log_index": 647892280,
+            "shard_tree_id": "1193050959916656506",
+            "signed_by": "release@example.com",
+            "signer_count": 1,
+            "summary": "release@example.com, vouched for by Google",
+            "url": "https://search.sigstore.dev/?uuid=108e9186e8c5677aad33982fe2e968181b0527564df04e1d536ec0570791870a70bb8074dd8f78b9",
+            "what_was_signed": "an artifact with digest sha256:20ac9dda4f46161dbfec1e395ac0eedec7ae323106aafc6a5bf766eb763fe41c"
+          }
+        ],
+        "kinds_filtered": [
+          "dsse",
+          "hashedrekord"
+        ],
+        "log_url": "https://rekor.sigstore.dev",
+        "message": "2 of the newest entries in a log of 2,823,827,756, read back from entry 2,823,827,755.",
+        "reached_back_to": "2026-09-14T00:43:58Z",
+        "returned": 2,
+        "scanned": 10,
+        "stopped_because": "found everything you asked for",
+        "total_entries": 2823827756
+      },
+      "name": "list_recent_entries",
+      "output_formatter": "actions.format_recent_entries_output",
+      "parameters": [
+        {
+          "default": 10,
+          "description": "How many of the newest matching entries to return.",
+          "display_name": "How many to return",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only records of these kinds. Most of the log is artifact signatures and DSSE envelopes; the rest are rare. Choose none for every kind.",
+          "display_name": "Kinds of entry",
+          "multi_select": true,
+          "name": "kinds",
+          "options": [
+            {
+              "label": "Artifact signature - a file signed directly (the commonest)",
+              "value": "hashedrekord"
+            },
+            {
+              "label": "DSSE envelope - a signed attestation about something built",
+              "value": "dsse"
+            },
+            {
+              "label": "in-toto attestation - build provenance",
+              "value": "intoto"
+            },
+            {
+              "label": "Artifact signature carrying the signed content",
+              "value": "rekord"
+            },
+            {
+              "label": "COSE envelope",
+              "value": "cose"
+            },
+            {
+              "label": "Alpine package",
+              "value": "alpine"
+            },
+            {
+              "label": "Helm chart",
+              "value": "helm"
+            },
+            {
+              "label": "Java archive (JAR)",
+              "value": "jar"
+            },
+            {
+              "label": "RPM package",
+              "value": "rpm"
+            },
+            {
+              "label": "TUF repository metadata",
+              "value": "tuf"
+            },
+            {
+              "label": "RFC 3161 timestamp",
+              "value": "rfc3161"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Stop reading once the entries get older than this. Leave empty to simply take the newest. The log moves fast enough that a time more than a few minutes ago will reach the end of one step's window first, and the result says when that happened.",
+          "display_name": "Only entries added after",
+          "name": "added_after",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/sigstore-rekor/list-recent-entries",
+      "result_str_template": "{sigstore_rekor_list_recent_entries,returned} of the newest Sigstore log entries.",
+      "returns": {
+        "properties": {
+          "added_after": {
+            "description": "The cutoff asked for, if any",
+            "type": "string"
+          },
+          "entries": {
+            "description": "The matching entries, newest first",
+            "items": {
+              "properties": {
+                "api_version": {
+                  "description": "The version of that kind's schema",
+                  "type": "string"
+                },
+                "artifact_digest": {
+                  "description": "The digest of the file that was signed, for entries that sign a file directly. Empty for an attestation, whose digests are in 'hashes' with what each one is a hash of",
+                  "type": "string"
+                },
+                "attestation": {
+                  "description": "The in-toto statement behind the entry, where the log returned one. Null otherwise, which is the common case",
+                  "properties": {
+                    "predicate_type": {
+                      "description": "What the attestation claims, e.g. a SLSA provenance or an SBOM",
+                      "type": "string"
+                    },
+                    "statement_type": {
+                      "description": "The in-toto statement type",
+                      "type": "string"
+                    },
+                    "subject_count": {
+                      "description": "How many artifacts it names in total",
+                      "type": "integer"
+                    },
+                    "subjects": {
+                      "description": "The artifacts the attestation is about",
+                      "items": {
+                        "properties": {
+                          "digest": {
+                            "description": "Its digest",
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "The artifact's name",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "entry_id": {
+                  "description": "The entry's permanent identifier. Its last 64 characters are the hash of the entry's own contents",
+                  "type": "string"
+                },
+                "has_inclusion_proof": {
+                  "description": "Whether the log returned a proof alongside this entry",
+                  "type": "boolean"
+                },
+                "hashes": {
+                  "description": "Every hash the entry records, each labelled",
+                  "items": {
+                    "description": "One hash the entry records, and what it is a hash of",
+                    "properties": {
+                      "algorithm": {
+                        "description": "e.g. 'sha256'",
+                        "type": "string"
+                      },
+                      "digest": {
+                        "description": "The two together, 'sha256:...'",
+                        "type": "string"
+                      },
+                      "role": {
+                        "description": "'artifact' when this is the file that was signed, or 'attestation payload'/'attestation envelope' when the entry signs a statement about an artifact rather than the artifact",
+                        "type": "string"
+                      },
+                      "value": {
+                        "description": "The hash in hex",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "identity_kind": {
+                  "description": "'email', 'workflow', 'username' or 'key'",
+                  "type": "string"
+                },
+                "integrated_at": {
+                  "description": "When the log accepted it, ISO 8601 in UTC",
+                  "type": "string"
+                },
+                "integrated_timestamp": {
+                  "description": "The same moment as a Unix timestamp",
+                  "type": "integer"
+                },
+                "issuer": {
+                  "description": "The identity provider that vouched",
+                  "type": "string"
+                },
+                "issuer_name": {
+                  "description": "That provider by name",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "What kind of record it is: 'hashedrekord', 'dsse', ...",
+                  "type": "string"
+                },
+                "kind_label": {
+                  "description": "That kind in plain words",
+                  "type": "string"
+                },
+                "leaf_hash": {
+                  "description": "The hash of the entry's contents, as stored in the tree",
+                  "type": "string"
+                },
+                "log_id": {
+                  "description": "The shard's public key hash",
+                  "type": "string"
+                },
+                "log_index": {
+                  "description": "Its position in the log, counting across every shard",
+                  "type": "integer"
+                },
+                "shard_tree_id": {
+                  "description": "Which of the log's trees holds it",
+                  "type": "string"
+                },
+                "signed_by": {
+                  "description": "Who signed it, from the first signer",
+                  "type": "string"
+                },
+                "signer_count": {
+                  "description": "How many signed it",
+                  "type": "integer"
+                },
+                "signers": {
+                  "description": "Every signer, with the full certificate for each",
+                  "items": {
+                    "description": "One signer on the entry",
+                    "properties": {
+                      "certificate": {
+                        "description": "The full certificate, or null for a plain key",
+                        "properties": {
+                          "build_config_uri": {
+                            "description": "The workflow file that ran the build",
+                            "type": "string"
+                          },
+                          "build_trigger": {
+                            "description": "What started it: push, pull_request, schedule, release",
+                            "type": "string"
+                          },
+                          "code_signing": {
+                            "description": "Whether the certificate is marked for code signing",
+                            "type": "boolean"
+                          },
+                          "fingerprint_sha256": {
+                            "description": "SHA-256 of the certificate itself",
+                            "type": "string"
+                          },
+                          "github_workflow_name": {
+                            "description": "The workflow's name, for a GitHub Actions build",
+                            "type": "string"
+                          },
+                          "issuer": {
+                            "description": "The full name of the CA that signed it, which for Sigstore is always Fulcio",
+                            "type": "string"
+                          },
+                          "not_after": {
+                            "description": "When it expired. Sigstore certificates live ten minutes; an expired one does not invalidate the signature, because the log records that the signing happened while it was valid",
+                            "type": "string"
+                          },
+                          "not_before": {
+                            "description": "When the certificate became valid, ISO 8601 in UTC",
+                            "type": "string"
+                          },
+                          "oidc_issuer": {
+                            "description": "The identity provider that authenticated the signer, e.g. https://token.actions.githubusercontent.com",
+                            "type": "string"
+                          },
+                          "run_invocation_uri": {
+                            "description": "A link to the build run itself, where the provider gives one",
+                            "type": "string"
+                          },
+                          "runner_environment": {
+                            "description": "Whether the build ran on infrastructure the platform hosts or on a self-hosted runner",
+                            "type": "string"
+                          },
+                          "san_emails": {
+                            "description": "Email identities on the certificate",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "san_uris": {
+                            "description": "Identity URLs on the certificate, such as a workflow's",
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "serial_number": {
+                            "description": "The certificate's serial number, in hex",
+                            "type": "string"
+                          },
+                          "source_repository_digest": {
+                            "description": "The exact commit it was built from",
+                            "type": "string"
+                          },
+                          "source_repository_ref": {
+                            "description": "The branch or tag it was built from",
+                            "type": "string"
+                          },
+                          "source_repository_uri": {
+                            "description": "The repository the build came from",
+                            "type": "string"
+                          },
+                          "source_repository_visibility": {
+                            "description": "Whether the repository was public or private when it was signed",
+                            "type": "string"
+                          },
+                          "token_subject": {
+                            "description": "The raw subject claim from the identity token",
+                            "type": "string"
+                          },
+                          "validity_seconds": {
+                            "description": "How long it was valid for, in seconds",
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "certificate_authority": {
+                        "description": "The CA that issued the certificate",
+                        "type": "string"
+                      },
+                      "identity_kind": {
+                        "description": "'email', 'workflow', 'username' or 'key'",
+                        "type": "string"
+                      },
+                      "issuer": {
+                        "description": "The identity provider that vouched for the signer",
+                        "type": "string"
+                      },
+                      "issuer_name": {
+                        "description": "That provider by name, e.g. 'GitHub Actions'",
+                        "type": "string"
+                      },
+                      "key_fingerprint_sha256": {
+                        "description": "SHA-256 of the certificate or key, for comparing signers",
+                        "type": "string"
+                      },
+                      "key_type": {
+                        "description": "'certificate' for keyless Sigstore signing, otherwise the key format: 'pgp', 'ssh', 'minisign', 'public_key'",
+                        "type": "string"
+                      },
+                      "signed_by": {
+                        "description": "Who signed: an email address, or the identity URL of a build workflow. Empty when the entry was signed with a plain key, which names nobody",
+                        "type": "string"
+                      },
+                      "summary": {
+                        "description": "One sentence naming who signed and who vouched for them",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "summary": {
+                  "description": "One sentence naming who signed and who vouched for them",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "Where to open this entry in Sigstore's search site",
+                  "type": "string"
+                },
+                "what_was_signed": {
+                  "description": "One phrase saying what this entry is a record of",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "kinds_filtered": {
+            "description": "The kinds asked for, if any",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "log_url": {
+            "description": "The log that answered",
+            "type": "string"
+          },
+          "message": {
+            "description": "What came back, in one line",
+            "type": "string"
+          },
+          "reached_back_to": {
+            "description": "The oldest moment this step saw, ISO 8601 in UTC",
+            "type": "string"
+          },
+          "returned": {
+            "description": "How many came back",
+            "type": "integer"
+          },
+          "scanned": {
+            "description": "How many of the log's newest entries were read to find them",
+            "type": "integer"
+          },
+          "stopped_because": {
+            "description": "Why the scan stopped where it did",
+            "type": "string"
+          },
+          "total_entries": {
+            "description": "How many entries the log holds in total",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "verify_entry": {
+      "description": "Prove that a record is genuinely in the transparency log, rather than take the log's word for it. Three things are checked here, from the log's own published root hash: that the entry's contents match the identifier it was asked for, that hashing it together with its proof reproduces the root of the log's tree, and that the root the proof used is the one the log signed. Every check comes back with the numbers behind it. Use this before acting on a signature that matters. No account or API key required.",
+      "display_name": "Verify an entry is really in the log",
+      "display_str_template": "Verify Sigstore log entry {0}.",
+      "handler": "actions.verify_entry",
+      "id": "sigstore_rekor_verify_entry",
+      "method": "POST",
+      "mock_response": {
+        "checked_against": {
+          "index_in_shard": 1770676896,
+          "proof_hashes": 29,
+          "root_hash": "1b68dde9114058d5cd39d10fda9fbd2aa86d85c39c614e8bbf73406fb6b434b9",
+          "shard_tree_id": "1193050959916656506",
+          "tree_size": 2701923902
+        },
+        "checks": [
+          {
+            "check": "The entry's contents match its identifier",
+            "detail": "The entry body hashes to fe975549c9911f1a66c3e0fe6019269f09621eb1c2621e9f73f98f696f81c3cf, which is the last 64 characters of the entry identifier.",
+            "passed": true
+          },
+          {
+            "check": "The entry is in the log's Merkle tree",
+            "detail": "Hashing the entry together with the 29 hashes in its proof reproduces the root of a tree of 2,701,923,902 entries.",
+            "passed": true
+          },
+          {
+            "check": "The proof is against the log's own signed checkpoint",
+            "detail": "The checkpoint signed by rekor.sigstore.dev states the same root at 2,701,923,902 entries.",
+            "passed": true
+          }
+        ],
+        "entry": {
+          "entry_id": "108e9186e8c5677afe975549c9911f1a66c3e0fe6019269f09621eb1c2621e9f73f98f696f81c3cf",
+          "identity_kind": "workflow",
+          "integrated_at": "2026-06-21T05:53:51Z",
+          "issuer": "https://token.actions.githubusercontent.com",
+          "issuer_name": "GitHub Actions",
+          "kind": "dsse",
+          "kind_label": "DSSE envelope",
+          "log_index": 1892581158,
+          "shard_tree_id": "1193050959916656506",
+          "signed_by": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/builder_go_slsa3.yml@refs/tags/v2.0.0",
+          "signer_count": 1,
+          "summary": "builder_go_slsa3.yml in slsa-framework/slsa-github-generator (tag v2.0.0), vouched for by GitHub Actions",
+          "url": "https://search.sigstore.dev/?uuid=108e9186e8c5677afe975549c9911f1a66c3e0fe6019269f09621eb1c2621e9f73f98f696f81c3cf",
+          "what_was_signed": "a DSSE envelope whose payload hashes to sha256:a68e7e8299219fa3e7f97c900f363803bbd32acb8aa2df1cac1b46632e15a58b"
+        },
+        "found": true,
+        "log_url": "https://rekor.sigstore.dev",
+        "message": "Verified. Entry #1,892,581,158 is in the Sigstore transparency log, proved against a tree of 2,701,923,902 entries. builder_go_slsa3.yml in slsa-framework/slsa-github-generator (tag v2.0.0), vouched for by GitHub Actions",
+        "verified": true
+      },
+      "name": "verify_entry",
+      "output_formatter": "actions.format_verify_entry_output",
+      "parameters": [
+        {
+          "description": "Which entry to read. Paste either its identifier - the long hexadecimal string Sigstore's tools and the search site call a UUID - or its position in the log, which is a plain number. Whichever you have works; there is no need to say which kind it is.",
+          "display_name": "Entry",
+          "examples": [
+            {
+              "label": "An entry identifier",
+              "value": "108e9186e8c5677afe975549c9911f1a66c3e0fe6019269f09621eb1c2621e9f73f98f696f81c3cf"
+            },
+            {
+              "label": "A position in the log",
+              "value": "1892581158"
+            }
+          ],
+          "name": "entry",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/sigstore-rekor/verify-entry",
+      "result_str_template": "{sigstore_rekor_verify_entry,message}",
+      "returns": {
+        "properties": {
+          "checked_against": {
+            "description": "The tree the proof was made against",
+            "properties": {
+              "checkpoint": {
+                "description": "The signed note stating that root",
+                "type": "string"
+              },
+              "index_in_shard": {
+                "description": "The entry's position within that tree",
+                "type": "integer"
+              },
+              "proof_hashes": {
+                "description": "How many hashes the proof held",
+                "type": "integer"
+              },
+              "root_hash": {
+                "description": "Its root at that size",
+                "type": "string"
+              },
+              "shard_tree_id": {
+                "description": "Which of the log's trees it was",
+                "type": "string"
+              },
+              "tree_size": {
+                "description": "How big the tree was",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "checks": {
+            "description": "Each check, and whether it held",
+            "items": {
+              "description": "One thing that was checked, and whether it held",
+              "properties": {
+                "check": {
+                  "description": "What was checked, in plain words",
+                  "type": "string"
+                },
+                "detail": {
+                  "description": "The numbers behind the answer",
+                  "type": "string"
+                },
+                "passed": {
+                  "description": "Whether it held",
+                  "type": "boolean"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "entry": {
+            "description": "The entry that was checked",
+            "properties": {
+              "api_version": {
+                "description": "The version of that kind's schema",
+                "type": "string"
+              },
+              "artifact_digest": {
+                "description": "The digest of the file that was signed, for entries that sign a file directly. Empty for an attestation, whose digests are in 'hashes' with what each one is a hash of",
+                "type": "string"
+              },
+              "attestation": {
+                "description": "The in-toto statement behind the entry, where the log returned one. Null otherwise, which is the common case",
+                "properties": {
+                  "predicate_type": {
+                    "description": "What the attestation claims, e.g. a SLSA provenance or an SBOM",
+                    "type": "string"
+                  },
+                  "statement_type": {
+                    "description": "The in-toto statement type",
+                    "type": "string"
+                  },
+                  "subject_count": {
+                    "description": "How many artifacts it names in total",
+                    "type": "integer"
+                  },
+                  "subjects": {
+                    "description": "The artifacts the attestation is about",
+                    "items": {
+                      "properties": {
+                        "digest": {
+                          "description": "Its digest",
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "The artifact's name",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "entry_id": {
+                "description": "The entry's permanent identifier. Its last 64 characters are the hash of the entry's own contents",
+                "type": "string"
+              },
+              "has_inclusion_proof": {
+                "description": "Whether the log returned a proof alongside this entry",
+                "type": "boolean"
+              },
+              "hashes": {
+                "description": "Every hash the entry records, each labelled",
+                "items": {
+                  "description": "One hash the entry records, and what it is a hash of",
+                  "properties": {
+                    "algorithm": {
+                      "description": "e.g. 'sha256'",
+                      "type": "string"
+                    },
+                    "digest": {
+                      "description": "The two together, 'sha256:...'",
+                      "type": "string"
+                    },
+                    "role": {
+                      "description": "'artifact' when this is the file that was signed, or 'attestation payload'/'attestation envelope' when the entry signs a statement about an artifact rather than the artifact",
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "The hash in hex",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "identity_kind": {
+                "description": "'email', 'workflow', 'username' or 'key'",
+                "type": "string"
+              },
+              "integrated_at": {
+                "description": "When the log accepted it, ISO 8601 in UTC",
+                "type": "string"
+              },
+              "integrated_timestamp": {
+                "description": "The same moment as a Unix timestamp",
+                "type": "integer"
+              },
+              "issuer": {
+                "description": "The identity provider that vouched",
+                "type": "string"
+              },
+              "issuer_name": {
+                "description": "That provider by name",
+                "type": "string"
+              },
+              "kind": {
+                "description": "What kind of record it is: 'hashedrekord', 'dsse', ...",
+                "type": "string"
+              },
+              "kind_label": {
+                "description": "That kind in plain words",
+                "type": "string"
+              },
+              "leaf_hash": {
+                "description": "The hash of the entry's contents, as stored in the tree",
+                "type": "string"
+              },
+              "log_id": {
+                "description": "The shard's public key hash",
+                "type": "string"
+              },
+              "log_index": {
+                "description": "Its position in the log, counting across every shard",
+                "type": "integer"
+              },
+              "shard_tree_id": {
+                "description": "Which of the log's trees holds it",
+                "type": "string"
+              },
+              "signed_by": {
+                "description": "Who signed it, from the first signer",
+                "type": "string"
+              },
+              "signer_count": {
+                "description": "How many signed it",
+                "type": "integer"
+              },
+              "signers": {
+                "description": "Every signer, with the full certificate for each",
+                "items": {
+                  "description": "One signer on the entry",
+                  "properties": {
+                    "certificate": {
+                      "description": "The full certificate, or null for a plain key",
+                      "properties": {
+                        "build_config_uri": {
+                          "description": "The workflow file that ran the build",
+                          "type": "string"
+                        },
+                        "build_trigger": {
+                          "description": "What started it: push, pull_request, schedule, release",
+                          "type": "string"
+                        },
+                        "code_signing": {
+                          "description": "Whether the certificate is marked for code signing",
+                          "type": "boolean"
+                        },
+                        "fingerprint_sha256": {
+                          "description": "SHA-256 of the certificate itself",
+                          "type": "string"
+                        },
+                        "github_workflow_name": {
+                          "description": "The workflow's name, for a GitHub Actions build",
+                          "type": "string"
+                        },
+                        "issuer": {
+                          "description": "The full name of the CA that signed it, which for Sigstore is always Fulcio",
+                          "type": "string"
+                        },
+                        "not_after": {
+                          "description": "When it expired. Sigstore certificates live ten minutes; an expired one does not invalidate the signature, because the log records that the signing happened while it was valid",
+                          "type": "string"
+                        },
+                        "not_before": {
+                          "description": "When the certificate became valid, ISO 8601 in UTC",
+                          "type": "string"
+                        },
+                        "oidc_issuer": {
+                          "description": "The identity provider that authenticated the signer, e.g. https://token.actions.githubusercontent.com",
+                          "type": "string"
+                        },
+                        "run_invocation_uri": {
+                          "description": "A link to the build run itself, where the provider gives one",
+                          "type": "string"
+                        },
+                        "runner_environment": {
+                          "description": "Whether the build ran on infrastructure the platform hosts or on a self-hosted runner",
+                          "type": "string"
+                        },
+                        "san_emails": {
+                          "description": "Email identities on the certificate",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "san_uris": {
+                          "description": "Identity URLs on the certificate, such as a workflow's",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "serial_number": {
+                          "description": "The certificate's serial number, in hex",
+                          "type": "string"
+                        },
+                        "source_repository_digest": {
+                          "description": "The exact commit it was built from",
+                          "type": "string"
+                        },
+                        "source_repository_ref": {
+                          "description": "The branch or tag it was built from",
+                          "type": "string"
+                        },
+                        "source_repository_uri": {
+                          "description": "The repository the build came from",
+                          "type": "string"
+                        },
+                        "source_repository_visibility": {
+                          "description": "Whether the repository was public or private when it was signed",
+                          "type": "string"
+                        },
+                        "token_subject": {
+                          "description": "The raw subject claim from the identity token",
+                          "type": "string"
+                        },
+                        "validity_seconds": {
+                          "description": "How long it was valid for, in seconds",
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "certificate_authority": {
+                      "description": "The CA that issued the certificate",
+                      "type": "string"
+                    },
+                    "identity_kind": {
+                      "description": "'email', 'workflow', 'username' or 'key'",
+                      "type": "string"
+                    },
+                    "issuer": {
+                      "description": "The identity provider that vouched for the signer",
+                      "type": "string"
+                    },
+                    "issuer_name": {
+                      "description": "That provider by name, e.g. 'GitHub Actions'",
+                      "type": "string"
+                    },
+                    "key_fingerprint_sha256": {
+                      "description": "SHA-256 of the certificate or key, for comparing signers",
+                      "type": "string"
+                    },
+                    "key_type": {
+                      "description": "'certificate' for keyless Sigstore signing, otherwise the key format: 'pgp', 'ssh', 'minisign', 'public_key'",
+                      "type": "string"
+                    },
+                    "signed_by": {
+                      "description": "Who signed: an email address, or the identity URL of a build workflow. Empty when the entry was signed with a plain key, which names nobody",
+                      "type": "string"
+                    },
+                    "summary": {
+                      "description": "One sentence naming who signed and who vouched for them",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "summary": {
+                "description": "One sentence naming who signed and who vouched for them",
+                "type": "string"
+              },
+              "url": {
+                "description": "Where to open this entry in Sigstore's search site",
+                "type": "string"
+              },
+              "what_was_signed": {
+                "description": "One phrase saying what this entry is a record of",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "found": {
+            "description": "Whether the log holds such an entry at all",
+            "type": "boolean"
+          },
+          "log_url": {
+            "description": "The log that answered",
+            "type": "string"
+          },
+          "message": {
+            "description": "The verdict in one line",
+            "type": "string"
+          },
+          "signature_not_checked": {
+            "description": "What this deliberately does not claim",
+            "type": "string"
+          },
+          "verified": {
+            "description": "Whether every check held",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "verify_log_consistency": {
+      "description": "Prove that everything published before some earlier moment is still in the log, unchanged and in the same order. Paste the checkpoint that an earlier run of 'Get the log's current state' returned; this fetches the proof joining that moment to now and recomputes it. A transparency log is only trustworthy because somebody checks this, and almost nobody does - run it on a schedule and keep the newest checkpoint each time. No account or API key required.",
+      "display_name": "Check the log has not been rewritten",
+      "display_str_template": "Check the Sigstore log has not been rewritten since a saved checkpoint.",
+      "handler": "actions.verify_log_consistency",
+      "id": "sigstore_rekor_verify_log_consistency",
+      "method": "POST",
+      "mock_response": {
+        "checked_at": "2026-09-14T00:43:58Z",
+        "entries_added": 113634,
+        "entries_now": 2701923494,
+        "entries_then": 2701809860,
+        "log_url": "https://rekor.sigstore.dev",
+        "message": "Verified. The log has grown from 2,701,809,860 to 2,701,923,494 entries and everything published before your checkpoint is still there, unchanged - 113,634 entries were appended and nothing was rewritten.",
+        "proof_hashes": 17,
+        "root_hash_then": "b93fcbb530ccd202c74548fba623233db63473b51c1df4b4d86e85eb1c3a936c",
+        "shard_frozen": false,
+        "shard_tree_id": "1193050959916656506",
+        "verified": true
+      },
+      "name": "verify_log_consistency",
+      "output_formatter": "actions.format_consistency_output",
+      "parameters": [
+        {
+          "description": "The block of text an earlier run of \"Get the log's current state\" returned as its checkpoint. Paste it whole - the log it came from, its size, its root hash and the signature. Everything needed is inside it, so there is nothing else to fill in.",
+          "display_name": "Saved checkpoint",
+          "examples": [
+            {
+              "label": "A saved checkpoint",
+              "value": "rekor.sigstore.dev - 1193050959916656506\n2701923494\nG2jd6RFAWNXNOdEP2p+9KqhthcOcYU6Lv3NAb7a0NLk=\n\n\u2014 rekor.sigstore.dev wNI9ajBFAiEA+HWgHpxEAOSuCVGjWbqitI6jDwzkYVcc619IS31k2LgCICUuPkr1LP8xDX42C7n0CSCeVYnvTUD1jxmFV7Uqngy+"
+            }
+          ],
+          "multiline": true,
+          "name": "checkpoint",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/sigstore-rekor/verify-log-consistency",
+      "result_str_template": "{sigstore_rekor_verify_log_consistency,message}",
+      "returns": {
+        "properties": {
+          "checked_at": {
+            "description": "When this ran, ISO 8601 in UTC",
+            "type": "string"
+          },
+          "entries_added": {
+            "description": "How many were appended in between",
+            "type": "integer"
+          },
+          "entries_now": {
+            "description": "How many that tree holds now",
+            "type": "integer"
+          },
+          "entries_then": {
+            "description": "How many entries the checkpoint recorded",
+            "type": "integer"
+          },
+          "log_url": {
+            "description": "The log that answered",
+            "type": "string"
+          },
+          "message": {
+            "description": "The verdict in one line",
+            "type": "string"
+          },
+          "proof_hashes": {
+            "description": "How many hashes the proof held",
+            "type": "integer"
+          },
+          "root_hash_then": {
+            "description": "The root hash the checkpoint recorded",
+            "type": "string"
+          },
+          "shard_frozen": {
+            "description": "Whether that tree has since been retired, in which case it can no longer grow at all",
+            "type": "boolean"
+          },
+          "shard_tree_id": {
+            "description": "Which of the log's trees it described",
+            "type": "string"
+          },
+          "verified": {
+            "description": "True when the log still contains, unchanged, everything it held at the saved checkpoint",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Look up software signatures in Sigstore's public transparency log: who signed a release, from which repository and commit, and prove the record is really there.",
+  "display_name": "Sigstore Rekor",
+  "id": "sigstore_rekor"
+}

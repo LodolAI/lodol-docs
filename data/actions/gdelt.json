@@ -1,0 +1,2381 @@
+{
+  "actions": {
+    "get_article_timeline": {
+      "description": "Chart how much a topic was covered, and how positively, over time. Choose a share of all coverage, a raw article count, the average tone, or a breakdown by language or publishing country. A breakdown returns one line per language or country GDELT monitors, so the ones with no coverage at all are left out, and 'How many lines' keeps just the busiest of the rest.",
+      "display_name": "Chart news coverage over time",
+      "display_str_template": "Chart GDELT news coverage over time.",
+      "handler": "actions.get_article_timeline",
+      "id": "gdelt_get_article_timeline",
+      "method": "POST",
+      "mock_response": {
+        "date_resolution": "day",
+        "empty_series_omitted": 0,
+        "metric": "TimelineVol",
+        "query": "climate change",
+        "quiet_series_omitted": 0,
+        "series": [
+          {
+            "point_count": 2,
+            "points": [
+              {
+                "date": "2026-08-21T00:00:00Z",
+                "value": 1.0945
+              },
+              {
+                "date": "2026-08-22T00:00:00Z",
+                "value": 1.4183
+              }
+            ],
+            "series": "Volume Intensity"
+          }
+        ],
+        "series_count": 1
+      },
+      "name": "get_article_timeline",
+      "parameters": [
+        {
+          "default": "volume_share",
+          "description": "Which measurement to plot over time.",
+          "display_name": "What to chart",
+          "name": "metric",
+          "options": [
+            {
+              "label": "Share of all coverage (%)",
+              "value": "volume_share"
+            },
+            {
+              "label": "Number of matching articles",
+              "value": "article_count"
+            },
+            {
+              "label": "Share of all coverage, with the top articles at each point",
+              "value": "volume_with_articles"
+            },
+            {
+              "label": "Average tone of the coverage",
+              "value": "tone"
+            },
+            {
+              "label": "Share of coverage, split by language",
+              "value": "by_language"
+            },
+            {
+              "label": "Share of coverage, split by publishing country",
+              "value": "by_source_country"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The words to search for, for example 'wildfire evacuation'. Put a phrase in double quotes to match it exactly, write (a OR b) to match either, and put a minus in front of a word to leave it out. Can be left empty when at least one filter below is set.",
+          "display_name": "Search words",
+          "examples": [
+            {
+              "label": "Exact phrase",
+              "value": "\"climate change\""
+            },
+            {
+              "label": "Either word",
+              "value": "(wildfire OR bushfire)"
+            },
+            {
+              "label": "Exclude a word",
+              "value": "-football"
+            }
+          ],
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage tagged with this GDELT theme, for example 'NATURAL_DISASTER_FLOOD'. Themes are GDELT's own topic labels; the list is the most-used ones, each showing how often it appears.",
+          "display_name": "Theme",
+          "dynamic_source": "themes",
+          "name": "theme",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage published in this country. This is where the outlet is, not what the story is about.",
+          "display_name": "Published in",
+          "dynamic_source": "countries",
+          "name": "source_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage written in this language. GDELT machine-translates all of them, so English search words still match.",
+          "display_name": "Written in",
+          "dynamic_source": "languages",
+          "name": "source_language",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage from these websites, as a comma-separated list of domains, for example 'bbc.com, reuters.com'.",
+          "display_name": "Only these websites",
+          "examples": [
+            {
+              "label": "BBC",
+              "value": "bbc.com"
+            },
+            {
+              "label": "Reuters",
+              "value": "reuters.com"
+            }
+          ],
+          "name": "domains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Leave out coverage from these websites, as a comma-separated list of domains.",
+          "display_name": "Leave out these websites",
+          "name": "exclude_domains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage more positive than this. Tone runs from about -10 (extremely negative) to +10 (extremely positive), with most news between -5 and +5. Try 2 for positive coverage.",
+          "display_name": "Tone above",
+          "maximum": 100,
+          "minimum": -100,
+          "name": "tone_greater_than",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only coverage more negative than this. Try -5 for strongly negative coverage.",
+          "display_name": "Tone below",
+          "maximum": 100,
+          "minimum": -100,
+          "name": "tone_less_than",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How far back to search. Leave empty for GDELT's default of the last 3 months. Use the two date fields below instead for an exact window.",
+          "display_name": "How far back",
+          "name": "timespan",
+          "options": [
+            {
+              "label": "Last hour",
+              "value": "1h"
+            },
+            {
+              "label": "Last 6 hours",
+              "value": "6h"
+            },
+            {
+              "label": "Last 12 hours",
+              "value": "12h"
+            },
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 3 days",
+              "value": "3d"
+            },
+            {
+              "label": "Last week",
+              "value": "1w"
+            },
+            {
+              "label": "Last 2 weeks",
+              "value": "2w"
+            },
+            {
+              "label": "Last month",
+              "value": "1m"
+            },
+            {
+              "label": "Last 3 months",
+              "value": "3m"
+            },
+            {
+              "label": "Last 6 months",
+              "value": "6m"
+            },
+            {
+              "label": "Last year",
+              "value": "1y"
+            },
+            {
+              "label": "Last 2 years",
+              "value": "2y"
+            },
+            {
+              "label": "Last 5 years",
+              "value": "5y"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Search from this date and time (UTC) instead of using 'How far back'. Leave both date fields empty to use 'How far back'.",
+          "display_name": "From",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Search up to this date and time (UTC). Only used alongside 'From'; leave it empty to search from 'From' up to now.",
+          "display_name": "To",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Average each point with the ones around it to flatten day-to-day noise, from 0 (off) to 30 points.",
+          "display_name": "Smoothing",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "smoothing",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "When splitting by language or country, keep only the busiest this many. Leave empty to return every one, which is around 200 lines, so try 10 first.",
+          "display_name": "How many lines",
+          "maximum": 250,
+          "minimum": 1,
+          "name": "max_series",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/gdelt/get-article-timeline",
+      "result_str_template": "Series returned: {gdelt_get_article_timeline,series_count}",
+      "returns": {
+        "properties": {
+          "date_resolution": {
+            "type": "string"
+          },
+          "empty_series_omitted": {
+            "type": "integer"
+          },
+          "metric": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "quiet_series_omitted": {
+            "type": "integer"
+          },
+          "series": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "series_count": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_tone_chart": {
+      "description": "Show how positive or negative the coverage of a topic is, as a histogram: one bin per tone score, how many articles landed in it, and a sample of those articles. Handy for jumping straight to the most negative reporting on something.",
+      "display_name": "Chart the tone of coverage",
+      "display_str_template": "Chart the tone of GDELT news coverage.",
+      "handler": "actions.get_tone_chart",
+      "id": "gdelt_get_tone_chart",
+      "method": "POST",
+      "mock_response": {
+        "bin_count": 2,
+        "bins": [
+          {
+            "bin": -3,
+            "count": 412
+          },
+          {
+            "articles": [
+              {
+                "domain": "bbc.com",
+                "language": "English",
+                "seendate": "2026-08-22T14:15:00Z",
+                "socialimage": "https://ichef.bbci.co.uk/news/1024/example.jpg",
+                "sourcecountry": "United Kingdom",
+                "title": "Severe flood warnings issued across the south coast",
+                "url": "https://www.bbc.com/news/articles/example-flood-warning",
+                "url_mobile": ""
+              }
+            ],
+            "bin": 0,
+            "count": 1580
+          }
+        ],
+        "query": "climate change"
+      },
+      "name": "get_tone_chart",
+      "parameters": [
+        {
+          "description": "The words to search for, for example 'wildfire evacuation'. Put a phrase in double quotes to match it exactly, write (a OR b) to match either, and put a minus in front of a word to leave it out. Can be left empty when at least one filter below is set.",
+          "display_name": "Search words",
+          "examples": [
+            {
+              "label": "Exact phrase",
+              "value": "\"climate change\""
+            },
+            {
+              "label": "Either word",
+              "value": "(wildfire OR bushfire)"
+            },
+            {
+              "label": "Exclude a word",
+              "value": "-football"
+            }
+          ],
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage tagged with this GDELT theme, for example 'NATURAL_DISASTER_FLOOD'. Themes are GDELT's own topic labels; the list is the most-used ones, each showing how often it appears.",
+          "display_name": "Theme",
+          "dynamic_source": "themes",
+          "name": "theme",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage published in this country. This is where the outlet is, not what the story is about.",
+          "display_name": "Published in",
+          "dynamic_source": "countries",
+          "name": "source_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage written in this language. GDELT machine-translates all of them, so English search words still match.",
+          "display_name": "Written in",
+          "dynamic_source": "languages",
+          "name": "source_language",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage from these websites, as a comma-separated list of domains, for example 'bbc.com, reuters.com'.",
+          "display_name": "Only these websites",
+          "examples": [
+            {
+              "label": "BBC",
+              "value": "bbc.com"
+            },
+            {
+              "label": "Reuters",
+              "value": "reuters.com"
+            }
+          ],
+          "name": "domains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Leave out coverage from these websites, as a comma-separated list of domains.",
+          "display_name": "Leave out these websites",
+          "name": "exclude_domains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How far back to search. Leave empty for GDELT's default of the last 3 months. Use the two date fields below instead for an exact window.",
+          "display_name": "How far back",
+          "name": "timespan",
+          "options": [
+            {
+              "label": "Last hour",
+              "value": "1h"
+            },
+            {
+              "label": "Last 6 hours",
+              "value": "6h"
+            },
+            {
+              "label": "Last 12 hours",
+              "value": "12h"
+            },
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 3 days",
+              "value": "3d"
+            },
+            {
+              "label": "Last week",
+              "value": "1w"
+            },
+            {
+              "label": "Last 2 weeks",
+              "value": "2w"
+            },
+            {
+              "label": "Last month",
+              "value": "1m"
+            },
+            {
+              "label": "Last 3 months",
+              "value": "3m"
+            },
+            {
+              "label": "Last 6 months",
+              "value": "6m"
+            },
+            {
+              "label": "Last year",
+              "value": "1y"
+            },
+            {
+              "label": "Last 2 years",
+              "value": "2y"
+            },
+            {
+              "label": "Last 5 years",
+              "value": "5y"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Search from this date and time (UTC) instead of using 'How far back'. Leave both date fields empty to use 'How far back'.",
+          "display_name": "From",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Search up to this date and time (UTC). Only used alongside 'From'; leave it empty to search from 'From' up to now.",
+          "display_name": "To",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/gdelt/get-tone-chart",
+      "result_str_template": "Tone bins: {gdelt_get_tone_chart,bin_count}",
+      "returns": {
+        "properties": {
+          "bin_count": {
+            "type": "integer"
+          },
+          "bins": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "query": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_tv_ai_timeline": {
+      "description": "Chart how often something was said aloud, written on screen or shown on camera, using GDELT's AI annotations of television news rather than the closed captions alone. Unlike the caption archive this is still being updated, so it reaches up to the past few days.",
+      "display_name": "Chart what TV said and showed over time",
+      "display_str_template": "Chart what GDELT TV said and showed over time.",
+      "handler": "actions.get_tv_ai_timeline",
+      "id": "gdelt_get_tv_ai_timeline",
+      "method": "POST",
+      "mock_response": {
+        "date_resolution": "day",
+        "empty_series_omitted": 0,
+        "query": "station:CNN visual:\"flag\"",
+        "series": [
+          {
+            "point_count": 2,
+            "points": [
+              {
+                "date": "2026-08-21T12:00:00Z",
+                "value": 2305
+              },
+              {
+                "date": "2026-08-22T12:00:00Z",
+                "value": 1415
+              }
+            ],
+            "series": ""
+          }
+        ],
+        "series_count": 1
+      },
+      "name": "get_tv_ai_timeline",
+      "parameters": [
+        {
+          "description": "Which station to search. Required: GDELT's AI television search only runs against named stations.",
+          "display_name": "Station",
+          "dynamic_source": "tvai_stations",
+          "name": "station",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Words to look for across every annotation layer at once. For a specific layer, use the four fields below instead. Can be left empty when one of those is filled in.",
+          "display_name": "Search words",
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Words spoken aloud, from the machine transcript. Up to five words.",
+          "display_name": "Spoken on air",
+          "name": "spoken_words",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Words as they appeared in the station's own closed captions.",
+          "display_name": "In the closed captions",
+          "name": "closed_captions",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Text recognised on screen (a chyron, a caption, a sign). Up to five words.",
+          "display_name": "Written on screen",
+          "name": "onscreen_text",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Something a vision model saw in the picture, for example 'flag' or 'crowd'. Use 'List what TV said and showed' to see the labels available.",
+          "display_name": "Shown on screen",
+          "examples": [
+            {
+              "label": "Flag",
+              "value": "flag"
+            },
+            {
+              "label": "Crowd",
+              "value": "crowd"
+            }
+          ],
+          "name": "visual_label",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this show. The name must match exactly.",
+          "display_name": "Show",
+          "name": "show",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only broadcasts on this day, as a number: 0 for Sunday through to 6 for Saturday (7 also means Sunday).",
+          "display_name": "Day of the week",
+          "maximum": 7,
+          "minimum": 0,
+          "name": "day_of_week",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How far back to chart. Leave empty for the last 2 years. GDELT's AI television timeline only answers for a window of about two years or more, so those are the choices; the chart still runs up to the present.",
+          "display_name": "How far back",
+          "name": "timespan",
+          "options": [
+            {
+              "label": "Last 2 years",
+              "value": "2y"
+            },
+            {
+              "label": "Last 3 years",
+              "value": "3y"
+            },
+            {
+              "label": "Last 5 years",
+              "value": "5y"
+            },
+            {
+              "label": "Last 10 years",
+              "value": "10y"
+            },
+            {
+              "label": "The whole archive",
+              "value": "20y"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Search from this date and time (UTC) instead of using 'How far back'. Leave both date fields empty to use 'How far back'.",
+          "display_name": "From",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Search up to this date and time (UTC). Only used alongside 'From'; leave it empty to search from 'From' up to now.",
+          "display_name": "To",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Merge every station into one line instead of drawing one line per station.",
+          "display_name": "Combine all stations",
+          "name": "combine_stations",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Average each point with the ones around it to flatten day-to-day noise, from 0 (off) to 30 points.",
+          "display_name": "Smoothing",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "smoothing",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/gdelt/get-tv-ai-timeline",
+      "result_str_template": "Series returned: {gdelt_get_tv_ai_timeline,series_count}",
+      "returns": {
+        "properties": {
+          "date_resolution": {
+            "type": "string"
+          },
+          "empty_series_omitted": {
+            "type": "integer"
+          },
+          "note": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "series": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "series_count": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_tv_breakdown": {
+      "description": "See which stations or which shows covered a topic most, as a ranked list. Answers questions like which network talked about something the most.",
+      "display_name": "Rank television stations or shows",
+      "display_str_template": "Rank GDELT television stations or shows.",
+      "handler": "actions.get_tv_breakdown",
+      "id": "gdelt_get_tv_breakdown",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "group_by": "StationChart",
+        "query": "climate market:\"National\"",
+        "results": [
+          {
+            "count": 0.6519,
+            "station": "CSPAN"
+          },
+          {
+            "count": 0.3367,
+            "station": "CNN"
+          }
+        ]
+      },
+      "name": "get_tv_breakdown",
+      "parameters": [
+        {
+          "default": "station",
+          "description": "Whether to rank stations or individual shows.",
+          "display_name": "Rank by",
+          "name": "group_by",
+          "options": [
+            {
+              "label": "By station",
+              "value": "station"
+            },
+            {
+              "label": "By show",
+              "value": "show"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The words to look for in the closed captions, for example 'interest rates'. Put a phrase in double quotes to match it exactly, write (a OR b) to match either, and put a minus in front of a word to leave it out. Can be left empty when a station, market, network or show is chosen below.",
+          "display_name": "Search words",
+          "examples": [
+            {
+              "label": "Exact phrase",
+              "value": "\"interest rates\""
+            },
+            {
+              "label": "Either word",
+              "value": "(recession OR downturn)"
+            }
+          ],
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this station, for example CNN.",
+          "display_name": "Station",
+          "dynamic_source": "tv_stations",
+          "name": "station",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from stations in this market. 'National' is the national networks; the rest are individual cities.",
+          "display_name": "Market",
+          "dynamic_source": "tv_markets",
+          "name": "market",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this network's stations, for example CBS. A network covers all of its local affiliates at once.",
+          "display_name": "Network",
+          "examples": [
+            {
+              "label": "CBS",
+              "value": "CBS"
+            },
+            {
+              "label": "NBC",
+              "value": "NBC"
+            },
+            {
+              "label": "ABC",
+              "value": "ABC"
+            }
+          ],
+          "name": "network",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this show. The name must match exactly, for example 'Anderson Cooper 360'.",
+          "display_name": "Show",
+          "name": "show",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips where this also comes up within about fifteen seconds of the search words.",
+          "display_name": "Also said nearby",
+          "name": "context",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How far back to search. Leave empty to search the last 5 years. GDELT's television archive runs from July 2009 to October 2024, so a short window finds nothing. Use the two date fields below to search an exact stretch of it.",
+          "display_name": "How far back",
+          "name": "timespan",
+          "options": [
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 3 days",
+              "value": "3d"
+            },
+            {
+              "label": "Last week",
+              "value": "1w"
+            },
+            {
+              "label": "Last 2 weeks",
+              "value": "2w"
+            },
+            {
+              "label": "Last month",
+              "value": "1m"
+            },
+            {
+              "label": "Last 3 months",
+              "value": "3m"
+            },
+            {
+              "label": "Last 6 months",
+              "value": "6m"
+            },
+            {
+              "label": "Last year",
+              "value": "1y"
+            },
+            {
+              "label": "Last 2 years",
+              "value": "2y"
+            },
+            {
+              "label": "Last 5 years",
+              "value": "5y"
+            },
+            {
+              "label": "Last 10 years",
+              "value": "10y"
+            },
+            {
+              "label": "The whole archive",
+              "value": "20y"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Search from this date and time (UTC) instead of using 'How far back'. Leave both date fields empty to use 'How far back'.",
+          "display_name": "From",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Search up to this date and time (UTC). Only used alongside 'From'; leave it empty to search from 'From' up to now.",
+          "display_name": "To",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/gdelt/get-tv-breakdown",
+      "result_str_template": "Results: {gdelt_get_tv_breakdown,count}",
+      "returns": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "group_by": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_tv_timeline": {
+      "description": "Chart how much television airtime a topic took over time, as a share of everything each station broadcast so stations of different sizes can be compared directly.",
+      "display_name": "Chart television coverage over time",
+      "display_str_template": "Chart GDELT television coverage over time.",
+      "handler": "actions.get_tv_timeline",
+      "id": "gdelt_get_tv_timeline",
+      "method": "POST",
+      "mock_response": {
+        "empty_series_omitted": 0,
+        "metric": "TimelineVol",
+        "query": "climate market:\"National\"",
+        "series": [
+          {
+            "point_count": 2,
+            "points": [
+              {
+                "date": "2024-09-01T12:00:00Z",
+                "value": 0.42
+              },
+              {
+                "date": "2024-10-01T12:00:00Z",
+                "value": 0.61
+              }
+            ],
+            "series": "CNN"
+          }
+        ],
+        "series_count": 1
+      },
+      "name": "get_tv_timeline",
+      "parameters": [
+        {
+          "default": "airtime_share",
+          "description": "Which measurement to plot over time.",
+          "display_name": "What to chart",
+          "name": "metric",
+          "options": [
+            {
+              "label": "Share of airtime the topic took (%)",
+              "value": "airtime_share"
+            },
+            {
+              "label": "How much airtime was monitored in total",
+              "value": "monitored_airtime"
+            },
+            {
+              "label": "Hour-by-hour heatmap",
+              "value": "hourly_heatmap"
+            },
+            {
+              "label": "Stacked stream, one band per station",
+              "value": "streamgraph"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The words to look for in the closed captions, for example 'interest rates'. Put a phrase in double quotes to match it exactly, write (a OR b) to match either, and put a minus in front of a word to leave it out. Can be left empty when a station, market, network or show is chosen below.",
+          "display_name": "Search words",
+          "examples": [
+            {
+              "label": "Exact phrase",
+              "value": "\"interest rates\""
+            },
+            {
+              "label": "Either word",
+              "value": "(recession OR downturn)"
+            }
+          ],
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this station, for example CNN.",
+          "display_name": "Station",
+          "dynamic_source": "tv_stations",
+          "name": "station",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from stations in this market. 'National' is the national networks; the rest are individual cities.",
+          "display_name": "Market",
+          "dynamic_source": "tv_markets",
+          "name": "market",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this network's stations, for example CBS. A network covers all of its local affiliates at once.",
+          "display_name": "Network",
+          "examples": [
+            {
+              "label": "CBS",
+              "value": "CBS"
+            },
+            {
+              "label": "NBC",
+              "value": "NBC"
+            },
+            {
+              "label": "ABC",
+              "value": "ABC"
+            }
+          ],
+          "name": "network",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this show. The name must match exactly, for example 'Anderson Cooper 360'.",
+          "display_name": "Show",
+          "name": "show",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips where this also comes up within about fifteen seconds of the search words.",
+          "display_name": "Also said nearby",
+          "name": "context",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How far back to search. Leave empty to search the last 5 years. GDELT's television archive runs from July 2009 to October 2024, so a short window finds nothing. Use the two date fields below to search an exact stretch of it.",
+          "display_name": "How far back",
+          "name": "timespan",
+          "options": [
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 3 days",
+              "value": "3d"
+            },
+            {
+              "label": "Last week",
+              "value": "1w"
+            },
+            {
+              "label": "Last 2 weeks",
+              "value": "2w"
+            },
+            {
+              "label": "Last month",
+              "value": "1m"
+            },
+            {
+              "label": "Last 3 months",
+              "value": "3m"
+            },
+            {
+              "label": "Last 6 months",
+              "value": "6m"
+            },
+            {
+              "label": "Last year",
+              "value": "1y"
+            },
+            {
+              "label": "Last 2 years",
+              "value": "2y"
+            },
+            {
+              "label": "Last 5 years",
+              "value": "5y"
+            },
+            {
+              "label": "Last 10 years",
+              "value": "10y"
+            },
+            {
+              "label": "The whole archive",
+              "value": "20y"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Search from this date and time (UTC) instead of using 'How far back'. Leave both date fields empty to use 'How far back'.",
+          "display_name": "From",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Search up to this date and time (UTC). Only used alongside 'From'; leave it empty to search from 'From' up to now.",
+          "display_name": "To",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "How wide each point on the chart should be. Defaults to whatever suits the window.",
+          "display_name": "Group points by",
+          "name": "date_resolution",
+          "options": [
+            {
+              "label": "Hourly",
+              "value": "hour"
+            },
+            {
+              "label": "Daily",
+              "value": "day"
+            },
+            {
+              "label": "Weekly",
+              "value": "week"
+            },
+            {
+              "label": "Monthly",
+              "value": "month"
+            },
+            {
+              "label": "Yearly",
+              "value": "year"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Whether each point is a share of the station's airtime or a raw clip count.",
+          "display_name": "Measure as",
+          "name": "normalization",
+          "options": [
+            {
+              "label": "As a share of each station's airtime (comparable)",
+              "value": "percentage"
+            },
+            {
+              "label": "As a raw count of matching clips",
+              "value": "raw"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Merge every station into one line instead of drawing one line per station.",
+          "display_name": "Combine all stations",
+          "name": "combine_stations",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Average each point with the ones around it to flatten day-to-day noise, from 0 (off) to 30 points.",
+          "display_name": "Smoothing",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "smoothing",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The most recent day is left out by default because it is still being processed and reads as a dip. Turn this on to include it anyway.",
+          "display_name": "Include the last 24 hours",
+          "name": "include_last_24_hours",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/gdelt/get-tv-timeline",
+      "result_str_template": "Series returned: {gdelt_get_tv_timeline,series_count}",
+      "returns": {
+        "properties": {
+          "empty_series_omitted": {
+            "type": "integer"
+          },
+          "metric": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "series": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "series_count": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_tv_word_cloud": {
+      "description": "List the words spoken most often in the clips that match a television search, which shows what the coverage of a topic was actually about.",
+      "display_name": "List words said alongside a topic on TV",
+      "display_str_template": "List words said alongside a GDELT TV topic.",
+      "handler": "actions.get_tv_word_cloud",
+      "id": "gdelt_get_tv_word_cloud",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "query": "climate market:\"National\"",
+        "words": [
+          {
+            "count": 100.0,
+            "label": "Climate"
+          },
+          {
+            "count": 37.0753,
+            "label": "Change"
+          }
+        ]
+      },
+      "name": "get_tv_word_cloud",
+      "parameters": [
+        {
+          "description": "The words to look for in the closed captions, for example 'interest rates'. Put a phrase in double quotes to match it exactly, write (a OR b) to match either, and put a minus in front of a word to leave it out. Can be left empty when a station, market, network or show is chosen below.",
+          "display_name": "Search words",
+          "examples": [
+            {
+              "label": "Exact phrase",
+              "value": "\"interest rates\""
+            },
+            {
+              "label": "Either word",
+              "value": "(recession OR downturn)"
+            }
+          ],
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this station, for example CNN.",
+          "display_name": "Station",
+          "dynamic_source": "tv_stations",
+          "name": "station",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from stations in this market. 'National' is the national networks; the rest are individual cities.",
+          "display_name": "Market",
+          "dynamic_source": "tv_markets",
+          "name": "market",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this network's stations, for example CBS. A network covers all of its local affiliates at once.",
+          "display_name": "Network",
+          "examples": [
+            {
+              "label": "CBS",
+              "value": "CBS"
+            },
+            {
+              "label": "NBC",
+              "value": "NBC"
+            },
+            {
+              "label": "ABC",
+              "value": "ABC"
+            }
+          ],
+          "name": "network",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this show. The name must match exactly, for example 'Anderson Cooper 360'.",
+          "display_name": "Show",
+          "name": "show",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips where this also comes up within about fifteen seconds of the search words.",
+          "display_name": "Also said nearby",
+          "name": "context",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How far back to search. Leave empty to search the last 5 years. GDELT's television archive runs from July 2009 to October 2024, so a short window finds nothing. Use the two date fields below to search an exact stretch of it.",
+          "display_name": "How far back",
+          "name": "timespan",
+          "options": [
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 3 days",
+              "value": "3d"
+            },
+            {
+              "label": "Last week",
+              "value": "1w"
+            },
+            {
+              "label": "Last 2 weeks",
+              "value": "2w"
+            },
+            {
+              "label": "Last month",
+              "value": "1m"
+            },
+            {
+              "label": "Last 3 months",
+              "value": "3m"
+            },
+            {
+              "label": "Last 6 months",
+              "value": "6m"
+            },
+            {
+              "label": "Last year",
+              "value": "1y"
+            },
+            {
+              "label": "Last 2 years",
+              "value": "2y"
+            },
+            {
+              "label": "Last 5 years",
+              "value": "5y"
+            },
+            {
+              "label": "Last 10 years",
+              "value": "10y"
+            },
+            {
+              "label": "The whole archive",
+              "value": "20y"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Search from this date and time (UTC) instead of using 'How far back'. Leave both date fields empty to use 'How far back'.",
+          "display_name": "From",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Search up to this date and time (UTC). Only used alongside 'From'; leave it empty to search from 'From' up to now.",
+          "display_name": "To",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/gdelt/get-tv-word-cloud",
+      "result_str_template": "Words found: {gdelt_get_tv_word_cloud,count}",
+      "returns": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "note": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "words": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_tv_ai_annotations": {
+      "description": "List the concepts named in a station's closed captions, or the objects and scenes a vision model saw on screen. The values it returns are exactly what the caption-concept and shown-on-screen filters take, so use it to discover what to chart next.",
+      "display_name": "List what TV said and showed",
+      "display_str_template": "List what GDELT TV said and showed.",
+      "handler": "actions.list_tv_ai_annotations",
+      "id": "gdelt_list_tv_ai_annotations",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "entities": [
+          {
+            "label": "U.S.",
+            "mid": "/m/09c7w0"
+          },
+          {
+            "label": "WHITE HOUSE",
+            "mid": "/m/081sq"
+          }
+        ],
+        "query": "station:CNN president",
+        "source": "CapNlpEntityDetails"
+      },
+      "name": "list_tv_ai_annotations",
+      "parameters": [
+        {
+          "default": "caption_concepts",
+          "description": "Which layer of annotation to list.",
+          "display_name": "Annotation layer",
+          "name": "source",
+          "options": [
+            {
+              "label": "Concepts named in the closed captions",
+              "value": "caption_concepts"
+            },
+            {
+              "label": "Objects and scenes seen on screen",
+              "value": "visual_labels"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which station to search. Required: GDELT's AI television search only runs against named stations.",
+          "display_name": "Station",
+          "dynamic_source": "tvai_stations",
+          "name": "station",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Words to look for across every annotation layer at once. For a specific layer, use the four fields below instead. Can be left empty when one of those is filled in.",
+          "display_name": "Search words",
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Words spoken aloud, from the machine transcript. Up to five words.",
+          "display_name": "Spoken on air",
+          "name": "spoken_words",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Words as they appeared in the station's own closed captions.",
+          "display_name": "In the closed captions",
+          "name": "closed_captions",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Text recognised on screen (a chyron, a caption, a sign). Up to five words.",
+          "display_name": "Written on screen",
+          "name": "onscreen_text",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Something a vision model saw in the picture, for example 'flag' or 'crowd'. Use 'List what TV said and showed' to see the labels available.",
+          "display_name": "Shown on screen",
+          "examples": [
+            {
+              "label": "Flag",
+              "value": "flag"
+            },
+            {
+              "label": "Crowd",
+              "value": "crowd"
+            }
+          ],
+          "name": "visual_label",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this show. The name must match exactly.",
+          "display_name": "Show",
+          "name": "show",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only broadcasts on this day, as a number: 0 for Sunday through to 6 for Saturday (7 also means Sunday).",
+          "display_name": "Day of the week",
+          "maximum": 7,
+          "minimum": 0,
+          "name": "day_of_week",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How far back to search. Leave empty to search the last 5 years. GDELT's television archive runs from July 2009 to October 2024, so a short window finds nothing. Use the two date fields below to search an exact stretch of it.",
+          "display_name": "How far back",
+          "name": "timespan",
+          "options": [
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 3 days",
+              "value": "3d"
+            },
+            {
+              "label": "Last week",
+              "value": "1w"
+            },
+            {
+              "label": "Last 2 weeks",
+              "value": "2w"
+            },
+            {
+              "label": "Last month",
+              "value": "1m"
+            },
+            {
+              "label": "Last 3 months",
+              "value": "3m"
+            },
+            {
+              "label": "Last 6 months",
+              "value": "6m"
+            },
+            {
+              "label": "Last year",
+              "value": "1y"
+            },
+            {
+              "label": "Last 2 years",
+              "value": "2y"
+            },
+            {
+              "label": "Last 5 years",
+              "value": "5y"
+            },
+            {
+              "label": "Last 10 years",
+              "value": "10y"
+            },
+            {
+              "label": "The whole archive",
+              "value": "20y"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Search from this date and time (UTC) instead of using 'How far back'. Leave both date fields empty to use 'How far back'.",
+          "display_name": "From",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Search up to this date and time (UTC). Only used alongside 'From'; leave it empty to search from 'From' up to now.",
+          "display_name": "To",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/gdelt/list-tv-ai-annotations",
+      "result_str_template": "Annotations found: {gdelt_list_tv_ai_annotations,count}",
+      "returns": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "entities": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "query": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_tv_ai_stations": {
+      "description": "List the stations covered by GDELT's AI television annotations, with the dates their coverage runs between. Far fewer stations are annotated than are captioned, and every AI television search has to name one. Takes no inputs.",
+      "display_name": "List AI television stations",
+      "display_str_template": "List GDELT AI television stations.",
+      "handler": "actions.list_tv_ai_stations",
+      "id": "gdelt_list_tv_ai_stations",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "stations": [
+          {
+            "Label": "ABC",
+            "LabelLong": "ABC (KGO) (7/15/2010 - Now)",
+            "StationID": "KGO"
+          },
+          {
+            "Label": "CNN",
+            "LabelLong": "CNN (1/1/2020 - Now)",
+            "StationID": "CNN"
+          }
+        ]
+      },
+      "name": "list_tv_ai_stations",
+      "parameters": [],
+      "path": "/actions/library/gdelt/list-tv-ai-stations",
+      "result_str_template": "Stations: {gdelt_list_tv_ai_stations,count}",
+      "returns": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "stations": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_tv_stations": {
+      "description": "List every television station GDELT monitors, with its market, its network, and the dates its coverage runs between. Use it to find the exact station code for a television search. Takes no inputs.",
+      "display_name": "List television stations",
+      "display_str_template": "List GDELT television stations.",
+      "handler": "actions.list_tv_stations",
+      "id": "gdelt_list_tv_stations",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "stations": [
+          {
+            "Description": "CNN",
+            "EndDate": "2024-10-10T23:59:59Z",
+            "Market": "National",
+            "Network": "CNN",
+            "StartDate": "2009-07-02T00:00:00Z",
+            "StationID": "CNN"
+          },
+          {
+            "Description": "ABC (KGO San Francisco)",
+            "EndDate": "2024-10-10T23:59:59Z",
+            "Market": "San Francisco",
+            "Network": "ABC",
+            "StartDate": "2010-07-15T00:00:00Z",
+            "StationID": "KGO"
+          }
+        ]
+      },
+      "name": "list_tv_stations",
+      "parameters": [],
+      "path": "/actions/library/gdelt/list-tv-stations",
+      "result_str_template": "Stations: {gdelt_list_tv_stations,count}",
+      "returns": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "stations": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_articles": {
+      "description": "Search worldwide online news coverage in 65 languages, back to 2017. Match on words, a GDELT theme, the country or language the story was published in, the website it came from, or how positive or negative it is. Each result has the article's title, link, publication time, outlet, language and country.",
+      "display_name": "Search news articles",
+      "display_str_template": "Search GDELT news articles.",
+      "handler": "actions.search_articles",
+      "id": "gdelt_search_articles",
+      "method": "POST",
+      "mock_response": {
+        "articles": [
+          {
+            "domain": "bbc.com",
+            "language": "English",
+            "seendate": "2026-08-22T14:15:00Z",
+            "socialimage": "https://ichef.bbci.co.uk/news/1024/example.jpg",
+            "sourcecountry": "United Kingdom",
+            "title": "Severe flood warnings issued across the south coast",
+            "url": "https://www.bbc.com/news/articles/example-flood-warning",
+            "url_mobile": ""
+          }
+        ],
+        "count": 1,
+        "query": "flood sourcecountry:UK"
+      },
+      "name": "search_articles",
+      "parameters": [
+        {
+          "description": "The words to search for, for example 'wildfire evacuation'. Put a phrase in double quotes to match it exactly, write (a OR b) to match either, and put a minus in front of a word to leave it out. Can be left empty when at least one filter below is set.",
+          "display_name": "Search words",
+          "examples": [
+            {
+              "label": "Exact phrase",
+              "value": "\"climate change\""
+            },
+            {
+              "label": "Either word",
+              "value": "(wildfire OR bushfire)"
+            },
+            {
+              "label": "Exclude a word",
+              "value": "-football"
+            }
+          ],
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage tagged with this GDELT theme, for example 'NATURAL_DISASTER_FLOOD'. Themes are GDELT's own topic labels; the list is the most-used ones, each showing how often it appears.",
+          "display_name": "Theme",
+          "dynamic_source": "themes",
+          "name": "theme",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage published in this country. This is where the outlet is, not what the story is about.",
+          "display_name": "Published in",
+          "dynamic_source": "countries",
+          "name": "source_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage written in this language. GDELT machine-translates all of them, so English search words still match.",
+          "display_name": "Written in",
+          "dynamic_source": "languages",
+          "name": "source_language",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage from these websites, as a comma-separated list of domains, for example 'bbc.com, reuters.com'.",
+          "display_name": "Only these websites",
+          "examples": [
+            {
+              "label": "BBC",
+              "value": "bbc.com"
+            },
+            {
+              "label": "Reuters",
+              "value": "reuters.com"
+            }
+          ],
+          "name": "domains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Leave out coverage from these websites, as a comma-separated list of domains.",
+          "display_name": "Leave out these websites",
+          "name": "exclude_domains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage more positive than this. Tone runs from about -10 (extremely negative) to +10 (extremely positive), with most news between -5 and +5. Try 2 for positive coverage.",
+          "display_name": "Tone above",
+          "maximum": 100,
+          "minimum": -100,
+          "name": "tone_greater_than",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only coverage more negative than this. Try -5 for strongly negative coverage.",
+          "display_name": "Tone below",
+          "maximum": 100,
+          "minimum": -100,
+          "name": "tone_less_than",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only coverage this emotive, whichever direction it leans. Try 10 for the most charged reporting on a topic, positive or negative.",
+          "display_name": "Strength of feeling above",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "tone_absolute_greater_than",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only coverage where these words appear near each other, for example 'trade tariff'. Set how near with the field below.",
+          "display_name": "Words close together",
+          "name": "near_words",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many words apart they may be. Defaults to 10.",
+          "display_name": "Within how many words",
+          "maximum": 250,
+          "minimum": 1,
+          "name": "near_distance",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only coverage that says this word several times, which finds articles genuinely about it rather than ones mentioning it in passing.",
+          "display_name": "Word repeated",
+          "name": "repeat_word",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many times it must appear. Defaults to 2.",
+          "display_name": "At least how many times",
+          "maximum": 100,
+          "minimum": 2,
+          "name": "repeat_times",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How far back to search. Leave empty for GDELT's default of the last 3 months. Use the two date fields below instead for an exact window.",
+          "display_name": "How far back",
+          "name": "timespan",
+          "options": [
+            {
+              "label": "Last hour",
+              "value": "1h"
+            },
+            {
+              "label": "Last 6 hours",
+              "value": "6h"
+            },
+            {
+              "label": "Last 12 hours",
+              "value": "12h"
+            },
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 3 days",
+              "value": "3d"
+            },
+            {
+              "label": "Last week",
+              "value": "1w"
+            },
+            {
+              "label": "Last 2 weeks",
+              "value": "2w"
+            },
+            {
+              "label": "Last month",
+              "value": "1m"
+            },
+            {
+              "label": "Last 3 months",
+              "value": "3m"
+            },
+            {
+              "label": "Last 6 months",
+              "value": "6m"
+            },
+            {
+              "label": "Last year",
+              "value": "1y"
+            },
+            {
+              "label": "Last 2 years",
+              "value": "2y"
+            },
+            {
+              "label": "Last 5 years",
+              "value": "5y"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Search from this date and time (UTC) instead of using 'How far back'. Leave both date fields empty to use 'How far back'.",
+          "display_name": "From",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Search up to this date and time (UTC). Only used alongside 'From'; leave it empty to search from 'From' up to now.",
+          "display_name": "To",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "What order to return the articles in.",
+          "display_name": "Order",
+          "name": "sort_by",
+          "options": [
+            {
+              "label": "Most relevant first",
+              "value": "relevance"
+            },
+            {
+              "label": "Newest first",
+              "value": "newest"
+            },
+            {
+              "label": "Oldest first",
+              "value": "oldest"
+            },
+            {
+              "label": "Most positive tone first",
+              "value": "most_positive"
+            },
+            {
+              "label": "Most negative tone first",
+              "value": "most_negative"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many articles to return, from 1 to 250. Defaults to 75.",
+          "display_name": "How many to return",
+          "maximum": 250,
+          "minimum": 1,
+          "name": "max_records",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/gdelt/search-articles",
+      "result_str_template": "Articles found: {gdelt_search_articles,count}",
+      "returns": {
+        "properties": {
+          "articles": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "query": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_sentences": {
+      "description": "Find the individual sentences a phrase appears in, rather than whole articles: every search word has to land in the same sentence, and what comes back is that sentence plus the ones either side of it. Good for reading what was actually said about something. Covers the past 72 hours only.",
+      "display_name": "Search sentences in the news",
+      "display_str_template": "Search sentences in GDELT news coverage.",
+      "handler": "actions.search_sentences",
+      "id": "gdelt_search_sentences",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "query": "\"interest rates\"",
+        "sentences": [
+          {
+            "context": "The decision was unanimous. Policymakers said interest rates would stay where they are until inflation falls further. Markets had expected a cut.",
+            "domain": "reuters.com",
+            "isquote": 0,
+            "language": "ENGLISH",
+            "seendate": "2026-08-23T09:00:00Z",
+            "sentence": "Policymakers said interest rates would stay where they are until inflation falls further.",
+            "title": "Central bank holds rates steady",
+            "url": "https://www.reuters.com/markets/example-rates"
+          }
+        ]
+      },
+      "name": "search_sentences",
+      "parameters": [
+        {
+          "description": "The words to search for, for example 'wildfire evacuation'. Put a phrase in double quotes to match it exactly, write (a OR b) to match either, and put a minus in front of a word to leave it out. Can be left empty when at least one filter below is set.",
+          "display_name": "Search words",
+          "examples": [
+            {
+              "label": "Exact phrase",
+              "value": "\"climate change\""
+            },
+            {
+              "label": "Either word",
+              "value": "(wildfire OR bushfire)"
+            },
+            {
+              "label": "Exclude a word",
+              "value": "-football"
+            }
+          ],
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage from these websites, as a comma-separated list of domains, for example 'bbc.com, reuters.com'.",
+          "display_name": "Only these websites",
+          "examples": [
+            {
+              "label": "BBC",
+              "value": "bbc.com"
+            },
+            {
+              "label": "Reuters",
+              "value": "reuters.com"
+            }
+          ],
+          "name": "domains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Leave out coverage from these websites, as a comma-separated list of domains.",
+          "display_name": "Leave out these websites",
+          "name": "exclude_domains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only coverage where these words appear near each other, for example 'trade tariff'. Set how near with the field below.",
+          "display_name": "Words close together",
+          "name": "near_words",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many words apart they may be. Defaults to 10.",
+          "display_name": "Within how many words",
+          "maximum": 250,
+          "minimum": 1,
+          "name": "near_distance",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only coverage that says this word several times, which finds articles genuinely about it rather than ones mentioning it in passing.",
+          "display_name": "Word repeated",
+          "name": "repeat_word",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many times it must appear. Defaults to 2.",
+          "display_name": "At least how many times",
+          "maximum": 100,
+          "minimum": 2,
+          "name": "repeat_times",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How far back to search. Leave empty for the last 24 hours. This search only holds the past 72 hours.",
+          "display_name": "How far back",
+          "name": "timespan",
+          "options": [
+            {
+              "label": "Last 15 minutes",
+              "value": "15min"
+            },
+            {
+              "label": "Last hour",
+              "value": "1h"
+            },
+            {
+              "label": "Last 6 hours",
+              "value": "6h"
+            },
+            {
+              "label": "Last 12 hours",
+              "value": "12h"
+            },
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 2 days",
+              "value": "48h"
+            },
+            {
+              "label": "Last 3 days (the most this search holds)",
+              "value": "72h"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Search from this date and time (UTC) instead of using 'How far back'. Leave both date fields empty to use 'How far back'.",
+          "display_name": "From",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Search up to this date and time (UTC). Only used alongside 'From'; leave it empty to search from 'From' up to now.",
+          "display_name": "To",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Return only sentences that are direct quotations, so you get what someone said rather than what a reporter wrote.",
+          "display_name": "Quotes only",
+          "name": "quotes_only",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Only sentences in this language. Leave empty to search every language.",
+          "display_name": "Language",
+          "dynamic_source": "languages",
+          "name": "search_language",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What order to return the sentences in.",
+          "display_name": "Order",
+          "name": "sort_by",
+          "options": [
+            {
+              "label": "Most relevant first",
+              "value": "relevance"
+            },
+            {
+              "label": "Newest first",
+              "value": "newest"
+            },
+            {
+              "label": "Oldest first",
+              "value": "oldest"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many sentences to return, from 1 to 200. Defaults to 75.",
+          "display_name": "How many to return",
+          "maximum": 200,
+          "minimum": 1,
+          "name": "max_records",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/gdelt/search-sentences",
+      "result_str_template": "Sentences found: {gdelt_search_sentences,count}",
+      "returns": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "query": {
+            "type": "string"
+          },
+          "sentences": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_tv_clips": {
+      "description": "Search the closed captions of US and international television news and get the matching fifteen-second clips, each with its station, show, air time, a snippet of what was said, and a link to watch it in the Internet Archive. The archive runs from July 2009 to October 2024.",
+      "display_name": "Search television news clips",
+      "display_str_template": "Search GDELT television news clips.",
+      "handler": "actions.search_tv_clips",
+      "id": "gdelt_search_tv_clips",
+      "method": "POST",
+      "mock_response": {
+        "clips": [
+          {
+            "date": "2024-09-10T01:15:30Z",
+            "ia_show_id": "CNNW_20240910_010000",
+            "preview_url": "https://archive.org/details/CNNW_20240910_010000#start/930/end/965",
+            "show": "Anderson Cooper 360",
+            "snippet": "\u2026the Federal Reserve signalled that interest rates would stay higher for longer\u2026",
+            "station": "CNN"
+          }
+        ],
+        "count": 1,
+        "query": "\"interest rates\" station:CNN"
+      },
+      "name": "search_tv_clips",
+      "parameters": [
+        {
+          "description": "The words to look for in the closed captions, for example 'interest rates'. Put a phrase in double quotes to match it exactly, write (a OR b) to match either, and put a minus in front of a word to leave it out. Can be left empty when a station, market, network or show is chosen below.",
+          "display_name": "Search words",
+          "examples": [
+            {
+              "label": "Exact phrase",
+              "value": "\"interest rates\""
+            },
+            {
+              "label": "Either word",
+              "value": "(recession OR downturn)"
+            }
+          ],
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this station, for example CNN.",
+          "display_name": "Station",
+          "dynamic_source": "tv_stations",
+          "name": "station",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from stations in this market. 'National' is the national networks; the rest are individual cities.",
+          "display_name": "Market",
+          "dynamic_source": "tv_markets",
+          "name": "market",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this network's stations, for example CBS. A network covers all of its local affiliates at once.",
+          "display_name": "Network",
+          "examples": [
+            {
+              "label": "CBS",
+              "value": "CBS"
+            },
+            {
+              "label": "NBC",
+              "value": "NBC"
+            },
+            {
+              "label": "ABC",
+              "value": "ABC"
+            }
+          ],
+          "name": "network",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips from this show. The name must match exactly, for example 'Anderson Cooper 360'.",
+          "display_name": "Show",
+          "name": "show",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only clips where this also comes up within about fifteen seconds of the search words.",
+          "display_name": "Also said nearby",
+          "name": "context",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How far back to search. Leave empty to search the last 5 years. GDELT's television archive runs from July 2009 to October 2024, so a short window finds nothing. Use the two date fields below to search an exact stretch of it.",
+          "display_name": "How far back",
+          "name": "timespan",
+          "options": [
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 3 days",
+              "value": "3d"
+            },
+            {
+              "label": "Last week",
+              "value": "1w"
+            },
+            {
+              "label": "Last 2 weeks",
+              "value": "2w"
+            },
+            {
+              "label": "Last month",
+              "value": "1m"
+            },
+            {
+              "label": "Last 3 months",
+              "value": "3m"
+            },
+            {
+              "label": "Last 6 months",
+              "value": "6m"
+            },
+            {
+              "label": "Last year",
+              "value": "1y"
+            },
+            {
+              "label": "Last 2 years",
+              "value": "2y"
+            },
+            {
+              "label": "Last 5 years",
+              "value": "5y"
+            },
+            {
+              "label": "Last 10 years",
+              "value": "10y"
+            },
+            {
+              "label": "The whole archive",
+              "value": "20y"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Search from this date and time (UTC) instead of using 'How far back'. Leave both date fields empty to use 'How far back'.",
+          "display_name": "From",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Search up to this date and time (UTC). Only used alongside 'From'; leave it empty to search from 'From' up to now.",
+          "display_name": "To",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "What order to return the clips in.",
+          "display_name": "Order",
+          "name": "sort_by",
+          "options": [
+            {
+              "label": "Most relevant first",
+              "value": "relevance"
+            },
+            {
+              "label": "Newest first",
+              "value": "newest"
+            },
+            {
+              "label": "Oldest first",
+              "value": "oldest"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many clips to return, from 1 to 3,000. Defaults to 50.",
+          "display_name": "How many to return",
+          "maximum": 3000,
+          "minimum": 1,
+          "name": "max_records",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/gdelt/search-tv-clips",
+      "result_str_template": "Clips found: {gdelt_search_tv_clips,count}",
+      "returns": {
+        "properties": {
+          "clips": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "note": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Search the world's news with GDELT, the open project that monitors online news in 65 languages and decades of US television news, and works out what each story is about and how positively it is told. No account or API key is needed. Search articles back to 2017 and the sentences a phrase appears in; chart how coverage and its tone move over time; and search television by what was said, written on screen or shown on camera.",
+  "display_name": "GDELT",
+  "id": "gdelt"
+}

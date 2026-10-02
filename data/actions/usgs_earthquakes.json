@@ -1,0 +1,3172 @@
+{
+  "actions": {
+    "check_service_status": {
+      "description": "Check whether the USGS earthquake catalog is answering, and how quickly. This is the one action that reports a problem as a value instead of failing the step, so a workflow can decide what to do about it - skip a digest, wait, or say the data is stale rather than dying halfway through. Being throttled is reported separately from being down.",
+      "display_name": "Check service status",
+      "display_str_template": "Check the USGS earthquake catalog status.",
+      "handler": "actions.check_service_status",
+      "id": "usgs_earthquakes_check_service_status",
+      "method": "POST",
+      "mock_response": {
+        "api_version": "1.14.1",
+        "message": "The USGS earthquake catalog is up, running API 2.7.0.",
+        "online": true,
+        "rate_limited": false,
+        "reachable": true,
+        "response_time_ms": 143.7,
+        "status_code": 200
+      },
+      "name": "check_service_status",
+      "output_formatter": "actions.format_status_output",
+      "parameters": [],
+      "path": "/actions/library/usgs-earthquakes/check-service-status",
+      "result_str_template": "Service status checked.",
+      "returns": {
+        "properties": {
+          "api_version": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "rate_limited": {
+            "type": "boolean"
+          },
+          "reachable": {
+            "type": "boolean"
+          },
+          "response_time_ms": {
+            "type": "number"
+          },
+          "status_code": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "count_earthquakes": {
+      "description": "Count the earthquakes a search would match, without fetching any of them. One small answer however big the number, which makes it the cheap way for a schedule to ask 'was there anything?' before doing the expensive part - and the way to check a search is inside the 20,000 events one response can carry, since the catalog rejects a bigger one rather than trimming it.",
+      "display_name": "Count earthquakes",
+      "display_str_template": "Count USGS earthquakes.",
+      "handler": "actions.count_earthquakes",
+      "id": "usgs_earthquakes_count_earthquakes",
+      "method": "POST",
+      "mock_response": {
+        "count": 431,
+        "end_time": null,
+        "exceeds_max_returnable": false,
+        "latitude": null,
+        "longitude": null,
+        "max_returnable": 20000,
+        "min_magnitude": 4.5,
+        "radius_km": null,
+        "start_time": "2026-07-29T00:00:00Z"
+      },
+      "name": "count_earthquakes",
+      "output_formatter": "actions.format_count_output",
+      "parameters": [
+        {
+          "description": "Only events at or after this moment. Leave it and 'Days back' empty to use this action's own default window. Times are UTC unless the value says otherwise.",
+          "display_name": "Start time",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Only events at or before this moment. Leave it empty to search up to now, which is what a scheduled run almost always wants: the catalog decides what 'now' is, so an event that arrives while the step runs is still included.",
+          "display_name": "End time",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Look this many days back instead of naming a start date - what a workflow that runs every morning needs, since 'the last 7 days' cannot be written as a fixed date. Counted back from now, or from 'End time' if you set one. Give this or 'Start time', not both.",
+          "display_name": "Days back",
+          "maximum": 3650,
+          "minimum": 1,
+          "name": "days_back",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or above this magnitude. This is the filter that decides how much noise a workflow sees: the catalog records tens of thousands of events a month, almost all of them too small to feel. 2.5 is roughly where people start noticing, 4.5 is the global reporting threshold, and 6 is where damage becomes likely.",
+          "display_name": "Minimum magnitude",
+          "examples": [
+            {
+              "label": "Felt locally",
+              "value": "2.5"
+            },
+            {
+              "label": "Reported worldwide",
+              "value": "4.5"
+            },
+            {
+              "label": "Potentially damaging",
+              "value": "6"
+            }
+          ],
+          "name": "min_magnitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or below this magnitude.",
+          "display_name": "Maximum magnitude",
+          "name": "max_magnitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or below this depth, in kilometres. The catalog allows -100 to 1000; a negative depth is an event above sea level, which is normal in mountainous regions.",
+          "display_name": "Minimum depth (km)",
+          "maximum": 1000.0,
+          "minimum": -100.0,
+          "name": "min_depth_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or above this depth, in kilometres. Shallow events shake the surface far harder than deep ones of the same magnitude, so a filter of 70 km or less is a rough stand-in for 'the ones people felt'.",
+          "display_name": "Maximum depth (km)",
+          "maximum": 1000.0,
+          "minimum": -100.0,
+          "name": "max_depth_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The centre of a circle to search, in degrees from -90 to 90. Needs a longitude and a radius with it: given only part of a circle the catalog ignores the whole thing and returns events from everywhere, so a partial one is refused here instead.",
+          "display_name": "Latitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "37.7749"
+            },
+            {
+              "label": "Tokyo",
+              "value": "35.6762"
+            }
+          ],
+          "maximum": 90,
+          "minimum": -90,
+          "name": "latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The centre of a circle to search, in degrees from -180 to 180. Needs a latitude and a radius with it.",
+          "display_name": "Longitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "-122.4194"
+            },
+            {
+              "label": "Tokyo",
+              "value": "139.6503"
+            }
+          ],
+          "maximum": 180,
+          "minimum": -180,
+          "name": "longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How far around the centre to look, in kilometres, up to 20,001.6 - which is half the Earth's circumference, and so the whole planet.",
+          "display_name": "Radius (km)",
+          "examples": [
+            {
+              "label": "One metro area",
+              "value": "50"
+            },
+            {
+              "label": "A region",
+              "value": "250"
+            }
+          ],
+          "maximum": 20001.6,
+          "minimum": 0,
+          "name": "radius_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The southern edge of a rectangle to search, -90 to 90. The four edges are independent: set only the two you care about to search a band of latitude or longitude.",
+          "display_name": "South edge (latitude)",
+          "maximum": 90,
+          "minimum": -90,
+          "name": "min_latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The northern edge of a rectangle to search, -90 to 90.",
+          "display_name": "North edge (latitude)",
+          "maximum": 90,
+          "minimum": -90,
+          "name": "max_latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The western edge of a rectangle to search. Normally -180 to 180, but the catalog lets a box cross the date line by going outside that: 170 to 190 is a real search over the western Pacific.",
+          "display_name": "West edge (longitude)",
+          "maximum": 360,
+          "minimum": -360,
+          "name": "min_longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The eastern edge of a rectangle to search, -360 to 360.",
+          "display_name": "East edge (longitude)",
+          "maximum": 360,
+          "minimum": -360,
+          "name": "max_longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events of this type. The catalog is not only earthquakes: it also records quarry blasts, explosions, mine collapses, sonic booms and ice quakes, and a search that names no type returns all of them. Choose 'earthquake' to leave the rest out.",
+          "display_name": "Event type",
+          "dynamic_source": "event_types",
+          "examples": [
+            {
+              "label": "Earthquakes only",
+              "value": "earthquake"
+            },
+            {
+              "label": "Quarry blasts",
+              "value": "quarry blast"
+            }
+          ],
+          "name": "event_type",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only events with a PAGER alert of at least this level, weakest first: green, yellow, orange, red. Worth knowing that this is really a 'has been assessed' filter - the USGS runs a PAGER loss assessment only on the events big enough to warrant one, so most events carry no alert at all and setting this to green still leaves out the great majority of them.",
+          "display_name": "Minimum PAGER alert level",
+          "name": "min_alert_level",
+          "options": [
+            {
+              "label": "Green",
+              "value": "green"
+            },
+            {
+              "label": "Yellow",
+              "value": "yellow"
+            },
+            {
+              "label": "Orange",
+              "value": "orange"
+            },
+            {
+              "label": "Red",
+              "value": "red"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only events with at least this many 'Did You Feel It?' responses from the public. Like the alert level, this only ever matches events somebody reported, which is a small share of them - but it is the best single filter for 'an event people noticed' regardless of how big it measured.",
+          "display_name": "Minimum felt reports",
+          "minimum": 1,
+          "name": "min_felt_reports",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or above this significance score. The catalog computes it from magnitude, felt reports and estimated impact together, so it ranks a moderate earthquake under a city above a large one in the deep ocean. Roughly: 600 and above is what makes the news, 1000 is a major disaster.",
+          "display_name": "Minimum significance",
+          "examples": [
+            {
+              "label": "Newsworthy",
+              "value": "600"
+            },
+            {
+              "label": "Major",
+              "value": "1000"
+            }
+          ],
+          "minimum": 0,
+          "name": "min_significance",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "all",
+          "description": "Whether to include events a seismologist has not checked yet. Automatic solutions appear within minutes and are sometimes revised or withdrawn; reviewed ones are slower and settled. Defaults to all of them.",
+          "display_name": "Review status",
+          "name": "review_status",
+          "options": [
+            {
+              "label": "All",
+              "value": "all"
+            },
+            {
+              "label": "Automatic",
+              "value": "automatic"
+            },
+            {
+              "label": "Reviewed",
+              "value": "reviewed"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only events from this catalog. Leave empty - the default - to get the most preferred information about each event from whichever catalog holds it, which is what almost every workflow wants.",
+          "display_name": "Catalog",
+          "dynamic_source": "catalogs",
+          "name": "catalog",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only events contributed by this network - 'ak' for Alaska, 'ci' for southern California, 'us' for the USGS national operation. Each event names its own in 'network'.",
+          "display_name": "Contributor",
+          "dynamic_source": "contributors",
+          "name": "contributor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only events that have this kind of product attached - a 'shakemap' for modelled shaking, 'dyfi' for public reports, 'losspager' for a casualty and loss estimate, 'moment-tensor' for the fault solution. A product is only generated when an event warrants it, so this doubles as a filter for the events the USGS itself treated as significant.",
+          "display_name": "Has product",
+          "dynamic_source": "product_types",
+          "examples": [
+            {
+              "label": "Has a shaking map",
+              "value": "shakemap"
+            },
+            {
+              "label": "Has public reports",
+              "value": "dyfi"
+            }
+          ],
+          "name": "product_type",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/usgs-earthquakes/count-earthquakes",
+      "result_str_template": "Earthquakes counted.",
+      "returns": {
+        "properties": {
+          "count": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "exceeds_max_returnable": {
+            "type": "boolean"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "max_returnable": {
+            "type": "number"
+          },
+          "min_magnitude": {
+            "type": "number"
+          },
+          "radius_km": {
+            "type": "number"
+          },
+          "start_time": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_earthquakes_near_place": {
+      "description": "Find the earthquakes within a radius of a point - a site, an office, a customer's address - nearest first, each with how far away it was in kilometres and miles and which direction it lay. That distance is the thing a radius search leaves out: the catalog returns the events inside the circle but never says how far away any of them was, so it is worked out here. Defaults to a 100 km radius over the last 30 days.",
+      "display_name": "Find earthquakes near a place",
+      "display_str_template": "Find USGS earthquakes near {0}, {1}.",
+      "handler": "actions.find_earthquakes_near_place",
+      "id": "usgs_earthquakes_find_earthquakes_near_place",
+      "method": "POST",
+      "mock_response": {
+        "complete": true,
+        "earthquake_count": 1,
+        "earthquakes": [
+          {
+            "alert": null,
+            "azimuthal_gap": 68.0,
+            "cdi": 2.7,
+            "code": "75009182",
+            "depth_km": 2.1,
+            "detail_url": "https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=nc75009182&format=geojson",
+            "direction": "NNW",
+            "distance_km": 121.28,
+            "distance_miles": 75.36,
+            "event_type": "earthquake",
+            "felt_reports": 3,
+            "id": "nc75009182",
+            "ids": [
+              "nc75009182"
+            ],
+            "latitude": 38.8218,
+            "longitude": -122.8092,
+            "magnitude": 3.2,
+            "magnitude_type": "md",
+            "min_station_distance_deg": 0.014,
+            "mmi": null,
+            "network": "nc",
+            "place": "7 km NW of The Geysers, CA",
+            "product_types": [
+              "dyfi",
+              "origin",
+              "phase-data"
+            ],
+            "region": "CA",
+            "rms": 0.03,
+            "significance": 158,
+            "sources": [
+              "nc"
+            ],
+            "station_count": 24,
+            "status": "automatic",
+            "time": "2026-08-28T02:41:09Z",
+            "time_epoch_ms": 1787884869000,
+            "title": "M 3.2 - 7 km NW of The Geysers, CA",
+            "tsunami": false,
+            "updated": "2026-08-28T02:55:31Z",
+            "updated_epoch_ms": 1787885731000,
+            "url": "https://earthquake.usgs.gov/earthquakes/eventpage/nc75009182"
+          }
+        ],
+        "end_time": null,
+        "latitude": 37.7749,
+        "limit": 20,
+        "longitude": -122.4194,
+        "min_magnitude": null,
+        "nearest_km": 121.28,
+        "order_by": "distance",
+        "radius_km": 250.0,
+        "scanned_count": 1,
+        "start_time": "2026-07-29T00:00:00Z"
+      },
+      "name": "find_earthquakes_near_place",
+      "output_formatter": "actions.format_events_output",
+      "parameters": [
+        {
+          "description": "The centre of the search, in degrees from -90 to 90.",
+          "display_name": "Latitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "37.7749"
+            },
+            {
+              "label": "Tokyo",
+              "value": "35.6762"
+            }
+          ],
+          "maximum": 90,
+          "minimum": -90,
+          "name": "latitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The centre of the search, in degrees from -180 to 180.",
+          "display_name": "Longitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "-122.4194"
+            },
+            {
+              "label": "Tokyo",
+              "value": "139.6503"
+            }
+          ],
+          "maximum": 180,
+          "minimum": -180,
+          "name": "longitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How far around the point to look, in kilometres. Defaults to 100.",
+          "display_name": "Radius (km)",
+          "examples": [
+            {
+              "label": "A city",
+              "value": "50"
+            },
+            {
+              "label": "A region",
+              "value": "250"
+            }
+          ],
+          "maximum": 20001.6,
+          "minimum": 0,
+          "name": "radius_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or after this moment. Leave it and 'Days back' empty to use this action's own default window. Times are UTC unless the value says otherwise.",
+          "display_name": "Start time",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Only events at or before this moment. Leave it empty to search up to now, which is what a scheduled run almost always wants: the catalog decides what 'now' is, so an event that arrives while the step runs is still included.",
+          "display_name": "End time",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Look this many days back instead of naming a start date - what a workflow that runs every morning needs, since 'the last 7 days' cannot be written as a fixed date. Counted back from now, or from 'End time' if you set one. Give this or 'Start time', not both.",
+          "display_name": "Days back",
+          "maximum": 3650,
+          "minimum": 1,
+          "name": "days_back",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or above this magnitude. This is the filter that decides how much noise a workflow sees: the catalog records tens of thousands of events a month, almost all of them too small to feel. 2.5 is roughly where people start noticing, 4.5 is the global reporting threshold, and 6 is where damage becomes likely.",
+          "display_name": "Minimum magnitude",
+          "examples": [
+            {
+              "label": "Felt locally",
+              "value": "2.5"
+            },
+            {
+              "label": "Reported worldwide",
+              "value": "4.5"
+            },
+            {
+              "label": "Potentially damaging",
+              "value": "6"
+            }
+          ],
+          "name": "min_magnitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or above this depth, in kilometres. Shallow events shake the surface far harder than deep ones of the same magnitude, so a filter of 70 km or less is a rough stand-in for 'the ones people felt'.",
+          "display_name": "Maximum depth (km)",
+          "maximum": 1000.0,
+          "minimum": -100.0,
+          "name": "max_depth_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events of this type. The catalog is not only earthquakes: it also records quarry blasts, explosions, mine collapses, sonic booms and ice quakes, and a search that names no type returns all of them. Choose 'earthquake' to leave the rest out.",
+          "display_name": "Event type",
+          "dynamic_source": "event_types",
+          "examples": [
+            {
+              "label": "Earthquakes only",
+              "value": "earthquake"
+            },
+            {
+              "label": "Quarry blasts",
+              "value": "quarry blast"
+            }
+          ],
+          "name": "event_type",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "distance",
+          "description": "How to order the events. Defaults to nearest first, which is what this action computes and the catalog cannot do itself.",
+          "display_name": "Order by",
+          "name": "order_by",
+          "options": [
+            {
+              "label": "Nearest first",
+              "value": "distance"
+            },
+            {
+              "label": "Newest first",
+              "value": "time"
+            },
+            {
+              "label": "Oldest first",
+              "value": "time-asc"
+            },
+            {
+              "label": "Largest first",
+              "value": "magnitude"
+            },
+            {
+              "label": "Smallest first",
+              "value": "magnitude-asc"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many events to return, from 1 to 1,000. Defaults to 20. A much larger block is read and ordered before this trims it, and 'complete' says whether that block held every match - so 'the nearest' is never quietly the nearest of a subset.",
+          "display_name": "Number of events",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/usgs-earthquakes/find-earthquakes-near-place",
+      "result_str_template": "Nearby earthquakes retrieved.",
+      "returns": {
+        "properties": {
+          "complete": {
+            "type": "boolean"
+          },
+          "earthquake_count": {
+            "type": "number"
+          },
+          "earthquakes": {
+            "items": {
+              "properties": {
+                "alert": {
+                  "type": "string"
+                },
+                "azimuthal_gap": {
+                  "type": "number"
+                },
+                "cdi": {
+                  "type": "number"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "depth_km": {
+                  "type": "number"
+                },
+                "detail_url": {
+                  "type": "string"
+                },
+                "direction": {
+                  "type": "string"
+                },
+                "distance_km": {
+                  "type": "number"
+                },
+                "distance_miles": {
+                  "type": "number"
+                },
+                "event_type": {
+                  "type": "string"
+                },
+                "felt_reports": {
+                  "type": "number"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "latitude": {
+                  "type": "number"
+                },
+                "longitude": {
+                  "type": "number"
+                },
+                "magnitude": {
+                  "type": "number"
+                },
+                "magnitude_type": {
+                  "type": "string"
+                },
+                "min_station_distance_deg": {
+                  "type": "number"
+                },
+                "mmi": {
+                  "type": "number"
+                },
+                "network": {
+                  "type": "string"
+                },
+                "place": {
+                  "type": "string"
+                },
+                "product_types": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "region": {
+                  "type": "string"
+                },
+                "rms": {
+                  "type": "number"
+                },
+                "significance": {
+                  "type": "number"
+                },
+                "sources": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "station_count": {
+                  "type": "number"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "time": {
+                  "type": "string"
+                },
+                "time_epoch_ms": {
+                  "type": "number"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "tsunami": {
+                  "type": "boolean"
+                },
+                "updated": {
+                  "type": "string"
+                },
+                "updated_epoch_ms": {
+                  "type": "number"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "min_magnitude": {
+            "type": "number"
+          },
+          "nearest_km": {
+            "type": "number"
+          },
+          "order_by": {
+            "type": "string"
+          },
+          "radius_km": {
+            "type": "number"
+          },
+          "scanned_count": {
+            "type": "number"
+          },
+          "start_time": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_earthquake": {
+      "description": "Look one earthquake up by its USGS event id, for re-reading an event an earlier step found or a colleague linked to. A full event-page link is accepted in place of the bare id. Asking for a single event makes the catalog return every origin and magnitude solution it holds rather than only the preferred one, so this is also the fuller record.",
+      "display_name": "Get an earthquake by ID",
+      "display_str_template": "Get USGS earthquake {0}.",
+      "handler": "actions.get_earthquake",
+      "id": "usgs_earthquakes_get_earthquake",
+      "method": "POST",
+      "mock_response": {
+        "earthquake": {
+          "alert": "green",
+          "azimuthal_gap": 34.0,
+          "cdi": 4.6,
+          "code": "7000p4kq",
+          "depth_km": 28.5,
+          "detail_url": "https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=us7000p4kq&format=geojson",
+          "event_type": "earthquake",
+          "felt_reports": 41,
+          "id": "us7000p4kq",
+          "ids": [
+            "us7000p4kq",
+            "at00sxk2p1"
+          ],
+          "latitude": 54.4712,
+          "longitude": -160.7268,
+          "magnitude": 6.1,
+          "magnitude_type": "mww",
+          "min_station_distance_deg": 0.918,
+          "mmi": 5.2,
+          "network": "us",
+          "place": "95 km SSW of Sand Point, Alaska",
+          "product_types": [
+            "dyfi",
+            "losspager",
+            "origin",
+            "phase-data",
+            "shakemap"
+          ],
+          "region": "Alaska",
+          "rms": 0.87,
+          "significance": 572,
+          "sources": [
+            "us",
+            "at"
+          ],
+          "station_count": 132,
+          "status": "reviewed",
+          "time": "2026-08-27T09:14:52Z",
+          "time_epoch_ms": 1787822092000,
+          "title": "M 6.1 - 95 km SSW of Sand Point, Alaska",
+          "tsunami": true,
+          "updated": "2026-08-27T11:02:10Z",
+          "updated_epoch_ms": 1787828530000,
+          "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000p4kq"
+        },
+        "event_id": "us7000p4kq"
+      },
+      "name": "get_earthquake",
+      "output_formatter": "actions.format_event_output",
+      "parameters": [
+        {
+          "description": "The event's id, or the full USGS event-page link to it. Usually this comes from an earlier step rather than being typed: every action here returns the id of each event it hands back, and Get recent earthquakes or Search earthquakes is the normal way to get one. An id is a short code the reporting network assigns, such as 'nc75123456'.",
+          "display_name": "Event ID",
+          "examples": [
+            {
+              "label": "An event id",
+              "value": "nc75123456"
+            },
+            {
+              "label": "An event-page link",
+              "value": "https://earthquake.usgs.gov/earthquakes/eventpage/nc75123456"
+            }
+          ],
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/usgs-earthquakes/get-earthquake",
+      "result_str_template": "Earthquake retrieved.",
+      "returns": {
+        "properties": {
+          "earthquake": {
+            "properties": {
+              "alert": {
+                "type": "string"
+              },
+              "azimuthal_gap": {
+                "type": "number"
+              },
+              "cdi": {
+                "type": "number"
+              },
+              "code": {
+                "type": "string"
+              },
+              "depth_km": {
+                "type": "number"
+              },
+              "detail_url": {
+                "type": "string"
+              },
+              "event_type": {
+                "type": "string"
+              },
+              "felt_reports": {
+                "type": "number"
+              },
+              "id": {
+                "type": "string"
+              },
+              "ids": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              },
+              "magnitude": {
+                "type": "number"
+              },
+              "magnitude_type": {
+                "type": "string"
+              },
+              "min_station_distance_deg": {
+                "type": "number"
+              },
+              "mmi": {
+                "type": "number"
+              },
+              "network": {
+                "type": "string"
+              },
+              "place": {
+                "type": "string"
+              },
+              "product_types": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "region": {
+                "type": "string"
+              },
+              "rms": {
+                "type": "number"
+              },
+              "significance": {
+                "type": "number"
+              },
+              "sources": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "station_count": {
+                "type": "number"
+              },
+              "status": {
+                "type": "string"
+              },
+              "time": {
+                "type": "string"
+              },
+              "time_epoch_ms": {
+                "type": "number"
+              },
+              "title": {
+                "type": "string"
+              },
+              "tsunami": {
+                "type": "boolean"
+              },
+              "updated": {
+                "type": "string"
+              },
+              "updated_epoch_ms": {
+                "type": "number"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_largest_earthquake": {
+      "description": "Find the single biggest earthquake in a window, optionally within a region - the one line a weekly digest or a morning briefing wants. A quiet window is reported as 'found: false' with a message rather than as a failure, so a scheduled post can say 'nothing above M4 this week' instead of the step dying on the weeks when that is the news. Defaults to the last 7 days.",
+      "display_name": "Get the largest earthquake",
+      "display_str_template": "Get the largest USGS earthquake.",
+      "handler": "actions.get_largest_earthquake",
+      "id": "usgs_earthquakes_get_largest_earthquake",
+      "method": "POST",
+      "mock_response": {
+        "earthquake": {
+          "alert": "green",
+          "azimuthal_gap": 34.0,
+          "cdi": 4.6,
+          "code": "7000p4kq",
+          "depth_km": 28.5,
+          "detail_url": "https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=us7000p4kq&format=geojson",
+          "event_type": "earthquake",
+          "felt_reports": 41,
+          "id": "us7000p4kq",
+          "ids": [
+            "us7000p4kq",
+            "at00sxk2p1"
+          ],
+          "latitude": 54.4712,
+          "longitude": -160.7268,
+          "magnitude": 6.1,
+          "magnitude_type": "mww",
+          "min_station_distance_deg": 0.918,
+          "mmi": 5.2,
+          "network": "us",
+          "place": "95 km SSW of Sand Point, Alaska",
+          "product_types": [
+            "dyfi",
+            "losspager",
+            "origin",
+            "phase-data",
+            "shakemap"
+          ],
+          "region": "Alaska",
+          "rms": 0.87,
+          "significance": 572,
+          "sources": [
+            "us",
+            "at"
+          ],
+          "station_count": 132,
+          "status": "reviewed",
+          "time": "2026-08-27T09:14:52Z",
+          "time_epoch_ms": 1787822092000,
+          "title": "M 6.1 - 95 km SSW of Sand Point, Alaska",
+          "tsunami": true,
+          "updated": "2026-08-27T11:02:10Z",
+          "updated_epoch_ms": 1787828530000,
+          "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000p4kq"
+        },
+        "end_time": null,
+        "found": true,
+        "latitude": null,
+        "longitude": null,
+        "message": "Largest: M 6.1 - 95 km SSW of Sand Point, Alaska at 2026-08-27T09:14:52Z",
+        "min_magnitude": null,
+        "radius_km": null,
+        "start_time": "2026-08-21T00:00:00Z"
+      },
+      "name": "get_largest_earthquake",
+      "output_formatter": "actions.format_event_output",
+      "parameters": [
+        {
+          "description": "Only events at or after this moment. Leave it and 'Days back' empty to use this action's own default window. Times are UTC unless the value says otherwise.",
+          "display_name": "Start time",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Only events at or before this moment. Leave it empty to search up to now, which is what a scheduled run almost always wants: the catalog decides what 'now' is, so an event that arrives while the step runs is still included.",
+          "display_name": "End time",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Look this many days back instead of naming a start date - what a workflow that runs every morning needs, since 'the last 7 days' cannot be written as a fixed date. Counted back from now, or from 'End time' if you set one. Give this or 'Start time', not both.",
+          "display_name": "Days back",
+          "maximum": 3650,
+          "minimum": 1,
+          "name": "days_back",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or above this magnitude. This is the filter that decides how much noise a workflow sees: the catalog records tens of thousands of events a month, almost all of them too small to feel. 2.5 is roughly where people start noticing, 4.5 is the global reporting threshold, and 6 is where damage becomes likely.",
+          "display_name": "Minimum magnitude",
+          "examples": [
+            {
+              "label": "Felt locally",
+              "value": "2.5"
+            },
+            {
+              "label": "Reported worldwide",
+              "value": "4.5"
+            },
+            {
+              "label": "Potentially damaging",
+              "value": "6"
+            }
+          ],
+          "name": "min_magnitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The centre of a circle to search, in degrees from -90 to 90. Needs a longitude and a radius with it: given only part of a circle the catalog ignores the whole thing and returns events from everywhere, so a partial one is refused here instead.",
+          "display_name": "Latitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "37.7749"
+            },
+            {
+              "label": "Tokyo",
+              "value": "35.6762"
+            }
+          ],
+          "maximum": 90,
+          "minimum": -90,
+          "name": "latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The centre of a circle to search, in degrees from -180 to 180. Needs a latitude and a radius with it.",
+          "display_name": "Longitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "-122.4194"
+            },
+            {
+              "label": "Tokyo",
+              "value": "139.6503"
+            }
+          ],
+          "maximum": 180,
+          "minimum": -180,
+          "name": "longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How far around the centre to look, in kilometres, up to 20,001.6 - which is half the Earth's circumference, and so the whole planet.",
+          "display_name": "Radius (km)",
+          "examples": [
+            {
+              "label": "One metro area",
+              "value": "50"
+            },
+            {
+              "label": "A region",
+              "value": "250"
+            }
+          ],
+          "maximum": 20001.6,
+          "minimum": 0,
+          "name": "radius_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The southern edge of a rectangle to search, -90 to 90. The four edges are independent: set only the two you care about to search a band of latitude or longitude.",
+          "display_name": "South edge (latitude)",
+          "maximum": 90,
+          "minimum": -90,
+          "name": "min_latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The northern edge of a rectangle to search, -90 to 90.",
+          "display_name": "North edge (latitude)",
+          "maximum": 90,
+          "minimum": -90,
+          "name": "max_latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The western edge of a rectangle to search. Normally -180 to 180, but the catalog lets a box cross the date line by going outside that: 170 to 190 is a real search over the western Pacific.",
+          "display_name": "West edge (longitude)",
+          "maximum": 360,
+          "minimum": -360,
+          "name": "min_longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The eastern edge of a rectangle to search, -360 to 360.",
+          "display_name": "East edge (longitude)",
+          "maximum": 360,
+          "minimum": -360,
+          "name": "max_longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events of this type. The catalog is not only earthquakes: it also records quarry blasts, explosions, mine collapses, sonic booms and ice quakes, and a search that names no type returns all of them. Choose 'earthquake' to leave the rest out.",
+          "display_name": "Event type",
+          "dynamic_source": "event_types",
+          "examples": [
+            {
+              "label": "Earthquakes only",
+              "value": "earthquake"
+            },
+            {
+              "label": "Quarry blasts",
+              "value": "quarry blast"
+            }
+          ],
+          "name": "event_type",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/usgs-earthquakes/get-largest-earthquake",
+      "result_str_template": "Largest earthquake retrieved.",
+      "returns": {
+        "properties": {
+          "earthquake": {
+            "properties": {
+              "alert": {
+                "type": "string"
+              },
+              "azimuthal_gap": {
+                "type": "number"
+              },
+              "cdi": {
+                "type": "number"
+              },
+              "code": {
+                "type": "string"
+              },
+              "depth_km": {
+                "type": "number"
+              },
+              "detail_url": {
+                "type": "string"
+              },
+              "event_type": {
+                "type": "string"
+              },
+              "felt_reports": {
+                "type": "number"
+              },
+              "id": {
+                "type": "string"
+              },
+              "ids": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              },
+              "magnitude": {
+                "type": "number"
+              },
+              "magnitude_type": {
+                "type": "string"
+              },
+              "min_station_distance_deg": {
+                "type": "number"
+              },
+              "mmi": {
+                "type": "number"
+              },
+              "network": {
+                "type": "string"
+              },
+              "place": {
+                "type": "string"
+              },
+              "product_types": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "region": {
+                "type": "string"
+              },
+              "rms": {
+                "type": "number"
+              },
+              "significance": {
+                "type": "number"
+              },
+              "sources": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "station_count": {
+                "type": "number"
+              },
+              "status": {
+                "type": "string"
+              },
+              "time": {
+                "type": "string"
+              },
+              "time_epoch_ms": {
+                "type": "number"
+              },
+              "title": {
+                "type": "string"
+              },
+              "tsunami": {
+                "type": "boolean"
+              },
+              "updated": {
+                "type": "string"
+              },
+              "updated_epoch_ms": {
+                "type": "number"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "found": {
+            "type": "boolean"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "message": {
+            "type": "string"
+          },
+          "min_magnitude": {
+            "type": "number"
+          },
+          "radius_km": {
+            "type": "number"
+          },
+          "start_time": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_recent_earthquakes": {
+      "description": "Get the earthquakes from the last hour, day, week or month from the USGS real-time feeds - the route the USGS asks automated applications to use for recent activity, because the feeds are pre-rendered and cached rather than searched on demand. Use this for anything on a schedule. Optionally keep only the events above a magnitude, or within a radius of a place, both of which are applied to the feed here at no extra cost.",
+      "display_name": "Get recent earthquakes",
+      "display_str_template": "Get recent USGS earthquakes ({0}, {1}).",
+      "handler": "actions.get_recent_earthquakes",
+      "id": "usgs_earthquakes_get_recent_earthquakes",
+      "method": "POST",
+      "mock_response": {
+        "earthquake_count": 2,
+        "earthquakes": [
+          {
+            "alert": null,
+            "azimuthal_gap": 68.0,
+            "cdi": 2.7,
+            "code": "75009182",
+            "depth_km": 2.1,
+            "detail_url": "https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=nc75009182&format=geojson",
+            "event_type": "earthquake",
+            "felt_reports": 3,
+            "id": "nc75009182",
+            "ids": [
+              "nc75009182"
+            ],
+            "latitude": 38.8218,
+            "longitude": -122.8092,
+            "magnitude": 3.2,
+            "magnitude_type": "md",
+            "min_station_distance_deg": 0.014,
+            "mmi": null,
+            "network": "nc",
+            "place": "7 km NW of The Geysers, CA",
+            "product_types": [
+              "dyfi",
+              "origin",
+              "phase-data"
+            ],
+            "region": "CA",
+            "rms": 0.03,
+            "significance": 158,
+            "sources": [
+              "nc"
+            ],
+            "station_count": 24,
+            "status": "automatic",
+            "time": "2026-08-28T02:41:09Z",
+            "time_epoch_ms": 1787884869000,
+            "title": "M 3.2 - 7 km NW of The Geysers, CA",
+            "tsunami": false,
+            "updated": "2026-08-28T02:55:31Z",
+            "updated_epoch_ms": 1787885731000,
+            "url": "https://earthquake.usgs.gov/earthquakes/eventpage/nc75009182"
+          },
+          {
+            "alert": "green",
+            "azimuthal_gap": 34.0,
+            "cdi": 4.6,
+            "code": "7000p4kq",
+            "depth_km": 28.5,
+            "detail_url": "https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=us7000p4kq&format=geojson",
+            "event_type": "earthquake",
+            "felt_reports": 41,
+            "id": "us7000p4kq",
+            "ids": [
+              "us7000p4kq",
+              "at00sxk2p1"
+            ],
+            "latitude": 54.4712,
+            "longitude": -160.7268,
+            "magnitude": 6.1,
+            "magnitude_type": "mww",
+            "min_station_distance_deg": 0.918,
+            "mmi": 5.2,
+            "network": "us",
+            "place": "95 km SSW of Sand Point, Alaska",
+            "product_types": [
+              "dyfi",
+              "losspager",
+              "origin",
+              "phase-data",
+              "shakemap"
+            ],
+            "region": "Alaska",
+            "rms": 0.87,
+            "significance": 572,
+            "sources": [
+              "us",
+              "at"
+            ],
+            "station_count": 132,
+            "status": "reviewed",
+            "time": "2026-08-27T09:14:52Z",
+            "time_epoch_ms": 1787822092000,
+            "title": "M 6.1 - 95 km SSW of Sand Point, Alaska",
+            "tsunami": true,
+            "updated": "2026-08-27T11:02:10Z",
+            "updated_epoch_ms": 1787828530000,
+            "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000p4kq"
+          }
+        ],
+        "feed": {
+          "api_version": "2.7.0",
+          "generated": "2026-08-28T03:10:00Z",
+          "title": "USGS Magnitude 2.5+ Earthquakes, Past Day",
+          "url": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson"
+        },
+        "latitude": null,
+        "longitude": null,
+        "magnitude_tier": "2.5",
+        "min_magnitude": null,
+        "order_by": "time",
+        "period": "day",
+        "radius_km": null,
+        "total_in_feed": 2
+      },
+      "name": "get_recent_earthquakes",
+      "output_formatter": "actions.format_events_output",
+      "parameters": [
+        {
+          "default": "2.5",
+          "description": "Which feed to read. The USGS publishes one per magnitude floor: 'significant' is the handful it has judged newsworthy, then 4.5+, 2.5+, 1.0+, and 'all', which is every event it recorded and can run to tens of thousands in a month. Defaults to 2.5, roughly where people start feeling them.",
+          "display_name": "Feed",
+          "name": "magnitude_tier",
+          "options": [
+            {
+              "label": "Significant events only",
+              "value": "significant"
+            },
+            {
+              "label": "Magnitude 4.5+",
+              "value": "4.5"
+            },
+            {
+              "label": "Magnitude 2.5+",
+              "value": "2.5"
+            },
+            {
+              "label": "Magnitude 1.0+",
+              "value": "1.0"
+            },
+            {
+              "label": "All recorded events",
+              "value": "all"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "day",
+          "description": "How far back the feed covers. Match it to how often the workflow runs, with room to spare: an hourly schedule reading the past-day feed never misses an event because one run was late.",
+          "display_name": "Period",
+          "name": "period",
+          "options": [
+            {
+              "label": "Past hour",
+              "value": "hour"
+            },
+            {
+              "label": "Past day",
+              "value": "day"
+            },
+            {
+              "label": "Past 7 days",
+              "value": "week"
+            },
+            {
+              "label": "Past 30 days",
+              "value": "month"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Keep only events at or above this magnitude. Applied to the feed after it arrives, so it can be any value rather than one of the feed's own floors - read the 2.5+ feed and filter to 3.7 if that is your threshold.",
+          "display_name": "Minimum magnitude",
+          "name": "min_magnitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The centre of a circle to search, in degrees from -90 to 90. Needs a longitude and a radius with it: given only part of a circle the catalog ignores the whole thing and returns events from everywhere, so a partial one is refused here instead.",
+          "display_name": "Latitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "37.7749"
+            },
+            {
+              "label": "Tokyo",
+              "value": "35.6762"
+            }
+          ],
+          "maximum": 90,
+          "minimum": -90,
+          "name": "latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The centre of a circle to search, in degrees from -180 to 180. Needs a latitude and a radius with it.",
+          "display_name": "Longitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "-122.4194"
+            },
+            {
+              "label": "Tokyo",
+              "value": "139.6503"
+            }
+          ],
+          "maximum": 180,
+          "minimum": -180,
+          "name": "longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Keep only events within this many kilometres of the latitude and longitude. Every event kept comes back with its distance and compass direction from that point. Applied here rather than by the service, so a geo-fenced watch still costs one cached request.",
+          "display_name": "Radius (km)",
+          "examples": [
+            {
+              "label": "One metro area",
+              "value": "50"
+            },
+            {
+              "label": "A region",
+              "value": "250"
+            }
+          ],
+          "minimum": 0,
+          "name": "radius_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "time",
+          "description": "How to order the events. Defaults to newest first. The feeds carry no ordering of their own, so this is applied here.",
+          "display_name": "Order by",
+          "name": "order_by",
+          "options": [
+            {
+              "label": "Newest first",
+              "value": "time"
+            },
+            {
+              "label": "Oldest first",
+              "value": "time-asc"
+            },
+            {
+              "label": "Largest first",
+              "value": "magnitude"
+            },
+            {
+              "label": "Smallest first",
+              "value": "magnitude-asc"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many events to return, after the filters and the ordering. Defaults to 50. 'total_in_feed' always reports what the feed held before any of it, so a short result is never a mystery.",
+          "display_name": "Number of events",
+          "maximum": 20000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/usgs-earthquakes/get-recent-earthquakes",
+      "result_str_template": "Recent earthquakes retrieved.",
+      "returns": {
+        "properties": {
+          "earthquake_count": {
+            "type": "number"
+          },
+          "earthquakes": {
+            "items": {
+              "properties": {
+                "alert": {
+                  "type": "string"
+                },
+                "azimuthal_gap": {
+                  "type": "number"
+                },
+                "cdi": {
+                  "type": "number"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "depth_km": {
+                  "type": "number"
+                },
+                "detail_url": {
+                  "type": "string"
+                },
+                "direction": {
+                  "type": "string"
+                },
+                "distance_km": {
+                  "type": "number"
+                },
+                "distance_miles": {
+                  "type": "number"
+                },
+                "event_type": {
+                  "type": "string"
+                },
+                "felt_reports": {
+                  "type": "number"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "latitude": {
+                  "type": "number"
+                },
+                "longitude": {
+                  "type": "number"
+                },
+                "magnitude": {
+                  "type": "number"
+                },
+                "magnitude_type": {
+                  "type": "string"
+                },
+                "min_station_distance_deg": {
+                  "type": "number"
+                },
+                "mmi": {
+                  "type": "number"
+                },
+                "network": {
+                  "type": "string"
+                },
+                "place": {
+                  "type": "string"
+                },
+                "product_types": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "region": {
+                  "type": "string"
+                },
+                "rms": {
+                  "type": "number"
+                },
+                "significance": {
+                  "type": "number"
+                },
+                "sources": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "station_count": {
+                  "type": "number"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "time": {
+                  "type": "string"
+                },
+                "time_epoch_ms": {
+                  "type": "number"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "tsunami": {
+                  "type": "boolean"
+                },
+                "updated": {
+                  "type": "string"
+                },
+                "updated_epoch_ms": {
+                  "type": "number"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "feed": {
+            "properties": {
+              "api_version": {
+                "type": "string"
+              },
+              "generated": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "magnitude_tier": {
+            "type": "string"
+          },
+          "min_magnitude": {
+            "type": "number"
+          },
+          "order_by": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "radius_km": {
+            "type": "number"
+          },
+          "total_in_feed": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_catalogs": {
+      "description": "List the catalogs a search can be limited to. A catalog is one authoritative collection of events - the ANSS Comprehensive Catalog, a regional network's own, a specific study. Naming none, which is the default everywhere here, gets the most preferred information about each event from whichever catalog holds it.",
+      "display_name": "List catalogs",
+      "display_str_template": "List the USGS earthquake catalogs.",
+      "handler": "actions.list_catalogs",
+      "id": "usgs_earthquakes_list_catalogs",
+      "method": "POST",
+      "mock_response": {
+        "catalog_count": 8,
+        "catalogs": [
+          "ak",
+          "ci",
+          "nc",
+          "nn",
+          "pr",
+          "us",
+          "uu",
+          "uw"
+        ]
+      },
+      "name": "list_catalogs",
+      "output_formatter": "actions.format_values_output",
+      "parameters": [],
+      "path": "/actions/library/usgs-earthquakes/list-catalogs",
+      "result_str_template": "Catalogs retrieved.",
+      "returns": {
+        "properties": {
+          "catalog_count": {
+            "type": "number"
+          },
+          "catalogs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_contributors": {
+      "description": "List the seismic networks that contribute events - 'ak' for Alaska, 'ci' for southern California, 'us' for the USGS national operation. Every event names its own in 'network', so this is the list to choose from when filtering a search by one, or to resolve a code an event came back with.",
+      "display_name": "List contributors",
+      "display_str_template": "List the USGS earthquake contributors.",
+      "handler": "actions.list_contributors",
+      "id": "usgs_earthquakes_list_contributors",
+      "method": "POST",
+      "mock_response": {
+        "contributor_count": 8,
+        "contributors": [
+          "ak",
+          "at",
+          "ci",
+          "nc",
+          "nn",
+          "pr",
+          "us",
+          "uu"
+        ]
+      },
+      "name": "list_contributors",
+      "output_formatter": "actions.format_values_output",
+      "parameters": [],
+      "path": "/actions/library/usgs-earthquakes/list-contributors",
+      "result_str_template": "Contributors retrieved.",
+      "returns": {
+        "properties": {
+          "contributor_count": {
+            "type": "number"
+          },
+          "contributors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_event_types": {
+      "description": "List the event types, magnitude types and product types the catalog uses, in one call. Worth running once while building: the catalog is not only earthquakes - it records quarry blasts, explosions, mine collapses, sonic booms and ice quakes too, and a search that names no event type returns all of them.",
+      "display_name": "List event and product types",
+      "display_str_template": "List the USGS earthquake event types.",
+      "handler": "actions.list_event_types",
+      "id": "usgs_earthquakes_list_event_types",
+      "method": "POST",
+      "mock_response": {
+        "event_type_count": 5,
+        "event_types": [
+          "earthquake",
+          "explosion",
+          "ice quake",
+          "mining explosion",
+          "quarry blast"
+        ],
+        "magnitude_types": [
+          "mb",
+          "md",
+          "ml",
+          "ms",
+          "mw",
+          "mwb",
+          "mww"
+        ],
+        "product_types": [
+          "dyfi",
+          "focal-mechanism",
+          "losspager",
+          "moment-tensor",
+          "origin",
+          "shakemap"
+        ]
+      },
+      "name": "list_event_types",
+      "output_formatter": "actions.format_values_output",
+      "parameters": [],
+      "path": "/actions/library/usgs-earthquakes/list-event-types",
+      "result_str_template": "Event types retrieved.",
+      "returns": {
+        "properties": {
+          "event_type_count": {
+            "type": "number"
+          },
+          "event_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "magnitude_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "product_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_earthquakes": {
+      "description": "Search the full USGS catalog - every earthquake back to 1900 and beyond - by time, magnitude, depth, place, alert level, felt reports and more. This is the action for a specific question about a window or a region; for watching for new activity on a schedule, use Get recent earthquakes, which the USGS asks automated applications to use instead. With nothing filled in it returns the last 30 days, and the window it actually used is always reported back.",
+      "display_name": "Search earthquakes",
+      "display_str_template": "Search the USGS earthquake catalog.",
+      "handler": "actions.search_earthquakes",
+      "id": "usgs_earthquakes_search_earthquakes",
+      "method": "POST",
+      "mock_response": {
+        "earthquake_count": 1,
+        "earthquakes": [
+          {
+            "alert": "green",
+            "azimuthal_gap": 34.0,
+            "cdi": 4.6,
+            "code": "7000p4kq",
+            "depth_km": 28.5,
+            "detail_url": "https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=us7000p4kq&format=geojson",
+            "event_type": "earthquake",
+            "felt_reports": 41,
+            "id": "us7000p4kq",
+            "ids": [
+              "us7000p4kq",
+              "at00sxk2p1"
+            ],
+            "latitude": 54.4712,
+            "longitude": -160.7268,
+            "magnitude": 6.1,
+            "magnitude_type": "mww",
+            "min_station_distance_deg": 0.918,
+            "mmi": 5.2,
+            "network": "us",
+            "place": "95 km SSW of Sand Point, Alaska",
+            "product_types": [
+              "dyfi",
+              "losspager",
+              "origin",
+              "phase-data",
+              "shakemap"
+            ],
+            "region": "Alaska",
+            "rms": 0.87,
+            "significance": 572,
+            "sources": [
+              "us",
+              "at"
+            ],
+            "station_count": 132,
+            "status": "reviewed",
+            "time": "2026-08-27T09:14:52Z",
+            "time_epoch_ms": 1787822092000,
+            "title": "M 6.1 - 95 km SSW of Sand Point, Alaska",
+            "tsunami": true,
+            "updated": "2026-08-27T11:02:10Z",
+            "updated_epoch_ms": 1787828530000,
+            "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000p4kq"
+          }
+        ],
+        "end_time": null,
+        "latitude": null,
+        "limit": 50,
+        "longitude": null,
+        "min_magnitude": 4.5,
+        "more_available": false,
+        "offset": 1,
+        "order_by": "time",
+        "radius_km": null,
+        "start_time": "2026-07-29T00:00:00Z"
+      },
+      "name": "search_earthquakes",
+      "output_formatter": "actions.format_events_output",
+      "parameters": [
+        {
+          "description": "Only events at or after this moment. Leave it and 'Days back' empty to use this action's own default window. Times are UTC unless the value says otherwise.",
+          "display_name": "Start time",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Only events at or before this moment. Leave it empty to search up to now, which is what a scheduled run almost always wants: the catalog decides what 'now' is, so an event that arrives while the step runs is still included.",
+          "display_name": "End time",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Look this many days back instead of naming a start date - what a workflow that runs every morning needs, since 'the last 7 days' cannot be written as a fixed date. Counted back from now, or from 'End time' if you set one. Give this or 'Start time', not both.",
+          "display_name": "Days back",
+          "maximum": 3650,
+          "minimum": 1,
+          "name": "days_back",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or above this magnitude. This is the filter that decides how much noise a workflow sees: the catalog records tens of thousands of events a month, almost all of them too small to feel. 2.5 is roughly where people start noticing, 4.5 is the global reporting threshold, and 6 is where damage becomes likely.",
+          "display_name": "Minimum magnitude",
+          "examples": [
+            {
+              "label": "Felt locally",
+              "value": "2.5"
+            },
+            {
+              "label": "Reported worldwide",
+              "value": "4.5"
+            },
+            {
+              "label": "Potentially damaging",
+              "value": "6"
+            }
+          ],
+          "name": "min_magnitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or below this magnitude.",
+          "display_name": "Maximum magnitude",
+          "name": "max_magnitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or below this depth, in kilometres. The catalog allows -100 to 1000; a negative depth is an event above sea level, which is normal in mountainous regions.",
+          "display_name": "Minimum depth (km)",
+          "maximum": 1000.0,
+          "minimum": -100.0,
+          "name": "min_depth_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or above this depth, in kilometres. Shallow events shake the surface far harder than deep ones of the same magnitude, so a filter of 70 km or less is a rough stand-in for 'the ones people felt'.",
+          "display_name": "Maximum depth (km)",
+          "maximum": 1000.0,
+          "minimum": -100.0,
+          "name": "max_depth_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The centre of a circle to search, in degrees from -90 to 90. Needs a longitude and a radius with it: given only part of a circle the catalog ignores the whole thing and returns events from everywhere, so a partial one is refused here instead.",
+          "display_name": "Latitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "37.7749"
+            },
+            {
+              "label": "Tokyo",
+              "value": "35.6762"
+            }
+          ],
+          "maximum": 90,
+          "minimum": -90,
+          "name": "latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The centre of a circle to search, in degrees from -180 to 180. Needs a latitude and a radius with it.",
+          "display_name": "Longitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "-122.4194"
+            },
+            {
+              "label": "Tokyo",
+              "value": "139.6503"
+            }
+          ],
+          "maximum": 180,
+          "minimum": -180,
+          "name": "longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How far around the centre to look, in kilometres, up to 20,001.6 - which is half the Earth's circumference, and so the whole planet.",
+          "display_name": "Radius (km)",
+          "examples": [
+            {
+              "label": "One metro area",
+              "value": "50"
+            },
+            {
+              "label": "A region",
+              "value": "250"
+            }
+          ],
+          "maximum": 20001.6,
+          "minimum": 0,
+          "name": "radius_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The southern edge of a rectangle to search, -90 to 90. The four edges are independent: set only the two you care about to search a band of latitude or longitude.",
+          "display_name": "South edge (latitude)",
+          "maximum": 90,
+          "minimum": -90,
+          "name": "min_latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The northern edge of a rectangle to search, -90 to 90.",
+          "display_name": "North edge (latitude)",
+          "maximum": 90,
+          "minimum": -90,
+          "name": "max_latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The western edge of a rectangle to search. Normally -180 to 180, but the catalog lets a box cross the date line by going outside that: 170 to 190 is a real search over the western Pacific.",
+          "display_name": "West edge (longitude)",
+          "maximum": 360,
+          "minimum": -360,
+          "name": "min_longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The eastern edge of a rectangle to search, -360 to 360.",
+          "display_name": "East edge (longitude)",
+          "maximum": 360,
+          "minimum": -360,
+          "name": "max_longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events of this type. The catalog is not only earthquakes: it also records quarry blasts, explosions, mine collapses, sonic booms and ice quakes, and a search that names no type returns all of them. Choose 'earthquake' to leave the rest out.",
+          "display_name": "Event type",
+          "dynamic_source": "event_types",
+          "examples": [
+            {
+              "label": "Earthquakes only",
+              "value": "earthquake"
+            },
+            {
+              "label": "Quarry blasts",
+              "value": "quarry blast"
+            }
+          ],
+          "name": "event_type",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only events with a PAGER alert of at least this level, weakest first: green, yellow, orange, red. Worth knowing that this is really a 'has been assessed' filter - the USGS runs a PAGER loss assessment only on the events big enough to warrant one, so most events carry no alert at all and setting this to green still leaves out the great majority of them.",
+          "display_name": "Minimum PAGER alert level",
+          "name": "min_alert_level",
+          "options": [
+            {
+              "label": "Green",
+              "value": "green"
+            },
+            {
+              "label": "Yellow",
+              "value": "yellow"
+            },
+            {
+              "label": "Orange",
+              "value": "orange"
+            },
+            {
+              "label": "Red",
+              "value": "red"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only events with at least this many 'Did You Feel It?' responses from the public. Like the alert level, this only ever matches events somebody reported, which is a small share of them - but it is the best single filter for 'an event people noticed' regardless of how big it measured.",
+          "display_name": "Minimum felt reports",
+          "minimum": 1,
+          "name": "min_felt_reports",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or above this significance score. The catalog computes it from magnitude, felt reports and estimated impact together, so it ranks a moderate earthquake under a city above a large one in the deep ocean. Roughly: 600 and above is what makes the news, 1000 is a major disaster.",
+          "display_name": "Minimum significance",
+          "examples": [
+            {
+              "label": "Newsworthy",
+              "value": "600"
+            },
+            {
+              "label": "Major",
+              "value": "1000"
+            }
+          ],
+          "minimum": 0,
+          "name": "min_significance",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "all",
+          "description": "Whether to include events a seismologist has not checked yet. Automatic solutions appear within minutes and are sometimes revised or withdrawn; reviewed ones are slower and settled. Defaults to all of them.",
+          "display_name": "Review status",
+          "name": "review_status",
+          "options": [
+            {
+              "label": "All",
+              "value": "all"
+            },
+            {
+              "label": "Automatic",
+              "value": "automatic"
+            },
+            {
+              "label": "Reviewed",
+              "value": "reviewed"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only events from this catalog. Leave empty - the default - to get the most preferred information about each event from whichever catalog holds it, which is what almost every workflow wants.",
+          "display_name": "Catalog",
+          "dynamic_source": "catalogs",
+          "name": "catalog",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only events contributed by this network - 'ak' for Alaska, 'ci' for southern California, 'us' for the USGS national operation. Each event names its own in 'network'.",
+          "display_name": "Contributor",
+          "dynamic_source": "contributors",
+          "name": "contributor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only events that have this kind of product attached - a 'shakemap' for modelled shaking, 'dyfi' for public reports, 'losspager' for a casualty and loss estimate, 'moment-tensor' for the fault solution. A product is only generated when an event warrants it, so this doubles as a filter for the events the USGS itself treated as significant.",
+          "display_name": "Has product",
+          "dynamic_source": "product_types",
+          "examples": [
+            {
+              "label": "Has a shaking map",
+              "value": "shakemap"
+            },
+            {
+              "label": "Has public reports",
+              "value": "dyfi"
+            }
+          ],
+          "name": "product_type",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only events whose record changed after this moment, whenever the earthquake itself happened. This is how a workflow keeps a copy in step: a solution revised days later shows up here even though its time has not moved.",
+          "display_name": "Updated after",
+          "name": "updated_after",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": "time",
+          "description": "How the catalog should order the results.",
+          "display_name": "Order by",
+          "name": "order_by",
+          "options": [
+            {
+              "label": "Newest first",
+              "value": "time"
+            },
+            {
+              "label": "Oldest first",
+              "value": "time-asc"
+            },
+            {
+              "label": "Largest first",
+              "value": "magnitude"
+            },
+            {
+              "label": "Smallest first",
+              "value": "magnitude-asc"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many events to return, from 1 to 20,000. Defaults to 50. The catalog rejects a search whose result would run past 20,000 rather than trimming it, so run Count earthquakes first if a window might be that busy.",
+          "display_name": "Number of events",
+          "maximum": 20000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Skip to this position in the results, counting from 1, to page through a search bigger than one call. Pair it with the same ordering every time, or two pages can overlap.",
+          "display_name": "Start at event number",
+          "minimum": 1,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/usgs-earthquakes/search-earthquakes",
+      "result_str_template": "Earthquakes retrieved.",
+      "returns": {
+        "properties": {
+          "earthquake_count": {
+            "type": "number"
+          },
+          "earthquakes": {
+            "items": {
+              "properties": {
+                "alert": {
+                  "type": "string"
+                },
+                "azimuthal_gap": {
+                  "type": "number"
+                },
+                "cdi": {
+                  "type": "number"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "depth_km": {
+                  "type": "number"
+                },
+                "detail_url": {
+                  "type": "string"
+                },
+                "event_type": {
+                  "type": "string"
+                },
+                "felt_reports": {
+                  "type": "number"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "latitude": {
+                  "type": "number"
+                },
+                "longitude": {
+                  "type": "number"
+                },
+                "magnitude": {
+                  "type": "number"
+                },
+                "magnitude_type": {
+                  "type": "string"
+                },
+                "min_station_distance_deg": {
+                  "type": "number"
+                },
+                "mmi": {
+                  "type": "number"
+                },
+                "network": {
+                  "type": "string"
+                },
+                "place": {
+                  "type": "string"
+                },
+                "product_types": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "region": {
+                  "type": "string"
+                },
+                "rms": {
+                  "type": "number"
+                },
+                "significance": {
+                  "type": "number"
+                },
+                "sources": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "station_count": {
+                  "type": "number"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "time": {
+                  "type": "string"
+                },
+                "time_epoch_ms": {
+                  "type": "number"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "tsunami": {
+                  "type": "boolean"
+                },
+                "updated": {
+                  "type": "string"
+                },
+                "updated_epoch_ms": {
+                  "type": "number"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "min_magnitude": {
+            "type": "number"
+          },
+          "more_available": {
+            "type": "boolean"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "order_by": {
+            "type": "string"
+          },
+          "radius_km": {
+            "type": "number"
+          },
+          "start_time": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "summarize_earthquakes": {
+      "description": "Summarise a window's seismic activity for a digest: how many events, how they split across the magnitude bands, the largest and the most significant, how many people felt, how many carried a tsunami flag, and the regions with the most activity. The total is exact however busy the window; the rest is computed over the events read, and 'complete' says whether those are the same set. Defaults to the last 7 days.",
+      "display_name": "Summarize earthquake activity",
+      "display_str_template": "Summarize USGS earthquake activity.",
+      "handler": "actions.summarize_earthquakes",
+      "id": "usgs_earthquakes_summarize_earthquakes",
+      "method": "POST",
+      "mock_response": {
+        "alert_counts": {
+          "green": 1,
+          "none": 1,
+          "orange": 0,
+          "red": 0,
+          "yellow": 0
+        },
+        "analyzed_count": 2,
+        "average_magnitude": 4.65,
+        "complete": true,
+        "deepest_km": 28.5,
+        "end_time": null,
+        "felt_count": 2,
+        "largest": {
+          "alert": "green",
+          "azimuthal_gap": 34.0,
+          "cdi": 4.6,
+          "code": "7000p4kq",
+          "depth_km": 28.5,
+          "detail_url": "https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=us7000p4kq&format=geojson",
+          "event_type": "earthquake",
+          "felt_reports": 41,
+          "id": "us7000p4kq",
+          "ids": [
+            "us7000p4kq",
+            "at00sxk2p1"
+          ],
+          "latitude": 54.4712,
+          "longitude": -160.7268,
+          "magnitude": 6.1,
+          "magnitude_type": "mww",
+          "min_station_distance_deg": 0.918,
+          "mmi": 5.2,
+          "network": "us",
+          "place": "95 km SSW of Sand Point, Alaska",
+          "product_types": [
+            "dyfi",
+            "losspager",
+            "origin",
+            "phase-data",
+            "shakemap"
+          ],
+          "region": "Alaska",
+          "rms": 0.87,
+          "significance": 572,
+          "sources": [
+            "us",
+            "at"
+          ],
+          "station_count": 132,
+          "status": "reviewed",
+          "time": "2026-08-27T09:14:52Z",
+          "time_epoch_ms": 1787822092000,
+          "title": "M 6.1 - 95 km SSW of Sand Point, Alaska",
+          "tsunami": true,
+          "updated": "2026-08-27T11:02:10Z",
+          "updated_epoch_ms": 1787828530000,
+          "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000p4kq"
+        },
+        "latitude": null,
+        "longitude": null,
+        "magnitude_bands": {
+          "m2_to_3": 0,
+          "m3_to_4": 1,
+          "m4_to_5": 0,
+          "m5_to_6": 0,
+          "m6_to_7": 1,
+          "m7_plus": 0,
+          "under_2": 0,
+          "unknown": 0
+        },
+        "max_magnitude": 6.1,
+        "min_magnitude": 2.5,
+        "min_magnitude_seen": 3.2,
+        "most_significant": {
+          "alert": "green",
+          "azimuthal_gap": 34.0,
+          "cdi": 4.6,
+          "code": "7000p4kq",
+          "depth_km": 28.5,
+          "detail_url": "https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=us7000p4kq&format=geojson",
+          "event_type": "earthquake",
+          "felt_reports": 41,
+          "id": "us7000p4kq",
+          "ids": [
+            "us7000p4kq",
+            "at00sxk2p1"
+          ],
+          "latitude": 54.4712,
+          "longitude": -160.7268,
+          "magnitude": 6.1,
+          "magnitude_type": "mww",
+          "min_station_distance_deg": 0.918,
+          "mmi": 5.2,
+          "network": "us",
+          "place": "95 km SSW of Sand Point, Alaska",
+          "product_types": [
+            "dyfi",
+            "losspager",
+            "origin",
+            "phase-data",
+            "shakemap"
+          ],
+          "region": "Alaska",
+          "rms": 0.87,
+          "significance": 572,
+          "sources": [
+            "us",
+            "at"
+          ],
+          "station_count": 132,
+          "status": "reviewed",
+          "time": "2026-08-27T09:14:52Z",
+          "time_epoch_ms": 1787822092000,
+          "title": "M 6.1 - 95 km SSW of Sand Point, Alaska",
+          "tsunami": true,
+          "updated": "2026-08-27T11:02:10Z",
+          "updated_epoch_ms": 1787828530000,
+          "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000p4kq"
+        },
+        "radius_km": null,
+        "shallowest_km": 2.1,
+        "start_time": "2026-08-21T00:00:00Z",
+        "top_regions": [
+          {
+            "count": 1,
+            "region": "Alaska"
+          },
+          {
+            "count": 1,
+            "region": "CA"
+          }
+        ],
+        "total": 2,
+        "tsunami_count": 1
+      },
+      "name": "summarize_earthquakes",
+      "output_formatter": "actions.format_summary_output",
+      "parameters": [
+        {
+          "description": "Only events at or after this moment. Leave it and 'Days back' empty to use this action's own default window. Times are UTC unless the value says otherwise.",
+          "display_name": "Start time",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Only events at or before this moment. Leave it empty to search up to now, which is what a scheduled run almost always wants: the catalog decides what 'now' is, so an event that arrives while the step runs is still included.",
+          "display_name": "End time",
+          "name": "end_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Look this many days back instead of naming a start date - what a workflow that runs every morning needs, since 'the last 7 days' cannot be written as a fixed date. Counted back from now, or from 'End time' if you set one. Give this or 'Start time', not both.",
+          "display_name": "Days back",
+          "maximum": 3650,
+          "minimum": 1,
+          "name": "days_back",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events at or above this magnitude. This is the filter that decides how much noise a workflow sees: the catalog records tens of thousands of events a month, almost all of them too small to feel. 2.5 is roughly where people start noticing, 4.5 is the global reporting threshold, and 6 is where damage becomes likely.",
+          "display_name": "Minimum magnitude",
+          "examples": [
+            {
+              "label": "Felt locally",
+              "value": "2.5"
+            },
+            {
+              "label": "Reported worldwide",
+              "value": "4.5"
+            },
+            {
+              "label": "Potentially damaging",
+              "value": "6"
+            }
+          ],
+          "name": "min_magnitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The centre of a circle to search, in degrees from -90 to 90. Needs a longitude and a radius with it: given only part of a circle the catalog ignores the whole thing and returns events from everywhere, so a partial one is refused here instead.",
+          "display_name": "Latitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "37.7749"
+            },
+            {
+              "label": "Tokyo",
+              "value": "35.6762"
+            }
+          ],
+          "maximum": 90,
+          "minimum": -90,
+          "name": "latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The centre of a circle to search, in degrees from -180 to 180. Needs a latitude and a radius with it.",
+          "display_name": "Longitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "-122.4194"
+            },
+            {
+              "label": "Tokyo",
+              "value": "139.6503"
+            }
+          ],
+          "maximum": 180,
+          "minimum": -180,
+          "name": "longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How far around the centre to look, in kilometres, up to 20,001.6 - which is half the Earth's circumference, and so the whole planet.",
+          "display_name": "Radius (km)",
+          "examples": [
+            {
+              "label": "One metro area",
+              "value": "50"
+            },
+            {
+              "label": "A region",
+              "value": "250"
+            }
+          ],
+          "maximum": 20001.6,
+          "minimum": 0,
+          "name": "radius_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The southern edge of a rectangle to search, -90 to 90. The four edges are independent: set only the two you care about to search a band of latitude or longitude.",
+          "display_name": "South edge (latitude)",
+          "maximum": 90,
+          "minimum": -90,
+          "name": "min_latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The northern edge of a rectangle to search, -90 to 90.",
+          "display_name": "North edge (latitude)",
+          "maximum": 90,
+          "minimum": -90,
+          "name": "max_latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The western edge of a rectangle to search. Normally -180 to 180, but the catalog lets a box cross the date line by going outside that: 170 to 190 is a real search over the western Pacific.",
+          "display_name": "West edge (longitude)",
+          "maximum": 360,
+          "minimum": -360,
+          "name": "min_longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The eastern edge of a rectangle to search, -360 to 360.",
+          "display_name": "East edge (longitude)",
+          "maximum": 360,
+          "minimum": -360,
+          "name": "max_longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only events of this type. The catalog is not only earthquakes: it also records quarry blasts, explosions, mine collapses, sonic booms and ice quakes, and a search that names no type returns all of them. Choose 'earthquake' to leave the rest out.",
+          "display_name": "Event type",
+          "dynamic_source": "event_types",
+          "examples": [
+            {
+              "label": "Earthquakes only",
+              "value": "earthquake"
+            },
+            {
+              "label": "Quarry blasts",
+              "value": "quarry blast"
+            }
+          ],
+          "name": "event_type",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many events to read for the figures, from 1 to 20,000. Defaults to 1,000, which covers a normal week above magnitude 2.5 several times over. Raise it for a wider window or a lower magnitude floor; the total is counted separately and stays exact either way.",
+          "display_name": "Events to analyze",
+          "maximum": 20000,
+          "minimum": 1,
+          "name": "sample_limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/usgs-earthquakes/summarize-earthquakes",
+      "result_str_template": "Earthquake activity summarized.",
+      "returns": {
+        "properties": {
+          "alert_counts": {
+            "properties": {
+              "green": {
+                "type": "number"
+              },
+              "none": {
+                "type": "number"
+              },
+              "orange": {
+                "type": "number"
+              },
+              "red": {
+                "type": "number"
+              },
+              "yellow": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "analyzed_count": {
+            "type": "number"
+          },
+          "average_magnitude": {
+            "type": "number"
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "deepest_km": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "felt_count": {
+            "type": "number"
+          },
+          "largest": {
+            "properties": {
+              "alert": {
+                "type": "string"
+              },
+              "azimuthal_gap": {
+                "type": "number"
+              },
+              "cdi": {
+                "type": "number"
+              },
+              "code": {
+                "type": "string"
+              },
+              "depth_km": {
+                "type": "number"
+              },
+              "detail_url": {
+                "type": "string"
+              },
+              "event_type": {
+                "type": "string"
+              },
+              "felt_reports": {
+                "type": "number"
+              },
+              "id": {
+                "type": "string"
+              },
+              "ids": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              },
+              "magnitude": {
+                "type": "number"
+              },
+              "magnitude_type": {
+                "type": "string"
+              },
+              "min_station_distance_deg": {
+                "type": "number"
+              },
+              "mmi": {
+                "type": "number"
+              },
+              "network": {
+                "type": "string"
+              },
+              "place": {
+                "type": "string"
+              },
+              "product_types": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "region": {
+                "type": "string"
+              },
+              "rms": {
+                "type": "number"
+              },
+              "significance": {
+                "type": "number"
+              },
+              "sources": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "station_count": {
+                "type": "number"
+              },
+              "status": {
+                "type": "string"
+              },
+              "time": {
+                "type": "string"
+              },
+              "time_epoch_ms": {
+                "type": "number"
+              },
+              "title": {
+                "type": "string"
+              },
+              "tsunami": {
+                "type": "boolean"
+              },
+              "updated": {
+                "type": "string"
+              },
+              "updated_epoch_ms": {
+                "type": "number"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "magnitude_bands": {
+            "properties": {
+              "m2_to_3": {
+                "type": "number"
+              },
+              "m3_to_4": {
+                "type": "number"
+              },
+              "m4_to_5": {
+                "type": "number"
+              },
+              "m5_to_6": {
+                "type": "number"
+              },
+              "m6_to_7": {
+                "type": "number"
+              },
+              "m7_plus": {
+                "type": "number"
+              },
+              "under_2": {
+                "type": "number"
+              },
+              "unknown": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "max_magnitude": {
+            "type": "number"
+          },
+          "min_magnitude": {
+            "type": "number"
+          },
+          "min_magnitude_seen": {
+            "type": "number"
+          },
+          "most_significant": {
+            "properties": {
+              "alert": {
+                "type": "string"
+              },
+              "azimuthal_gap": {
+                "type": "number"
+              },
+              "cdi": {
+                "type": "number"
+              },
+              "code": {
+                "type": "string"
+              },
+              "depth_km": {
+                "type": "number"
+              },
+              "detail_url": {
+                "type": "string"
+              },
+              "event_type": {
+                "type": "string"
+              },
+              "felt_reports": {
+                "type": "number"
+              },
+              "id": {
+                "type": "string"
+              },
+              "ids": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              },
+              "magnitude": {
+                "type": "number"
+              },
+              "magnitude_type": {
+                "type": "string"
+              },
+              "min_station_distance_deg": {
+                "type": "number"
+              },
+              "mmi": {
+                "type": "number"
+              },
+              "network": {
+                "type": "string"
+              },
+              "place": {
+                "type": "string"
+              },
+              "product_types": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "region": {
+                "type": "string"
+              },
+              "rms": {
+                "type": "number"
+              },
+              "significance": {
+                "type": "number"
+              },
+              "sources": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "station_count": {
+                "type": "number"
+              },
+              "status": {
+                "type": "string"
+              },
+              "time": {
+                "type": "string"
+              },
+              "time_epoch_ms": {
+                "type": "number"
+              },
+              "title": {
+                "type": "string"
+              },
+              "tsunami": {
+                "type": "boolean"
+              },
+              "updated": {
+                "type": "string"
+              },
+              "updated_epoch_ms": {
+                "type": "number"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "radius_km": {
+            "type": "number"
+          },
+          "shallowest_km": {
+            "type": "number"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "top_regions": {
+            "items": {
+              "properties": {
+                "count": {
+                  "type": "number"
+                },
+                "region": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total": {
+            "type": "number"
+          },
+          "tsunami_count": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Read the USGS Earthquake Catalog: every earthquake the USGS and its contributing networks have recorded, from this minute back through the last century. Watch the real-time feeds on a schedule, search the catalog by time, magnitude, depth, region or PAGER alert level, geo-fence a site and see how far away each event was and in which direction, count a window before you fetch it, pull the largest event of the week, or summarise a period for a digest. No API key, no sign-up and no quota.",
+  "display_name": "USGS Earthquakes",
+  "id": "usgs_earthquakes"
+}

@@ -1,0 +1,530 @@
+{
+  "actions": {
+    "delete_file_comment": {
+      "description": "Delete a comment from a Figma file by its comment id. Only the comment's author (or a file admin) can delete it. Deleting a top-level comment also removes its replies. Useful for cleaning up automated or resolved comments.",
+      "display_name": "Delete Figma comment",
+      "display_str_template": "Delete comment {1} from Figma file {0}.",
+      "handler": "actions.delete_file_comment",
+      "id": "figma_delete_file_comment",
+      "method": "POST",
+      "mock_response": {},
+      "name": "delete_file_comment",
+      "output_formatter": "actions.format_delete_file_comment_output",
+      "parameters": [
+        {
+          "description": "The Figma file the comment is on. A file key or a full Figma file URL both work.",
+          "display_name": "File key",
+          "name": "file_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The id of the comment to delete (from 'List Figma comments' or the response of 'Post Figma comment').",
+          "display_name": "Comment ID",
+          "name": "comment_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/figma/delete-file-comment",
+      "result_str_template": "Deleted the Figma comment.",
+      "returns": {
+        "description": "Empty object. Figma returns no content on a successful delete; the executor reports success.",
+        "properties": {
+          "status": {
+            "description": "Always 'success' when the delete succeeded.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_file": {
+      "description": "Get a Figma file's metadata and document tree by its file key. Returns the file name, the editor type (design, whiteboard, or slides), the last-modified timestamp, the current version id, a thumbnail URL, and the node tree (pages and their layers). Large files can return a lot of data, so use 'depth' to fetch only the top levels of the tree. Useful for reading a file's structure, checking when it last changed, or grabbing its thumbnail.",
+      "display_name": "Get Figma file",
+      "display_str_template": "Get Figma file {0}.",
+      "handler": "actions.get_file",
+      "id": "figma_get_file",
+      "method": "POST",
+      "mock_response": {
+        "componentSets": {},
+        "components": {
+          "1:12": {
+            "description": "",
+            "key": "a1b2c3d4e5f6",
+            "name": "Button / Primary"
+          }
+        },
+        "document": {
+          "children": [
+            {
+              "children": [
+                {
+                  "id": "1:2",
+                  "name": "Landing / Hero",
+                  "type": "FRAME"
+                },
+                {
+                  "id": "1:8",
+                  "name": "Landing / Pricing",
+                  "type": "FRAME"
+                }
+              ],
+              "id": "0:1",
+              "name": "Page 1",
+              "type": "CANVAS"
+            },
+            {
+              "children": [],
+              "id": "0:2",
+              "name": "Components",
+              "type": "CANVAS"
+            }
+          ],
+          "id": "0:0",
+          "name": "Document",
+          "type": "DOCUMENT"
+        },
+        "editorType": "figma",
+        "lastModified": "2026-07-20T18:42:11Z",
+        "linkAccess": "view",
+        "name": "Marketing Site Redesign",
+        "role": "editor",
+        "schemaVersion": 0,
+        "styles": {
+          "1:20": {
+            "key": "f6e5d4c3b2a1",
+            "name": "Brand / Coral",
+            "styleType": "FILL"
+          }
+        },
+        "thumbnailUrl": "https://s3-alpha.figma.com/thumbnails/example.png",
+        "version": "5219384710"
+      },
+      "name": "get_file",
+      "output_formatter": "actions.format_get_file_output",
+      "parameters": [
+        {
+          "description": "The Figma file to read. Paste either the file key (the slug in a file URL) or a full Figma file URL such as https://www.figma.com/design/AbC123/My-File; the key is extracted automatically.",
+          "display_name": "File key",
+          "name": "file_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many levels of the document tree to return. 1 returns just the pages, 2 also returns each page's top-level layers, and so on. Leave blank to return the entire tree (which can be very large).",
+          "display_name": "Depth",
+          "minimum": 1,
+          "name": "depth",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "A specific version id to fetch (from the file's version history). Leave blank for the current version.",
+          "display_name": "Version",
+          "name": "version",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Set to 'paths' to include vector geometry for each node. Leave blank to omit geometry (smaller response).",
+          "display_name": "Geometry",
+          "name": "geometry",
+          "options": [
+            {
+              "label": "Include vector paths",
+              "value": "paths"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Comma-separated node ids (e.g. '1:2,1:8') to return only those nodes, their children, and their ancestor chains instead of the whole document (much smaller when you care about a few frames). Top-level pages are always included. Leave blank to return the full tree (subject to 'depth').",
+          "display_name": "Node ids",
+          "name": "ids",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/figma/get-file",
+      "result_str_template": "Retrieved the Figma file.",
+      "returns": {
+        "description": "File metadata plus the document node tree. The 'document' node is the root; its children are the file's pages (CANVAS nodes).",
+        "properties": {
+          "branches": {
+            "description": "Present only when requested with branch_data: metadata for the file's branches. Each item is {key, name, thumbnail_url, last_modified, link_access} (note: snake_case, unlike the camelCase top-level fields).",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "componentSets": {
+            "description": "Map of node id -> component-set metadata.",
+            "type": "object"
+          },
+          "components": {
+            "description": "Map of node id -> component metadata, telling you which component each instance comes from.",
+            "type": "object"
+          },
+          "document": {
+            "description": "Root DOCUMENT node. Its 'children' are the pages (CANVAS nodes).",
+            "type": "object"
+          },
+          "editorType": {
+            "description": "Which editor the file uses: 'figma', 'figjam', or 'slides'.",
+            "type": "string"
+          },
+          "lastModified": {
+            "description": "ISO 8601 timestamp of the last edit.",
+            "type": "string"
+          },
+          "linkAccess": {
+            "description": "The file's share-link access level (e.g. 'view', 'edit', 'org_view', 'inherit').",
+            "type": "string"
+          },
+          "mainFileKey": {
+            "description": "Present only when the file is a branch (requires branch_data): the key of the main file.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The file's name.",
+            "type": "string"
+          },
+          "role": {
+            "description": "The caller's role on the file: 'owner', 'editor', or 'viewer'.",
+            "type": "string"
+          },
+          "schemaVersion": {
+            "description": "Version of the response schema.",
+            "type": "integer"
+          },
+          "styles": {
+            "description": "Map of style id -> style metadata used in the file.",
+            "type": "object"
+          },
+          "thumbnailUrl": {
+            "description": "URL of a rendered thumbnail image of the file.",
+            "type": "string"
+          },
+          "version": {
+            "description": "The current version id of the file.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_file_comments": {
+      "description": "List the comments on a Figma file, including each comment's text, author, creation time, whether it has been resolved, and where it is pinned on the canvas. Replies are returned as their own comments with a 'parent_id' pointing at the thread's first comment. Useful for triaging design feedback or pulling open comments into a review.",
+      "display_name": "List Figma comments",
+      "display_str_template": "List comments on Figma file {0}.",
+      "handler": "actions.get_file_comments",
+      "id": "figma_get_file_comments",
+      "method": "POST",
+      "mock_response": {
+        "comments": [
+          {
+            "client_meta": {
+              "node_id": "1:2",
+              "node_offset": {
+                "x": 120.0,
+                "y": 64.0
+              }
+            },
+            "created_at": "2026-07-19T14:03:52Z",
+            "file_key": "AbC123dEf456GhI789jkL0",
+            "id": "9481726354",
+            "message": "Can we bump the hero headline to 48px?",
+            "order_id": "1",
+            "parent_id": "",
+            "reactions": [],
+            "resolved_at": null,
+            "user": {
+              "email": "jordan@example.com",
+              "handle": "Jordan Lee",
+              "id": "778363821906345612",
+              "img_url": "https://s3-alpha.figma.com/profile/example.png"
+            }
+          },
+          {
+            "client_meta": null,
+            "created_at": "2026-07-19T15:11:08Z",
+            "file_key": "AbC123dEf456GhI789jkL0",
+            "id": "9481726355",
+            "message": "Agreed, pushing that now.",
+            "order_id": "2",
+            "parent_id": "9481726354",
+            "reactions": [],
+            "resolved_at": null,
+            "user": {
+              "handle": "Priya Nair",
+              "id": "883910244501299887",
+              "img_url": "https://s3-alpha.figma.com/profile/example2.png"
+            }
+          }
+        ]
+      },
+      "name": "get_file_comments",
+      "output_formatter": "actions.format_get_file_comments_output",
+      "parameters": [
+        {
+          "description": "The Figma file whose comments to list. A file key or a full Figma file URL both work.",
+          "display_name": "File key",
+          "name": "file_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Turn on to return each comment's text as its markdown equivalent where applicable. Leave off for plain text.",
+          "display_name": "As markdown",
+          "name": "as_md",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/figma/get-file-comments",
+      "result_str_template": "Retrieved Figma comments.",
+      "returns": {
+        "description": "The file's comments, newest activity first.",
+        "properties": {
+          "comments": {
+            "description": "Array of comment objects.",
+            "items": {
+              "properties": {
+                "client_meta": {
+                  "description": "Where the comment is pinned. One of: a canvas point (Vector) {x, y}; a frame offset {node_id, node_offset: {x, y}}; a Region {x, y, region_height, region_width}; or a FrameOffsetRegion. Null for a reply.",
+                  "type": "object"
+                },
+                "created_at": {
+                  "description": "ISO 8601 timestamp when the comment was created.",
+                  "type": "string"
+                },
+                "file_key": {
+                  "description": "Key of the file the comment belongs to.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Unique comment id.",
+                  "type": "string"
+                },
+                "message": {
+                  "description": "Comment text.",
+                  "type": "string"
+                },
+                "order_id": {
+                  "description": "Ordering key Figma uses to sort comments.",
+                  "type": "string"
+                },
+                "parent_id": {
+                  "description": "Id of the parent comment when this is a reply; empty string for a top-level comment.",
+                  "type": "string"
+                },
+                "reactions": {
+                  "description": "Emoji reactions on the comment.",
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "resolved_at": {
+                  "description": "ISO 8601 timestamp when the comment was resolved, or null if unresolved.",
+                  "type": "string"
+                },
+                "user": {
+                  "description": "A Figma user.",
+                  "properties": {
+                    "email": {
+                      "description": "Email address; present on /me, may be absent on comment authors.",
+                      "type": "string"
+                    },
+                    "handle": {
+                      "description": "Display name.",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Unique user id.",
+                      "type": "string"
+                    },
+                    "img_url": {
+                      "description": "Avatar image URL.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_me": {
+      "description": "Get the Figma user that the connected access token belongs to, including their id, display handle, email, and avatar URL. Useful for confirming which account a workflow is acting as, or as a lightweight connection check.",
+      "display_name": "Get Figma user",
+      "display_str_template": "Get the connected Figma user.",
+      "handler": "actions.get_me",
+      "id": "figma_get_me",
+      "method": "POST",
+      "mock_response": {
+        "email": "jordan@example.com",
+        "handle": "Jordan Lee",
+        "id": "778363821906345612",
+        "img_url": "https://s3-alpha.figma.com/profile/example.png"
+      },
+      "name": "get_me",
+      "output_formatter": "actions.format_get_me_output",
+      "parameters": [],
+      "path": "/actions/library/figma/get-me",
+      "result_str_template": "Retrieved the Figma user.",
+      "returns": {
+        "description": "The authenticated Figma user.",
+        "properties": {
+          "email": {
+            "description": "Email address; present on /me, may be absent on comment authors.",
+            "type": "string"
+          },
+          "handle": {
+            "description": "Display name.",
+            "type": "string"
+          },
+          "id": {
+            "description": "Unique user id.",
+            "type": "string"
+          },
+          "img_url": {
+            "description": "Avatar image URL.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "post_file_comment": {
+      "description": "Post a comment on a Figma file, or reply to an existing comment. Provide the file and the message text; optionally reply within an existing thread by giving that comment's id. Returns the created comment, including its new id. Useful for leaving automated design feedback or notifying reviewers from a workflow.",
+      "display_name": "Post Figma comment",
+      "display_str_template": "Post a comment to Figma file {0}.",
+      "handler": "actions.post_file_comment",
+      "id": "figma_post_file_comment",
+      "method": "POST",
+      "mock_response": {
+        "client_meta": null,
+        "created_at": "2026-07-24T09:15:00Z",
+        "file_key": "AbC123dEf456GhI789jkL0",
+        "id": "9481726400",
+        "message": "Ship-ready: approving this frame.",
+        "order_id": "3",
+        "parent_id": "",
+        "reactions": [],
+        "resolved_at": null,
+        "user": {
+          "email": "jordan@example.com",
+          "handle": "Jordan Lee",
+          "id": "778363821906345612",
+          "img_url": "https://s3-alpha.figma.com/profile/example.png"
+        }
+      },
+      "name": "post_file_comment",
+      "output_formatter": "actions.format_post_file_comment_output",
+      "parameters": [
+        {
+          "description": "The Figma file to comment on. A file key or a full Figma file URL both work.",
+          "display_name": "File key",
+          "name": "file_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The comment text to post.",
+          "display_name": "Message",
+          "multiline": true,
+          "name": "message",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "To reply inside an existing thread, enter the id of the comment you are replying to. This must be a root comment (you cannot reply to a comment that is itself a reply). Leave blank to start a new top-level comment.",
+          "display_name": "Reply to comment",
+          "name": "comment_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/figma/post-file-comment",
+      "result_str_template": "Posted the Figma comment.",
+      "returns": {
+        "description": "The comment that was created.",
+        "properties": {
+          "client_meta": {
+            "description": "Where the comment is pinned. One of: a canvas point (Vector) {x, y}; a frame offset {node_id, node_offset: {x, y}}; a Region {x, y, region_height, region_width}; or a FrameOffsetRegion. Null for a reply.",
+            "type": "object"
+          },
+          "created_at": {
+            "description": "ISO 8601 timestamp when the comment was created.",
+            "type": "string"
+          },
+          "file_key": {
+            "description": "Key of the file the comment belongs to.",
+            "type": "string"
+          },
+          "id": {
+            "description": "Unique comment id.",
+            "type": "string"
+          },
+          "message": {
+            "description": "Comment text.",
+            "type": "string"
+          },
+          "order_id": {
+            "description": "Ordering key Figma uses to sort comments.",
+            "type": "string"
+          },
+          "parent_id": {
+            "description": "Id of the parent comment when this is a reply; empty string for a top-level comment.",
+            "type": "string"
+          },
+          "reactions": {
+            "description": "Emoji reactions on the comment.",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "resolved_at": {
+            "description": "ISO 8601 timestamp when the comment was resolved, or null if unresolved.",
+            "type": "string"
+          },
+          "user": {
+            "description": "A Figma user.",
+            "properties": {
+              "email": {
+                "description": "Email address; present on /me, may be absent on comment authors.",
+                "type": "string"
+              },
+              "handle": {
+                "description": "Display name.",
+                "type": "string"
+              },
+              "id": {
+                "description": "Unique user id.",
+                "type": "string"
+              },
+              "img_url": {
+                "description": "Avatar image URL.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Collaborative interface design. Read a Figma file's structure and metadata, list and post comments for design review, and clean up comments, all with a personal access token.",
+  "display_name": "Figma",
+  "id": "figma"
+}

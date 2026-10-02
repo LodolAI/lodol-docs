@@ -1,0 +1,802 @@
+{
+  "actions": {
+    "check_service_status": {
+      "description": "Check whether Open Notify is answering, and how quickly. This is the one action that reports a problem as a value instead of failing the step, so a workflow can decide what to do about it. Being asked to slow down is reported separately from being down. No API key required.",
+      "display_name": "Check service status",
+      "display_str_template": "Check the Open Notify status.",
+      "handler": "actions.check_service_status",
+      "id": "open_notify_check_service_status",
+      "method": "POST",
+      "mock_response": {
+        "message": "Open Notify is up and tracking the ISS.",
+        "online": true,
+        "rate_limited": false,
+        "reachable": true,
+        "response_time_ms": 96.5,
+        "status_code": 200
+      },
+      "name": "check_service_status",
+      "output_formatter": "actions.format_status_output",
+      "parameters": [],
+      "path": "/actions/library/open-notify/check-service-status",
+      "result_str_template": "Service status checked.",
+      "returns": {
+        "properties": {
+          "message": {
+            "description": "What happened, in a sentence.",
+            "type": "string"
+          },
+          "online": {
+            "description": "Whether the service answered with a usable ISS position.",
+            "type": "boolean"
+          },
+          "rate_limited": {
+            "description": "Whether it asked this workspace to slow down.",
+            "type": "boolean"
+          },
+          "reachable": {
+            "description": "Whether it answered at all. A service that is reachable but not online is refusing or misreporting rather than down.",
+            "type": "boolean"
+          },
+          "response_time_ms": {
+            "description": "How long the answer took, in milliseconds.",
+            "type": "number"
+          },
+          "status_code": {
+            "description": "The HTTP status it answered with, or empty when it could not be reached.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_distance_to_iss": {
+      "description": "Answer 'is the space station near me?' for a place on the ground: how far away it is in kilometres and miles, which compass direction to look in, and whether it is above the horizon there at all. Open Notify reports only where the station is, never how that relates to anywhere, so the comparison is done here. No API key required.",
+      "display_name": "Get the distance to the ISS",
+      "display_str_template": "Get the distance from {0}, {1} to the ISS.",
+      "handler": "actions.get_distance_to_iss",
+      "id": "open_notify_get_distance_to_iss",
+      "method": "POST",
+      "mock_response": {
+        "above_horizon": false,
+        "assumed_altitude_km": 420.0,
+        "bearing_degrees": 136.5,
+        "compass_point": "SE",
+        "distance_km": 10170.9,
+        "distance_miles": 6319.9,
+        "horizon_radius_km": 2252.4,
+        "iss": {
+          "latitude": -36.0989,
+          "longitude": -64.0851,
+          "map_url": "https://maps.google.com/maps?q=-36.0989,-64.0851&z=4",
+          "time": "2026-09-16T12:00:00Z",
+          "timestamp": 1789560000
+        },
+        "observer_latitude": 37.7749,
+        "observer_longitude": -122.4194
+      },
+      "name": "get_distance_to_iss",
+      "output_formatter": "actions.format_distance_output",
+      "parameters": [
+        {
+          "description": "Latitude of the place to measure from, in decimal degrees between -90 and 90. Negative is south of the equator.",
+          "display_name": "Latitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "37.7749"
+            },
+            {
+              "label": "London",
+              "value": "51.5072"
+            }
+          ],
+          "maximum": 90,
+          "minimum": -90,
+          "name": "latitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Longitude of that place, in decimal degrees between -180 and 180. Negative is west of Greenwich.",
+          "display_name": "Longitude",
+          "examples": [
+            {
+              "label": "San Francisco",
+              "value": "-122.4194"
+            },
+            {
+              "label": "London",
+              "value": "-0.1276"
+            }
+          ],
+          "maximum": 180,
+          "minimum": -180,
+          "name": "longitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 420.0,
+          "description": "The height above the ground to assume for the station, in kilometres. Open Notify reports no altitude, so the figures derived from one assume 420 km, the station's usual operating height. Change it to match a published altitude if you have one.",
+          "display_name": "Assumed altitude (km)",
+          "maximum": 2000,
+          "minimum": 100,
+          "name": "altitude_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/open-notify/get-distance-to-iss",
+      "result_str_template": "Distance to the ISS calculated.",
+      "returns": {
+        "properties": {
+          "above_horizon": {
+            "description": "Whether the station is above the horizon from that place, which is whether it could be seen at all. It says nothing about cloud, daylight or whether the station is lit.",
+            "type": "boolean"
+          },
+          "assumed_altitude_km": {
+            "description": "The altitude the horizon figure was worked out from. Open Notify publishes none.",
+            "type": "number"
+          },
+          "bearing_degrees": {
+            "description": "Which way to set off to reach it: degrees clockwise from north.",
+            "type": "number"
+          },
+          "compass_point": {
+            "description": "The same direction as a compass point, e.g. 'NNE'.",
+            "type": "string"
+          },
+          "distance_km": {
+            "description": "Distance over the ground from that place to the point below the station, in kilometres.",
+            "type": "number"
+          },
+          "distance_miles": {
+            "description": "The same distance in miles.",
+            "type": "number"
+          },
+          "horizon_radius_km": {
+            "description": "How far from the point below it the station stays above the horizon, at the assumed altitude.",
+            "type": "number"
+          },
+          "iss": {
+            "description": "Where the station is right now.",
+            "properties": {
+              "latitude": {
+                "description": "Latitude of the point on the ground directly below the station, in degrees. Negative is south of the equator. The service quotes this as a string; it is published here as a number.",
+                "type": "number"
+              },
+              "longitude": {
+                "description": "Longitude of that point, in degrees. Negative is west of the Greenwich meridian.",
+                "type": "number"
+              },
+              "map_url": {
+                "description": "Map link centred on the point below the station.",
+                "type": "string"
+              },
+              "time": {
+                "description": "The same instant as an ISO 8601 UTC date-time.",
+                "type": "string"
+              },
+              "timestamp": {
+                "description": "The instant this position is for, in Unix seconds.",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "observer_latitude": {
+            "description": "Latitude of the place measured from.",
+            "type": "number"
+          },
+          "observer_longitude": {
+            "description": "Longitude of that place.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_iss_position": {
+      "description": "Get where the International Space Station is right now: the latitude and longitude of the point on the ground directly below it, the instant that position is for, and a map link to open it. The station covers about 28,000 km every hour, so the answer is only good for a few seconds. No API key required.",
+      "display_name": "Get the ISS position",
+      "display_str_template": "Get the ISS position.",
+      "handler": "actions.get_iss_position",
+      "id": "open_notify_get_iss_position",
+      "method": "POST",
+      "mock_response": {
+        "latitude": -36.0989,
+        "longitude": -64.0851,
+        "map_url": "https://maps.google.com/maps?q=-36.0989,-64.0851&z=4",
+        "time": "2026-09-16T12:00:00Z",
+        "timestamp": 1789560000
+      },
+      "name": "get_iss_position",
+      "output_formatter": "actions.format_position_output",
+      "parameters": [],
+      "path": "/actions/library/open-notify/get-iss-position",
+      "result_str_template": "ISS position retrieved.",
+      "returns": {
+        "properties": {
+          "latitude": {
+            "description": "Latitude of the point on the ground directly below the station, in degrees. Negative is south of the equator. The service quotes this as a string; it is published here as a number.",
+            "type": "number"
+          },
+          "longitude": {
+            "description": "Longitude of that point, in degrees. Negative is west of the Greenwich meridian.",
+            "type": "number"
+          },
+          "map_url": {
+            "description": "Map link centred on the point below the station.",
+            "type": "string"
+          },
+          "time": {
+            "description": "The same instant as an ISO 8601 UTC date-time.",
+            "type": "string"
+          },
+          "timestamp": {
+            "description": "The instant this position is for, in Unix seconds.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_people_in_space": {
+      "description": "Get who is in space right now, with the spacecraft each person is aboard and a count per craft, so a step can say how many are on the station without counting a list itself. Name a spacecraft to get only its crew. Nobody aboard is an empty result rather than a failed step. No API key required.",
+      "display_name": "Get the people in space",
+      "display_str_template": "Get the people in space aboard {0}.",
+      "handler": "actions.get_people_in_space",
+      "id": "open_notify_get_people_in_space",
+      "method": "POST",
+      "mock_response": {
+        "count": 12,
+        "craft": null,
+        "crafts": [
+          {
+            "craft": "ISS",
+            "names": [
+              "Oleg Kononenko",
+              "Nikolai Chub",
+              "Tracy Caldwell Dyson",
+              "Matthew Dominick",
+              "Michael Barratt",
+              "Jeanette Epps",
+              "Alexander Grebenkin",
+              "Butch Wilmore",
+              "Sunita Williams"
+            ],
+            "number": 9
+          },
+          {
+            "craft": "Tiangong",
+            "names": [
+              "Li Guangsu",
+              "Li Cong",
+              "Ye Guangfu"
+            ],
+            "number": 3
+          }
+        ],
+        "names": [
+          "Oleg Kononenko",
+          "Nikolai Chub",
+          "Tracy Caldwell Dyson",
+          "Matthew Dominick",
+          "Michael Barratt",
+          "Jeanette Epps",
+          "Alexander Grebenkin",
+          "Butch Wilmore",
+          "Sunita Williams",
+          "Li Guangsu",
+          "Li Cong",
+          "Ye Guangfu"
+        ],
+        "number": 12,
+        "people": [
+          {
+            "craft": "ISS",
+            "name": "Oleg Kononenko"
+          },
+          {
+            "craft": "ISS",
+            "name": "Nikolai Chub"
+          },
+          {
+            "craft": "ISS",
+            "name": "Tracy Caldwell Dyson"
+          },
+          {
+            "craft": "ISS",
+            "name": "Matthew Dominick"
+          },
+          {
+            "craft": "ISS",
+            "name": "Michael Barratt"
+          },
+          {
+            "craft": "ISS",
+            "name": "Jeanette Epps"
+          },
+          {
+            "craft": "ISS",
+            "name": "Alexander Grebenkin"
+          },
+          {
+            "craft": "ISS",
+            "name": "Butch Wilmore"
+          },
+          {
+            "craft": "ISS",
+            "name": "Sunita Williams"
+          },
+          {
+            "craft": "Tiangong",
+            "name": "Li Guangsu"
+          },
+          {
+            "craft": "Tiangong",
+            "name": "Li Cong"
+          },
+          {
+            "craft": "Tiangong",
+            "name": "Ye Guangfu"
+          }
+        ]
+      },
+      "name": "get_people_in_space",
+      "output_formatter": "actions.format_people_output",
+      "parameters": [
+        {
+          "description": "Only return the people aboard this spacecraft, such as ISS or Tiangong. Leave empty for everyone in space. Matching ignores capitalisation.",
+          "display_name": "Spacecraft",
+          "dynamic_source": "crafts",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "The space station",
+              "value": "ISS"
+            },
+            {
+              "label": "China's station",
+              "value": "Tiangong"
+            }
+          ],
+          "name": "craft",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/open-notify/get-people-in-space",
+      "result_str_template": "Found {open_notify_get_people_in_space,count} people.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many people are in the returned list: everyone in space, or everyone aboard the spacecraft asked for.",
+            "type": "integer"
+          },
+          "craft": {
+            "description": "The spacecraft the list was filtered to, or empty when it was not filtered.",
+            "type": "string"
+          },
+          "crafts": {
+            "description": "Everyone in space grouped by spacecraft. Always covers every craft, so a filter that matched nobody still shows what is crewed.",
+            "items": {
+              "properties": {
+                "craft": {
+                  "description": "The spacecraft's name, e.g. 'ISS' or 'Tiangong'.",
+                  "type": "string"
+                },
+                "names": {
+                  "description": "Their names.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "number": {
+                  "description": "How many people are aboard it.",
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "names": {
+            "description": "Just their names, ready to put in a message.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "number": {
+            "description": "How many people are in space altogether, as the service counts them. Unaffected by the spacecraft filter.",
+            "type": "integer"
+          },
+          "people": {
+            "description": "The people, each with their spacecraft.",
+            "items": {
+              "properties": {
+                "craft": {
+                  "description": "The spacecraft they are aboard, e.g. 'ISS'.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The person's name.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_space_report": {
+      "description": "Get both halves of what Open Notify knows in one step: where the station is, how many people are in space, who they are and which of them are aboard the ISS. Built for a daily post or digest, where two separate steps would describe two different moments. No API key required.",
+      "display_name": "Get a space report",
+      "display_str_template": "Get a space report.",
+      "handler": "actions.get_space_report",
+      "id": "open_notify_get_space_report",
+      "method": "POST",
+      "mock_response": {
+        "crafts": [
+          {
+            "craft": "ISS",
+            "names": [
+              "Oleg Kononenko",
+              "Nikolai Chub",
+              "Tracy Caldwell Dyson",
+              "Matthew Dominick",
+              "Michael Barratt",
+              "Jeanette Epps",
+              "Alexander Grebenkin",
+              "Butch Wilmore",
+              "Sunita Williams"
+            ],
+            "number": 9
+          },
+          {
+            "craft": "Tiangong",
+            "names": [
+              "Li Guangsu",
+              "Li Cong",
+              "Ye Guangfu"
+            ],
+            "number": 3
+          }
+        ],
+        "iss": {
+          "latitude": -36.0989,
+          "longitude": -64.0851,
+          "map_url": "https://maps.google.com/maps?q=-36.0989,-64.0851&z=4",
+          "time": "2026-09-16T12:00:00Z",
+          "timestamp": 1789560000
+        },
+        "iss_crew": [
+          "Oleg Kononenko",
+          "Nikolai Chub",
+          "Tracy Caldwell Dyson",
+          "Matthew Dominick",
+          "Michael Barratt",
+          "Jeanette Epps",
+          "Alexander Grebenkin",
+          "Butch Wilmore",
+          "Sunita Williams"
+        ],
+        "iss_crew_count": 9,
+        "names": [
+          "Oleg Kononenko",
+          "Nikolai Chub",
+          "Tracy Caldwell Dyson",
+          "Matthew Dominick",
+          "Michael Barratt",
+          "Jeanette Epps",
+          "Alexander Grebenkin",
+          "Butch Wilmore",
+          "Sunita Williams",
+          "Li Guangsu",
+          "Li Cong",
+          "Ye Guangfu"
+        ],
+        "number": 12,
+        "people": [
+          {
+            "craft": "ISS",
+            "name": "Oleg Kononenko"
+          },
+          {
+            "craft": "ISS",
+            "name": "Nikolai Chub"
+          },
+          {
+            "craft": "ISS",
+            "name": "Tracy Caldwell Dyson"
+          },
+          {
+            "craft": "ISS",
+            "name": "Matthew Dominick"
+          },
+          {
+            "craft": "ISS",
+            "name": "Michael Barratt"
+          },
+          {
+            "craft": "ISS",
+            "name": "Jeanette Epps"
+          },
+          {
+            "craft": "ISS",
+            "name": "Alexander Grebenkin"
+          },
+          {
+            "craft": "ISS",
+            "name": "Butch Wilmore"
+          },
+          {
+            "craft": "ISS",
+            "name": "Sunita Williams"
+          },
+          {
+            "craft": "Tiangong",
+            "name": "Li Guangsu"
+          },
+          {
+            "craft": "Tiangong",
+            "name": "Li Cong"
+          },
+          {
+            "craft": "Tiangong",
+            "name": "Ye Guangfu"
+          }
+        ]
+      },
+      "name": "get_space_report",
+      "output_formatter": "actions.format_report_output",
+      "parameters": [],
+      "path": "/actions/library/open-notify/get-space-report",
+      "result_str_template": "Space report retrieved.",
+      "returns": {
+        "properties": {
+          "crafts": {
+            "description": "The same people grouped by spacecraft.",
+            "items": {
+              "properties": {
+                "craft": {
+                  "description": "The spacecraft's name, e.g. 'ISS' or 'Tiangong'.",
+                  "type": "string"
+                },
+                "names": {
+                  "description": "Their names.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "number": {
+                  "description": "How many people are aboard it.",
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "iss": {
+            "description": "Where the station is right now.",
+            "properties": {
+              "latitude": {
+                "description": "Latitude of the point on the ground directly below the station, in degrees. Negative is south of the equator. The service quotes this as a string; it is published here as a number.",
+                "type": "number"
+              },
+              "longitude": {
+                "description": "Longitude of that point, in degrees. Negative is west of the Greenwich meridian.",
+                "type": "number"
+              },
+              "map_url": {
+                "description": "Map link centred on the point below the station.",
+                "type": "string"
+              },
+              "time": {
+                "description": "The same instant as an ISO 8601 UTC date-time.",
+                "type": "string"
+              },
+              "timestamp": {
+                "description": "The instant this position is for, in Unix seconds.",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "iss_crew": {
+            "description": "The names aboard the ISS specifically, which is the headline of most reports.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "iss_crew_count": {
+            "description": "How many of them there are.",
+            "type": "integer"
+          },
+          "names": {
+            "description": "Just their names.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "number": {
+            "description": "How many people are in space.",
+            "type": "integer"
+          },
+          "people": {
+            "description": "All of them, each with their spacecraft.",
+            "items": {
+              "properties": {
+                "craft": {
+                  "description": "The spacecraft they are aboard, e.g. 'ISS'.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The person's name.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "sample_iss_track": {
+      "description": "Watch the station move: take several positions a few seconds apart and get the path between them, how far it travelled and how fast. Open Notify only ever answers for the present instant, so this step waits between readings at the cadence the service asks for, which is why it takes as long as it does. No API key required.",
+      "display_name": "Sample the ISS track",
+      "display_str_template": "Sample {0} positions of the ISS.",
+      "handler": "actions.sample_iss_track",
+      "id": "open_notify_sample_iss_track",
+      "method": "POST",
+      "mock_response": {
+        "assumed_altitude_km": 420.0,
+        "count": 2,
+        "elapsed_seconds": 5.0,
+        "end_time": "2026-09-16T12:00:05Z",
+        "ground_distance_km": 36.0,
+        "ground_speed_kmh": 25894.8,
+        "interval_seconds": 5.0,
+        "orbital_speed_kmh": 27601.9,
+        "positions": [
+          {
+            "latitude": -36.0989,
+            "longitude": -64.0851,
+            "map_url": "https://maps.google.com/maps?q=-36.0989,-64.0851&z=4",
+            "time": "2026-09-16T12:00:00Z",
+            "timestamp": 1789560000
+          },
+          {
+            "latitude": -35.9129,
+            "longitude": -63.758,
+            "map_url": "https://maps.google.com/maps?q=-35.9129,-63.758&z=4",
+            "time": "2026-09-16T12:00:05Z",
+            "timestamp": 1789560005
+          }
+        ],
+        "start_time": "2026-09-16T12:00:00Z"
+      },
+      "name": "sample_iss_track",
+      "output_formatter": "actions.format_track_output",
+      "parameters": [
+        {
+          "default": 3,
+          "description": "How many readings to take, from 2 to 10. Each one after the first waits out the gap below, so the step takes roughly that gap times one less than this.",
+          "display_name": "Number of positions",
+          "maximum": 10,
+          "minimum": 2,
+          "name": "count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 5.0,
+          "description": "How long to wait between readings, from 5 to 60 seconds. Open Notify works the position out once a second and asks callers to poll about once every five, so anything shorter is refused.",
+          "display_name": "Seconds between positions",
+          "maximum": 60.0,
+          "minimum": 5.0,
+          "name": "interval_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 420.0,
+          "description": "The height above the ground to assume for the station, in kilometres. Open Notify reports no altitude, so the figures derived from one assume 420 km, the station's usual operating height. Change it to match a published altitude if you have one.",
+          "display_name": "Assumed altitude (km)",
+          "maximum": 2000,
+          "minimum": 100,
+          "name": "altitude_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/open-notify/sample-iss-track",
+      "result_str_template": "Sampled {open_notify_sample_iss_track,count} positions.",
+      "returns": {
+        "properties": {
+          "assumed_altitude_km": {
+            "description": "The altitude the orbital speed was worked out from. Open Notify publishes none.",
+            "type": "number"
+          },
+          "count": {
+            "description": "How many readings were taken.",
+            "type": "integer"
+          },
+          "elapsed_seconds": {
+            "description": "Seconds between the first and last reading, measured by the service's own timestamps rather than by this workflow's clock.",
+            "type": "number"
+          },
+          "end_time": {
+            "description": "When the last reading was for.",
+            "type": "string"
+          },
+          "ground_distance_km": {
+            "description": "How far the point below the station moved across the Earth over that span.",
+            "type": "number"
+          },
+          "ground_speed_kmh": {
+            "description": "That distance as a speed, in kilometres per hour: how fast the station's shadow crosses the ground.",
+            "type": "number"
+          },
+          "interval_seconds": {
+            "description": "The gap asked for between readings.",
+            "type": "number"
+          },
+          "orbital_speed_kmh": {
+            "description": "How fast the station itself is travelling, which is faster than its shadow because it sweeps a wider circle. Derived from the assumed altitude, so it is an estimate: about 28,000 km/h.",
+            "type": "number"
+          },
+          "positions": {
+            "description": "The readings, earliest first.",
+            "items": {
+              "properties": {
+                "latitude": {
+                  "description": "Latitude of the point on the ground directly below the station, in degrees. Negative is south of the equator. The service quotes this as a string; it is published here as a number.",
+                  "type": "number"
+                },
+                "longitude": {
+                  "description": "Longitude of that point, in degrees. Negative is west of the Greenwich meridian.",
+                  "type": "number"
+                },
+                "map_url": {
+                  "description": "Map link centred on the point below the station.",
+                  "type": "string"
+                },
+                "time": {
+                  "description": "The same instant as an ISO 8601 UTC date-time.",
+                  "type": "string"
+                },
+                "timestamp": {
+                  "description": "The instant this position is for, in Unix seconds.",
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "start_time": {
+            "description": "When the first reading was for, as an ISO 8601 UTC date-time.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Track the International Space Station with Open Notify, the free keyless API behind open-notify.org. Get where the station is right now, who is in space and which spacecraft they are aboard, how far away the station is from any place on Earth and whether it is above the horizon there, or watch it move across several readings to see how fast it is going. There is one action that reports the service's own health as a value rather than failing a step, so a scheduled workflow can tell an outage from an empty answer. No account and no API key: connecting takes one click.",
+  "display_name": "Open Notify",
+  "id": "open_notify"
+}
