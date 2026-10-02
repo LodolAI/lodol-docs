@@ -1,0 +1,2250 @@
+{
+  "actions": {
+    "cancel_message_move_task": {
+      "description": "Stop a running redrive. Messages already moved stay where they are; only a RUNNING task can be cancelled.",
+      "display_name": "Cancel dead-letter redrive",
+      "display_str_template": "Cancel an SQS dead-letter redrive",
+      "handler": "actions.cancel_message_move_task",
+      "id": "amazon_sqs_cancel_message_move_task",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "approximate_number_of_messages_moved": 4,
+          "cancelled": true,
+          "task_handle": "eyJ0YXNrSWQiOiJkYzE2OWUwNC0wZTU1LTQ0ZDItYWE5MC1jMDgwY2ExZjM2ZjciLCJzb3VyY2VBcm4iOiJhcm46YXdzOnNxczp1cy1lYXN0LTE6MTIzNDU2Nzg5MDEyOm9yZGVycy1kbHEifQ=="
+        }
+      },
+      "name": "cancel_message_move_task",
+      "parameters": [
+        {
+          "description": "The task_handle from Start dead-letter redrive, or running_task_handle from List dead-letter redrives.",
+          "display_name": "Task handle",
+          "name": "task_handle",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/cancel-message-move-task",
+      "result_str_template": "Redrive cancelled",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "approximate_number_of_messages_moved": {
+                "description": "Messages moved before it stopped.",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "cancelled": {
+                "description": "Always true when SQS accepted the cancellation.",
+                "type": "boolean"
+              },
+              "task_handle": {
+                "description": "The task cancelled.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "change_message_visibility": {
+      "description": "Give a received message more (or less) time before it reappears for other receivers. Set 0 to release it immediately. The clock restarts from now.",
+      "display_name": "Change message visibility",
+      "display_str_template": "Change SQS message visibility",
+      "handler": "actions.change_message_visibility",
+      "id": "amazon_sqs_change_message_visibility",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "changed": true,
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders",
+          "visibility_timeout": 120
+        }
+      },
+      "name": "change_message_visibility",
+      "parameters": [
+        {
+          "description": "Pick a queue, or enter its URL, ARN or name. It must be in the region you connected with.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The receipt_handle from the Receive messages step (not the message id). It is only valid until the message's visibility timeout ends.",
+          "display_name": "Receipt handle",
+          "name": "receipt_handle",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Seconds from now until the message reappears, 0-43200.",
+          "display_name": "Visibility timeout (seconds)",
+          "maximum": 43200,
+          "minimum": 0,
+          "name": "visibility_timeout",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/change-message-visibility",
+      "result_str_template": "Message visibility changed",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "changed": {
+                "description": "Always true - SQS returns an empty body on success.",
+                "type": "boolean"
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              },
+              "visibility_timeout": {
+                "description": "Seconds set.",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_queue": {
+      "description": "Create a standard or FIFO queue. If a queue with this name already exists with exactly these settings, it is returned instead; with different settings the step fails. A new queue can take a second before it accepts messages.",
+      "display_name": "Create queue",
+      "display_str_template": "Create SQS queue {0}",
+      "handler": "actions.create_queue",
+      "id": "amazon_sqs_create_queue",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "fifo_queue": false,
+          "queue_arn": "arn:aws:sqs:us-east-1:123456789012:orders",
+          "queue_name": "orders",
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders"
+        }
+      },
+      "name": "create_queue",
+      "parameters": [
+        {
+          "description": "Up to 80 letters, digits, '-' and '_'. For a FIFO queue '.fifo' is added if you leave it off.",
+          "display_name": "Queue name",
+          "name": "queue_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Keep messages in order and deliver each exactly once. Cannot be changed after the queue is created.",
+          "display_name": "FIFO queue",
+          "name": "fifo_queue",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "How long a received message stays hidden from other receivers before it reappears, 0-43200. New queues default to 30.",
+          "display_name": "Visibility timeout (seconds)",
+          "maximum": 43200,
+          "minimum": 0,
+          "name": "visibility_timeout",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How long every new message waits before it can be received, 0-900. New queues default to 0.",
+          "display_name": "Delivery delay (seconds)",
+          "maximum": 900,
+          "minimum": 0,
+          "name": "delay_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How long SQS keeps an undeleted message, 60 (1 minute) to 1209600 (14 days). New queues default to 345600 (4 days).",
+          "display_name": "Message retention (seconds)",
+          "maximum": 1209600,
+          "minimum": 60,
+          "name": "message_retention_period",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The largest message the queue accepts, 1024-1048576. New queues default to 1048576 (1 MiB).",
+          "display_name": "Maximum message size (bytes)",
+          "maximum": 1048576,
+          "minimum": 1024,
+          "name": "maximum_message_size",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Default long-poll wait for Receive messages, 0-20. Above 0 reduces empty receives. New queues default to 0.",
+          "display_name": "Receive wait time (seconds)",
+          "maximum": 20,
+          "minimum": 0,
+          "name": "receive_message_wait_time_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "FIFO queues only: treat messages with the same body as duplicates, so a deduplication id is not needed on send.",
+          "display_name": "Content-based deduplication",
+          "name": "content_based_deduplication",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "A queue to move messages to after they have been received 'Max receive count' times without being deleted. It must be the same type (standard or FIFO) and in the same region.",
+          "display_name": "Dead-letter queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "dead_letter_queue",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "With a dead-letter queue: receives before a message moves there, 1-1000. Default 10.",
+          "display_name": "Max receive count",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "max_receive_count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Cost-allocation tags as key: value pairs.",
+          "display_name": "Tags",
+          "name": "tags",
+          "object_key_name": "Tag key",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/create-queue",
+      "result_str_template": "Queue created",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "fifo_queue": {
+                "description": "True when a FIFO queue was created.",
+                "type": "boolean"
+              },
+              "queue_arn": {
+                "description": "The queue's ARN. Dead-letter settings and redrive tasks refer to queues by ARN.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "queue_name": {
+                "description": "The queue's name, the last part of its URL.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_message": {
+      "description": "Remove a received message from the queue, so it is not delivered again. Use the receipt handle, not the message id.",
+      "display_name": "Delete message",
+      "display_str_template": "Delete an SQS message",
+      "handler": "actions.delete_message",
+      "id": "amazon_sqs_delete_message",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "deleted": true,
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders"
+        }
+      },
+      "name": "delete_message",
+      "parameters": [
+        {
+          "description": "Pick a queue, or enter its URL, ARN or name. It must be in the region you connected with.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The receipt_handle from the Receive messages step (not the message id). It is only valid until the message's visibility timeout ends.",
+          "display_name": "Receipt handle",
+          "name": "receipt_handle",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/delete-message",
+      "result_str_template": "Message deleted",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "deleted": {
+                "description": "Always true - SQS returns an empty body on success.",
+                "type": "boolean"
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_message_batch": {
+      "description": "Remove up to 10 received messages in one call - pass the 'receipt_handles' of a Receive messages step. Fails only when none could be deleted.",
+      "display_name": "Delete messages (batch)",
+      "display_str_template": "Delete a batch of SQS messages",
+      "handler": "actions.delete_message_batch",
+      "id": "amazon_sqs_delete_message_batch",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "deleted_receipt_handles": [
+            "AQEBzWwaftRI0KuVm4tP+/7q1rGgNqicHq..."
+          ],
+          "failed": [],
+          "failed_count": 0,
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders",
+          "successful_count": 1
+        }
+      },
+      "name": "delete_message_batch",
+      "parameters": [
+        {
+          "description": "Pick a queue, or enter its URL, ARN or name. It must be in the region you connected with.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "1-10 receipt handles from Receive messages.",
+          "display_name": "Receipt handles",
+          "name": "receipt_handles",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/delete-message-batch",
+      "result_str_template": "{delete_message_batch,successful_count} messages deleted",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "deleted_receipt_handles": {
+                "description": "The receipt handles deleted.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "failed": {
+                "description": "The ones SQS refused.",
+                "items": {
+                  "properties": {
+                    "code": {
+                      "description": "SQS's error code.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "message": {
+                      "description": "SQS's explanation.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "receipt_handle": {
+                      "description": "The receipt handle that failed.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "sender_fault": {
+                      "description": "True when the entry itself was at fault.",
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "failed_count": {
+                "description": "How many failed.",
+                "type": "number"
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              },
+              "successful_count": {
+                "description": "How many deleted.",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_queue": {
+      "description": "Delete a queue and every message in it. There is no undo, and the name cannot be reused for 60 seconds.",
+      "display_name": "Delete queue",
+      "display_str_template": "Delete SQS queue",
+      "handler": "actions.delete_queue",
+      "id": "amazon_sqs_delete_queue",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "deleted": true,
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders"
+        }
+      },
+      "name": "delete_queue",
+      "parameters": [
+        {
+          "description": "Pick a queue, or enter its URL, ARN or name. It must be in the region you connected with.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/delete-queue",
+      "result_str_template": "Queue deleted",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "deleted": {
+                "description": "Always true - SQS returns an empty body on success.",
+                "type": "boolean"
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_queue_attributes": {
+      "description": "Read a queue's settings, ARN and approximate message counts (the counts can lag by about a minute).",
+      "display_name": "Get queue details",
+      "display_str_template": "Get SQS queue details",
+      "handler": "actions.get_queue_attributes",
+      "id": "amazon_sqs_get_queue_attributes",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "attributes": {
+            "ApproximateNumberOfMessages": "3",
+            "QueueArn": "arn:aws:sqs:us-east-1:123456789012:orders",
+            "VisibilityTimeout": "30"
+          },
+          "queue": {
+            "approximate_number_of_messages": 3,
+            "approximate_number_of_messages_delayed": 0,
+            "approximate_number_of_messages_not_visible": 0,
+            "content_based_deduplication": null,
+            "created_at": "2026-09-22T08:00:00Z",
+            "dead_letter_target_arn": "arn:aws:sqs:us-east-1:123456789012:orders-dlq",
+            "deduplication_scope": null,
+            "delay_seconds": 0,
+            "fifo_queue": null,
+            "fifo_throughput_limit": null,
+            "kms_data_key_reuse_period_seconds": null,
+            "kms_master_key_id": null,
+            "last_modified_at": "2026-09-22T08:00:00Z",
+            "max_receive_count": 5,
+            "maximum_message_size": 1048576,
+            "message_retention_period": 345600,
+            "policy": null,
+            "queue_arn": "arn:aws:sqs:us-east-1:123456789012:orders",
+            "receive_message_wait_time_seconds": 0,
+            "redrive_allow_policy": null,
+            "redrive_policy": {
+              "deadLetterTargetArn": "arn:aws:sqs:us-east-1:123456789012:orders-dlq",
+              "maxReceiveCount": 5
+            },
+            "sqs_managed_sse_enabled": true,
+            "visibility_timeout": 30
+          },
+          "queue_name": "orders",
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders"
+        }
+      },
+      "name": "get_queue_attributes",
+      "parameters": [
+        {
+          "description": "Pick a queue, or enter its URL, ARN or name. It must be in the region you connected with.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which attributes to read. Leave empty for all.",
+          "display_name": "Attributes",
+          "multi_select": true,
+          "name": "attribute_names",
+          "options": [
+            {
+              "label": "Policy",
+              "value": "Policy"
+            },
+            {
+              "label": "VisibilityTimeout",
+              "value": "VisibilityTimeout"
+            },
+            {
+              "label": "MaximumMessageSize",
+              "value": "MaximumMessageSize"
+            },
+            {
+              "label": "MessageRetentionPeriod",
+              "value": "MessageRetentionPeriod"
+            },
+            {
+              "label": "ApproximateNumberOfMessages",
+              "value": "ApproximateNumberOfMessages"
+            },
+            {
+              "label": "ApproximateNumberOfMessagesNotVisible",
+              "value": "ApproximateNumberOfMessagesNotVisible"
+            },
+            {
+              "label": "CreatedTimestamp",
+              "value": "CreatedTimestamp"
+            },
+            {
+              "label": "LastModifiedTimestamp",
+              "value": "LastModifiedTimestamp"
+            },
+            {
+              "label": "QueueArn",
+              "value": "QueueArn"
+            },
+            {
+              "label": "ApproximateNumberOfMessagesDelayed",
+              "value": "ApproximateNumberOfMessagesDelayed"
+            },
+            {
+              "label": "DelaySeconds",
+              "value": "DelaySeconds"
+            },
+            {
+              "label": "ReceiveMessageWaitTimeSeconds",
+              "value": "ReceiveMessageWaitTimeSeconds"
+            },
+            {
+              "label": "RedrivePolicy",
+              "value": "RedrivePolicy"
+            },
+            {
+              "label": "FifoQueue",
+              "value": "FifoQueue"
+            },
+            {
+              "label": "ContentBasedDeduplication",
+              "value": "ContentBasedDeduplication"
+            },
+            {
+              "label": "KmsMasterKeyId",
+              "value": "KmsMasterKeyId"
+            },
+            {
+              "label": "KmsDataKeyReusePeriodSeconds",
+              "value": "KmsDataKeyReusePeriodSeconds"
+            },
+            {
+              "label": "DeduplicationScope",
+              "value": "DeduplicationScope"
+            },
+            {
+              "label": "FifoThroughputLimit",
+              "value": "FifoThroughputLimit"
+            },
+            {
+              "label": "RedriveAllowPolicy",
+              "value": "RedriveAllowPolicy"
+            },
+            {
+              "label": "SqsManagedSseEnabled",
+              "value": "SqsManagedSseEnabled"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/get-queue-attributes",
+      "result_str_template": "Queue details retrieved",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "attributes": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Every attribute as SQS sent it (strings).",
+                "type": "object"
+              },
+              "queue": {
+                "properties": {
+                  "approximate_number_of_messages": {
+                    "description": "Messages waiting to be received (approximate, ~1 min lag).",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "approximate_number_of_messages_delayed": {
+                    "description": "Messages sent with a delay that has not yet passed.",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "approximate_number_of_messages_not_visible": {
+                    "description": "Messages received but not yet deleted (in flight).",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "content_based_deduplication": {
+                    "description": "FIFO only: deduplicate by a hash of the body.",
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "created_at": {
+                    "description": "When the queue was created (ISO-8601).",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "dead_letter_target_arn": {
+                    "description": "The dead-letter queue failed messages move to.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "deduplication_scope": {
+                    "description": "FIFO only: messageGroup or queue.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "delay_seconds": {
+                    "description": "Default delivery delay, in seconds.",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "fifo_queue": {
+                    "description": "True for a FIFO queue.",
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "fifo_throughput_limit": {
+                    "description": "FIFO only: perQueue or perMessageGroupId.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "kms_data_key_reuse_period_seconds": {
+                    "description": "How long SQS reuses a KMS data key, in seconds.",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "kms_master_key_id": {
+                    "description": "The KMS key, for SSE-KMS queues.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "last_modified_at": {
+                    "description": "When its settings last changed (ISO-8601).",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "max_receive_count": {
+                    "description": "Receives a message gets before moving to the dead-letter queue.",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "maximum_message_size": {
+                    "description": "Largest message, in bytes.",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "message_retention_period": {
+                    "description": "Seconds a message is kept before SQS deletes it.",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "policy": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "queue_arn": {
+                    "description": "The queue's ARN. Dead-letter settings and redrive tasks refer to queues by ARN.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "receive_message_wait_time_seconds": {
+                    "description": "Default long-poll wait, in seconds.",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "redrive_allow_policy": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "redrive_policy": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "sqs_managed_sse_enabled": {
+                    "description": "Whether SQS-managed encryption (SSE-SQS) is on.",
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "visibility_timeout": {
+                    "description": "Seconds a received message hides.",
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              "queue_name": {
+                "description": "The queue's name, the last part of its URL.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_queue_url": {
+      "description": "Look up a queue's URL and ARN from its name. Also works for another account's queue that you have been given access to.",
+      "display_name": "Get queue URL",
+      "display_str_template": "Get the URL of SQS queue {0}",
+      "handler": "actions.get_queue_url",
+      "id": "amazon_sqs_get_queue_url",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "queue_arn": "arn:aws:sqs:us-east-1:123456789012:orders",
+          "queue_name": "orders",
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders"
+        }
+      },
+      "name": "get_queue_url",
+      "parameters": [
+        {
+          "description": "The queue's exact name, for example 'orders' or 'orders.fifo'.",
+          "display_name": "Queue name",
+          "name": "queue_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only for a queue in another AWS account: that account's 12-digit id.",
+          "display_name": "Owner account id",
+          "name": "queue_owner_account_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/get-queue-url",
+      "result_str_template": "Queue URL found",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "queue_arn": {
+                "description": "The queue's ARN. Dead-letter settings and redrive tasks refer to queues by ARN.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "queue_name": {
+                "description": "The queue's name, the last part of its URL.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_dead_letter_source_queues": {
+      "description": "List the queues that send their failed messages to this dead-letter queue.",
+      "display_name": "List dead-letter source queues",
+      "display_str_template": "List queues feeding an SQS dead-letter queue",
+      "handler": "actions.list_dead_letter_source_queues",
+      "id": "amazon_sqs_list_dead_letter_source_queues",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "count": 1,
+          "has_more": false,
+          "next_token": null,
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders-dlq",
+          "queues": [
+            {
+              "queue_name": "orders",
+              "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders"
+            }
+          ]
+        }
+      },
+      "name": "list_dead_letter_source_queues",
+      "parameters": [
+        {
+          "description": "The dead-letter queue. Pick it, or enter its URL, ARN or name.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many queues per page, 1-1000. Default 1000.",
+          "display_name": "Max results",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "max_results",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The 'next_token' from a previous page, to read the next one.",
+          "display_name": "Next token",
+          "name": "next_token",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/list-dead-letter-source-queues",
+      "result_str_template": "{list_dead_letter_source_queues,count} queues found",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "count": {
+                "description": "How many came back.",
+                "type": "number"
+              },
+              "has_more": {
+                "description": "True when there is another page; pass next_token to read it.",
+                "type": "boolean"
+              },
+              "next_token": {
+                "description": "Pass to the same action's Next token field to read the next page.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              },
+              "queues": {
+                "description": "The source queues.",
+                "items": {
+                  "properties": {
+                    "queue_name": {
+                      "description": "The queue's name, the last part of its URL.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "queue_url": {
+                      "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_message_move_tasks": {
+      "description": "The most recent redrive tasks for a dead-letter queue, newest first, with their progress.",
+      "display_name": "List dead-letter redrives",
+      "display_str_template": "List SQS dead-letter redrives",
+      "handler": "actions.list_message_move_tasks",
+      "id": "amazon_sqs_list_message_move_tasks",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "count": 1,
+          "running_task_handle": "eyJ0YXNrSWQiOiJkYzE2OWUwNC0wZTU1LTQ0ZDItYWE5MC1jMDgwY2ExZjM2ZjciLCJzb3VyY2VBcm4iOiJhcm46YXdzOnNxczp1cy1lYXN0LTE6MTIzNDU2Nzg5MDEyOm9yZGVycy1kbHEifQ==",
+          "source_arn": "arn:aws:sqs:us-east-1:123456789012:orders-dlq",
+          "tasks": [
+            {
+              "approximate_number_of_messages_moved": 4,
+              "approximate_number_of_messages_to_move": 10,
+              "destination_arn": null,
+              "failure_reason": null,
+              "max_number_of_messages_per_second": 1,
+              "source_arn": "arn:aws:sqs:us-east-1:123456789012:orders-dlq",
+              "started_at": "2026-09-22T08:05:00Z",
+              "status": "RUNNING",
+              "task_handle": "eyJ0YXNrSWQiOiJkYzE2OWUwNC0wZTU1LTQ0ZDItYWE5MC1jMDgwY2ExZjM2ZjciLCJzb3VyY2VBcm4iOiJhcm46YXdzOnNxczp1cy1lYXN0LTE6MTIzNDU2Nzg5MDEyOm9yZGVycy1kbHEifQ=="
+            }
+          ]
+        }
+      },
+      "name": "list_message_move_tasks",
+      "parameters": [
+        {
+          "description": "The dead-letter queue the redrives moved messages from.",
+          "display_name": "Dead-letter queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "source_queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many tasks, 1-10. Default 1 (the latest).",
+          "display_name": "Max results",
+          "maximum": 10,
+          "minimum": 1,
+          "name": "max_results",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/list-message-move-tasks",
+      "result_str_template": "{list_message_move_tasks,count} redrives found",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "count": {
+                "description": "How many came back.",
+                "type": "number"
+              },
+              "running_task_handle": {
+                "description": "The handle of the running task, if one is.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source_arn": {
+                "description": "The dead-letter queue.",
+                "type": "string"
+              },
+              "tasks": {
+                "description": "The tasks, newest first.",
+                "items": {
+                  "properties": {
+                    "approximate_number_of_messages_moved": {
+                      "description": "Messages moved so far.",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "approximate_number_of_messages_to_move": {
+                      "description": "Messages the task set out to move.",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "destination_arn": {
+                      "description": "Where messages go; empty means back to their source queues.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "failure_reason": {
+                      "description": "Why a FAILED task failed.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "max_number_of_messages_per_second": {
+                      "description": "The rate limit, if one was set.",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "source_arn": {
+                      "description": "The dead-letter queue being redriven.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "started_at": {
+                      "description": "When the task started (ISO-8601).",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "description": "RUNNING, COMPLETED, CANCELLING, CANCELLED or FAILED.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "task_handle": {
+                      "description": "Present only while RUNNING; pass to Cancel redrive task.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_queue_tags": {
+      "description": "Read a queue's cost-allocation tags.",
+      "display_name": "List queue tags",
+      "display_str_template": "List SQS queue tags",
+      "handler": "actions.list_queue_tags",
+      "id": "amazon_sqs_list_queue_tags",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "count": 1,
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders",
+          "tags": {
+            "team": "payments"
+          }
+        }
+      },
+      "name": "list_queue_tags",
+      "parameters": [
+        {
+          "description": "Pick a queue, or enter its URL, ARN or name. It must be in the region you connected with.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/list-queue-tags",
+      "result_str_template": "{list_queue_tags,count} tags found",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "count": {
+                "description": "How many came back.",
+                "type": "number"
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              },
+              "tags": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "The tags, key: value.",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_queues": {
+      "description": "List the queues in the connected region, optionally only those whose name starts with a prefix.",
+      "display_name": "List queues",
+      "display_str_template": "List SQS queues",
+      "handler": "actions.list_queues",
+      "id": "amazon_sqs_list_queues",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "count": 1,
+          "has_more": false,
+          "next_token": null,
+          "queue_urls": [
+            "https://sqs.us-east-1.amazonaws.com/123456789012/orders"
+          ],
+          "queues": [
+            {
+              "queue_name": "orders",
+              "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders"
+            }
+          ]
+        }
+      },
+      "name": "list_queues",
+      "parameters": [
+        {
+          "description": "Only queues whose name starts with this (case-sensitive).",
+          "display_name": "Name prefix",
+          "name": "queue_name_prefix",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many queues per page, 1-1000. Default 1000.",
+          "display_name": "Max results",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "max_results",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The 'next_token' from a previous page, to read the next one.",
+          "display_name": "Next token",
+          "name": "next_token",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/list-queues",
+      "result_str_template": "{list_queues,count} queues found",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "count": {
+                "description": "How many came back.",
+                "type": "number"
+              },
+              "has_more": {
+                "description": "True when there is another page; pass next_token to read it.",
+                "type": "boolean"
+              },
+              "next_token": {
+                "description": "Pass to the same action's Next token field to read the next page.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "queue_urls": {
+                "description": "Just their URLs.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "queues": {
+                "description": "The queues found.",
+                "items": {
+                  "properties": {
+                    "queue_name": {
+                      "description": "The queue's name, the last part of its URL.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "queue_url": {
+                      "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "purge_queue": {
+      "description": "Delete every message in a queue, including ones currently being processed. The queue itself stays. There is no undo, and a queue can be purged at most once a minute.",
+      "display_name": "Purge queue",
+      "display_str_template": "Purge SQS queue",
+      "handler": "actions.purge_queue",
+      "id": "amazon_sqs_purge_queue",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "purged": true,
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders"
+        }
+      },
+      "name": "purge_queue",
+      "parameters": [
+        {
+          "description": "Pick a queue, or enter its URL, ARN or name. It must be in the region you connected with.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/purge-queue",
+      "result_str_template": "Queue purged",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "purged": {
+                "description": "Always true - SQS returns an empty body on success.",
+                "type": "boolean"
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "receive_messages": {
+      "description": "Receive up to 10 messages. Receiving does not remove them: each stays hidden for the visibility timeout and then reappears, so follow this with Delete message once it is handled. With no wait time SQS may return fewer messages than the queue holds, or none - set a wait time to long-poll.",
+      "display_name": "Receive messages",
+      "display_str_template": "Receive SQS messages",
+      "handler": "actions.receive_messages",
+      "id": "amazon_sqs_receive_messages",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "count": 1,
+          "messages": [
+            {
+              "attributes": {
+                "ApproximateFirstReceiveTimestamp": "1790064065456",
+                "ApproximateReceiveCount": "1",
+                "SenderId": "AIDASSYFHUBOBT7F4XT75",
+                "SentTimestamp": "1790064062123"
+              },
+              "body": "{\"order_id\": 1042, \"status\": \"paid\"}",
+              "body_json": {
+                "order_id": 1042,
+                "status": "paid"
+              },
+              "dead_letter_queue_source_arn": null,
+              "first_received_at": "2026-09-22T08:01:05.456000Z",
+              "md5_of_body": "fafb00f5732ab283681e124bf8747ed1",
+              "message_attributes": {
+                "source": "checkout"
+              },
+              "message_deduplication_id": null,
+              "message_group_id": null,
+              "message_id": "5fea7756-0ea4-451a-a703-a558b933e274",
+              "receipt_handle": "AQEBzWwaftRI0KuVm4tP+/7q1rGgNqicHq...",
+              "receive_count": 1,
+              "sender_id": "AIDASSYFHUBOBT7F4XT75",
+              "sent_at": "2026-09-22T08:01:02.123000Z",
+              "sequence_number": null
+            }
+          ],
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders",
+          "receipt_handles": [
+            "AQEBzWwaftRI0KuVm4tP+/7q1rGgNqicHq..."
+          ]
+        }
+      },
+      "name": "receive_messages",
+      "parameters": [
+        {
+          "description": "Pick a queue, or enter its URL, ARN or name. It must be in the region you connected with.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many to receive at most, 1-10. Default 1.",
+          "display_name": "Max messages",
+          "maximum": 10,
+          "minimum": 1,
+          "name": "max_number_of_messages",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Wait up to this long for a message to arrive, 0-20. Leave empty to use the queue's own setting.",
+          "display_name": "Wait time (seconds)",
+          "maximum": 20,
+          "minimum": 0,
+          "name": "wait_time_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How long these messages stay hidden, 0-43200. Leave empty to use the queue's own setting.",
+          "display_name": "Visibility timeout (seconds)",
+          "maximum": 43200,
+          "minimum": 0,
+          "name": "visibility_timeout",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Names of message attributes to include; a name ending in '.*' matches a prefix. Leave empty for all.",
+          "display_name": "Message attributes to return",
+          "name": "message_attribute_names",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Which SQS system attributes to include. Leave empty for all.",
+          "display_name": "System attributes to return",
+          "multi_select": true,
+          "name": "message_system_attribute_names",
+          "options": [
+            {
+              "label": "SenderId",
+              "value": "SenderId"
+            },
+            {
+              "label": "SentTimestamp",
+              "value": "SentTimestamp"
+            },
+            {
+              "label": "ApproximateReceiveCount",
+              "value": "ApproximateReceiveCount"
+            },
+            {
+              "label": "ApproximateFirstReceiveTimestamp",
+              "value": "ApproximateFirstReceiveTimestamp"
+            },
+            {
+              "label": "SequenceNumber",
+              "value": "SequenceNumber"
+            },
+            {
+              "label": "MessageDeduplicationId",
+              "value": "MessageDeduplicationId"
+            },
+            {
+              "label": "MessageGroupId",
+              "value": "MessageGroupId"
+            },
+            {
+              "label": "AWSTraceHeader",
+              "value": "AWSTraceHeader"
+            },
+            {
+              "label": "DeadLetterQueueSourceArn",
+              "value": "DeadLetterQueueSourceArn"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "FIFO queues only: reuse the same id to retry a receive that timed out and get the same messages back.",
+          "display_name": "Receive attempt id",
+          "name": "receive_request_attempt_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/receive-messages",
+      "result_str_template": "{receive_messages,count} messages received",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "count": {
+                "description": "How many came back.",
+                "type": "number"
+              },
+              "messages": {
+                "description": "The messages received.",
+                "items": {
+                  "properties": {
+                    "attributes": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "description": "Every system attribute SQS sent, as raw strings.",
+                      "type": "object"
+                    },
+                    "body": {
+                      "description": "The message body, as sent.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "body_json": {
+                      "description": "The body parsed as JSON, when it is JSON.",
+                      "type": [
+                        "object",
+                        "array",
+                        "null"
+                      ]
+                    },
+                    "dead_letter_queue_source_arn": {
+                      "description": "For a message in a dead-letter queue: the queue it came from.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "first_received_at": {
+                      "description": "When it was first received (ISO-8601).",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "md5_of_body": {
+                      "description": "MD5 digest of the body.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "message_attributes": {
+                      "description": "The message attributes as name: value.",
+                      "type": "object"
+                    },
+                    "message_deduplication_id": {
+                      "description": "FIFO only: its deduplication id.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "message_group_id": {
+                      "description": "Its message group, if any.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "message_id": {
+                      "description": "SQS's id for the message.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "receipt_handle": {
+                      "description": "Pass to Delete message or Change message visibility. It changes every time the message is received.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "receive_count": {
+                      "description": "How many times it has been received.",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "sender_id": {
+                      "description": "The IAM user or role that sent it.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "sent_at": {
+                      "description": "When it was sent (ISO-8601).",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "sequence_number": {
+                      "description": "FIFO only: its sequence number.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              },
+              "receipt_handles": {
+                "description": "Their receipt handles, ready for Delete messages (batch).",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "send_message": {
+      "description": "Send one message to a queue (up to 1 MiB).",
+      "display_name": "Send message",
+      "display_str_template": "Send an SQS message",
+      "handler": "actions.send_message",
+      "id": "amazon_sqs_send_message",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "md5_of_message_attributes": null,
+          "md5_of_message_body": "fafb00f5732ab283681e124bf8747ed1",
+          "message_id": "5fea7756-0ea4-451a-a703-a558b933e274",
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders",
+          "sequence_number": null
+        }
+      },
+      "name": "send_message",
+      "parameters": [
+        {
+          "description": "Pick a queue, or enter its URL, ARN or name. It must be in the region you connected with.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The message text. Pick an object from an earlier step to send it as JSON.",
+          "display_name": "Message",
+          "examples": [
+            {
+              "label": "JSON",
+              "value": "{\"order_id\": 1042, \"status\": \"paid\"}"
+            }
+          ],
+          "multiline": true,
+          "name": "message_body",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Up to 10 name: value pairs sent alongside the body, for consumers to filter on. Numbers are sent as SQS Number attributes.",
+          "display_name": "Message attributes",
+          "name": "message_attributes",
+          "object_key_name": "Attribute name",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Hide this message for this long after sending, 0-900. Standard queues only; FIFO queues use the queue's delay.",
+          "display_name": "Delay (seconds)",
+          "maximum": 900,
+          "minimum": 0,
+          "name": "delay_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Required for a FIFO queue: messages with the same group id are delivered in order. Optional on a standard queue.",
+          "display_name": "Message group id",
+          "name": "message_group_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "FIFO queues only: a message with the same id sent within 5 minutes is dropped as a duplicate. Not needed when the queue has content-based deduplication.",
+          "display_name": "Deduplication id",
+          "name": "message_deduplication_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/send-message",
+      "result_str_template": "Message sent",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "md5_of_message_attributes": {
+                "description": "MD5 digest of the attributes, if any.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "md5_of_message_body": {
+                "description": "MD5 digest of the body, to verify receipt.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "message_id": {
+                "description": "SQS's id for it.",
+                "type": "string"
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              },
+              "sequence_number": {
+                "description": "FIFO only: its sequence number.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "send_message_batch": {
+      "description": "Send up to 10 messages in one call. Each item is a message body (objects are sent as JSON). If some fail, the step still succeeds and lists them under 'failed'; it fails only when none were sent.",
+      "display_name": "Send messages (batch)",
+      "display_str_template": "Send a batch of SQS messages",
+      "handler": "actions.send_message_batch",
+      "id": "amazon_sqs_send_message_batch",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "failed": [],
+          "failed_count": 0,
+          "message_ids": [
+            "5fea7756-0ea4-451a-a703-a558b933e274"
+          ],
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders",
+          "successful": [
+            {
+              "id": "msg-1",
+              "md5_of_message_body": "fafb00f5732ab283681e124bf8747ed1",
+              "message_id": "5fea7756-0ea4-451a-a703-a558b933e274",
+              "sequence_number": null
+            }
+          ],
+          "successful_count": 1
+        }
+      },
+      "name": "send_message_batch",
+      "parameters": [
+        {
+          "description": "Pick a queue, or enter its URL, ARN or name. It must be in the region you connected with.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "1-10 messages. Text or objects; an object with a 'body' key may also set 'id', 'delay_seconds', 'message_group_id', 'message_deduplication_id' and 'message_attributes' for that message.",
+          "display_name": "Messages",
+          "name": "messages",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "For a FIFO queue: the group for every message that does not set its own.",
+          "display_name": "Message group id",
+          "name": "message_group_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/send-message-batch",
+      "result_str_template": "{send_message_batch,successful_count} messages sent",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "failed": {
+                "description": "The messages SQS refused.",
+                "items": {
+                  "properties": {
+                    "code": {
+                      "description": "SQS's error code.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "id": {
+                      "description": "The entry id.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "message": {
+                      "description": "SQS's explanation.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "sender_fault": {
+                      "description": "True when the entry itself was at fault.",
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "failed_count": {
+                "description": "How many failed.",
+                "type": "number"
+              },
+              "message_ids": {
+                "description": "Ids of the sent messages.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              },
+              "successful": {
+                "description": "The messages sent.",
+                "items": {
+                  "properties": {
+                    "id": {
+                      "description": "The entry id (msg-1, msg-2 ... when not given).",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "md5_of_message_body": {
+                      "description": "MD5 digest of the body.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "message_id": {
+                      "description": "SQS's id for the message.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "sequence_number": {
+                      "description": "FIFO only: its sequence number.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "successful_count": {
+                "description": "How many sent.",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "set_queue_attributes": {
+      "description": "Change a queue's settings. Only the fields you fill in are changed. Changes can take up to a minute to apply (message retention up to 15 minutes).",
+      "display_name": "Update queue settings",
+      "display_str_template": "Update SQS queue settings",
+      "handler": "actions.set_queue_attributes",
+      "id": "amazon_sqs_set_queue_attributes",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "attributes": {
+            "VisibilityTimeout": "60"
+          },
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders",
+          "updated": true,
+          "updated_attributes": [
+            "VisibilityTimeout"
+          ]
+        }
+      },
+      "name": "set_queue_attributes",
+      "parameters": [
+        {
+          "description": "Pick a queue, or enter its URL, ARN or name. It must be in the region you connected with.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How long a received message stays hidden from other receivers before it reappears, 0-43200. New queues default to 30.",
+          "display_name": "Visibility timeout (seconds)",
+          "maximum": 43200,
+          "minimum": 0,
+          "name": "visibility_timeout",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How long every new message waits before it can be received, 0-900. New queues default to 0.",
+          "display_name": "Delivery delay (seconds)",
+          "maximum": 900,
+          "minimum": 0,
+          "name": "delay_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How long SQS keeps an undeleted message, 60 (1 minute) to 1209600 (14 days). New queues default to 345600 (4 days).",
+          "display_name": "Message retention (seconds)",
+          "maximum": 1209600,
+          "minimum": 60,
+          "name": "message_retention_period",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The largest message the queue accepts, 1024-1048576. New queues default to 1048576 (1 MiB).",
+          "display_name": "Maximum message size (bytes)",
+          "maximum": 1048576,
+          "minimum": 1024,
+          "name": "maximum_message_size",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Default long-poll wait for Receive messages, 0-20. Above 0 reduces empty receives. New queues default to 0.",
+          "display_name": "Receive wait time (seconds)",
+          "maximum": 20,
+          "minimum": 0,
+          "name": "receive_message_wait_time_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "FIFO queues only: treat messages with the same body as duplicates, so a deduplication id is not needed on send.",
+          "display_name": "Content-based deduplication",
+          "name": "content_based_deduplication",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "A queue to move messages to after they have been received 'Max receive count' times without being deleted. It must be the same type (standard or FIFO) and in the same region.",
+          "display_name": "Dead-letter queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "dead_letter_queue",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "With a dead-letter queue: receives before a message moves there, 1-1000. Default 10.",
+          "display_name": "Max receive count",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "max_receive_count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/set-queue-attributes",
+      "result_str_template": "Queue settings updated",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "attributes": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "The values sent to SQS.",
+                "type": "object"
+              },
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              },
+              "updated": {
+                "description": "Always true - SQS returns an empty body on success.",
+                "type": "boolean"
+              },
+              "updated_attributes": {
+                "description": "The SQS attribute names that were changed.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "start_message_move_task": {
+      "description": "Move the messages in a dead-letter queue back to the queues they came from, or to another queue (a \"DLQ redrive\"). Runs in the background; one per queue at a time.",
+      "display_name": "Start dead-letter redrive",
+      "display_str_template": "Start an SQS dead-letter redrive",
+      "handler": "actions.start_message_move_task",
+      "id": "amazon_sqs_start_message_move_task",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "destination_arn": null,
+          "source_arn": "arn:aws:sqs:us-east-1:123456789012:orders-dlq",
+          "task_handle": "eyJ0YXNrSWQiOiJkYzE2OWUwNC0wZTU1LTQ0ZDItYWE5MC1jMDgwY2ExZjM2ZjciLCJzb3VyY2VBcm4iOiJhcm46YXdzOnNxczp1cy1lYXN0LTE6MTIzNDU2Nzg5MDEyOm9yZGVycy1kbHEifQ=="
+        }
+      },
+      "name": "start_message_move_task",
+      "parameters": [
+        {
+          "description": "The dead-letter queue to empty. Another queue's dead-letter setting must point at it.",
+          "display_name": "Dead-letter queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "source_queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where to move the messages. Leave empty to send each back to the queue it originally came from.",
+          "display_name": "Destination queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "destination_queue",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Rate limit for the move, 1-500. Leave empty to let SQS choose.",
+          "display_name": "Max messages per second",
+          "maximum": 500,
+          "minimum": 1,
+          "name": "max_number_of_messages_per_second",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/start-message-move-task",
+      "result_str_template": "Redrive started",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "destination_arn": {
+                "description": "The destination, or null for the original queues.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source_arn": {
+                "description": "The dead-letter queue.",
+                "type": "string"
+              },
+              "task_handle": {
+                "description": "Pass to Cancel dead-letter redrive.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "tag_queue": {
+      "description": "Add tags to a queue. A key that already exists gets the new value; other tags are left alone.",
+      "display_name": "Tag queue",
+      "display_str_template": "Tag SQS queue",
+      "handler": "actions.tag_queue",
+      "id": "amazon_sqs_tag_queue",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders",
+          "tagged": true,
+          "tags": {
+            "team": "payments"
+          }
+        }
+      },
+      "name": "tag_queue",
+      "parameters": [
+        {
+          "description": "Pick a queue, or enter its URL, ARN or name. It must be in the region you connected with.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Tags as key: value pairs (at most 50 per queue).",
+          "display_name": "Tags",
+          "name": "tags",
+          "object_key_name": "Tag key",
+          "required": true,
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/tag-queue",
+      "result_str_template": "Queue tagged",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              },
+              "tagged": {
+                "description": "Always true - SQS returns an empty body on success.",
+                "type": "boolean"
+              },
+              "tags": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "The tags sent.",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "untag_queue": {
+      "description": "Remove tags from a queue by key. A key the queue does not have is ignored.",
+      "display_name": "Remove queue tags",
+      "display_str_template": "Remove SQS queue tags",
+      "handler": "actions.untag_queue",
+      "id": "amazon_sqs_untag_queue",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "queue_url": "https://sqs.us-east-1.amazonaws.com/123456789012/orders",
+          "removed_tag_keys": [
+            "team"
+          ],
+          "untagged": true
+        }
+      },
+      "name": "untag_queue",
+      "parameters": [
+        {
+          "description": "Pick a queue, or enter its URL, ARN or name. It must be in the region you connected with.",
+          "display_name": "Queue",
+          "dynamic_source": "queues",
+          "dynamic_source_allows_custom": true,
+          "name": "queue",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The keys of the tags to remove.",
+          "display_name": "Tag keys",
+          "name": "tag_keys",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/amazon-sqs/untag-queue",
+      "result_str_template": "Queue tags removed",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "queue_url": {
+                "description": "The queue's URL (https://sqs.<region>.amazonaws.com/<account>/<name>). Pass it to any other SQS step's Queue field.",
+                "type": "string"
+              },
+              "removed_tag_keys": {
+                "description": "The keys sent.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "untagged": {
+                "description": "Always true - SQS returns an empty body on success.",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Send, receive and delete messages in Amazon SQS queues, create and configure standard and FIFO queues, and redrive dead-letter queues.",
+  "display_name": "Amazon SQS",
+  "id": "amazon_sqs"
+}

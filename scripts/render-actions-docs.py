@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Render the per-provider Actions API reference from ``data/actions.json``.
+"""Render the per-provider Actions API reference from ``data/actions/``.
 
 This is the docs-side renderer. It consumes the JSON artifact published
 by the server repo (``lodolai/lodol``) — see
 ``projects/server/scripts/extract_action_specs.py`` over there — and
 writes one MDX page per provider plus an index and a ``meta.json``.
+The artifact is one file per provider, ``data/actions/<provider id>.json``,
+so that no single file approaches GitHub's 100 MB limit.
 
 The renderer has no knowledge of Python AST or of any server source:
-its sole input is the JSON file. This keeps the docs repo
+its sole input is those JSON files. This keeps the docs repo
 self-contained and lets local docs builds work without cloning any
 private server code.
 
@@ -28,7 +30,7 @@ from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DOCS_ROOT = SCRIPT_DIR.parent
-DEFAULT_INPUT = DOCS_ROOT / "data" / "actions.json"
+DEFAULT_INPUT = DOCS_ROOT / "data" / "actions"
 DEFAULT_OUTPUT_DIR = DOCS_ROOT / "content" / "docs" / "api-reference" / "actions"
 
 
@@ -325,17 +327,25 @@ def generate_meta_json(providers: list[dict]) -> str:
 # ---------------------------------------------------------------------------
 
 def load_specs(input_path: Path) -> list[dict[str, Any]]:
-    """Load the providers list from the input JSON file.
+    """Load the providers to render from ``input_path``.
 
-    Returns an empty list (with a warning) if the file is missing so a
+    ``input_path`` is normally ``data/actions/``, a directory holding one
+    JSON file per provider. A single JSON file with a ``providers`` list,
+    which the server's extractor writes when given ``--output``, is read
+    too.
+
+    Returns an empty list (with a warning) if the input is missing so a
     fresh checkout of the docs repo still produces a buildable site —
     the per-provider pages will simply not exist until the next run of
     the server-side ``publish-action-specs`` workflow lands an update.
     """
+    if input_path.is_dir():
+        return _load_spec_files(input_path)
+
     if not input_path.exists():
         print(
             f"warning: {input_path} not found; no action docs will be generated. "
-            "The file is published by lodolai/lodol's "
+            "The specs are published by lodolai/lodol's "
             "publish-action-specs workflow.",
             file=sys.stderr,
         )
@@ -350,6 +360,28 @@ def load_specs(input_path: Path) -> list[dict[str, Any]]:
         )
         return []
     return [p for p in payload["providers"] if isinstance(p, dict)]
+
+
+def _load_spec_files(directory: Path) -> list[dict[str, Any]]:
+    """Read each ``<provider id>.json`` in ``directory``, in file-name order."""
+    paths = sorted(directory.glob("*.json"))
+    if not paths:
+        print(
+            f"warning: {directory} holds no provider files; "
+            "no action docs will be generated.",
+            file=sys.stderr,
+        )
+    providers: list[dict[str, Any]] = []
+    for path in paths:
+        provider = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(provider, dict):
+            print(
+                f"warning: {path} is not a provider object; skipped.",
+                file=sys.stderr,
+            )
+            continue
+        providers.append(provider)
+    return providers
 
 
 def render(providers: list[dict], output_dir: Path) -> None:
@@ -383,7 +415,8 @@ def main(argv: list[str] | None = None) -> int:
         "-i",
         type=Path,
         default=DEFAULT_INPUT,
-        help="Path to actions.json (default: data/actions.json).",
+        help="A directory of per-provider JSON files, or one JSON file with "
+        'a "providers" list (default: data/actions).',
     )
     parser.add_argument(
         "--output-dir",

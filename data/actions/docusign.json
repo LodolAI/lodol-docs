@@ -1,0 +1,372 @@
+{
+  "actions": {
+    "create_draft_envelope": {
+      "description": "Prepare a draft envelope with your documents and signers. The draft is not sent yet; use 'Send envelope' when it is ready.",
+      "display_name": "Create draft envelope",
+      "display_str_template": "Create DocuSign draft envelope '{email_subject}'.",
+      "handler": "actions.create_draft_envelope",
+      "id": "docusign_create_draft_envelope",
+      "method": "POST",
+      "mock_response": {
+        "envelope_id": "abc123-def456-ghi789"
+      },
+      "name": "create_draft_envelope",
+      "parameters": [
+        {
+          "description": "The subject line signers see in the email asking them to sign (up to 100 characters).",
+          "display_name": "Email subject",
+          "examples": [
+            {
+              "label": "Signature request",
+              "value": "Please sign: Services Agreement"
+            }
+          ],
+          "name": "email_subject",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The documents to be signed. Each document needs its file contents as Base64 text, a name, and an ID you choose (for example \"1\"). Anything that is not a PDF also needs its file extension.",
+          "display_name": "Documents",
+          "name": "documents",
+          "required": true,
+          "schema": {
+            "items": {
+              "properties": {
+                "documentBase64": {
+                  "description": "File contents encoded as Base64.",
+                  "type": "string"
+                },
+                "documentId": {
+                  "description": "A unique ID you choose, e.g. '1'.",
+                  "type": "string"
+                },
+                "fileExtension": {
+                  "description": "File type, e.g. 'docx'. Required for anything that is not a PDF.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Document name, e.g. 'Agreement.pdf'.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "documentBase64",
+                "name",
+                "documentId"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Who should receive the envelope. Put the people who must sign under 'signers', each with a name, email, and a unique recipient ID you choose (for example \"1\").",
+          "display_name": "Recipients",
+          "name": "recipients",
+          "required": true,
+          "schema": {
+            "properties": {
+              "signers": {
+                "description": "The people who need to sign.",
+                "items": {
+                  "properties": {
+                    "email": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "recipientId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "email",
+                    "recipientId"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "signers"
+            ],
+            "type": "object"
+          },
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/docusign/create-draft-envelope",
+      "result_str_template": "Draft envelope created.",
+      "returns": {
+        "properties": {
+          "envelope_id": {
+            "description": "ID of the new draft envelope.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_envelope_status": {
+      "description": "Check where an envelope is in the signing process (for example sent, delivered, or completed).",
+      "display_name": "Get envelope status",
+      "display_str_template": "Get the status of DocuSign envelope {envelope_id}.",
+      "handler": "actions.get_envelope_status",
+      "id": "docusign_get_envelope_status",
+      "method": "POST",
+      "mock_response": {
+        "status": "completed"
+      },
+      "name": "get_envelope_status",
+      "parameters": [
+        {
+          "description": "The ID of the envelope to check.",
+          "display_name": "Envelope ID",
+          "name": "envelope_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/docusign/get-envelope-status",
+      "result_str_template": "Envelope status retrieved.",
+      "returns": {
+        "properties": {
+          "status": {
+            "description": "The current status of the envelope.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_envelopes": {
+      "description": "List the documents you have sent for signature (DocuSign calls these envelopes), newest first. You can narrow the list by status or by when the envelope last changed.",
+      "display_name": "List envelopes",
+      "display_str_template": "List DocuSign envelopes.",
+      "handler": "actions.list_envelopes",
+      "id": "docusign_list_envelopes",
+      "method": "POST",
+      "mock_response": {
+        "envelopes": [
+          {
+            "emailSubject": "Please sign this document",
+            "envelopeId": "abc123-def456-ghi789",
+            "status": "sent"
+          }
+        ]
+      },
+      "name": "list_envelopes",
+      "parameters": [
+        {
+          "description": "Only show envelopes with this status. Leave blank to include every status.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Sent (waiting to be signed)",
+              "value": "sent"
+            },
+            {
+              "label": "Delivered (opened)",
+              "value": "delivered"
+            },
+            {
+              "label": "Signed",
+              "value": "signed"
+            },
+            {
+              "label": "Completed (fully signed)",
+              "value": "completed"
+            },
+            {
+              "label": "Declined",
+              "value": "declined"
+            },
+            {
+              "label": "Voided (cancelled)",
+              "value": "voided"
+            },
+            {
+              "label": "Timed out (expired)",
+              "value": "timedout"
+            },
+            {
+              "label": "Processing",
+              "value": "processing"
+            },
+            {
+              "label": "Draft",
+              "value": "created"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only show envelopes whose status changed on or after this date. Leave blank to look back over the last 90 days.",
+          "display_name": "Start date",
+          "examples": [
+            {
+              "label": "A specific day",
+              "value": "2026-07-15"
+            },
+            {
+              "label": "A specific date and time",
+              "value": "2026-07-15T09:00:00Z"
+            }
+          ],
+          "name": "from_date",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The maximum number of envelopes to return (up to 1000).",
+          "display_name": "Maximum results",
+          "name": "count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/docusign/list-envelopes",
+      "result_str_template": "Retrieved envelopes from DocuSign.",
+      "returns": {
+        "properties": {
+          "envelopes": {
+            "description": "The matching envelopes.",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_templates": {
+      "description": "List the reusable envelope templates in your DocuSign account, optionally filtered by name.",
+      "display_name": "List templates",
+      "display_str_template": "List DocuSign templates.",
+      "handler": "actions.list_templates",
+      "id": "docusign_list_templates",
+      "method": "POST",
+      "mock_response": {
+        "templates": [
+          {
+            "description": "Standard Non-Disclosure Agreement",
+            "name": "NDA Template",
+            "templateId": "tmpl-abc123"
+          }
+        ]
+      },
+      "name": "list_templates",
+      "parameters": [
+        {
+          "description": "Only show templates whose name contains this text (up to 48 characters). Leave blank to list all templates.",
+          "display_name": "Search text",
+          "name": "search_text",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/docusign/list-templates",
+      "result_str_template": "Retrieved templates from DocuSign.",
+      "returns": {
+        "properties": {
+          "templates": {
+            "description": "The matching templates.",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "send_envelope": {
+      "description": "Send a draft envelope to its recipients for signature.",
+      "display_name": "Send envelope",
+      "display_str_template": "Send DocuSign envelope {envelope_id}.",
+      "handler": "actions.send_envelope",
+      "id": "docusign_send_envelope",
+      "method": "POST",
+      "mock_response": {
+        "status": "sent"
+      },
+      "name": "send_envelope",
+      "parameters": [
+        {
+          "description": "The ID of the draft envelope to send.",
+          "display_name": "Envelope ID",
+          "name": "envelope_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/docusign/send-envelope",
+      "result_str_template": "Envelope sent.",
+      "returns": {
+        "properties": {
+          "status": {
+            "description": "The envelope status (\"sent\") after sending.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "void_envelope": {
+      "description": "Cancel an envelope that has already been sent so it can no longer be signed. You must give a reason. Only envelopes that are still in progress can be cancelled, not drafts, and not envelopes everyone has already signed.",
+      "display_name": "Void envelope",
+      "display_str_template": "Void DocuSign envelope {envelope_id}.",
+      "handler": "actions.void_envelope",
+      "id": "docusign_void_envelope",
+      "method": "POST",
+      "mock_response": {
+        "status": "voided"
+      },
+      "name": "void_envelope",
+      "parameters": [
+        {
+          "description": "The ID of the envelope to cancel.",
+          "display_name": "Envelope ID",
+          "name": "envelope_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Why the envelope is being cancelled (shown to recipients, up to 200 characters).",
+          "display_name": "Reason",
+          "examples": [
+            {
+              "label": "Replaced",
+              "value": "Sent in error: a corrected version will follow."
+            }
+          ],
+          "name": "void_reason",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/docusign/void-envelope",
+      "result_str_template": "Envelope voided.",
+      "returns": {
+        "properties": {
+          "status": {
+            "description": "The envelope status (\"voided\") after cancelling.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Send documents for signature, track envelope status, and manage templates in DocuSign.",
+  "display_name": "DocuSign",
+  "id": "docusign"
+}

@@ -1,0 +1,694 @@
+{
+  "actions": {
+    "get_budgets": {
+      "description": "Get what was budgeted and what was actually spent per category over a date range, one figure per month.",
+      "display_name": "Get budgets",
+      "display_str_template": "Get Lunch Money budgets from {0} to {1}.",
+      "handler": "actions.get_budgets",
+      "id": "lunch_money_get_budgets",
+      "method": "POST",
+      "mock_response": {
+        "budgets": [
+          {
+            "archived": false,
+            "category_group_name": "Food & Drink",
+            "category_id": 83,
+            "category_name": "Coffee Shops",
+            "exclude_from_budget": false,
+            "exclude_from_totals": false,
+            "group_id": 12,
+            "is_group": false,
+            "is_income": false,
+            "months": [
+              {
+                "budget_currency": "usd",
+                "budgeted": 60.0,
+                "is_automated": false,
+                "month": "2024-01-01",
+                "num_transactions": 9,
+                "spent": 41.25
+              }
+            ]
+          }
+        ],
+        "count": 1
+      },
+      "name": "get_budgets",
+      "parameters": [
+        {
+          "description": "The first month to include. Must be the first of a month, as YYYY-MM-01.",
+          "display_name": "Start date",
+          "name": "start_date",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The last date to include, as YYYY-MM-DD.",
+          "display_name": "End date",
+          "name": "end_date",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/lunch-money/get-budgets",
+      "result_str_template": "Found budgets for {lunch_money_get_budgets,count} categories.",
+      "returns": {
+        "properties": {
+          "budgets": {
+            "description": "One entry per category.",
+            "items": {
+              "properties": {
+                "archived": {
+                  "description": "Whether the category is archived.",
+                  "type": "boolean"
+                },
+                "category_group_name": {
+                  "description": "The group the category belongs to, if any.",
+                  "type": "string"
+                },
+                "category_id": {
+                  "description": "Category this row is for.",
+                  "type": "integer"
+                },
+                "category_name": {
+                  "description": "Category name.",
+                  "type": "string"
+                },
+                "exclude_from_budget": {
+                  "description": "Whether the category is left out of budget calculations.",
+                  "type": "boolean"
+                },
+                "exclude_from_totals": {
+                  "description": "Whether the category is left out of totals.",
+                  "type": "boolean"
+                },
+                "group_id": {
+                  "description": "Category group id, if any.",
+                  "type": "integer"
+                },
+                "is_group": {
+                  "description": "Whether this row is a category group.",
+                  "type": "boolean"
+                },
+                "is_income": {
+                  "description": "Whether the category is treated as income.",
+                  "type": "boolean"
+                },
+                "months": {
+                  "description": "One entry per month in the range asked for. Lunch Money keys these by month; they are turned into a list so they can be looped over.",
+                  "items": {
+                    "properties": {
+                      "budget_currency": {
+                        "description": "Currency the budget is set in.",
+                        "type": "string"
+                      },
+                      "budgeted": {
+                        "description": "Amount budgeted for the category that month.",
+                        "type": "number"
+                      },
+                      "is_automated": {
+                        "description": "Whether Lunch Money set this budget itself.",
+                        "type": "boolean"
+                      },
+                      "month": {
+                        "description": "First day of the month, YYYY-MM-01.",
+                        "type": "string"
+                      },
+                      "num_transactions": {
+                        "description": "How many transactions made up the spend.",
+                        "type": "integer"
+                      },
+                      "spent": {
+                        "description": "Amount spent that month, in the base currency.",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many categories were returned.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "insert_transaction": {
+      "description": "Add one transaction to Lunch Money and get back the id it was given. Use a negative amount for money spent and a positive amount for money received.",
+      "display_name": "Insert a transaction",
+      "display_str_template": "Add a {1} transaction to Lunch Money on {0}.",
+      "handler": "actions.insert_transaction",
+      "id": "lunch_money_insert_transaction",
+      "method": "POST",
+      "mock_response": {
+        "transaction_id": 602
+      },
+      "name": "insert_transaction",
+      "parameters": [
+        {
+          "description": "The transaction date, as YYYY-MM-DD.",
+          "display_name": "Date",
+          "name": "date",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The amount, for example -12.50 for money spent or 1500 for money received.",
+          "display_name": "Amount",
+          "name": "amount",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Who the money went to or came from.",
+          "display_name": "Payee",
+          "name": "payee",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Which category to file this under. List categories to find the id.",
+          "display_name": "Category ID",
+          "name": "category_id",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Which manually managed account this belongs to. List accounts to find the id.",
+          "display_name": "Account ID",
+          "name": "asset_id",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Lowercase ISO currency code, for example usd. Defaults to your Lunch Money primary currency.",
+          "display_name": "Currency",
+          "name": "currency",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. A free-text note on the transaction.",
+          "display_name": "Notes",
+          "name": "notes",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Whether the transaction is settled. Lunch Money defaults to uncleared.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Cleared",
+              "value": "cleared"
+            },
+            {
+              "label": "Uncleared",
+              "value": "uncleared"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Optional. Run your Lunch Money rules against the new transaction. Off by default.",
+          "display_name": "Apply rules",
+          "name": "apply_rules",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/lunch-money/insert-transaction",
+      "result_str_template": "Added transaction {lunch_money_insert_transaction,transaction_id}.",
+      "returns": {
+        "properties": {
+          "transaction_id": {
+            "description": "The id Lunch Money gave the new transaction. Null if it was skipped as a duplicate.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_assets": {
+      "description": "List the manually managed accounts and their balances. These are the accounts you keep up to date yourself, not the ones synced from a bank.",
+      "display_name": "List accounts",
+      "display_str_template": "List Lunch Money accounts.",
+      "handler": "actions.list_assets",
+      "id": "lunch_money_list_assets",
+      "method": "POST",
+      "mock_response": {
+        "assets": [
+          {
+            "balance": "8200.0000",
+            "balance_as_of": "2024-01-14T00:00:00.000Z",
+            "closed_on": null,
+            "created_at": "2023-02-01T12:00:00.000Z",
+            "currency": "usd",
+            "display_name": "Emergency Fund",
+            "exclude_transactions": false,
+            "id": 118,
+            "institution_name": "Ally Bank",
+            "name": "Emergency Fund",
+            "subtype_name": "savings",
+            "type_name": "cash"
+          }
+        ],
+        "count": 1
+      },
+      "name": "list_assets",
+      "parameters": [],
+      "path": "/actions/library/lunch-money/list-assets",
+      "result_str_template": "Found {lunch_money_list_assets,count} accounts.",
+      "returns": {
+        "properties": {
+          "assets": {
+            "description": "Manually managed accounts.",
+            "items": {
+              "properties": {
+                "balance": {
+                  "description": "Current balance as a decimal string, e.g. \"1204.55\".",
+                  "type": "string"
+                },
+                "balance_as_of": {
+                  "description": "When the balance was last set, ISO 8601.",
+                  "type": "string"
+                },
+                "closed_on": {
+                  "description": "Date the account was closed, if it is closed.",
+                  "type": "string"
+                },
+                "created_at": {
+                  "description": "Created, ISO 8601.",
+                  "type": "string"
+                },
+                "currency": {
+                  "description": "Lowercase ISO currency code, e.g. usd.",
+                  "type": "string"
+                },
+                "display_name": {
+                  "description": "The name shown in Lunch Money, if it differs.",
+                  "type": "string"
+                },
+                "exclude_transactions": {
+                  "description": "Whether this account's transactions are excluded.",
+                  "type": "boolean"
+                },
+                "id": {
+                  "description": "Account id, used when inserting.",
+                  "type": "integer"
+                },
+                "institution_name": {
+                  "description": "Bank or institution.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Account name.",
+                  "type": "string"
+                },
+                "subtype_name": {
+                  "description": "Account subtype, e.g. checking, savings.",
+                  "type": "string"
+                },
+                "type_name": {
+                  "description": "Account type, e.g. cash, credit, investment.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many accounts were returned.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_categories": {
+      "description": "List every spending and income category, with the ids needed to file or filter transactions.",
+      "display_name": "List categories",
+      "display_str_template": "List Lunch Money categories.",
+      "handler": "actions.list_categories",
+      "id": "lunch_money_list_categories",
+      "method": "POST",
+      "mock_response": {
+        "categories": [
+          {
+            "archived": false,
+            "created_at": "2023-06-14T09:03:00.000Z",
+            "description": "Caf\u00e9s and coffee runs",
+            "exclude_from_budget": false,
+            "exclude_from_totals": false,
+            "group_id": 12,
+            "id": 83,
+            "is_group": false,
+            "is_income": false,
+            "name": "Coffee Shops",
+            "order": 3,
+            "updated_at": "2024-01-02T18:22:11.000Z"
+          }
+        ],
+        "count": 1
+      },
+      "name": "list_categories",
+      "parameters": [],
+      "path": "/actions/library/lunch-money/list-categories",
+      "result_str_template": "Found {lunch_money_list_categories,count} categories.",
+      "returns": {
+        "properties": {
+          "categories": {
+            "description": "Every category in the account.",
+            "items": {
+              "properties": {
+                "archived": {
+                  "description": "Whether it has been archived.",
+                  "type": "boolean"
+                },
+                "created_at": {
+                  "description": "Created, ISO 8601.",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "Category description.",
+                  "type": "string"
+                },
+                "exclude_from_budget": {
+                  "description": "Whether it is left out of budget calculations.",
+                  "type": "boolean"
+                },
+                "exclude_from_totals": {
+                  "description": "Whether it is left out of totals.",
+                  "type": "boolean"
+                },
+                "group_id": {
+                  "description": "The group this category belongs to, if any.",
+                  "type": "integer"
+                },
+                "id": {
+                  "description": "Category id, used when inserting.",
+                  "type": "integer"
+                },
+                "is_group": {
+                  "description": "Whether this is a category group rather than a category.",
+                  "type": "boolean"
+                },
+                "is_income": {
+                  "description": "Whether this category is treated as income.",
+                  "type": "boolean"
+                },
+                "name": {
+                  "description": "Category name.",
+                  "type": "string"
+                },
+                "order": {
+                  "description": "Display order.",
+                  "type": "integer"
+                },
+                "updated_at": {
+                  "description": "Last updated, ISO 8601.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many categories were returned.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_transactions": {
+      "description": "List transactions from Lunch Money, optionally narrowed to a date range, a category, an account, or a cleared status.",
+      "display_name": "List transactions",
+      "display_str_template": "List Lunch Money transactions from {0} to {1}.",
+      "handler": "actions.list_transactions",
+      "id": "lunch_money_list_transactions",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "has_more": false,
+        "transactions": [
+          {
+            "account_display_name": "Everyday Checking",
+            "amount": "-4.75",
+            "asset_id": null,
+            "asset_name": null,
+            "category_id": 83,
+            "category_name": "Coffee Shops",
+            "currency": "usd",
+            "date": "2024-01-15",
+            "exclude_from_budget": false,
+            "exclude_from_totals": false,
+            "external_id": null,
+            "group_id": null,
+            "id": 602,
+            "institution_name": "Wells Fargo",
+            "is_group": false,
+            "is_income": false,
+            "is_pending": false,
+            "notes": "Morning flat white",
+            "original_name": "BLUE BOTTLE COFFEE #12",
+            "parent_id": null,
+            "payee": "Blue Bottle Coffee",
+            "plaid_account_id": 41,
+            "plaid_account_name": "Everyday Checking",
+            "recurring_id": null,
+            "status": "cleared",
+            "tags": [
+              {
+                "id": 7,
+                "name": "treat"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "list_transactions",
+      "parameters": [
+        {
+          "description": "Optional. Earliest transaction date to include, as YYYY-MM-DD.",
+          "display_name": "Start date",
+          "name": "start_date",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Latest transaction date to include, as YYYY-MM-DD.",
+          "display_name": "End date",
+          "name": "end_date",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only transactions in this category. List categories to find the id.",
+          "display_name": "Category ID",
+          "name": "category_id",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only transactions in this manually managed account. List accounts to find the id.",
+          "display_name": "Account ID",
+          "name": "asset_id",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only transactions in this state.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Cleared",
+              "value": "cleared"
+            },
+            {
+              "label": "Uncleared",
+              "value": "uncleared"
+            },
+            {
+              "label": "Pending",
+              "value": "pending"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. How many transactions to return, up to 1000. Lunch Money defaults to 1000.",
+          "display_name": "Limit",
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Skip this many transactions, for paging.",
+          "display_name": "Offset",
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/lunch-money/list-transactions",
+      "result_str_template": "Found {lunch_money_list_transactions,count} transactions.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many transactions were returned.",
+            "type": "integer"
+          },
+          "has_more": {
+            "description": "Whether more transactions match past this page. Raise the offset to fetch them.",
+            "type": "boolean"
+          },
+          "transactions": {
+            "description": "The matching transactions.",
+            "items": {
+              "properties": {
+                "account_display_name": {
+                  "description": "The account name as shown in Lunch Money, either kind.",
+                  "type": "string"
+                },
+                "amount": {
+                  "description": "Amount as a decimal string, e.g. \"-24.50\". Kept as a string because it is exact; parse it if you need to do arithmetic.",
+                  "type": "string"
+                },
+                "asset_id": {
+                  "description": "Manually managed account id. Null for a synced account.",
+                  "type": "integer"
+                },
+                "asset_name": {
+                  "description": "Manually managed account name.",
+                  "type": "string"
+                },
+                "category_id": {
+                  "description": "Category id, if categorized.",
+                  "type": "integer"
+                },
+                "category_name": {
+                  "description": "Category name.",
+                  "type": "string"
+                },
+                "currency": {
+                  "description": "Lowercase ISO currency code, e.g. usd.",
+                  "type": "string"
+                },
+                "date": {
+                  "description": "Transaction date, YYYY-MM-DD.",
+                  "type": "string"
+                },
+                "exclude_from_budget": {
+                  "description": "Whether this is left out of budget calculations.",
+                  "type": "boolean"
+                },
+                "exclude_from_totals": {
+                  "description": "Whether this is left out of totals.",
+                  "type": "boolean"
+                },
+                "external_id": {
+                  "description": "Your own id, if one was set when inserting.",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Id of the transaction group this belongs to, if any.",
+                  "type": "integer"
+                },
+                "id": {
+                  "description": "Lunch Money transaction id.",
+                  "type": "integer"
+                },
+                "institution_name": {
+                  "description": "Bank or institution.",
+                  "type": "string"
+                },
+                "is_group": {
+                  "description": "Whether this row is itself a group of transactions.",
+                  "type": "boolean"
+                },
+                "is_income": {
+                  "description": "Whether the category is treated as income.",
+                  "type": "boolean"
+                },
+                "is_pending": {
+                  "description": "Whether the transaction has not yet posted.",
+                  "type": "boolean"
+                },
+                "notes": {
+                  "description": "Free-text note on the transaction.",
+                  "type": "string"
+                },
+                "original_name": {
+                  "description": "The payee name as the bank originally sent it.",
+                  "type": "string"
+                },
+                "parent_id": {
+                  "description": "Parent transaction id when this is a split.",
+                  "type": "integer"
+                },
+                "payee": {
+                  "description": "Who the money went to or came from.",
+                  "type": "string"
+                },
+                "plaid_account_id": {
+                  "description": "Synced (Plaid) account id. Null for a manual account.",
+                  "type": "integer"
+                },
+                "plaid_account_name": {
+                  "description": "Synced account name.",
+                  "type": "string"
+                },
+                "recurring_id": {
+                  "description": "Recurring-expense id this belongs to, if any.",
+                  "type": "integer"
+                },
+                "status": {
+                  "description": "cleared, uncleared, or pending.",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "Tags on the transaction.",
+                  "items": {
+                    "properties": {
+                      "id": {
+                        "description": "Tag id.",
+                        "type": "integer"
+                      },
+                      "name": {
+                        "description": "Tag name.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Track personal finances with Lunch Money: list and add transactions, read your categories and manually managed account balances, and pull budgeted-versus-spent figures by month.",
+  "display_name": "Lunch Money",
+  "id": "lunch_money"
+}

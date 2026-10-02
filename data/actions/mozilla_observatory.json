@@ -1,0 +1,2553 @@
+{
+  "actions": {
+    "check_grade": {
+      "description": "Test a website against a minimum grade, a minimum score, or both, and get a plain pass or fail to branch on, for a release check or a scheduled audit that should raise an alert when a site slips. Comes back with the failing tests and what to change, so the alert can say why. No API key required.",
+      "display_name": "Check a website meets a grade",
+      "display_str_template": "Check {0} grades at least {1}.",
+      "handler": "actions.check_grade",
+      "id": "mozilla_observatory_check_grade",
+      "method": "POST",
+      "mock_response": {
+        "details_url": "https://developer.mozilla.org/en-US/observatory/analyze?host=example.com",
+        "failed_test_count": 1,
+        "failed_tests": [
+          {
+            "description": "Content Security Policy (CSP) header not implemented.",
+            "details": {
+              "data": null
+            },
+            "documentation_url": "https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/CSP",
+            "expectation": "csp-implemented-with-no-unsafe-default-src-none",
+            "name": "content-security-policy",
+            "outcome": "failed",
+            "passed": false,
+            "recommendation": "Implement a Content Security Policy that restricts where content can be loaded from.",
+            "result": "csp-not-implemented",
+            "score_modifier": -25,
+            "title": "Content Security Policy (CSP)"
+          }
+        ],
+        "grade": "B+",
+        "grade_met": false,
+        "host": "example.com",
+        "minimum_grade": "A",
+        "minimum_score": null,
+        "passed": false,
+        "reason": "graded B+, below the required A",
+        "recommendations": [
+          "Implement a Content Security Policy that restricts where content can be loaded from."
+        ],
+        "scanned_at": "2026-08-23T18:48:32.850Z",
+        "score": 80,
+        "score_met": null,
+        "was_rescanned": false
+      },
+      "name": "check_grade",
+      "parameters": [
+        {
+          "description": "The site to scan, as a hostname such as example.com. A full URL works too, only its hostname is used. IP addresses cannot be scanned: the scanner needs a name to check a certificate and an HSTS policy against.",
+          "display_name": "Website",
+          "examples": [
+            {
+              "label": "A domain",
+              "value": "example.com"
+            },
+            {
+              "label": "A subdomain",
+              "value": "shop.example.com"
+            },
+            {
+              "label": "A pasted URL (reduced to its host)",
+              "value": "https://example.com/pricing"
+            }
+          ],
+          "name": "host",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The lowest grade that still passes. Set this, Minimum score, or both: at least one is needed.",
+          "display_name": "Minimum grade",
+          "name": "minimum_grade",
+          "options": [
+            {
+              "label": "A+",
+              "value": "A+"
+            },
+            {
+              "label": "A",
+              "value": "A"
+            },
+            {
+              "label": "A-",
+              "value": "A-"
+            },
+            {
+              "label": "B+",
+              "value": "B+"
+            },
+            {
+              "label": "B",
+              "value": "B"
+            },
+            {
+              "label": "B-",
+              "value": "B-"
+            },
+            {
+              "label": "C+",
+              "value": "C+"
+            },
+            {
+              "label": "C",
+              "value": "C"
+            },
+            {
+              "label": "C-",
+              "value": "C-"
+            },
+            {
+              "label": "D+",
+              "value": "D+"
+            },
+            {
+              "label": "D",
+              "value": "D"
+            },
+            {
+              "label": "D-",
+              "value": "D-"
+            },
+            {
+              "label": "F",
+              "value": "F"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The lowest score that still passes. A site starts at 100, loses points per failed test, and can reach 145 with bonuses. Finer than a grade: two sites can share a grade and be nine points apart.",
+          "display_name": "Minimum score",
+          "examples": [
+            {
+              "label": "An A (90) or better",
+              "value": "90"
+            },
+            {
+              "label": "A B (70) or better",
+              "value": "70"
+            }
+          ],
+          "maximum": 145,
+          "minimum": 0,
+          "name": "minimum_score",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Optional. Scan the site now instead of using the stored result. Turn this on when checking a site straight after a deploy. Off by default.",
+          "display_name": "Scan again first",
+          "name": "rescan",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/mozilla-observatory/check-grade",
+      "result_str_template": "{mozilla_observatory_check_grade,host} graded {mozilla_observatory_check_grade,grade}.",
+      "returns": {
+        "properties": {
+          "details_url": {
+            "description": "The full report on MDN, for a person to open. Put it in the alert.",
+            "type": "string"
+          },
+          "failed_test_count": {
+            "description": "How many tests failed.",
+            "type": "integer"
+          },
+          "failed_tests": {
+            "description": "Only the tests that failed, most punishing first. Empty when the site passed everything.",
+            "items": {
+              "description": "One security test and how the site did on it.",
+              "properties": {
+                "description": {
+                  "description": "What the scanner found, in a sentence. Ready to send: the HTML the API wraps it in has been removed.",
+                  "type": "string"
+                },
+                "details": {
+                  "description": "Everything else this particular test recorded, which differs per test: the redirect chain for Redirection, the parsed directives and per-directive verdicts for CSP, max-age and preload state for HSTS, the header value for the header tests.",
+                  "type": "object"
+                },
+                "documentation_url": {
+                  "description": "MDN's guide to implementing this control.",
+                  "type": "string"
+                },
+                "expectation": {
+                  "description": "The result this test looks for in order to pass.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The test's identifier, e.g. strict-transport-security. Stable across scans, so branch on this rather than on the title.",
+                  "type": "string"
+                },
+                "outcome": {
+                  "description": "passed, failed, or not_applicable. A test that did not apply (no cookies to check, a response that is not HTML) costs no points and has nothing to fix: it is not a failure.",
+                  "type": "string"
+                },
+                "passed": {
+                  "description": "True when the test passed, false when it failed, null when it did not apply.",
+                  "type": "boolean"
+                },
+                "recommendation": {
+                  "description": "What to change to pass this test, in plain text. Empty when there is nothing to do.",
+                  "type": "string"
+                },
+                "result": {
+                  "description": "What the scanner found, as its own code, e.g. hsts-preloaded or csp-implemented-with-unsafe-inline. Look it up in Get the scoring reference for what it is worth.",
+                  "type": "string"
+                },
+                "score_modifier": {
+                  "description": "Points this result added or subtracted. Negative for a failure, positive for a bonus, 0 when it neither helped nor hurt.",
+                  "type": "number"
+                },
+                "title": {
+                  "description": "The test's display name, e.g. Strict Transport Security (HSTS).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "grade": {
+            "description": "The letter grade, A+ down to F. Null only when the scan could not grade the site.",
+            "type": "string"
+          },
+          "grade_met": {
+            "description": "Whether the grade threshold was met. Null when no grade was required.",
+            "type": "boolean"
+          },
+          "host": {
+            "description": "The hostname that was scanned, e.g. example.com. A pasted URL is reduced to its hostname before scanning.",
+            "type": "string"
+          },
+          "minimum_grade": {
+            "description": "The grade required, or null when none was set.",
+            "type": "string"
+          },
+          "minimum_score": {
+            "description": "The score required, or null when none was set.",
+            "type": "number"
+          },
+          "passed": {
+            "description": "True when the site met every threshold set. This is the field to branch on.",
+            "type": "boolean"
+          },
+          "reason": {
+            "description": "Why it failed, in a sentence ready to put in the alert. Empty when it passed.",
+            "type": "string"
+          },
+          "recommendations": {
+            "description": "What to change, one line per failing test, most punishing first.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "scanned_at": {
+            "description": "When this scan ran, as an ISO 8601 UTC instant. May be older than this step: a stored scan is served while it is under 24 hours old.",
+            "type": "string"
+          },
+          "score": {
+            "description": "The score behind the grade. Starts at 100, loses points for each failed test, and earns up to 145 with the bonuses that apply once a site is already at 90.",
+            "type": "number"
+          },
+          "score_met": {
+            "description": "Whether the score threshold was met. Null when no score was required.",
+            "type": "boolean"
+          },
+          "was_rescanned": {
+            "description": "True when this check scanned the site rather than reading the stored result.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "compare_sites": {
+      "description": "Scan several websites and rank them best-graded first, your own properties side by side, or your site against a competitor's. Each host is a full scan, so keep the list to 20 or fewer. A host that cannot be scanned is reported without losing the others. No API key required.",
+      "display_name": "Compare websites",
+      "display_str_template": "Compare the HTTP Observatory grades for {0}.",
+      "handler": "actions.compare_sites",
+      "id": "mozilla_observatory_compare_sites",
+      "method": "POST",
+      "mock_response": {
+        "average_score": 92.5,
+        "best": {
+          "algorithm_version": 5,
+          "details_url": "https://developer.mozilla.org/en-US/observatory/analyze?host=example.com",
+          "error": null,
+          "grade": "A+",
+          "host": "example.com",
+          "rank": 1,
+          "scan_id": 116498575,
+          "scanned_at": "2026-08-23T18:48:32.850Z",
+          "score": 105,
+          "status_code": 200,
+          "tests_failed": 1,
+          "tests_passed": 9,
+          "tests_quantity": 10
+        },
+        "count": 2,
+        "failure_count": 0,
+        "failures": [],
+        "sites": [
+          {
+            "algorithm_version": 5,
+            "details_url": "https://developer.mozilla.org/en-US/observatory/analyze?host=example.com",
+            "error": null,
+            "grade": "A+",
+            "host": "example.com",
+            "rank": 1,
+            "scan_id": 116498575,
+            "scanned_at": "2026-08-23T18:48:32.850Z",
+            "score": 105,
+            "status_code": 200,
+            "tests_failed": 1,
+            "tests_passed": 9,
+            "tests_quantity": 10
+          },
+          {
+            "algorithm_version": 5,
+            "details_url": "https://developer.mozilla.org/en-US/observatory/analyze?host=example.com",
+            "error": null,
+            "grade": "B+",
+            "host": "shop.example.com",
+            "rank": 2,
+            "scan_id": 116498575,
+            "scanned_at": "2026-08-23T18:48:32.850Z",
+            "score": 80,
+            "status_code": 200,
+            "tests_failed": 1,
+            "tests_passed": 9,
+            "tests_quantity": 10
+          }
+        ],
+        "worst": {
+          "algorithm_version": 5,
+          "details_url": "https://developer.mozilla.org/en-US/observatory/analyze?host=example.com",
+          "error": null,
+          "grade": "B+",
+          "host": "shop.example.com",
+          "rank": 2,
+          "scan_id": 116498575,
+          "scanned_at": "2026-08-23T18:48:32.850Z",
+          "score": 80,
+          "status_code": 200,
+          "tests_failed": 1,
+          "tests_passed": 9,
+          "tests_quantity": 10
+        }
+      },
+      "name": "compare_sites",
+      "parameters": [
+        {
+          "description": "The hostnames to compare, separated by commas. Full URLs work too: only the hostname is used. At most 20.",
+          "display_name": "Websites",
+          "examples": [
+            {
+              "label": "Three sites",
+              "value": "example.com, shop.example.com, blog.example.com"
+            }
+          ],
+          "name": "hosts",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mozilla-observatory/compare-sites",
+      "result_str_template": "Ranked {mozilla_observatory_compare_sites,count} sites; {mozilla_observatory_compare_sites,best,host} came first with {mozilla_observatory_compare_sites,best,grade}.",
+      "returns": {
+        "properties": {
+          "average_score": {
+            "description": "The mean score across the ranked sites.",
+            "type": "number"
+          },
+          "best": {
+            "description": "One site's scan, with its place in the ranking.",
+            "properties": {
+              "algorithm_version": {
+                "description": "Which version of the scoring rules produced this grade. Grades are only comparable within one version.",
+                "type": "integer"
+              },
+              "details_url": {
+                "description": "The full report on MDN, for a person to open. Put it in the alert.",
+                "type": "string"
+              },
+              "error": {
+                "description": "What went wrong, when a scan was recorded but could not be completed. Null on a normal scan.",
+                "type": "string"
+              },
+              "grade": {
+                "description": "The letter grade, A+ down to F. Null only when the scan could not grade the site.",
+                "type": "string"
+              },
+              "host": {
+                "description": "The hostname that was scanned, e.g. example.com. A pasted URL is reduced to its hostname before scanning.",
+                "type": "string"
+              },
+              "rank": {
+                "description": "Its position in the ranking, 1 being the best.",
+                "type": "integer"
+              },
+              "scan_id": {
+                "description": "The Observatory's id for this scan.",
+                "type": "integer"
+              },
+              "scanned_at": {
+                "description": "When this scan ran, as an ISO 8601 UTC instant. May be older than this step: a stored scan is served while it is under 24 hours old.",
+                "type": "string"
+              },
+              "score": {
+                "description": "The score behind the grade. Starts at 100, loses points for each failed test, and earns up to 145 with the bonuses that apply once a site is already at 90.",
+                "type": "number"
+              },
+              "status_code": {
+                "description": "The HTTP status the site answered the scanner with, e.g. 200.",
+                "type": "integer"
+              },
+              "tests_failed": {
+                "description": "How many tests the site failed.",
+                "type": "integer"
+              },
+              "tests_passed": {
+                "description": "How many tests the site passed.",
+                "type": "integer"
+              },
+              "tests_quantity": {
+                "description": "How many tests were run in total.",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "count": {
+            "description": "How many sites were ranked.",
+            "type": "integer"
+          },
+          "failure_count": {
+            "description": "How many hosts could not be scanned.",
+            "type": "integer"
+          },
+          "failures": {
+            "description": "The hosts that could not be scanned, each with the reason. Empty when every host scanned.",
+            "items": {
+              "properties": {
+                "error": {
+                  "description": "Why it could not be scanned.",
+                  "type": "string"
+                },
+                "host": {
+                  "description": "The host that failed.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "sites": {
+            "description": "The sites that were scanned, best grade first.",
+            "items": {
+              "description": "One site's scan, with its place in the ranking.",
+              "properties": {
+                "algorithm_version": {
+                  "description": "Which version of the scoring rules produced this grade. Grades are only comparable within one version.",
+                  "type": "integer"
+                },
+                "details_url": {
+                  "description": "The full report on MDN, for a person to open. Put it in the alert.",
+                  "type": "string"
+                },
+                "error": {
+                  "description": "What went wrong, when a scan was recorded but could not be completed. Null on a normal scan.",
+                  "type": "string"
+                },
+                "grade": {
+                  "description": "The letter grade, A+ down to F. Null only when the scan could not grade the site.",
+                  "type": "string"
+                },
+                "host": {
+                  "description": "The hostname that was scanned, e.g. example.com. A pasted URL is reduced to its hostname before scanning.",
+                  "type": "string"
+                },
+                "rank": {
+                  "description": "Its position in the ranking, 1 being the best.",
+                  "type": "integer"
+                },
+                "scan_id": {
+                  "description": "The Observatory's id for this scan.",
+                  "type": "integer"
+                },
+                "scanned_at": {
+                  "description": "When this scan ran, as an ISO 8601 UTC instant. May be older than this step: a stored scan is served while it is under 24 hours old.",
+                  "type": "string"
+                },
+                "score": {
+                  "description": "The score behind the grade. Starts at 100, loses points for each failed test, and earns up to 145 with the bonuses that apply once a site is already at 90.",
+                  "type": "number"
+                },
+                "status_code": {
+                  "description": "The HTTP status the site answered the scanner with, e.g. 200.",
+                  "type": "integer"
+                },
+                "tests_failed": {
+                  "description": "How many tests the site failed.",
+                  "type": "integer"
+                },
+                "tests_passed": {
+                  "description": "How many tests the site passed.",
+                  "type": "integer"
+                },
+                "tests_quantity": {
+                  "description": "How many tests were run in total.",
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "worst": {
+            "description": "One site's scan, with its place in the ranking.",
+            "properties": {
+              "algorithm_version": {
+                "description": "Which version of the scoring rules produced this grade. Grades are only comparable within one version.",
+                "type": "integer"
+              },
+              "details_url": {
+                "description": "The full report on MDN, for a person to open. Put it in the alert.",
+                "type": "string"
+              },
+              "error": {
+                "description": "What went wrong, when a scan was recorded but could not be completed. Null on a normal scan.",
+                "type": "string"
+              },
+              "grade": {
+                "description": "The letter grade, A+ down to F. Null only when the scan could not grade the site.",
+                "type": "string"
+              },
+              "host": {
+                "description": "The hostname that was scanned, e.g. example.com. A pasted URL is reduced to its hostname before scanning.",
+                "type": "string"
+              },
+              "rank": {
+                "description": "Its position in the ranking, 1 being the best.",
+                "type": "integer"
+              },
+              "scan_id": {
+                "description": "The Observatory's id for this scan.",
+                "type": "integer"
+              },
+              "scanned_at": {
+                "description": "When this scan ran, as an ISO 8601 UTC instant. May be older than this step: a stored scan is served while it is under 24 hours old.",
+                "type": "string"
+              },
+              "score": {
+                "description": "The score behind the grade. Starts at 100, loses points for each failed test, and earns up to 145 with the bonuses that apply once a site is already at 90.",
+                "type": "number"
+              },
+              "status_code": {
+                "description": "The HTTP status the site answered the scanner with, e.g. 200.",
+                "type": "integer"
+              },
+              "tests_failed": {
+                "description": "How many tests the site failed.",
+                "type": "integer"
+              },
+              "tests_passed": {
+                "description": "How many tests the site passed.",
+                "type": "integer"
+              },
+              "tests_quantity": {
+                "description": "How many tests were run in total.",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_api_version": {
+      "description": "Get the version of the HTTP Observatory scanner that is answering. Worth storing next to a saved result: the scoring rules change between versions, so a grade is only comparable with another from the same one. Also a quick way to confirm the connection reaches the API. No API key required.",
+      "display_name": "Get the scanner version",
+      "display_str_template": "Get the HTTP Observatory scanner version.",
+      "handler": "actions.get_api_version",
+      "id": "mozilla_observatory_get_api_version",
+      "method": "POST",
+      "mock_response": {
+        "api_base_url": "https://observatory-api.mdn.mozilla.net/api/v2",
+        "build": "unknown",
+        "commit": "22e088df69a0d8734bd8f6ffad8a7ff97da8ddb8",
+        "source_url": "https://github.com/mdn/mdn-http-observatory",
+        "version": "1.6.3"
+      },
+      "name": "get_api_version",
+      "parameters": [],
+      "path": "/actions/library/mozilla-observatory/get-api-version",
+      "result_str_template": "HTTP Observatory {mozilla_observatory_get_api_version,version}.",
+      "returns": {
+        "properties": {
+          "api_base_url": {
+            "description": "The API this integration calls.",
+            "type": "string"
+          },
+          "build": {
+            "description": "The build that produced it, or \"unknown\" when the deployment does not record one.",
+            "type": "string"
+          },
+          "commit": {
+            "description": "The exact commit it was built from.",
+            "type": "string"
+          },
+          "source_url": {
+            "description": "Where the scanner's source code lives.",
+            "type": "string"
+          },
+          "version": {
+            "description": "The scanner's released version, e.g. 1.6.3.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_grade_distribution": {
+      "description": "Get how every website the Observatory has ever scanned graded, with each grade's share of the web and the share that did at least as well. The context a grade needs: a C is a different story once you know how much of the web scores below it. No API key required.",
+      "display_name": "Get the grade distribution",
+      "display_str_template": "Get the HTTP Observatory grade distribution.",
+      "handler": "actions.get_grade_distribution",
+      "id": "mozilla_observatory_get_grade_distribution",
+      "method": "POST",
+      "mock_response": {
+        "better_than_percentage": 89.34,
+        "distribution": [
+          {
+            "at_or_above_percentage": 2.53,
+            "count": 73035,
+            "grade": "A+",
+            "percentage": 2.53
+          },
+          {
+            "at_or_above_percentage": 100.0,
+            "count": 1032721,
+            "grade": "F",
+            "percentage": 35.75
+          }
+        ],
+        "grade": "B+",
+        "grade_count": 70705,
+        "grade_percentage": 2.45,
+        "most_common_grade": "F",
+        "total_sites": 2888739
+      },
+      "name": "get_grade_distribution",
+      "parameters": [
+        {
+          "description": "Optional. Report where one grade sits: how many sites hold it and what share of the web it beats. The full distribution comes back either way.",
+          "display_name": "Grade to place",
+          "name": "grade",
+          "options": [
+            {
+              "label": "A+",
+              "value": "A+"
+            },
+            {
+              "label": "A",
+              "value": "A"
+            },
+            {
+              "label": "A-",
+              "value": "A-"
+            },
+            {
+              "label": "B+",
+              "value": "B+"
+            },
+            {
+              "label": "B",
+              "value": "B"
+            },
+            {
+              "label": "B-",
+              "value": "B-"
+            },
+            {
+              "label": "C+",
+              "value": "C+"
+            },
+            {
+              "label": "C",
+              "value": "C"
+            },
+            {
+              "label": "C-",
+              "value": "C-"
+            },
+            {
+              "label": "D+",
+              "value": "D+"
+            },
+            {
+              "label": "D",
+              "value": "D"
+            },
+            {
+              "label": "D-",
+              "value": "D-"
+            },
+            {
+              "label": "F",
+              "value": "F"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mozilla-observatory/get-grade-distribution",
+      "result_str_template": "{mozilla_observatory_get_grade_distribution,total_sites} sites scanned; most commonly {mozilla_observatory_get_grade_distribution,most_common_grade}.",
+      "returns": {
+        "properties": {
+          "better_than_percentage": {
+            "description": "The percentage of sites that grade below it: the figure to quote in a report.",
+            "type": "number"
+          },
+          "distribution": {
+            "description": "Every grade, best first.",
+            "items": {
+              "properties": {
+                "at_or_above_percentage": {
+                  "description": "The percentage of sites that graded this well or better.",
+                  "type": "number"
+                },
+                "count": {
+                  "description": "How many sites hold it.",
+                  "type": "integer"
+                },
+                "grade": {
+                  "description": "The grade, A+ down to F.",
+                  "type": "string"
+                },
+                "percentage": {
+                  "description": "That count as a percentage of every site scanned.",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "grade": {
+            "description": "The grade that was asked about, or null when none was.",
+            "type": "string"
+          },
+          "grade_count": {
+            "description": "How many sites hold that grade.",
+            "type": "integer"
+          },
+          "grade_percentage": {
+            "description": "That grade's share of every site scanned.",
+            "type": "number"
+          },
+          "most_common_grade": {
+            "description": "The grade the most sites hold.",
+            "type": "string"
+          },
+          "total_sites": {
+            "description": "How many sites the figures cover.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_recommendation_matrix": {
+      "description": "Get the Observatory's scoring rules: every test it runs, every outcome each one can reach, what that outcome is worth in points, and MDN's advice for it. The rules themselves, not a scan. Look up what a failure would cost before anyone changes anything, or publish the rules alongside a report. No API key required.",
+      "display_name": "Get the scoring reference",
+      "display_str_template": "Get the HTTP Observatory scoring reference.",
+      "handler": "actions.get_recommendation_matrix",
+      "id": "mozilla_observatory_get_recommendation_matrix",
+      "method": "POST",
+      "mock_response": {
+        "baseline_score": 100,
+        "count": 1,
+        "grades": [
+          "A+",
+          "A",
+          "A-",
+          "B+",
+          "B",
+          "B-",
+          "C+",
+          "C",
+          "C-",
+          "D+",
+          "D",
+          "D-",
+          "F"
+        ],
+        "maximum_score": 145,
+        "outcome_count": 2,
+        "tests": [
+          {
+            "best_score_modifier": 10,
+            "documentation_url": "https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/CSP",
+            "name": "content-security-policy",
+            "outcome_count": 2,
+            "outcomes": [
+              {
+                "description": "Content Security Policy (CSP) implemented with default-src 'none', no 'unsafe' and form-action is set to 'none' or 'self'",
+                "name": "csp-implemented-with-no-unsafe-default-src-none",
+                "recommendation": null,
+                "score_modifier": 10
+              },
+              {
+                "description": "Content Security Policy (CSP) header not implemented",
+                "name": "csp-not-implemented",
+                "recommendation": "Implement a Content Security Policy that restricts where content can be loaded from.",
+                "score_modifier": -25
+              }
+            ],
+            "title": "Content Security Policy (CSP)",
+            "worst_score_modifier": -25
+          }
+        ]
+      },
+      "name": "get_recommendation_matrix",
+      "parameters": [
+        {
+          "description": "Optional. Return the rules for the controls chosen. Leave empty for every test.",
+          "display_name": "Limit to these tests",
+          "multi_select": true,
+          "name": "tests",
+          "options": [
+            {
+              "label": "Content Security Policy (CSP)",
+              "value": "content-security-policy"
+            },
+            {
+              "label": "Cookies",
+              "value": "cookies"
+            },
+            {
+              "label": "Cross Origin Resource Sharing (CORS)",
+              "value": "cross-origin-resource-sharing"
+            },
+            {
+              "label": "Cross Origin Resource Policy",
+              "value": "cross-origin-resource-policy"
+            },
+            {
+              "label": "Redirection",
+              "value": "redirection"
+            },
+            {
+              "label": "Referrer Policy",
+              "value": "referrer-policy"
+            },
+            {
+              "label": "Strict Transport Security (HSTS)",
+              "value": "strict-transport-security"
+            },
+            {
+              "label": "Subresource Integrity",
+              "value": "subresource-integrity"
+            },
+            {
+              "label": "X-Content-Type-Options",
+              "value": "x-content-type-options"
+            },
+            {
+              "label": "X-Frame-Options",
+              "value": "x-frame-options"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/mozilla-observatory/get-recommendation-matrix",
+      "result_str_template": "{mozilla_observatory_get_recommendation_matrix,count} tests with {mozilla_observatory_get_recommendation_matrix,outcome_count} scored outcomes.",
+      "returns": {
+        "properties": {
+          "baseline_score": {
+            "description": "The score a site starts from before any test has been applied.",
+            "type": "integer"
+          },
+          "count": {
+            "description": "How many tests are described.",
+            "type": "integer"
+          },
+          "grades": {
+            "description": "The grade ladder, best first.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "maximum_score": {
+            "description": "The highest score reachable, with every bonus.",
+            "type": "integer"
+          },
+          "outcome_count": {
+            "description": "How many scored outcomes in total.",
+            "type": "integer"
+          },
+          "tests": {
+            "description": "The tests, each with its scored outcomes.",
+            "items": {
+              "properties": {
+                "best_score_modifier": {
+                  "description": "The most this test can add to a score.",
+                  "type": "number"
+                },
+                "documentation_url": {
+                  "description": "MDN's guide to implementing this control.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The test's identifier, e.g. content-security-policy.",
+                  "type": "string"
+                },
+                "outcome_count": {
+                  "description": "How many outcomes this test has.",
+                  "type": "integer"
+                },
+                "outcomes": {
+                  "description": "Every result this test can reach, best-scoring first.",
+                  "items": {
+                    "properties": {
+                      "description": {
+                        "description": "What this result means, in plain text.",
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "The result code, which is what a scan reports.",
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "description": "What to change to do better. Empty for the best outcome.",
+                        "type": "string"
+                      },
+                      "score_modifier": {
+                        "description": "Points this result adds or subtracts.",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "title": {
+                  "description": "Its display name.",
+                  "type": "string"
+                },
+                "worst_score_modifier": {
+                  "description": "The most this test can take away.",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_response_headers": {
+      "description": "Get the HTTP response headers a website sent the scanner, either all of them or just the security headers you pick, and, importantly, which of those it is not sending at all. Read off the stored scan, so the site is not fetched again. No API key required.",
+      "display_name": "Get response headers",
+      "display_str_template": "Get the response headers for {0}.",
+      "handler": "actions.get_response_headers",
+      "id": "mozilla_observatory_get_response_headers",
+      "method": "POST",
+      "mock_response": {
+        "all_header_names": [
+          "content-type",
+          "referrer-policy",
+          "strict-transport-security",
+          "x-content-type-options",
+          "x-frame-options"
+        ],
+        "details_url": "https://developer.mozilla.org/en-US/observatory/analyze?host=example.com",
+        "grade": "B+",
+        "header_count": 2,
+        "headers": {
+          "strict-transport-security": "max-age=63072000",
+          "x-frame-options": "DENY"
+        },
+        "host": "example.com",
+        "missing_headers": [
+          "content-security-policy"
+        ],
+        "scanned_at": "2026-08-23T18:48:32.850Z"
+      },
+      "name": "get_response_headers",
+      "parameters": [
+        {
+          "description": "The site to scan, as a hostname such as example.com. A full URL works too, only its hostname is used. IP addresses cannot be scanned: the scanner needs a name to check a certificate and an HSTS policy against.",
+          "display_name": "Website",
+          "examples": [
+            {
+              "label": "A domain",
+              "value": "example.com"
+            },
+            {
+              "label": "A subdomain",
+              "value": "shop.example.com"
+            },
+            {
+              "label": "A pasted URL (reduced to its host)",
+              "value": "https://example.com/pricing"
+            }
+          ],
+          "name": "host",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Return only the headers chosen, and report any of them the site does not send. Leave empty for every header the response carried.",
+          "display_name": "Security headers",
+          "multi_select": true,
+          "name": "headers",
+          "options": [
+            {
+              "label": "Content-Security-Policy",
+              "value": "content-security-policy"
+            },
+            {
+              "label": "Content-Security-Policy-Report-Only",
+              "value": "content-security-policy-report-only"
+            },
+            {
+              "label": "Strict-Transport-Security",
+              "value": "strict-transport-security"
+            },
+            {
+              "label": "X-Content-Type-Options",
+              "value": "x-content-type-options"
+            },
+            {
+              "label": "X-Frame-Options",
+              "value": "x-frame-options"
+            },
+            {
+              "label": "Referrer-Policy",
+              "value": "referrer-policy"
+            },
+            {
+              "label": "Cross-Origin-Opener-Policy",
+              "value": "cross-origin-opener-policy"
+            },
+            {
+              "label": "Cross-Origin-Embedder-Policy",
+              "value": "cross-origin-embedder-policy"
+            },
+            {
+              "label": "Cross-Origin-Resource-Policy",
+              "value": "cross-origin-resource-policy"
+            },
+            {
+              "label": "Access-Control-Allow-Origin",
+              "value": "access-control-allow-origin"
+            },
+            {
+              "label": "Permissions-Policy",
+              "value": "permissions-policy"
+            },
+            {
+              "label": "Set-Cookie",
+              "value": "set-cookie"
+            },
+            {
+              "label": "X-XSS-Protection",
+              "value": "x-xss-protection"
+            },
+            {
+              "label": "Server",
+              "value": "server"
+            },
+            {
+              "label": "X-Powered-By",
+              "value": "x-powered-by"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Any further header names to include, separated by commas, for a header not in the list above, such as one of your own.",
+          "display_name": "Other headers",
+          "examples": [
+            {
+              "label": "A caching and a custom header",
+              "value": "cache-control, x-request-id"
+            }
+          ],
+          "name": "other_headers",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mozilla-observatory/get-response-headers",
+      "result_str_template": "{mozilla_observatory_get_response_headers,header_count} headers from {mozilla_observatory_get_response_headers,host}.",
+      "returns": {
+        "properties": {
+          "all_header_names": {
+            "description": "Every header name in the response, sorted, whether or not it was asked for.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "details_url": {
+            "description": "The full report on MDN, for a person to open. Put it in the alert.",
+            "type": "string"
+          },
+          "grade": {
+            "description": "The letter grade, A+ down to F. Null only when the scan could not grade the site.",
+            "type": "string"
+          },
+          "header_count": {
+            "description": "How many headers were returned.",
+            "type": "integer"
+          },
+          "headers": {
+            "description": "The response headers the scanner received, keyed by lower-case header name.",
+            "type": "object"
+          },
+          "host": {
+            "description": "The hostname that was scanned, e.g. example.com. A pasted URL is reduced to its hostname before scanning.",
+            "type": "string"
+          },
+          "missing_headers": {
+            "description": "The headers asked for that the site does not send. This is the finding: an absent key would look the same as one never asked for.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "scanned_at": {
+            "description": "When this scan ran, as an ISO 8601 UTC instant. May be older than this step: a stored scan is served while it is under 24 hours old.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_scan_history": {
+      "description": "Get a website's past Observatory scans, newest first, and whether its grade has improved or slipped over that period. The Observatory keeps every scan of every host it has been asked about, so this is where a regression shows up. No API key required.",
+      "display_name": "Get scan history",
+      "display_str_template": "Get the scan history for {0}.",
+      "handler": "actions.get_scan_history",
+      "id": "mozilla_observatory_get_scan_history",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "current_grade": "B+",
+        "current_score": 80,
+        "details_url": "https://developer.mozilla.org/en-US/observatory/analyze?host=example.com",
+        "earliest_grade": "A",
+        "grade_change": "worsened",
+        "has_more": false,
+        "history": [
+          {
+            "grade": "B+",
+            "scan_id": 116498575,
+            "scanned_at": "2026-08-23T18:48:32.850Z",
+            "score": 80
+          },
+          {
+            "grade": "A",
+            "scan_id": 108377210,
+            "scanned_at": "2026-07-14T09:02:11.104Z",
+            "score": 95
+          }
+        ],
+        "host": "example.com",
+        "latest_grade": "B+",
+        "scanned_from": "2026-07-01",
+        "scanned_to": "2026-08-23",
+        "score_change": -15,
+        "total_count": 2
+      },
+      "name": "get_scan_history",
+      "parameters": [
+        {
+          "description": "The site to scan, as a hostname such as example.com. A full URL works too, only its hostname is used. IP addresses cannot be scanned: the scanner needs a name to check a certificate and an HSTS policy against.",
+          "display_name": "Website",
+          "examples": [
+            {
+              "label": "A domain",
+              "value": "example.com"
+            },
+            {
+              "label": "A subdomain",
+              "value": "shop.example.com"
+            },
+            {
+              "label": "A pasted URL (reduced to its host)",
+              "value": "https://example.com/pricing"
+            }
+          ],
+          "name": "host",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only scans from this date onwards. Leave blank to start at the earliest scan on record.",
+          "display_name": "Scanned on or after",
+          "name": "scanned_from",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Optional. Only scans up to this date. Leave blank to run up to the most recent one.",
+          "display_name": "Scanned on or before",
+          "name": "scanned_to",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "default": 25,
+          "description": "Optional. How many scans to return. Between 1 and 200; 25 by default.",
+          "display_name": "Number of scans",
+          "maximum": 200,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Optional. Return the oldest scans first instead of the newest. Off by default.",
+          "display_name": "Oldest first",
+          "name": "oldest_first",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/mozilla-observatory/get-scan-history",
+      "result_str_template": "{mozilla_observatory_get_scan_history,total_count} scans of {mozilla_observatory_get_scan_history,host}; the grade {mozilla_observatory_get_scan_history,grade_change}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many scans are in this page.",
+            "type": "integer"
+          },
+          "current_grade": {
+            "description": "The grade the site holds now.",
+            "type": "string"
+          },
+          "current_score": {
+            "description": "The score the site holds now.",
+            "type": "number"
+          },
+          "details_url": {
+            "description": "The full report on MDN, for a person to open. Put it in the alert.",
+            "type": "string"
+          },
+          "earliest_grade": {
+            "description": "The grade at the start of the window, whichever order the page is in.",
+            "type": "string"
+          },
+          "grade_change": {
+            "description": "improved, worsened, unchanged, or unknown. Branch on this to alert only on a slip.",
+            "type": "string"
+          },
+          "has_more": {
+            "description": "True when more scans matched than this page holds.",
+            "type": "boolean"
+          },
+          "history": {
+            "description": "The scans in this page, newest first unless Oldest first is on.",
+            "items": {
+              "description": "One earlier scan of this host.",
+              "properties": {
+                "grade": {
+                  "description": "The grade it was given.",
+                  "type": "string"
+                },
+                "scan_id": {
+                  "description": "The Observatory's id for that scan.",
+                  "type": "integer"
+                },
+                "scanned_at": {
+                  "description": "When it ran, as an ISO 8601 UTC instant.",
+                  "type": "string"
+                },
+                "score": {
+                  "description": "The score it was given.",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "host": {
+            "description": "The hostname that was scanned, e.g. example.com. A pasted URL is reduced to its hostname before scanning.",
+            "type": "string"
+          },
+          "latest_grade": {
+            "description": "The grade at the end of the window.",
+            "type": "string"
+          },
+          "scanned_from": {
+            "description": "The start of the window applied, YYYY-MM-DD. Null when none was given.",
+            "type": "string"
+          },
+          "scanned_to": {
+            "description": "The end of the window applied, YYYY-MM-DD. Null when none was given.",
+            "type": "string"
+          },
+          "score_change": {
+            "description": "Points gained or lost across the window. Negative means the site got worse.",
+            "type": "number"
+          },
+          "total_count": {
+            "description": "How many scans fell inside the window, across every page.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_scan_results": {
+      "description": "Get a website's full HTTP Observatory report: the grade and score, every security test with what was found and what to change, the response headers the scanner saw, and the site's past scans. Uses the stored scan while it is under a day old; scan again with Rescan a website. No API key required.",
+      "display_name": "Get scan results",
+      "display_str_template": "Get the HTTP Observatory results for {0}.",
+      "handler": "actions.get_scan_results",
+      "id": "mozilla_observatory_get_scan_results",
+      "method": "POST",
+      "mock_response": {
+        "algorithm_version": 5,
+        "details_url": "https://developer.mozilla.org/en-US/observatory/analyze?host=example.com",
+        "error": null,
+        "failed_test_count": 1,
+        "failed_tests": [
+          {
+            "description": "Content Security Policy (CSP) header not implemented.",
+            "details": {
+              "data": null
+            },
+            "documentation_url": "https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/CSP",
+            "expectation": "csp-implemented-with-no-unsafe-default-src-none",
+            "name": "content-security-policy",
+            "outcome": "failed",
+            "passed": false,
+            "recommendation": "Implement a Content Security Policy that restricts where content can be loaded from.",
+            "result": "csp-not-implemented",
+            "score_modifier": -25,
+            "title": "Content Security Policy (CSP)"
+          }
+        ],
+        "grade": "B+",
+        "history": [
+          {
+            "grade": "B+",
+            "scan_id": 116498575,
+            "scanned_at": "2026-08-23T18:48:32.850Z",
+            "score": 80
+          },
+          {
+            "grade": "A",
+            "scan_id": 108377210,
+            "scanned_at": "2026-07-14T09:02:11.104Z",
+            "score": 95
+          }
+        ],
+        "host": "example.com",
+        "passed_all_tests": false,
+        "recommendations": [
+          {
+            "documentation_url": "https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/CSP",
+            "recommendation": "Implement a Content Security Policy that restricts where content can be loaded from.",
+            "score_modifier": -25,
+            "test": "content-security-policy",
+            "title": "Content Security Policy (CSP)"
+          }
+        ],
+        "response_headers": {
+          "content-type": "text/html",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "scan_id": 116498575,
+        "scanned_at": "2026-08-23T18:48:32.850Z",
+        "score": 80,
+        "status_code": 200,
+        "tests": [
+          {
+            "description": "Content Security Policy (CSP) header not implemented.",
+            "details": {
+              "data": null
+            },
+            "documentation_url": "https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/CSP",
+            "expectation": "csp-implemented-with-no-unsafe-default-src-none",
+            "name": "content-security-policy",
+            "outcome": "failed",
+            "passed": false,
+            "recommendation": "Implement a Content Security Policy that restricts where content can be loaded from.",
+            "result": "csp-not-implemented",
+            "score_modifier": -25,
+            "title": "Content Security Policy (CSP)"
+          },
+          {
+            "description": "Preloaded via the HTTP Strict Transport Security (HSTS) preloading process.",
+            "details": {
+              "data": "max-age=63072000",
+              "include_sub_domains": true,
+              "max_age": 63072000,
+              "preload": false,
+              "preloaded": true
+            },
+            "documentation_url": "https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/TLS#http_strict_transport_security_implementation",
+            "expectation": "hsts-implemented-max-age-at-least-six-months",
+            "name": "strict-transport-security",
+            "outcome": "passed",
+            "passed": true,
+            "recommendation": null,
+            "result": "hsts-preloaded",
+            "score_modifier": 5,
+            "title": "Strict Transport Security (HSTS)"
+          }
+        ],
+        "tests_failed": 1,
+        "tests_passed": 9,
+        "tests_quantity": 10
+      },
+      "name": "get_scan_results",
+      "parameters": [
+        {
+          "description": "The site to scan, as a hostname such as example.com. A full URL works too, only its hostname is used. IP addresses cannot be scanned: the scanner needs a name to check a certificate and an HSTS policy against.",
+          "display_name": "Website",
+          "examples": [
+            {
+              "label": "A domain",
+              "value": "example.com"
+            },
+            {
+              "label": "A subdomain",
+              "value": "shop.example.com"
+            },
+            {
+              "label": "A pasted URL (reduced to its host)",
+              "value": "https://example.com/pricing"
+            }
+          ],
+          "name": "host",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mozilla-observatory/get-scan-results",
+      "result_str_template": "{mozilla_observatory_get_scan_results,host} graded {mozilla_observatory_get_scan_results,grade} with {mozilla_observatory_get_scan_results,failed_test_count} failing tests.",
+      "returns": {
+        "properties": {
+          "algorithm_version": {
+            "description": "Which version of the scoring rules produced this grade. Grades are only comparable within one version.",
+            "type": "integer"
+          },
+          "details_url": {
+            "description": "The full report on MDN, for a person to open. Put it in the alert.",
+            "type": "string"
+          },
+          "error": {
+            "description": "What went wrong, when a scan was recorded but could not be completed. Null on a normal scan.",
+            "type": "string"
+          },
+          "failed_test_count": {
+            "description": "How many tests failed.",
+            "type": "integer"
+          },
+          "failed_tests": {
+            "description": "Only the tests that failed, most punishing first. Empty when the site passed everything.",
+            "items": {
+              "description": "One security test and how the site did on it.",
+              "properties": {
+                "description": {
+                  "description": "What the scanner found, in a sentence. Ready to send: the HTML the API wraps it in has been removed.",
+                  "type": "string"
+                },
+                "details": {
+                  "description": "Everything else this particular test recorded, which differs per test: the redirect chain for Redirection, the parsed directives and per-directive verdicts for CSP, max-age and preload state for HSTS, the header value for the header tests.",
+                  "type": "object"
+                },
+                "documentation_url": {
+                  "description": "MDN's guide to implementing this control.",
+                  "type": "string"
+                },
+                "expectation": {
+                  "description": "The result this test looks for in order to pass.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The test's identifier, e.g. strict-transport-security. Stable across scans, so branch on this rather than on the title.",
+                  "type": "string"
+                },
+                "outcome": {
+                  "description": "passed, failed, or not_applicable. A test that did not apply (no cookies to check, a response that is not HTML) costs no points and has nothing to fix: it is not a failure.",
+                  "type": "string"
+                },
+                "passed": {
+                  "description": "True when the test passed, false when it failed, null when it did not apply.",
+                  "type": "boolean"
+                },
+                "recommendation": {
+                  "description": "What to change to pass this test, in plain text. Empty when there is nothing to do.",
+                  "type": "string"
+                },
+                "result": {
+                  "description": "What the scanner found, as its own code, e.g. hsts-preloaded or csp-implemented-with-unsafe-inline. Look it up in Get the scoring reference for what it is worth.",
+                  "type": "string"
+                },
+                "score_modifier": {
+                  "description": "Points this result added or subtracted. Negative for a failure, positive for a bonus, 0 when it neither helped nor hurt.",
+                  "type": "number"
+                },
+                "title": {
+                  "description": "The test's display name, e.g. Strict Transport Security (HSTS).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "grade": {
+            "description": "The letter grade, A+ down to F. Null only when the scan could not grade the site.",
+            "type": "string"
+          },
+          "history": {
+            "description": "This host's earlier scans, oldest first, as the Observatory stored them.",
+            "items": {
+              "description": "One earlier scan of this host.",
+              "properties": {
+                "grade": {
+                  "description": "The grade it was given.",
+                  "type": "string"
+                },
+                "scan_id": {
+                  "description": "The Observatory's id for that scan.",
+                  "type": "integer"
+                },
+                "scanned_at": {
+                  "description": "When it ran, as an ISO 8601 UTC instant.",
+                  "type": "string"
+                },
+                "score": {
+                  "description": "The score it was given.",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "host": {
+            "description": "The hostname that was scanned, e.g. example.com. A pasted URL is reduced to its hostname before scanning.",
+            "type": "string"
+          },
+          "passed_all_tests": {
+            "description": "True when nothing failed. Branch on this to stay quiet on a clean scan.",
+            "type": "boolean"
+          },
+          "recommendations": {
+            "description": "What to fix, most punishing failure first. Empty when nothing failed.",
+            "items": {
+              "description": "One thing to fix, and what fixing it is worth.",
+              "properties": {
+                "documentation_url": {
+                  "description": "MDN's guide to implementing this control.",
+                  "type": "string"
+                },
+                "recommendation": {
+                  "description": "What to change, in plain text.",
+                  "type": "string"
+                },
+                "score_modifier": {
+                  "description": "The points this failure is costing.",
+                  "type": "number"
+                },
+                "test": {
+                  "description": "The test this comes from.",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "That test's display name.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "response_headers": {
+            "description": "The response headers the scanner received, keyed by lower-case header name.",
+            "type": "object"
+          },
+          "scan_id": {
+            "description": "The Observatory's id for this scan.",
+            "type": "integer"
+          },
+          "scanned_at": {
+            "description": "When this scan ran, as an ISO 8601 UTC instant. May be older than this step: a stored scan is served while it is under 24 hours old.",
+            "type": "string"
+          },
+          "score": {
+            "description": "The score behind the grade. Starts at 100, loses points for each failed test, and earns up to 145 with the bonuses that apply once a site is already at 90.",
+            "type": "number"
+          },
+          "status_code": {
+            "description": "The HTTP status the site answered the scanner with, e.g. 200.",
+            "type": "integer"
+          },
+          "tests": {
+            "description": "The tests, ordered with the most punishing failure first.",
+            "items": {
+              "description": "One security test and how the site did on it.",
+              "properties": {
+                "description": {
+                  "description": "What the scanner found, in a sentence. Ready to send: the HTML the API wraps it in has been removed.",
+                  "type": "string"
+                },
+                "details": {
+                  "description": "Everything else this particular test recorded, which differs per test: the redirect chain for Redirection, the parsed directives and per-directive verdicts for CSP, max-age and preload state for HSTS, the header value for the header tests.",
+                  "type": "object"
+                },
+                "documentation_url": {
+                  "description": "MDN's guide to implementing this control.",
+                  "type": "string"
+                },
+                "expectation": {
+                  "description": "The result this test looks for in order to pass.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The test's identifier, e.g. strict-transport-security. Stable across scans, so branch on this rather than on the title.",
+                  "type": "string"
+                },
+                "outcome": {
+                  "description": "passed, failed, or not_applicable. A test that did not apply (no cookies to check, a response that is not HTML) costs no points and has nothing to fix: it is not a failure.",
+                  "type": "string"
+                },
+                "passed": {
+                  "description": "True when the test passed, false when it failed, null when it did not apply.",
+                  "type": "boolean"
+                },
+                "recommendation": {
+                  "description": "What to change to pass this test, in plain text. Empty when there is nothing to do.",
+                  "type": "string"
+                },
+                "result": {
+                  "description": "What the scanner found, as its own code, e.g. hsts-preloaded or csp-implemented-with-unsafe-inline. Look it up in Get the scoring reference for what it is worth.",
+                  "type": "string"
+                },
+                "score_modifier": {
+                  "description": "Points this result added or subtracted. Negative for a failure, positive for a bonus, 0 when it neither helped nor hurt.",
+                  "type": "number"
+                },
+                "title": {
+                  "description": "The test's display name, e.g. Strict Transport Security (HSTS).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "tests_failed": {
+            "description": "How many tests the site failed.",
+            "type": "integer"
+          },
+          "tests_passed": {
+            "description": "How many tests the site passed.",
+            "type": "integer"
+          },
+          "tests_quantity": {
+            "description": "How many tests were run in total.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_test_result": {
+      "description": "Check one security control on a website: is HSTS still set, did the Content Security Policy survive the release, and get a plain pass or fail to branch on, with what the scanner found and what to change. No API key required.",
+      "display_name": "Get one security test",
+      "display_str_template": "Get the {1} result for {0}.",
+      "handler": "actions.get_test_result",
+      "id": "mozilla_observatory_get_test_result",
+      "method": "POST",
+      "mock_response": {
+        "details_url": "https://developer.mozilla.org/en-US/observatory/analyze?host=example.com",
+        "grade": "B+",
+        "host": "example.com",
+        "outcome": "passed",
+        "passed": true,
+        "scanned_at": "2026-08-23T18:48:32.850Z",
+        "score": 80,
+        "test": {
+          "description": "Preloaded via the HTTP Strict Transport Security (HSTS) preloading process.",
+          "details": {
+            "data": "max-age=63072000",
+            "include_sub_domains": true,
+            "max_age": 63072000,
+            "preload": false,
+            "preloaded": true
+          },
+          "documentation_url": "https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/TLS#http_strict_transport_security_implementation",
+          "expectation": "hsts-implemented-max-age-at-least-six-months",
+          "name": "strict-transport-security",
+          "outcome": "passed",
+          "passed": true,
+          "recommendation": null,
+          "result": "hsts-preloaded",
+          "score_modifier": 5,
+          "title": "Strict Transport Security (HSTS)"
+        }
+      },
+      "name": "get_test_result",
+      "parameters": [
+        {
+          "description": "The site to scan, as a hostname such as example.com. A full URL works too, only its hostname is used. IP addresses cannot be scanned: the scanner needs a name to check a certificate and an HSTS policy against.",
+          "display_name": "Website",
+          "examples": [
+            {
+              "label": "A domain",
+              "value": "example.com"
+            },
+            {
+              "label": "A subdomain",
+              "value": "shop.example.com"
+            },
+            {
+              "label": "A pasted URL (reduced to its host)",
+              "value": "https://example.com/pricing"
+            }
+          ],
+          "name": "host",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which of the Observatory's tests to report on.",
+          "display_name": "Security test",
+          "name": "test",
+          "options": [
+            {
+              "label": "Content Security Policy (CSP)",
+              "value": "content-security-policy"
+            },
+            {
+              "label": "Cookies",
+              "value": "cookies"
+            },
+            {
+              "label": "Cross Origin Resource Sharing (CORS)",
+              "value": "cross-origin-resource-sharing"
+            },
+            {
+              "label": "Cross Origin Resource Policy",
+              "value": "cross-origin-resource-policy"
+            },
+            {
+              "label": "Redirection",
+              "value": "redirection"
+            },
+            {
+              "label": "Referrer Policy",
+              "value": "referrer-policy"
+            },
+            {
+              "label": "Strict Transport Security (HSTS)",
+              "value": "strict-transport-security"
+            },
+            {
+              "label": "Subresource Integrity",
+              "value": "subresource-integrity"
+            },
+            {
+              "label": "X-Content-Type-Options",
+              "value": "x-content-type-options"
+            },
+            {
+              "label": "X-Frame-Options",
+              "value": "x-frame-options"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mozilla-observatory/get-test-result",
+      "result_str_template": "{mozilla_observatory_get_test_result,test,title} {mozilla_observatory_get_test_result,outcome} for {mozilla_observatory_get_test_result,host}.",
+      "returns": {
+        "properties": {
+          "details_url": {
+            "description": "The full report on MDN, for a person to open. Put it in the alert.",
+            "type": "string"
+          },
+          "grade": {
+            "description": "The letter grade, A+ down to F. Null only when the scan could not grade the site.",
+            "type": "string"
+          },
+          "host": {
+            "description": "The hostname that was scanned, e.g. example.com. A pasted URL is reduced to its hostname before scanning.",
+            "type": "string"
+          },
+          "outcome": {
+            "description": "passed, failed, or not_applicable, lifted out of the test so a condition can read it directly.",
+            "type": "string"
+          },
+          "passed": {
+            "description": "True when it passed, false when it failed, null when the test did not apply.",
+            "type": "boolean"
+          },
+          "scanned_at": {
+            "description": "When this scan ran, as an ISO 8601 UTC instant. May be older than this step: a stored scan is served while it is under 24 hours old.",
+            "type": "string"
+          },
+          "score": {
+            "description": "The score behind the grade. Starts at 100, loses points for each failed test, and earns up to 145 with the bonuses that apply once a site is already at 90.",
+            "type": "number"
+          },
+          "test": {
+            "description": "One security test and how the site did on it.",
+            "properties": {
+              "description": {
+                "description": "What the scanner found, in a sentence. Ready to send: the HTML the API wraps it in has been removed.",
+                "type": "string"
+              },
+              "details": {
+                "description": "Everything else this particular test recorded, which differs per test: the redirect chain for Redirection, the parsed directives and per-directive verdicts for CSP, max-age and preload state for HSTS, the header value for the header tests.",
+                "type": "object"
+              },
+              "documentation_url": {
+                "description": "MDN's guide to implementing this control.",
+                "type": "string"
+              },
+              "expectation": {
+                "description": "The result this test looks for in order to pass.",
+                "type": "string"
+              },
+              "name": {
+                "description": "The test's identifier, e.g. strict-transport-security. Stable across scans, so branch on this rather than on the title.",
+                "type": "string"
+              },
+              "outcome": {
+                "description": "passed, failed, or not_applicable. A test that did not apply (no cookies to check, a response that is not HTML) costs no points and has nothing to fix: it is not a failure.",
+                "type": "string"
+              },
+              "passed": {
+                "description": "True when the test passed, false when it failed, null when it did not apply.",
+                "type": "boolean"
+              },
+              "recommendation": {
+                "description": "What to change to pass this test, in plain text. Empty when there is nothing to do.",
+                "type": "string"
+              },
+              "result": {
+                "description": "What the scanner found, as its own code, e.g. hsts-preloaded or csp-implemented-with-unsafe-inline. Look it up in Get the scoring reference for what it is worth.",
+                "type": "string"
+              },
+              "score_modifier": {
+                "description": "Points this result added or subtracted. Negative for a failure, positive for a bonus, 0 when it neither helped nor hurt.",
+                "type": "number"
+              },
+              "title": {
+                "description": "The test's display name, e.g. Strict Transport Security (HSTS).",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_test_results": {
+      "description": "List a website's security tests, filtered to just the ones that failed, just the ones that passed, or all of them, ordered with the most punishing failure first. The list to paste into a ticket or post to a channel. No API key required.",
+      "display_name": "List security tests",
+      "display_str_template": "List the security tests for {0}.",
+      "handler": "actions.list_test_results",
+      "id": "mozilla_observatory_list_test_results",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "details_url": "https://developer.mozilla.org/en-US/observatory/analyze?host=example.com",
+        "grade": "B+",
+        "host": "example.com",
+        "outcome_filter": "failed",
+        "scanned_at": "2026-08-23T18:48:32.850Z",
+        "score": 80,
+        "score_impact": -25,
+        "tests": [
+          {
+            "description": "Content Security Policy (CSP) header not implemented.",
+            "details": {
+              "data": null
+            },
+            "documentation_url": "https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/CSP",
+            "expectation": "csp-implemented-with-no-unsafe-default-src-none",
+            "name": "content-security-policy",
+            "outcome": "failed",
+            "passed": false,
+            "recommendation": "Implement a Content Security Policy that restricts where content can be loaded from.",
+            "result": "csp-not-implemented",
+            "score_modifier": -25,
+            "title": "Content Security Policy (CSP)"
+          }
+        ],
+        "total_count": 10
+      },
+      "name": "list_test_results",
+      "parameters": [
+        {
+          "description": "The site to scan, as a hostname such as example.com. A full URL works too, only its hostname is used. IP addresses cannot be scanned: the scanner needs a name to check a certificate and an HSTS policy against.",
+          "display_name": "Website",
+          "examples": [
+            {
+              "label": "A domain",
+              "value": "example.com"
+            },
+            {
+              "label": "A subdomain",
+              "value": "shop.example.com"
+            },
+            {
+              "label": "A pasted URL (reduced to its host)",
+              "value": "https://example.com/pricing"
+            }
+          ],
+          "name": "host",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "all",
+          "description": "Optional. Which tests to include. Every test by default. A test that did not apply (no cookies to check, a response that is not HTML) costs no points and is not a failure.",
+          "display_name": "Show",
+          "name": "outcome",
+          "options": [
+            {
+              "label": "Every test",
+              "value": "all"
+            },
+            {
+              "label": "Only the tests that failed",
+              "value": "failed"
+            },
+            {
+              "label": "Only the tests that passed",
+              "value": "passed"
+            },
+            {
+              "label": "Only the tests that did not apply",
+              "value": "not_applicable"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Report only on the controls chosen. Leave empty for every test the scan ran.",
+          "display_name": "Limit to these tests",
+          "multi_select": true,
+          "name": "tests",
+          "options": [
+            {
+              "label": "Content Security Policy (CSP)",
+              "value": "content-security-policy"
+            },
+            {
+              "label": "Cookies",
+              "value": "cookies"
+            },
+            {
+              "label": "Cross Origin Resource Sharing (CORS)",
+              "value": "cross-origin-resource-sharing"
+            },
+            {
+              "label": "Cross Origin Resource Policy",
+              "value": "cross-origin-resource-policy"
+            },
+            {
+              "label": "Redirection",
+              "value": "redirection"
+            },
+            {
+              "label": "Referrer Policy",
+              "value": "referrer-policy"
+            },
+            {
+              "label": "Strict Transport Security (HSTS)",
+              "value": "strict-transport-security"
+            },
+            {
+              "label": "Subresource Integrity",
+              "value": "subresource-integrity"
+            },
+            {
+              "label": "X-Content-Type-Options",
+              "value": "x-content-type-options"
+            },
+            {
+              "label": "X-Frame-Options",
+              "value": "x-frame-options"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/mozilla-observatory/list-test-results",
+      "result_str_template": "{mozilla_observatory_list_test_results,count} of {mozilla_observatory_list_test_results,total_count} tests for {mozilla_observatory_list_test_results,host}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many tests are in this list.",
+            "type": "integer"
+          },
+          "details_url": {
+            "description": "The full report on MDN, for a person to open. Put it in the alert.",
+            "type": "string"
+          },
+          "grade": {
+            "description": "The letter grade, A+ down to F. Null only when the scan could not grade the site.",
+            "type": "string"
+          },
+          "host": {
+            "description": "The hostname that was scanned, e.g. example.com. A pasted URL is reduced to its hostname before scanning.",
+            "type": "string"
+          },
+          "outcome_filter": {
+            "description": "The filter that was applied.",
+            "type": "string"
+          },
+          "scanned_at": {
+            "description": "When this scan ran, as an ISO 8601 UTC instant. May be older than this step: a stored scan is served while it is under 24 hours old.",
+            "type": "string"
+          },
+          "score": {
+            "description": "The score behind the grade. Starts at 100, loses points for each failed test, and earns up to 145 with the bonuses that apply once a site is already at 90.",
+            "type": "number"
+          },
+          "score_impact": {
+            "description": "The points these tests add up to. Negative when listing failures: what fixing all of them is worth.",
+            "type": "number"
+          },
+          "tests": {
+            "description": "The tests, ordered with the most punishing failure first.",
+            "items": {
+              "description": "One security test and how the site did on it.",
+              "properties": {
+                "description": {
+                  "description": "What the scanner found, in a sentence. Ready to send: the HTML the API wraps it in has been removed.",
+                  "type": "string"
+                },
+                "details": {
+                  "description": "Everything else this particular test recorded, which differs per test: the redirect chain for Redirection, the parsed directives and per-directive verdicts for CSP, max-age and preload state for HSTS, the header value for the header tests.",
+                  "type": "object"
+                },
+                "documentation_url": {
+                  "description": "MDN's guide to implementing this control.",
+                  "type": "string"
+                },
+                "expectation": {
+                  "description": "The result this test looks for in order to pass.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The test's identifier, e.g. strict-transport-security. Stable across scans, so branch on this rather than on the title.",
+                  "type": "string"
+                },
+                "outcome": {
+                  "description": "passed, failed, or not_applicable. A test that did not apply (no cookies to check, a response that is not HTML) costs no points and has nothing to fix: it is not a failure.",
+                  "type": "string"
+                },
+                "passed": {
+                  "description": "True when the test passed, false when it failed, null when it did not apply.",
+                  "type": "boolean"
+                },
+                "recommendation": {
+                  "description": "What to change to pass this test, in plain text. Empty when there is nothing to do.",
+                  "type": "string"
+                },
+                "result": {
+                  "description": "What the scanner found, as its own code, e.g. hsts-preloaded or csp-implemented-with-unsafe-inline. Look it up in Get the scoring reference for what it is worth.",
+                  "type": "string"
+                },
+                "score_modifier": {
+                  "description": "Points this result added or subtracted. Negative for a failure, positive for a bonus, 0 when it neither helped nor hurt.",
+                  "type": "number"
+                },
+                "title": {
+                  "description": "The test's display name, e.g. Strict Transport Security (HSTS).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_count": {
+            "description": "How many tests the scan ran in total.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "rescan_site": {
+      "description": "Scan a website again right now and get the full report, rather than the stored result. Use it after a deploy that changed headers. A host can be rescanned once a minute; asked again sooner, the Observatory hands back the scan it already has. No API key required.",
+      "display_name": "Rescan a website",
+      "display_str_template": "Rescan {0} with the HTTP Observatory.",
+      "handler": "actions.rescan_site",
+      "id": "mozilla_observatory_rescan_site",
+      "method": "POST",
+      "mock_response": {
+        "algorithm_version": 5,
+        "details_url": "https://developer.mozilla.org/en-US/observatory/analyze?host=example.com",
+        "error": null,
+        "failed_test_count": 0,
+        "failed_tests": [],
+        "grade": "A+",
+        "history": [
+          {
+            "grade": "B+",
+            "scan_id": 116498575,
+            "scanned_at": "2026-08-23T18:48:32.850Z",
+            "score": 80
+          },
+          {
+            "grade": "A",
+            "scan_id": 108377210,
+            "scanned_at": "2026-07-14T09:02:11.104Z",
+            "score": 95
+          }
+        ],
+        "host": "example.com",
+        "passed_all_tests": true,
+        "recommendations": [],
+        "response_headers": {
+          "content-type": "text/html",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=63072000",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "scan_id": 116498575,
+        "scanned_at": "2026-08-23T18:48:32.850Z",
+        "score": 105,
+        "status_code": 200,
+        "tests": [
+          {
+            "description": "Preloaded via the HTTP Strict Transport Security (HSTS) preloading process.",
+            "details": {
+              "data": "max-age=63072000",
+              "include_sub_domains": true,
+              "max_age": 63072000,
+              "preload": false,
+              "preloaded": true
+            },
+            "documentation_url": "https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/TLS#http_strict_transport_security_implementation",
+            "expectation": "hsts-implemented-max-age-at-least-six-months",
+            "name": "strict-transport-security",
+            "outcome": "passed",
+            "passed": true,
+            "recommendation": null,
+            "result": "hsts-preloaded",
+            "score_modifier": 5,
+            "title": "Strict Transport Security (HSTS)"
+          }
+        ],
+        "tests_failed": 0,
+        "tests_passed": 10,
+        "tests_quantity": 10
+      },
+      "name": "rescan_site",
+      "parameters": [
+        {
+          "description": "The site to scan, as a hostname such as example.com. A full URL works too, only its hostname is used. IP addresses cannot be scanned: the scanner needs a name to check a certificate and an HSTS policy against.",
+          "display_name": "Website",
+          "examples": [
+            {
+              "label": "A domain",
+              "value": "example.com"
+            },
+            {
+              "label": "A subdomain",
+              "value": "shop.example.com"
+            },
+            {
+              "label": "A pasted URL (reduced to its host)",
+              "value": "https://example.com/pricing"
+            }
+          ],
+          "name": "host",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mozilla-observatory/rescan-site",
+      "result_str_template": "{mozilla_observatory_rescan_site,host} now grades {mozilla_observatory_rescan_site,grade} ({mozilla_observatory_rescan_site,score} points).",
+      "returns": {
+        "properties": {
+          "algorithm_version": {
+            "description": "Which version of the scoring rules produced this grade. Grades are only comparable within one version.",
+            "type": "integer"
+          },
+          "details_url": {
+            "description": "The full report on MDN, for a person to open. Put it in the alert.",
+            "type": "string"
+          },
+          "error": {
+            "description": "What went wrong, when a scan was recorded but could not be completed. Null on a normal scan.",
+            "type": "string"
+          },
+          "failed_test_count": {
+            "description": "How many tests failed.",
+            "type": "integer"
+          },
+          "failed_tests": {
+            "description": "Only the tests that failed, most punishing first. Empty when the site passed everything.",
+            "items": {
+              "description": "One security test and how the site did on it.",
+              "properties": {
+                "description": {
+                  "description": "What the scanner found, in a sentence. Ready to send: the HTML the API wraps it in has been removed.",
+                  "type": "string"
+                },
+                "details": {
+                  "description": "Everything else this particular test recorded, which differs per test: the redirect chain for Redirection, the parsed directives and per-directive verdicts for CSP, max-age and preload state for HSTS, the header value for the header tests.",
+                  "type": "object"
+                },
+                "documentation_url": {
+                  "description": "MDN's guide to implementing this control.",
+                  "type": "string"
+                },
+                "expectation": {
+                  "description": "The result this test looks for in order to pass.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The test's identifier, e.g. strict-transport-security. Stable across scans, so branch on this rather than on the title.",
+                  "type": "string"
+                },
+                "outcome": {
+                  "description": "passed, failed, or not_applicable. A test that did not apply (no cookies to check, a response that is not HTML) costs no points and has nothing to fix: it is not a failure.",
+                  "type": "string"
+                },
+                "passed": {
+                  "description": "True when the test passed, false when it failed, null when it did not apply.",
+                  "type": "boolean"
+                },
+                "recommendation": {
+                  "description": "What to change to pass this test, in plain text. Empty when there is nothing to do.",
+                  "type": "string"
+                },
+                "result": {
+                  "description": "What the scanner found, as its own code, e.g. hsts-preloaded or csp-implemented-with-unsafe-inline. Look it up in Get the scoring reference for what it is worth.",
+                  "type": "string"
+                },
+                "score_modifier": {
+                  "description": "Points this result added or subtracted. Negative for a failure, positive for a bonus, 0 when it neither helped nor hurt.",
+                  "type": "number"
+                },
+                "title": {
+                  "description": "The test's display name, e.g. Strict Transport Security (HSTS).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "grade": {
+            "description": "The letter grade, A+ down to F. Null only when the scan could not grade the site.",
+            "type": "string"
+          },
+          "history": {
+            "description": "This host's earlier scans, oldest first, as the Observatory stored them.",
+            "items": {
+              "description": "One earlier scan of this host.",
+              "properties": {
+                "grade": {
+                  "description": "The grade it was given.",
+                  "type": "string"
+                },
+                "scan_id": {
+                  "description": "The Observatory's id for that scan.",
+                  "type": "integer"
+                },
+                "scanned_at": {
+                  "description": "When it ran, as an ISO 8601 UTC instant.",
+                  "type": "string"
+                },
+                "score": {
+                  "description": "The score it was given.",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "host": {
+            "description": "The hostname that was scanned, e.g. example.com. A pasted URL is reduced to its hostname before scanning.",
+            "type": "string"
+          },
+          "passed_all_tests": {
+            "description": "True when nothing failed. Branch on this to stay quiet on a clean scan.",
+            "type": "boolean"
+          },
+          "recommendations": {
+            "description": "What to fix, most punishing failure first. Empty when nothing failed.",
+            "items": {
+              "description": "One thing to fix, and what fixing it is worth.",
+              "properties": {
+                "documentation_url": {
+                  "description": "MDN's guide to implementing this control.",
+                  "type": "string"
+                },
+                "recommendation": {
+                  "description": "What to change, in plain text.",
+                  "type": "string"
+                },
+                "score_modifier": {
+                  "description": "The points this failure is costing.",
+                  "type": "number"
+                },
+                "test": {
+                  "description": "The test this comes from.",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "That test's display name.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "response_headers": {
+            "description": "The response headers the scanner received, keyed by lower-case header name.",
+            "type": "object"
+          },
+          "scan_id": {
+            "description": "The Observatory's id for this scan.",
+            "type": "integer"
+          },
+          "scanned_at": {
+            "description": "When this scan ran, as an ISO 8601 UTC instant. May be older than this step: a stored scan is served while it is under 24 hours old.",
+            "type": "string"
+          },
+          "score": {
+            "description": "The score behind the grade. Starts at 100, loses points for each failed test, and earns up to 145 with the bonuses that apply once a site is already at 90.",
+            "type": "number"
+          },
+          "status_code": {
+            "description": "The HTTP status the site answered the scanner with, e.g. 200.",
+            "type": "integer"
+          },
+          "tests": {
+            "description": "The tests, ordered with the most punishing failure first.",
+            "items": {
+              "description": "One security test and how the site did on it.",
+              "properties": {
+                "description": {
+                  "description": "What the scanner found, in a sentence. Ready to send: the HTML the API wraps it in has been removed.",
+                  "type": "string"
+                },
+                "details": {
+                  "description": "Everything else this particular test recorded, which differs per test: the redirect chain for Redirection, the parsed directives and per-directive verdicts for CSP, max-age and preload state for HSTS, the header value for the header tests.",
+                  "type": "object"
+                },
+                "documentation_url": {
+                  "description": "MDN's guide to implementing this control.",
+                  "type": "string"
+                },
+                "expectation": {
+                  "description": "The result this test looks for in order to pass.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The test's identifier, e.g. strict-transport-security. Stable across scans, so branch on this rather than on the title.",
+                  "type": "string"
+                },
+                "outcome": {
+                  "description": "passed, failed, or not_applicable. A test that did not apply (no cookies to check, a response that is not HTML) costs no points and has nothing to fix: it is not a failure.",
+                  "type": "string"
+                },
+                "passed": {
+                  "description": "True when the test passed, false when it failed, null when it did not apply.",
+                  "type": "boolean"
+                },
+                "recommendation": {
+                  "description": "What to change to pass this test, in plain text. Empty when there is nothing to do.",
+                  "type": "string"
+                },
+                "result": {
+                  "description": "What the scanner found, as its own code, e.g. hsts-preloaded or csp-implemented-with-unsafe-inline. Look it up in Get the scoring reference for what it is worth.",
+                  "type": "string"
+                },
+                "score_modifier": {
+                  "description": "Points this result added or subtracted. Negative for a failure, positive for a bonus, 0 when it neither helped nor hurt.",
+                  "type": "number"
+                },
+                "title": {
+                  "description": "The test's display name, e.g. Strict Transport Security (HSTS).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "tests_failed": {
+            "description": "How many tests the site failed.",
+            "type": "integer"
+          },
+          "tests_passed": {
+            "description": "How many tests the site passed.",
+            "type": "integer"
+          },
+          "tests_quantity": {
+            "description": "How many tests were run in total.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "scan_site": {
+      "description": "Scan a website's HTTP security and get its grade and score: A+ down to F, out of 145, plus how many of the tests it passed. The quick check: for the test-by-test breakdown, use Get scan results. No API key required.",
+      "display_name": "Scan a website",
+      "display_str_template": "Scan {0} with the HTTP Observatory.",
+      "handler": "actions.scan_site",
+      "id": "mozilla_observatory_scan_site",
+      "method": "POST",
+      "mock_response": {
+        "algorithm_version": 5,
+        "details_url": "https://developer.mozilla.org/en-US/observatory/analyze?host=example.com",
+        "error": null,
+        "grade": "B+",
+        "host": "example.com",
+        "passed_all_tests": false,
+        "scan_id": 116498575,
+        "scanned_at": "2026-08-23T18:48:32.850Z",
+        "score": 80,
+        "status_code": 200,
+        "tests_failed": 1,
+        "tests_passed": 9,
+        "tests_quantity": 10
+      },
+      "name": "scan_site",
+      "parameters": [
+        {
+          "description": "The site to scan, as a hostname such as example.com. A full URL works too, only its hostname is used. IP addresses cannot be scanned: the scanner needs a name to check a certificate and an HSTS policy against.",
+          "display_name": "Website",
+          "examples": [
+            {
+              "label": "A domain",
+              "value": "example.com"
+            },
+            {
+              "label": "A subdomain",
+              "value": "shop.example.com"
+            },
+            {
+              "label": "A pasted URL (reduced to its host)",
+              "value": "https://example.com/pricing"
+            }
+          ],
+          "name": "host",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mozilla-observatory/scan-site",
+      "result_str_template": "{mozilla_observatory_scan_site,host} scored {mozilla_observatory_scan_site,score} (grade {mozilla_observatory_scan_site,grade}).",
+      "returns": {
+        "properties": {
+          "algorithm_version": {
+            "description": "Which version of the scoring rules produced this grade. Grades are only comparable within one version.",
+            "type": "integer"
+          },
+          "details_url": {
+            "description": "The full report on MDN, for a person to open. Put it in the alert.",
+            "type": "string"
+          },
+          "error": {
+            "description": "What went wrong, when a scan was recorded but could not be completed. Null on a normal scan.",
+            "type": "string"
+          },
+          "grade": {
+            "description": "The letter grade, A+ down to F. Null only when the scan could not grade the site.",
+            "type": "string"
+          },
+          "host": {
+            "description": "The hostname that was scanned, e.g. example.com. A pasted URL is reduced to its hostname before scanning.",
+            "type": "string"
+          },
+          "passed_all_tests": {
+            "description": "True when nothing failed. Branch on this to stay quiet on a clean scan.",
+            "type": "boolean"
+          },
+          "scan_id": {
+            "description": "The Observatory's id for this scan.",
+            "type": "integer"
+          },
+          "scanned_at": {
+            "description": "When this scan ran, as an ISO 8601 UTC instant. May be older than this step: a stored scan is served while it is under 24 hours old.",
+            "type": "string"
+          },
+          "score": {
+            "description": "The score behind the grade. Starts at 100, loses points for each failed test, and earns up to 145 with the bonuses that apply once a site is already at 90.",
+            "type": "number"
+          },
+          "status_code": {
+            "description": "The HTTP status the site answered the scanner with, e.g. 200.",
+            "type": "integer"
+          },
+          "tests_failed": {
+            "description": "How many tests the site failed.",
+            "type": "integer"
+          },
+          "tests_passed": {
+            "description": "How many tests the site passed.",
+            "type": "integer"
+          },
+          "tests_quantity": {
+            "description": "How many tests were run in total.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Scan any website's HTTP security with Mozilla's HTTP Observatory, the scanner behind MDN's security report. Get a grade from A+ to F and a score out of 145, then the test-by-test detail behind it: Content Security Policy, HSTS, cookies, CORS, clickjacking protection, referrer policy, subresource integrity and the cross-origin isolation headers, each with what the scanner found and what to change. Read the response headers a site sends and the security ones it is missing, follow a site's grade over time to catch a regression, rank several sites against each other, and fail a release when a site drops below the grade you require. No account or API key required.",
+  "display_name": "Mozilla HTTP Observatory",
+  "id": "mozilla_observatory"
+}

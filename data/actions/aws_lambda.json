@@ -1,0 +1,442 @@
+{
+  "actions": {
+    "get_account_settings": {
+      "description": "Get the account's Lambda limits (code storage, concurrency) and current usage in the connection's region.",
+      "display_name": "Get account settings",
+      "display_str_template": "Get Lambda account settings.",
+      "handler": "actions.get_account_settings",
+      "id": "aws_lambda_get_account_settings",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "account_limit": {
+            "CodeSizeUnzipped": 262144000,
+            "CodeSizeZipped": 52428800,
+            "ConcurrentExecutions": 1000,
+            "TotalCodeSize": 80530636800,
+            "UnreservedConcurrentExecutions": 1000
+          },
+          "account_usage": {
+            "FunctionCount": 1,
+            "TotalCodeSize": 1024
+          }
+        }
+      },
+      "name": "get_account_settings",
+      "parameters": [],
+      "path": "/actions/library/aws-lambda/get-account-settings",
+      "result_str_template": "Account settings retrieved.",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "account_limit": {
+                "description": "Account limits: TotalCodeSize, CodeSizeUnzipped, CodeSizeZipped, ConcurrentExecutions, and UnreservedConcurrentExecutions.",
+                "type": "object"
+              },
+              "account_usage": {
+                "description": "Current usage: TotalCodeSize and FunctionCount.",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_function": {
+      "description": "Get a function's configuration, code location, tags, and reserved-concurrency settings.",
+      "display_name": "Get function",
+      "display_str_template": "Get Lambda function {0}.",
+      "handler": "actions.get_function",
+      "id": "aws_lambda_get_function",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "code": {
+            "Location": "https://awslambda-us-east-1-tasks.s3.amazonaws.com/...",
+            "RepositoryType": "S3"
+          },
+          "concurrency": null,
+          "configuration": {
+            "FunctionArn": "arn:aws:lambda:us-east-1:123456789012:function:my-function",
+            "FunctionName": "my-function",
+            "Handler": "index.handler",
+            "MemorySize": 128,
+            "Runtime": "python3.12",
+            "State": "Active",
+            "Timeout": 3,
+            "Version": "$LATEST"
+          },
+          "tags": {
+            "env": "qa"
+          }
+        }
+      },
+      "name": "get_function",
+      "parameters": [
+        {
+          "description": "The name or ARN of the function.",
+          "display_name": "Function name",
+          "name": "function_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional version number or alias name.",
+          "display_name": "Qualifier",
+          "name": "qualifier",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/aws-lambda/get-function",
+      "result_str_template": "Function retrieved.",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "code": {
+                "description": "The deployment package details, including a presigned Location URL and RepositoryType.",
+                "type": "object"
+              },
+              "concurrency": {
+                "description": "Reserved concurrency setting, or null when none is configured.",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "configuration": {
+                "description": "A Lambda function's configuration as returned by AWS (PascalCase keys such as FunctionName, FunctionArn, Runtime, Handler, Role, MemorySize, Timeout, LastModified, Version, State, and PackageType).",
+                "type": "object"
+              },
+              "tags": {
+                "description": "The function's tags (key/value).",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "invoke_function": {
+      "description": "Invoke a Lambda function with an optional JSON payload, synchronously (RequestResponse) or asynchronously (Event).",
+      "display_name": "Invoke function",
+      "display_str_template": "Invoke Lambda function {0}.",
+      "handler": "actions.invoke_function",
+      "id": "aws_lambda_invoke_function",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "executed_version": "$LATEST",
+          "function_error": null,
+          "log_result": null,
+          "payload": {
+            "body": "Hello from Lambda!",
+            "statusCode": 200
+          },
+          "status_code": 200
+        }
+      },
+      "name": "invoke_function",
+      "parameters": [
+        {
+          "description": "The name, version/alias-qualified name, or ARN of the function to invoke (e.g. 'my-function').",
+          "display_name": "Function name",
+          "examples": [
+            {
+              "label": "Function name",
+              "value": "my-function"
+            }
+          ],
+          "name": "function_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "JSON object passed to the function as the event. Leave empty to invoke with no input.",
+          "display_name": "Payload",
+          "name": "payload",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "default": "RequestResponse",
+          "description": "RequestResponse waits for the function and returns its output; Event queues an asynchronous invocation; DryRun validates parameters and permissions without running the function.",
+          "display_name": "Invocation type",
+          "name": "invocation_type",
+          "options": [
+            {
+              "label": "RequestResponse (sync)",
+              "value": "RequestResponse"
+            },
+            {
+              "label": "Event (async)",
+              "value": "Event"
+            },
+            {
+              "label": "DryRun (validate only)",
+              "value": "DryRun"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "None",
+          "description": "Set to Tail to include the last 4 KB of the function's execution log in 'log_result' (RequestResponse only).",
+          "display_name": "Log type",
+          "name": "log_type",
+          "options": [
+            {
+              "label": "None",
+              "value": "None"
+            },
+            {
+              "label": "Tail (return logs)",
+              "value": "Tail"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional version number or alias name to invoke a specific published version of the function.",
+          "display_name": "Qualifier",
+          "name": "qualifier",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional base64-encoded data (up to 3,583 bytes) passed to the function in the client context object.",
+          "display_name": "Client context",
+          "name": "client_context",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/aws-lambda/invoke-function",
+      "result_str_template": "Function invoked.",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "executed_version": {
+                "description": "The function version that executed.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "function_error": {
+                "description": "'Handled' or 'Unhandled' when the function returned an error; null on success.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "log_result": {
+                "description": "Decoded execution log tail when log_type is Tail; null otherwise.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "payload": {
+                "description": "The function's response, parsed as JSON when possible (otherwise the raw string). Null for a DryRun invocation or an empty response.",
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              },
+              "status_code": {
+                "description": "HTTP status of the invocation (200 for RequestResponse, 202 for Event, 204 for DryRun).",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_functions": {
+      "description": "List the Lambda functions in the connection's region, with pagination.",
+      "display_name": "List functions",
+      "display_str_template": "List Lambda functions.",
+      "handler": "actions.list_functions",
+      "id": "aws_lambda_list_functions",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "functions": [
+            {
+              "CodeSize": 1024,
+              "FunctionArn": "arn:aws:lambda:us-east-1:123456789012:function:my-function",
+              "FunctionName": "my-function",
+              "Handler": "index.handler",
+              "LastModified": "2026-07-30T00:00:00.000+0000",
+              "MemorySize": 128,
+              "PackageType": "Zip",
+              "Runtime": "python3.12",
+              "Timeout": 3,
+              "Version": "$LATEST"
+            }
+          ],
+          "next_marker": null
+        }
+      },
+      "name": "list_functions",
+      "parameters": [
+        {
+          "description": "Set to 'ALL' to include all published versions of each function in addition to the latest.",
+          "display_name": "Function version",
+          "name": "function_version",
+          "options": [
+            {
+              "label": "ALL (include all versions)",
+              "value": "ALL"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a $LATEST listing, the region to filter Lambda@Edge functions by (e.g. 'us-east-1' or 'ALL').",
+          "display_name": "Master region",
+          "name": "master_region",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Maximum number of functions to return (1\u201310000).",
+          "display_name": "Max items",
+          "maximum": 10000,
+          "minimum": 1,
+          "name": "max_items",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Pagination token from a previous response's 'next_marker' to fetch the next page.",
+          "display_name": "Marker",
+          "name": "marker",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/aws-lambda/list-functions",
+      "result_str_template": "Functions listed.",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "functions": {
+                "description": "The functions in this page.",
+                "items": {
+                  "description": "A Lambda function's configuration as returned by AWS (PascalCase keys such as FunctionName, FunctionArn, Runtime, Handler, Role, MemorySize, Timeout, LastModified, Version, State, and PackageType).",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "next_marker": {
+                "description": "Pagination token for the next page, or null if there are no more results.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_versions_by_function": {
+      "description": "List the published versions of a Lambda function.",
+      "display_name": "List function versions",
+      "display_str_template": "List versions of Lambda function {0}.",
+      "handler": "actions.list_versions_by_function",
+      "id": "aws_lambda_list_versions_by_function",
+      "method": "POST",
+      "mock_response": {
+        "result": {
+          "next_marker": null,
+          "versions": [
+            {
+              "FunctionArn": "arn:aws:lambda:us-east-1:123456789012:function:my-function:1",
+              "FunctionName": "my-function",
+              "Runtime": "python3.12",
+              "Version": "1"
+            }
+          ]
+        }
+      },
+      "name": "list_versions_by_function",
+      "parameters": [
+        {
+          "description": "The name or ARN of the function.",
+          "display_name": "Function name",
+          "name": "function_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Maximum number of versions to return (1\u201310000).",
+          "display_name": "Max items",
+          "maximum": 10000,
+          "minimum": 1,
+          "name": "max_items",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Pagination token from a previous response's 'next_marker' to fetch the next page.",
+          "display_name": "Marker",
+          "name": "marker",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/aws-lambda/list-versions-by-function",
+      "result_str_template": "Versions listed.",
+      "returns": {
+        "properties": {
+          "result": {
+            "properties": {
+              "next_marker": {
+                "description": "Pagination token for the next page, or null if there are no more results.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "versions": {
+                "description": "The function versions in this page.",
+                "items": {
+                  "description": "A Lambda function's configuration as returned by AWS (PascalCase keys such as FunctionName, FunctionArn, Runtime, Handler, Role, MemorySize, Timeout, LastModified, Version, State, and PackageType).",
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Invoke and manage AWS Lambda serverless functions: run functions synchronously or asynchronously with a JSON payload, list and inspect functions and their versions, and check account limits and usage.",
+  "display_name": "AWS Lambda",
+  "id": "aws_lambda"
+}

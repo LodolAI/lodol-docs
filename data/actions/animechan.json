@@ -1,0 +1,1209 @@
+{
+  "actions": {
+    "check_service_status": {
+      "description": "Check whether Animechan is answering and how quickly, without failing the step when it is not. Put this in front of a workflow that would otherwise spend its daily request allowance discovering the service is down, and branch on 'ok'. It reports a throttle separately, so you can tell 'rate limited' from 'broken'.",
+      "display_name": "Check service status",
+      "display_str_template": "Check the Animechan service status.",
+      "handler": "actions.check_service_status",
+      "id": "animechan_check_service_status",
+      "method": "POST",
+      "mock_response": {
+        "latency_ms": 742.0,
+        "message": null,
+        "ok": true,
+        "rate_limited": false,
+        "status_code": 200
+      },
+      "name": "check_service_status",
+      "output_formatter": "actions.format_status_output",
+      "parameters": [],
+      "path": "/actions/library/animechan/check-service-status",
+      "result_str_template": "Status checked.",
+      "returns": {
+        "properties": {
+          "latency_ms": {
+            "type": "number"
+          },
+          "message": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "rate_limited": {
+            "type": "boolean"
+          },
+          "status_code": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_anime": {
+      "description": "Search the catalogue by title and get back the shows that match, best first, each with how many quotes it has on record. The step to put in front of the others when all a workflow has is a title out of a form field. Matching here is better than the quote routes': it matches whole words and folds accents, so 'cowboy bebop' finds Cowboy Bebop and a title typed without its accents still lands. Alternate titles are searched too.",
+      "display_name": "Find an anime",
+      "display_str_template": "Find anime matching {0}.",
+      "handler": "actions.find_anime",
+      "id": "animechan_find_anime",
+      "method": "POST",
+      "mock_response": {
+        "catalogue_size": 458,
+        "exact_match": {
+          "alt_name": "Cowboy Bebop",
+          "anime_id": 52,
+          "episode_count": 26,
+          "mal_id": 1,
+          "mal_url": "https://myanimelist.net/anime/1",
+          "match_is_confident": true,
+          "match_quality": "exact",
+          "name": "Cowboy Bebop",
+          "quote_count": 31
+        },
+        "match_count": 1,
+        "matches": [
+          {
+            "alt_name": "Cowboy Bebop",
+            "anime_id": 52,
+            "episode_count": 26,
+            "mal_id": 1,
+            "mal_url": "https://myanimelist.net/anime/1",
+            "match_is_confident": true,
+            "match_quality": "exact",
+            "name": "Cowboy Bebop",
+            "quote_count": 31
+          }
+        ],
+        "query": "Cowboy Bebop",
+        "total_matches": 1
+      },
+      "name": "find_anime",
+      "output_formatter": "actions.format_anime_search_output",
+      "parameters": [
+        {
+          "description": "The title, or part of it, to look for. Both the main and alternate titles are searched, so either spelling of a show works.",
+          "display_name": "Title",
+          "examples": [
+            {
+              "label": "A series",
+              "value": "Cowboy Bebop"
+            },
+            {
+              "label": "Part of a title",
+              "value": "alchemist"
+            }
+          ],
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many matches to return, from 1 to 100. Defaults to 10. 'total_matches' reports how many there were before this cut.",
+          "display_name": "Maximum results",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/animechan/find-anime",
+      "result_str_template": "Search complete.",
+      "returns": {
+        "properties": {
+          "catalogue_size": {
+            "type": "number"
+          },
+          "exact_match": {
+            "properties": {
+              "alt_name": {
+                "type": "string"
+              },
+              "anime_id": {
+                "type": "number"
+              },
+              "episode_count": {
+                "type": "number"
+              },
+              "mal_id": {
+                "type": "number"
+              },
+              "mal_url": {
+                "type": "string"
+              },
+              "match_is_confident": {
+                "type": "boolean"
+              },
+              "match_quality": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "quote_count": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "match_count": {
+            "type": "number"
+          },
+          "matches": {
+            "items": {
+              "properties": {
+                "alt_name": {
+                  "type": "string"
+                },
+                "anime_id": {
+                  "type": "number"
+                },
+                "episode_count": {
+                  "type": "number"
+                },
+                "mal_id": {
+                  "type": "number"
+                },
+                "mal_url": {
+                  "type": "string"
+                },
+                "match_is_confident": {
+                  "type": "boolean"
+                },
+                "match_quality": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "quote_count": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "query": {
+            "type": "string"
+          },
+          "total_matches": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_quote_of_the_day": {
+      "description": "Pick one quote for a given day and get the same one back every time you ask. A random draw cannot do this: two steps running the same morning would post different quotes, and re-running yesterday would not reproduce yesterday's. Give each workflow its own seed if two of them share a day and should not share a quote.",
+      "display_name": "Get the quote of the day",
+      "display_str_template": "Get the anime quote of the day.",
+      "handler": "actions.get_quote_of_the_day",
+      "id": "animechan_get_quote_of_the_day",
+      "method": "POST",
+      "mock_response": {
+        "anime": {
+          "alt_name": "Cowboy Bebop",
+          "anime_id": 52,
+          "episode_count": 26,
+          "mal_id": 1,
+          "mal_url": "https://myanimelist.net/anime/1",
+          "name": "Cowboy Bebop",
+          "quote_count": 31
+        },
+        "date": "2026-03-20",
+        "pool_size": 458,
+        "quote": {
+          "anime": {
+            "alt_name": "Cowboy Bebop",
+            "anime_id": 52,
+            "episode_count": null,
+            "mal_id": null,
+            "mal_url": null,
+            "name": "Cowboy Bebop",
+            "quote_count": null
+          },
+          "anime_name": "Cowboy Bebop",
+          "character": {
+            "character_id": 311,
+            "name": "Spike Spiegel"
+          },
+          "character_name": "Spike Spiegel",
+          "content": "Whatever happens, happens.",
+          "match_is_confident": true,
+          "match_quality": "exact"
+        },
+        "seed": null
+      },
+      "name": "get_quote_of_the_day",
+      "output_formatter": "actions.format_quote_output",
+      "parameters": [
+        {
+          "description": "The day to pick for, as YYYY-MM-DD. Leave empty for today in UTC. UTC rather than local time so a scheduled run and a re-run of it agree on which day it is.",
+          "display_name": "Date",
+          "examples": [
+            {
+              "label": "A date",
+              "value": "2026-03-20"
+            }
+          ],
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Any text that makes this workflow's pick its own. Two workflows with different seeds get different quotes on the same day, and each still gets the same quote all day. Leave empty to share the default pick.",
+          "display_name": "Seed",
+          "examples": [
+            {
+              "label": "A team name",
+              "value": "design-team"
+            }
+          ],
+          "name": "seed",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/animechan/get-quote-of-the-day",
+      "result_str_template": "Quote retrieved.",
+      "returns": {
+        "properties": {
+          "anime": {
+            "properties": {
+              "alt_name": {
+                "type": "string"
+              },
+              "anime_id": {
+                "type": "number"
+              },
+              "episode_count": {
+                "type": "number"
+              },
+              "mal_id": {
+                "type": "number"
+              },
+              "mal_url": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "quote_count": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "date": {
+            "type": "string"
+          },
+          "pool_size": {
+            "type": "number"
+          },
+          "quote": {
+            "properties": {
+              "anime": {
+                "properties": {
+                  "alt_name": {
+                    "type": "string"
+                  },
+                  "anime_id": {
+                    "type": "number"
+                  },
+                  "episode_count": {
+                    "type": "number"
+                  },
+                  "mal_id": {
+                    "type": "number"
+                  },
+                  "mal_url": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "quote_count": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "anime_match_quality": {
+                "type": "string"
+              },
+              "anime_name": {
+                "type": "string"
+              },
+              "character": {
+                "properties": {
+                  "character_id": {
+                    "type": "number"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "character_match_quality": {
+                "type": "string"
+              },
+              "character_name": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              },
+              "match_is_confident": {
+                "type": "boolean"
+              },
+              "match_quality": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "seed": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_quotes_by_anime": {
+      "description": "Get a page of quotes from one show, five at a time, which is all the API returns. Page through for more. Use this rather than drawing at random when you want a set from a known series, because it costs one request instead of one per quote.",
+      "display_name": "Get quotes by anime",
+      "display_str_template": "Get quotes from {0}.",
+      "handler": "actions.get_quotes_by_anime",
+      "id": "animechan_get_quotes_by_anime",
+      "method": "POST",
+      "mock_response": {
+        "dropped_loose_matches": 0,
+        "has_more": false,
+        "page": 1,
+        "past_last_page": false,
+        "quote_count": 2,
+        "quotes": [
+          {
+            "anime": {
+              "alt_name": "Naruto",
+              "anime_id": 178,
+              "episode_count": null,
+              "mal_id": null,
+              "mal_url": null,
+              "name": "Naruto",
+              "quote_count": null
+            },
+            "anime_name": "Naruto",
+            "character": {
+              "character_id": 875,
+              "name": "Naruto Uzumaki"
+            },
+            "character_name": "Naruto Uzumaki",
+            "content": "Hard work is worthless for those that don't believe in themselves.",
+            "match_is_confident": true,
+            "match_quality": "exact"
+          },
+          {
+            "anime": {
+              "alt_name": "Naruto",
+              "anime_id": 178,
+              "episode_count": null,
+              "mal_id": null,
+              "mal_url": null,
+              "name": "Naruto",
+              "quote_count": null
+            },
+            "anime_name": "One Piece",
+            "character": {
+              "character_id": 876,
+              "name": "Monkey D. Luffy"
+            },
+            "character_name": "Monkey D. Luffy",
+            "content": "If you don't take risks, you can't create a future.",
+            "match_is_confident": true,
+            "match_quality": "exact"
+          }
+        ],
+        "requested_anime": "Naruto",
+        "require_exact_match": false
+      },
+      "name": "get_quotes_by_anime",
+      "output_formatter": "actions.format_quote_page_output",
+      "parameters": [
+        {
+          "description": "The show to take quotes from. Matching is loose and case-insensitive, so 'bebop' finds Cowboy Bebop. If all you have is a title typed by a user, run 'Find an anime' first and pass the name it confirms. An empty value is rejected: the API answers a blank name with random quotes rather than an error.",
+          "display_name": "Anime",
+          "examples": [
+            {
+              "label": "A series",
+              "value": "Naruto"
+            },
+            {
+              "label": "Another series",
+              "value": "Cowboy Bebop"
+            }
+          ],
+          "name": "anime",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which page of results to read, counting from 1. Five quotes come back per page, and the API publishes no way to ask for more. It sends no total, so 'has_more' reports only that a full page arrived. Page 0 is rejected here because the API answers it with an internal server error rather than saying what is wrong.",
+          "display_name": "Page",
+          "maximum": 10000,
+          "minimum": 1,
+          "name": "page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Refuse anything that matched only as a substring. Animechan matches names inside words, so asking for the character 'Itachi' returns 'Hikaru Hitachiin' from Ouran High School Host Club: a success as far as the API is concerned, and the wrong show as far as anyone else is. Turn this on and a match that is not at least a whole word is dropped; leave it off and every result still carries 'match_quality' so a later step can decide.",
+          "display_name": "Only exact matches",
+          "name": "require_exact_match",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/animechan/get-quotes-by-anime",
+      "result_str_template": "Quotes retrieved.",
+      "returns": {
+        "properties": {
+          "dropped_loose_matches": {
+            "type": "number"
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "page": {
+            "type": "number"
+          },
+          "past_last_page": {
+            "type": "boolean"
+          },
+          "quote_count": {
+            "type": "number"
+          },
+          "quotes": {
+            "items": {
+              "properties": {
+                "anime": {
+                  "properties": {
+                    "alt_name": {
+                      "type": "string"
+                    },
+                    "anime_id": {
+                      "type": "number"
+                    },
+                    "episode_count": {
+                      "type": "number"
+                    },
+                    "mal_id": {
+                      "type": "number"
+                    },
+                    "mal_url": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "quote_count": {
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "anime_match_quality": {
+                  "type": "string"
+                },
+                "anime_name": {
+                  "type": "string"
+                },
+                "character": {
+                  "properties": {
+                    "character_id": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "character_match_quality": {
+                  "type": "string"
+                },
+                "character_name": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "match_is_confident": {
+                  "type": "boolean"
+                },
+                "match_quality": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "requested_anime": {
+            "type": "string"
+          },
+          "require_exact_match": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_quotes_by_character": {
+      "description": "Get a page of quotes from one character, five at a time. This is where Animechan's loose matching bites hardest, because character names are short: 'Itachi' also matches 'Hitachiin'. Turn on 'Only exact matches' when the name came from a user rather than from an earlier step.",
+      "display_name": "Get quotes by character",
+      "display_str_template": "Get quotes from {0}.",
+      "handler": "actions.get_quotes_by_character",
+      "id": "animechan_get_quotes_by_character",
+      "method": "POST",
+      "mock_response": {
+        "dropped_loose_matches": 0,
+        "has_more": false,
+        "page": 1,
+        "past_last_page": false,
+        "quote_count": 1,
+        "quotes": [
+          {
+            "anime": {
+              "alt_name": "Naruto",
+              "anime_id": 178,
+              "episode_count": null,
+              "mal_id": null,
+              "mal_url": null,
+              "name": "Naruto",
+              "quote_count": null
+            },
+            "anime_name": "Naruto",
+            "character": {
+              "character_id": 875,
+              "name": "Naruto Uzumaki"
+            },
+            "character_name": "Naruto Uzumaki",
+            "content": "Hard work is worthless for those that don't believe in themselves.",
+            "match_is_confident": true,
+            "match_quality": "exact"
+          }
+        ],
+        "requested_character": "Naruto Uzumaki",
+        "require_exact_match": false
+      },
+      "name": "get_quotes_by_character",
+      "output_formatter": "actions.format_quote_page_output",
+      "parameters": [
+        {
+          "description": "The character to take quotes from. Give the full name where you can, such as 'Naruto Uzumaki' rather than 'Naruto', because the API matches inside words and a short name collides with longer ones. An empty value is rejected.",
+          "display_name": "Character",
+          "examples": [
+            {
+              "label": "A character",
+              "value": "Naruto Uzumaki"
+            }
+          ],
+          "name": "character",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which page of results to read, counting from 1. Five quotes come back per page, and the API publishes no way to ask for more. It sends no total, so 'has_more' reports only that a full page arrived. Page 0 is rejected here because the API answers it with an internal server error rather than saying what is wrong.",
+          "display_name": "Page",
+          "maximum": 10000,
+          "minimum": 1,
+          "name": "page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Refuse anything that matched only as a substring. Animechan matches names inside words, so asking for the character 'Itachi' returns 'Hikaru Hitachiin' from Ouran High School Host Club: a success as far as the API is concerned, and the wrong show as far as anyone else is. Turn this on and a match that is not at least a whole word is dropped; leave it off and every result still carries 'match_quality' so a later step can decide.",
+          "display_name": "Only exact matches",
+          "name": "require_exact_match",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/animechan/get-quotes-by-character",
+      "result_str_template": "Quotes retrieved.",
+      "returns": {
+        "properties": {
+          "dropped_loose_matches": {
+            "type": "number"
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "page": {
+            "type": "number"
+          },
+          "past_last_page": {
+            "type": "boolean"
+          },
+          "quote_count": {
+            "type": "number"
+          },
+          "quotes": {
+            "items": {
+              "properties": {
+                "anime": {
+                  "properties": {
+                    "alt_name": {
+                      "type": "string"
+                    },
+                    "anime_id": {
+                      "type": "number"
+                    },
+                    "episode_count": {
+                      "type": "number"
+                    },
+                    "mal_id": {
+                      "type": "number"
+                    },
+                    "mal_url": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "quote_count": {
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "anime_match_quality": {
+                  "type": "string"
+                },
+                "anime_name": {
+                  "type": "string"
+                },
+                "character": {
+                  "properties": {
+                    "character_id": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "character_match_quality": {
+                  "type": "string"
+                },
+                "character_name": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "match_is_confident": {
+                  "type": "boolean"
+                },
+                "match_quality": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "requested_character": {
+            "type": "string"
+          },
+          "require_exact_match": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_random_quote": {
+      "description": "Get one random anime quote with the character who said it and the show it is from, ready to post. Narrow it to one anime or one character, or leave both empty to draw from the whole collection. Hand back the line you posted last time to avoid repeating it.",
+      "display_name": "Get a random anime quote",
+      "display_str_template": "Get a random anime quote.",
+      "handler": "actions.get_random_quote",
+      "id": "animechan_get_random_quote",
+      "method": "POST",
+      "mock_response": {
+        "avoided_content": null,
+        "is_repeat": false,
+        "quote": {
+          "anime": {
+            "alt_name": "Naruto",
+            "anime_id": 178,
+            "episode_count": null,
+            "mal_id": null,
+            "mal_url": null,
+            "name": "Naruto",
+            "quote_count": null
+          },
+          "anime_name": "Naruto",
+          "character": {
+            "character_id": 875,
+            "name": "Naruto Uzumaki"
+          },
+          "character_name": "Naruto Uzumaki",
+          "content": "Hard work is worthless for those that don't believe in themselves.",
+          "match_is_confident": true,
+          "match_quality": "exact"
+        },
+        "redraws": 0,
+        "requested_anime": null,
+        "requested_character": null,
+        "require_exact_match": false
+      },
+      "name": "get_random_quote",
+      "output_formatter": "actions.format_quote_output",
+      "parameters": [
+        {
+          "description": "Only draw from this show. Leave empty to draw from any. Matching is loose and case-insensitive, so 'bebop' finds Cowboy Bebop. See 'Only exact matches' for when that goes wrong.",
+          "display_name": "From this anime",
+          "examples": [
+            {
+              "label": "A series",
+              "value": "Naruto"
+            },
+            {
+              "label": "Another series",
+              "value": "Cowboy Bebop"
+            }
+          ],
+          "name": "anime",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only draw from this character. Leave empty to draw from any. Short names are risky here: the API matches inside words, so 'Ken' also finds 'Kenshin'.",
+          "display_name": "From this character",
+          "examples": [
+            {
+              "label": "A character",
+              "value": "Naruto Uzumaki"
+            }
+          ],
+          "name": "character",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Refuse anything that matched only as a substring. Animechan matches names inside words, so asking for the character 'Itachi' returns 'Hikaru Hitachiin' from Ouran High School Host Club: a success as far as the API is concerned, and the wrong show as far as anyone else is. Turn this on and a match that is not at least a whole word is dropped; leave it off and every result still carries 'match_quality' so a later step can decide.",
+          "display_name": "Only exact matches",
+          "name": "require_exact_match",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "The text of a quote you have already posted. The draw is repeated up to 3 times to land on something else. If it keeps coming back, likely for a character with only one line on record, the quote is returned anyway with 'is_repeat' set rather than failing the step.",
+          "display_name": "Don't repeat this quote",
+          "name": "avoid_content",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/animechan/get-random-quote",
+      "result_str_template": "Quote retrieved.",
+      "returns": {
+        "properties": {
+          "avoided_content": {
+            "type": "string"
+          },
+          "is_repeat": {
+            "type": "boolean"
+          },
+          "quote": {
+            "properties": {
+              "anime": {
+                "properties": {
+                  "alt_name": {
+                    "type": "string"
+                  },
+                  "anime_id": {
+                    "type": "number"
+                  },
+                  "episode_count": {
+                    "type": "number"
+                  },
+                  "mal_id": {
+                    "type": "number"
+                  },
+                  "mal_url": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "quote_count": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "anime_match_quality": {
+                "type": "string"
+              },
+              "anime_name": {
+                "type": "string"
+              },
+              "character": {
+                "properties": {
+                  "character_id": {
+                    "type": "number"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "character_match_quality": {
+                "type": "string"
+              },
+              "character_name": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              },
+              "match_is_confident": {
+                "type": "boolean"
+              },
+              "match_quality": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "redraws": {
+            "type": "number"
+          },
+          "requested_anime": {
+            "type": "string"
+          },
+          "requested_character": {
+            "type": "string"
+          },
+          "require_exact_match": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_random_quotes": {
+      "description": "Get several different anime quotes at once, up to 10. No quote is drawn twice in the same batch. The API returns one random quote per request, so a batch of five spends five of the hundred requests this service allows per day, which is exactly why the ceiling is low. Narrow to one anime or character if you want a themed set.",
+      "display_name": "Get several random quotes",
+      "display_str_template": "Get {0} random anime quotes.",
+      "handler": "actions.get_random_quotes",
+      "id": "animechan_get_random_quotes",
+      "method": "POST",
+      "mock_response": {
+        "quote_count": 3,
+        "quotes": [
+          {
+            "anime": {
+              "alt_name": "Naruto",
+              "anime_id": 178,
+              "episode_count": null,
+              "mal_id": null,
+              "mal_url": null,
+              "name": "Naruto",
+              "quote_count": null
+            },
+            "anime_name": "Naruto",
+            "character": {
+              "character_id": 875,
+              "name": "Naruto Uzumaki"
+            },
+            "character_name": "Naruto Uzumaki",
+            "content": "Hard work is worthless for those that don't believe in themselves.",
+            "match_is_confident": true,
+            "match_quality": "exact"
+          },
+          {
+            "anime": {
+              "alt_name": "Naruto",
+              "anime_id": 178,
+              "episode_count": null,
+              "mal_id": null,
+              "mal_url": null,
+              "name": "Naruto",
+              "quote_count": null
+            },
+            "anime_name": "One Piece",
+            "character": {
+              "character_id": 876,
+              "name": "Monkey D. Luffy"
+            },
+            "character_name": "Monkey D. Luffy",
+            "content": "If you don't take risks, you can't create a future.",
+            "match_is_confident": true,
+            "match_quality": "exact"
+          },
+          {
+            "anime": {
+              "alt_name": "Cowboy Bebop",
+              "anime_id": 52,
+              "episode_count": null,
+              "mal_id": null,
+              "mal_url": null,
+              "name": "Cowboy Bebop",
+              "quote_count": null
+            },
+            "anime_name": "Cowboy Bebop",
+            "character": {
+              "character_id": 311,
+              "name": "Spike Spiegel"
+            },
+            "character_name": "Spike Spiegel",
+            "content": "Whatever happens, happens.",
+            "match_is_confident": true,
+            "match_quality": "exact"
+          }
+        ],
+        "requested_anime": null,
+        "requested_character": null,
+        "requested_count": 3
+      },
+      "name": "get_random_quotes",
+      "output_formatter": "actions.format_quote_batch_output",
+      "parameters": [
+        {
+          "description": "How many quotes to draw, from 1 to 10. Defaults to 3. Each one is a separate request against the daily allowance. Fewer may come back than asked for if the pool is small: compare 'quote_count' with 'requested_count'.",
+          "display_name": "Number of quotes",
+          "maximum": 10,
+          "minimum": 1,
+          "name": "count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only draw from this show. Leave empty to draw from any.",
+          "display_name": "From this anime",
+          "examples": [
+            {
+              "label": "A series",
+              "value": "Naruto"
+            }
+          ],
+          "name": "anime",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only draw from this character. Leave empty to draw from any.",
+          "display_name": "From this character",
+          "examples": [
+            {
+              "label": "A character",
+              "value": "Naruto Uzumaki"
+            }
+          ],
+          "name": "character",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/animechan/get-random-quotes",
+      "result_str_template": "Quotes retrieved.",
+      "returns": {
+        "properties": {
+          "quote_count": {
+            "type": "number"
+          },
+          "quotes": {
+            "items": {
+              "properties": {
+                "anime": {
+                  "properties": {
+                    "alt_name": {
+                      "type": "string"
+                    },
+                    "anime_id": {
+                      "type": "number"
+                    },
+                    "episode_count": {
+                      "type": "number"
+                    },
+                    "mal_id": {
+                      "type": "number"
+                    },
+                    "mal_url": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "quote_count": {
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "anime_match_quality": {
+                  "type": "string"
+                },
+                "anime_name": {
+                  "type": "string"
+                },
+                "character": {
+                  "properties": {
+                    "character_id": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "character_match_quality": {
+                  "type": "string"
+                },
+                "character_name": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "match_is_confident": {
+                  "type": "boolean"
+                },
+                "match_quality": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "requested_anime": {
+            "type": "string"
+          },
+          "requested_character": {
+            "type": "string"
+          },
+          "requested_count": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_anime": {
+      "description": "List the shows Animechan carries, a hundred per page, with how many quotes each has and its MyAnimeList id where one is known. This is the only route that reports a total and a page count, so it is the one to loop over to walk the whole catalogue.",
+      "display_name": "List anime",
+      "display_str_template": "List anime.",
+      "handler": "actions.list_anime",
+      "id": "animechan_list_anime",
+      "method": "POST",
+      "mock_response": {
+        "anime": [
+          {
+            "alt_name": "Cowboy Bebop",
+            "anime_id": 52,
+            "episode_count": 26,
+            "mal_id": 1,
+            "mal_url": "https://myanimelist.net/anime/1",
+            "name": "Cowboy Bebop",
+            "quote_count": 31
+          },
+          {
+            "alt_name": "Naruto",
+            "anime_id": 178,
+            "episode_count": 220,
+            "mal_id": 20,
+            "mal_url": "https://myanimelist.net/anime/20",
+            "name": "Naruto",
+            "quote_count": 137
+          }
+        ],
+        "anime_count": 2,
+        "has_more": true,
+        "page": 1,
+        "page_size": 100,
+        "total": 458,
+        "total_pages": 5
+      },
+      "name": "list_anime",
+      "output_formatter": "actions.format_anime_list_output",
+      "parameters": [
+        {
+          "description": "Which page of the catalogue to read, counting from 1. A hundred shows come back per page. Unlike the quote routes this one reports 'total' and 'total_pages', so a loop can tell when it is done.",
+          "display_name": "Page",
+          "maximum": 10000,
+          "minimum": 1,
+          "name": "page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/animechan/list-anime",
+      "result_str_template": "Anime listed.",
+      "returns": {
+        "properties": {
+          "anime": {
+            "items": {
+              "properties": {
+                "alt_name": {
+                  "type": "string"
+                },
+                "anime_id": {
+                  "type": "number"
+                },
+                "episode_count": {
+                  "type": "number"
+                },
+                "mal_id": {
+                  "type": "number"
+                },
+                "mal_url": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "quote_count": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "anime_count": {
+            "type": "number"
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "page": {
+            "type": "number"
+          },
+          "page_size": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "total_pages": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Anime quotes with the character who said them and the show they are from, drawn from a curated collection of a few thousand lines across roughly four hundred and sixty series. Free and keyless.",
+  "display_name": "Animechan",
+  "id": "animechan"
+}

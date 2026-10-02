@@ -1,0 +1,790 @@
+{
+  "actions": {
+    "create_card": {
+      "description": "Create a new virtual or physical Brex card. For a vendor card with its own spending limit, set the limit type to CARD. For an employee card that uses the person's existing limit, set the limit type to USER.",
+      "display_name": "Create a Brex card",
+      "display_str_template": "Create Brex card '{1}'",
+      "handler": "actions.create_card",
+      "id": "brex_create_card",
+      "method": "POST",
+      "mock_response": {
+        "card_name": "AWS - Vendor",
+        "card_type": "VIRTUAL",
+        "id": "card_abc123",
+        "last_four": "4242",
+        "limit_type": "CARD",
+        "status": "ACTIVE"
+      },
+      "name": "create_card",
+      "output_formatter": "actions.format_create_card_output",
+      "parameters": [
+        {
+          "description": "The ID of the user the card is issued to. You can find user IDs with the List Brex users action.",
+          "display_name": "Owner user ID",
+          "name": "owner_user_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Display name for the card (e.g. 'AWS - Vendor').",
+          "display_name": "Card name",
+          "name": "card_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Choose VIRTUAL or PHYSICAL. Vendor cards must be VIRTUAL.",
+          "display_name": "Card type",
+          "name": "card_type",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Choose CARD (a vendor card with its own limit) or USER (a corporate card that uses the person's limit). If you choose CARD, the spend limit amount and spend duration are required.",
+          "display_name": "Limit type",
+          "name": "limit_type",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Required when the limit type is CARD. Enter the amount in the smallest currency unit (for example, cents for USD, so 50000 means $500).",
+          "display_name": "Spend limit amount",
+          "name": "spend_limit_amount",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "USD",
+          "description": "Three-letter currency code, for example USD. Default is USD.",
+          "display_name": "Spend limit currency",
+          "name": "spend_limit_currency",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Required when the limit type is CARD. How long the spend limit applies: MONTHLY, QUARTERLY, YEARLY, or ONE_TIME.",
+          "display_name": "Spend duration",
+          "name": "spend_duration",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The reason for the spend limit.",
+          "display_name": "Reason",
+          "name": "reason",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The card locks automatically after this date. Use the format yyyy-mm-dd, for example 2026-12-31.",
+          "display_name": "Lock after date",
+          "name": "lock_after_date",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Required for physical cards. The shipping details, with these fields: recipient_name, phone_number, and address (which contains line1, line2, city, state, postal_code, and country).",
+          "display_name": "Mailing address",
+          "name": "mailing_address",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/brex/create-card",
+      "result_str_template": "Card created.",
+      "returns": {
+        "properties": {
+          "card_name": {
+            "type": "string"
+          },
+          "card_type": {
+            "type": "string"
+          },
+          "id": {
+            "description": "New card ID. Use as card_id in subsequent actions (list_card_transactions filter, future lock/terminate).",
+            "type": "string"
+          },
+          "last_four": {
+            "description": "Last four digits of the new card.",
+            "type": "string"
+          },
+          "limit_type": {
+            "type": "string"
+          },
+          "owner": {
+            "description": "{type, user_id}. Echoes the input.",
+            "type": "object"
+          },
+          "spend_controls": {
+            "description": "Echoes the input spend_controls when limit_type=CARD.",
+            "type": "object"
+          },
+          "status": {
+            "description": "Initial status, typically ACTIVE.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_expense": {
+      "description": "Fetch a single card expense by ID.",
+      "display_name": "Get a Brex expense",
+      "display_str_template": "Get Brex expense '{0}'",
+      "handler": "actions.get_expense",
+      "id": "brex_get_expense",
+      "method": "POST",
+      "mock_response": {
+        "amount": {
+          "amount": 1800,
+          "currency": "USD"
+        },
+        "id": "expense_abc123",
+        "memo": "Notion subscription"
+      },
+      "name": "get_expense",
+      "output_formatter": "actions.format_get_expense_output",
+      "parameters": [
+        {
+          "description": "The ID of the expense. You can find it with the List Brex expenses or List Brex card transactions actions.",
+          "display_name": "Expense ID",
+          "name": "expense_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Extra details to include with the expense. Options: merchant, location, department, receipts.download_uris, user, budget, payment, spending_entity, policy.",
+          "display_name": "Extra details to include",
+          "name": "expand",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/brex/get-expense",
+      "result_str_template": "Expense fetched.",
+      "returns": {
+        "description": "A single Brex expense object. Same shape as one entry of list_expenses.items.",
+        "type": "object"
+      }
+    },
+    "list_card_transactions": {
+      "description": "List settled transactions on the primary card account. Pending transactions are not included. Regular users can only see their own purchase, refund, and chargeback transactions.",
+      "display_name": "List Brex card transactions",
+      "display_str_template": "List Brex card transactions",
+      "handler": "actions.list_card_transactions",
+      "id": "brex_list_card_transactions",
+      "method": "POST",
+      "mock_response": {
+        "items": [
+          {
+            "amount": {
+              "amount": 1800,
+              "currency": "USD"
+            },
+            "description": "NOTION LABS INC",
+            "id": "txn_abc123",
+            "type": "PURCHASE"
+          }
+        ],
+        "next_cursor": null
+      },
+      "name": "list_card_transactions",
+      "output_formatter": "actions.format_list_card_transactions_output",
+      "parameters": [
+        {
+          "description": "Only include transactions made by these users. You can find user IDs with the List Brex users action.",
+          "display_name": "User IDs",
+          "name": "user_ids",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only include transactions posted at or after this time (for example, 2026-04-01T00:00:00Z).",
+          "display_name": "Posted date from",
+          "name": "posted_at_start",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "To get the next page of results, enter the next_cursor value from the previous run.",
+          "display_name": "Cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 50,
+          "description": "How many results to return per page, up to 100. Default is 50.",
+          "display_name": "Limit",
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/brex/list-card-transactions",
+      "result_str_template": "Transactions listed.",
+      "returns": {
+        "properties": {
+          "items": {
+            "description": "Settled card transactions.",
+            "items": {
+              "properties": {
+                "amount": {
+                  "description": "Money object: {amount, currency}. Negative for refunds, positive for purchases.",
+                  "type": "object"
+                },
+                "card_id": {
+                  "description": "Card the transaction was made on. Null for REWARDS_CREDIT or COLLECTION. Resolves via list_cards (items[].id).",
+                  "type": "string"
+                },
+                "card_metadata": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Free-form key-value string map associated with the card. Max 50 keys.",
+                  "type": "object"
+                },
+                "description": {
+                  "description": "Merchant descriptor as it appears on the statement.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Transaction ID.",
+                  "type": "string"
+                },
+                "initiated_at_date": {
+                  "description": "ISO 8601 date (YYYY-MM-DD) the transaction was initiated.",
+                  "type": "string"
+                },
+                "merchant": {
+                  "description": "Merchant info: {raw_descriptor, mcc, country}.",
+                  "type": "object"
+                },
+                "posted_at_date": {
+                  "description": "ISO 8601 date (YYYY-MM-DD) the transaction settled and posted.",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Transaction type. Enum: PURCHASE, REFUND, CHARGEBACK, REWARDS_CREDIT, COLLECTION, BNPL_FEE.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "description": "Cursor for the next page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_cards": {
+      "description": "List Brex cards, optionally filtered by user.",
+      "display_name": "List Brex cards",
+      "display_str_template": "List Brex cards",
+      "handler": "actions.list_cards",
+      "id": "brex_list_cards",
+      "method": "POST",
+      "mock_response": {
+        "items": [
+          {
+            "card_name": "AWS - Vendor",
+            "card_type": "VIRTUAL",
+            "id": "card_abc123",
+            "last_four": "4242",
+            "limit_type": "CARD",
+            "status": "ACTIVE"
+          }
+        ],
+        "next_cursor": null
+      },
+      "name": "list_cards",
+      "output_formatter": "actions.format_list_cards_output",
+      "parameters": [
+        {
+          "description": "Only include cards owned by this user. You can find user IDs with the List Brex users action.",
+          "display_name": "User ID",
+          "name": "user_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "To get the next page of results, enter the next_cursor value from the previous run.",
+          "display_name": "Cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 50,
+          "description": "How many results to return per page, up to 100. Default is 50.",
+          "display_name": "Limit",
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/brex/list-cards",
+      "result_str_template": "Cards listed.",
+      "returns": {
+        "properties": {
+          "items": {
+            "description": "List of Brex card objects.",
+            "items": {
+              "properties": {
+                "card_name": {
+                  "description": "Display name set at creation time.",
+                  "type": "string"
+                },
+                "card_type": {
+                  "description": "VIRTUAL | PHYSICAL.",
+                  "type": "string"
+                },
+                "created_at": {
+                  "description": "RFC 3339 creation timestamp.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Card ID. Use as card_id to filter list_card_transactions, and (in future Tier 2 actions) lock/unlock/terminate/update.",
+                  "type": "string"
+                },
+                "last_four": {
+                  "description": "Last four digits of the PAN.",
+                  "type": "string"
+                },
+                "limit_type": {
+                  "description": "CARD (vendor cards with their own spend_controls) | USER (corp cards using user-level limits).",
+                  "type": "string"
+                },
+                "owner": {
+                  "description": "{type: 'USER', user_id: string}. user_id resolves via list_users.",
+                  "type": "object"
+                },
+                "spend_controls": {
+                  "description": "Present when limit_type=CARD. {spend_limit: {amount, currency}, spend_duration: MONTHLY|QUARTERLY|YEARLY|ONE_TIME, reason, lock_after_date}.",
+                  "type": "object"
+                },
+                "status": {
+                  "description": "ACTIVE | SHIPPED | LOCKED | TERMINATED.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "description": "Cursor for the next page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_expenses": {
+      "description": "List card expenses, with optional filters by user, budget, status, payment status, and purchase date range. Results come back one page at a time.",
+      "display_name": "List Brex expenses",
+      "display_str_template": "List Brex expenses",
+      "handler": "actions.list_expenses",
+      "id": "brex_list_expenses",
+      "method": "POST",
+      "mock_response": {
+        "items": [
+          {
+            "amount": {
+              "amount": 1800,
+              "currency": "USD"
+            },
+            "expense_status": "SETTLED",
+            "id": "expense_abc123",
+            "memo": "Notion subscription",
+            "payment_status": "CLEARED"
+          }
+        ],
+        "next_cursor": null
+      },
+      "name": "list_expenses",
+      "output_formatter": "actions.format_list_expenses_output",
+      "parameters": [
+        {
+          "description": "Only include expenses owned by these users. You can find user IDs with the List Brex users action.",
+          "display_name": "User ID",
+          "name": "user_id",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Filter to expenses charged against these budget IDs.",
+          "display_name": "Budget ID",
+          "name": "budget_id",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only include expenses that belong to these parent expenses.",
+          "display_name": "Parent expense ID",
+          "name": "parent_expense_id",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only include expenses with these statuses: DRAFT, SUBMITTED, APPROVED, OUT_OF_POLICY, VOID, CANCELED, SPLIT, or SETTLED.",
+          "display_name": "Expense status",
+          "name": "expense_status",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only include expenses with these payment statuses: NOT_STARTED, PROCESSING, CANCELED, DECLINED, CLEARED, REFUNDING, REFUNDED, CASH_ADVANCE, CREDITED, AWAITING_PAYMENT, or SCHEDULED.",
+          "display_name": "Payment status",
+          "name": "payment_status",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only include expenses purchased at or after this time (for example, 2026-04-01T00:00:00Z).",
+          "display_name": "Purchase date from",
+          "name": "purchased_at_start",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only include expenses purchased up to this time (for example, 2026-04-30T00:00:00Z).",
+          "display_name": "Purchase date to",
+          "name": "purchased_at_end",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Extra details to include with each expense. Options: merchant, location, department, receipts.download_uris, user, budget, payment, spending_entity, policy.",
+          "display_name": "Extra details to include",
+          "name": "expand",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "To get the next page of results, enter the next_cursor value from the previous run.",
+          "display_name": "Cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 50,
+          "description": "How many results to return per page, up to 100. Default is 50.",
+          "display_name": "Limit",
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/brex/list-expenses",
+      "result_str_template": "Expenses listed.",
+      "returns": {
+        "properties": {
+          "items": {
+            "description": "List of Brex expense objects.",
+            "items": {
+              "properties": {
+                "amount": {
+                  "description": "Money object: {amount, currency}. amount is in smallest currency unit.",
+                  "type": "object"
+                },
+                "budget_id": {
+                  "description": "Budget this expense is charged to.",
+                  "type": "string"
+                },
+                "card_id": {
+                  "description": "Card the expense was made with. Resolves via list_cards.",
+                  "type": "string"
+                },
+                "category": {
+                  "description": "Expense category (Brex category enum).",
+                  "type": "string"
+                },
+                "department_id": {
+                  "description": "Department this expense is attributed to.",
+                  "type": "string"
+                },
+                "expense_status": {
+                  "description": "Lifecycle status; see expense_status enum.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Expense ID. Use as expense_id in get_expense, update_expense, and upload_receipt.",
+                  "type": "string"
+                },
+                "location_id": {
+                  "description": "Location this expense is attributed to.",
+                  "type": "string"
+                },
+                "memo": {
+                  "description": "User-provided memo. Editable via update_expense.",
+                  "type": "string"
+                },
+                "merchant": {
+                  "description": "Expanded merchant object (raw_descriptor, mcc, country) when expand=merchant.",
+                  "type": "object"
+                },
+                "merchant_id": {
+                  "description": "Merchant identifier when expand=merchant.",
+                  "type": "string"
+                },
+                "payment_status": {
+                  "description": "Payment status; see payment_status enum.",
+                  "type": "string"
+                },
+                "purchased_at": {
+                  "description": "RFC 3339 timestamp of the purchase.",
+                  "type": "string"
+                },
+                "receipts": {
+                  "description": "Attached receipts when expand=receipts.download_uris. Each item has download_uri.",
+                  "type": "array"
+                },
+                "updated_at": {
+                  "description": "RFC 3339 timestamp of the last update.",
+                  "type": "string"
+                },
+                "user_id": {
+                  "description": "Owning user ID. Resolves via list_users.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "description": "Cursor for the next page. null/empty when there are no more pages.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_users": {
+      "description": "List users in the Brex account, with an optional email filter. Use the user IDs from this action to create cards or to filter expenses and cards by user.",
+      "display_name": "List Brex users",
+      "display_str_template": "List Brex users",
+      "handler": "actions.list_users",
+      "id": "brex_list_users",
+      "method": "POST",
+      "mock_response": {
+        "items": [
+          {
+            "email": "alex@example.com",
+            "first_name": "Alex",
+            "id": "user_abc123",
+            "last_name": "Chen",
+            "status": "ACTIVE"
+          }
+        ],
+        "next_cursor": null
+      },
+      "name": "list_users",
+      "output_formatter": "actions.format_list_users_output",
+      "parameters": [
+        {
+          "description": "Filter to a user by email address.",
+          "display_name": "Email",
+          "name": "email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Filter by the user's ID from your HR or sign-in system.",
+          "display_name": "Remote display ID",
+          "name": "remote_display_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "To get the next page of results, enter the next_cursor value from the previous run.",
+          "display_name": "Cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 50,
+          "description": "How many results to return per page, up to 100. Default is 50.",
+          "display_name": "Limit",
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/brex/list-users",
+      "result_str_template": "Users listed.",
+      "returns": {
+        "properties": {
+          "items": {
+            "description": "List of Brex users.",
+            "items": {
+              "properties": {
+                "department_id": {
+                  "description": "Department the user belongs to.",
+                  "type": "string"
+                },
+                "email": {
+                  "description": "User email address.",
+                  "type": "string"
+                },
+                "first_name": {
+                  "type": "string"
+                },
+                "id": {
+                  "description": "User ID. Use as owner_user_id in create_card, as the user_id filter in list_expenses and list_cards, and (in future Tier 2 actions) as the target of set_user_limit.",
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "location_id": {
+                  "description": "Office location the user is assigned to.",
+                  "type": "string"
+                },
+                "manager_id": {
+                  "description": "User ID of the user's manager. Resolves recursively via list_users.",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "User account status. Enum: INVITED, ACTIVE, CLOSED, DISABLED, DELETED, PENDING_ACTIVATION, INACTIVE, ARCHIVED.",
+                  "type": "string"
+                },
+                "title_id": {
+                  "description": "Title ID (reference to a title object). Resolve via the Titles API.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "description": "Cursor for the next page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "update_expense": {
+      "description": "Update the memo on a card expense. The memo is the only field Brex allows this action to change.",
+      "display_name": "Update a Brex expense",
+      "display_str_template": "Update Brex expense '{0}'",
+      "handler": "actions.update_expense",
+      "id": "brex_update_expense",
+      "method": "POST",
+      "mock_response": {
+        "id": "expense_abc123",
+        "memo": "Updated memo",
+        "updated_at": "2026-04-07T12:00:00Z"
+      },
+      "name": "update_expense",
+      "output_formatter": "actions.format_update_expense_output",
+      "parameters": [
+        {
+          "description": "The ID of the expense to update. You can find it with the List Brex expenses action.",
+          "display_name": "Expense ID",
+          "name": "expense_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The new memo text. It replaces the existing memo; leave it empty to clear the memo.",
+          "display_name": "Memo",
+          "multiline": true,
+          "name": "memo",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/brex/update-expense",
+      "result_str_template": "Expense updated.",
+      "returns": {
+        "description": "Updated expense object. Subset of the full expense schema returned by get_expense.",
+        "properties": {
+          "id": {
+            "description": "Updated expense ID.",
+            "type": "string"
+          },
+          "memo": {
+            "description": "Memo after update.",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "RFC 3339 timestamp reflecting this update.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "upload_receipt": {
+      "description": "Upload a receipt file to Brex. If you provide an expense ID, the receipt is attached to that expense. Otherwise Brex matches it to an expense by amount, merchant, and date.",
+      "display_name": "Upload a Brex receipt",
+      "display_str_template": "Upload receipt '{0}' to Brex",
+      "handler": "actions.upload_receipt",
+      "id": "brex_upload_receipt",
+      "method": "POST",
+      "mock_response": {
+        "id": "receipt_xyz789",
+        "matched_expense_id": "expense_abc123",
+        "status": "uploaded"
+      },
+      "name": "upload_receipt",
+      "output_formatter": "actions.format_upload_receipt_output",
+      "parameters": [
+        {
+          "description": "Filename including extension (e.g. 'receipt-2026-04-07.pdf').",
+          "display_name": "Receipt name",
+          "name": "receipt_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "accepts_file_upload": true,
+          "description": "The receipt file to upload (PDF, PNG, or JPG). You can attach a file or enter its file path.",
+          "display_name": "File",
+          "name": "file",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The expense to attach the receipt to. You can find expense IDs with the List Brex expenses action. If left blank, Brex matches the receipt to an expense automatically.",
+          "display_name": "Expense ID",
+          "name": "expense_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/brex/upload-receipt",
+      "result_str_template": "Receipt uploaded.",
+      "returns": {
+        "properties": {
+          "id": {
+            "description": "Brex receipt ID. Use to look up the matched expense via list_expenses with expand=receipts.download_uris.",
+            "type": "string"
+          },
+          "matched_expense_id": {
+            "description": "Expense the receipt matched to. Null when match is still pending. Use as expense_id in get_expense / update_expense.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Upload status: 'uploaded' or 'pending_match'.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Manage Brex card spend, expenses, transactions, and virtual cards.",
+  "display_name": "Brex",
+  "id": "brex"
+}

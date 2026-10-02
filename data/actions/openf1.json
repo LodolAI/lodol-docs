@@ -1,0 +1,3718 @@
+{
+  "actions": {
+    "get_car_data": {
+      "description": "Get one car's telemetry - speed, throttle, brake, gear, RPM and DRS - sampled about 3.7 times a second. The DRS code and the 0/100 brake reading are decoded into readable fields beside the raw values. A session and a driver are both required because a single car's session is already tens of thousands of samples; narrow it further with a time window or a speed floor.",
+      "display_name": "Get car telemetry",
+      "display_str_template": "Get OpenF1 car telemetry for {2}.",
+      "handler": "actions.get_car_data",
+      "id": "openf1_get_car_data",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "brake": 0,
+            "brake_pressed": false,
+            "date": "2023-09-15T13:08:19.923000+00:00",
+            "driver_number": 55,
+            "drs": 12,
+            "drs_active": true,
+            "drs_status": "DRS on",
+            "meeting_key": 1219,
+            "n_gear": 8,
+            "rpm": 11141,
+            "session_key": 9159,
+            "speed": 315,
+            "throttle": 99
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "get_car_data",
+      "output_formatter": "actions.format_car_data_output",
+      "parameters": [
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Required. The session to read telemetry from. Pick a meeting first and this lists its sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Required. The driver's car number. Telemetry is per-car, and one car's session is already tens of thousands of samples, so a driver must be chosen. Pick a session first and this lists that session's entries.",
+          "display_name": "Driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "examples": [
+            {
+              "label": "Max Verstappen",
+              "value": "1"
+            },
+            {
+              "label": "Carlos Sainz",
+              "value": "55"
+            }
+          ],
+          "name": "driver_number",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only samples at or above this speed - 300 finds the fastest parts of a lap.",
+          "display_name": "Minimum speed (km/h)",
+          "minimum": 0,
+          "name": "min_speed",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only samples at or below this speed.",
+          "display_name": "Maximum speed (km/h)",
+          "minimum": 0,
+          "name": "max_speed",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only samples in this gear, 1 to 8. 0 is neutral or no gear engaged.",
+          "display_name": "Gear",
+          "maximum": 8,
+          "minimum": 0,
+          "name": "n_gear",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only include records at or after this UTC moment. Narrowing the window is the main way to keep a busy session's result readable.",
+          "display_name": "From",
+          "name": "date_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Optional. Only include records at or before this UTC moment.",
+          "display_name": "To",
+          "name": "date_to",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 5000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 5000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/get-car-data",
+      "result_str_template": "OpenF1 car telemetry retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "brake": {
+                  "type": "number"
+                },
+                "brake_pressed": {
+                  "type": "boolean"
+                },
+                "date": {
+                  "type": "string"
+                },
+                "driver_number": {
+                  "type": "number"
+                },
+                "drs": {
+                  "type": "number"
+                },
+                "drs_active": {
+                  "type": "boolean"
+                },
+                "drs_status": {
+                  "type": "string"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "n_gear": {
+                  "type": "number"
+                },
+                "rpm": {
+                  "type": "number"
+                },
+                "session_key": {
+                  "type": "number"
+                },
+                "speed": {
+                  "type": "number"
+                },
+                "throttle": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_championship_drivers": {
+      "description": "Get the drivers' championship standings around a race: points and position before it, points and position after it, and the points and places the race moved each driver. Race sessions only, and in beta on OpenF1's side.",
+      "display_name": "Get drivers' championship",
+      "display_str_template": "Get the OpenF1 drivers' championship standings.",
+      "handler": "actions.get_championship_drivers",
+      "id": "openf1_get_championship_drivers",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "driver_number": 4,
+            "meeting_key": 1276,
+            "points_current": 423,
+            "points_gained": 15,
+            "points_start": 408,
+            "position_current": 1,
+            "position_start": 1,
+            "positions_gained": 0,
+            "session_key": 9839
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "get_championship_drivers",
+      "output_formatter": "actions.format_championship_drivers_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The driver's car number. Pick a session first and this lists that session's entries; a number from an earlier step also works.",
+          "display_name": "Driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "examples": [
+            {
+              "label": "Max Verstappen",
+              "value": "1"
+            },
+            {
+              "label": "Carlos Sainz",
+              "value": "55"
+            }
+          ],
+          "name": "driver_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only drivers at or above this championship position after the race.",
+          "display_name": "Top N in the championship",
+          "minimum": 1,
+          "name": "max_position",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/get-championship-drivers",
+      "result_str_template": "OpenF1 drivers' championship retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "driver_number": {
+                  "type": "number"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "points_current": {
+                  "type": "number"
+                },
+                "points_gained": {
+                  "type": "number"
+                },
+                "points_start": {
+                  "type": "number"
+                },
+                "position_current": {
+                  "type": "number"
+                },
+                "position_start": {
+                  "type": "number"
+                },
+                "positions_gained": {
+                  "type": "number"
+                },
+                "session_key": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_championship_teams": {
+      "description": "Get the constructors' championship standings around a race: points and position before and after it, and the points and places the race moved each team. Race sessions only, and in beta on OpenF1's side.",
+      "display_name": "Get constructors' championship",
+      "display_str_template": "Get the OpenF1 constructors' championship standings.",
+      "handler": "actions.get_championship_teams",
+      "id": "openf1_get_championship_teams",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "meeting_key": 1276,
+            "points_current": 833,
+            "points_gained": 33,
+            "points_start": 800,
+            "position_current": 1,
+            "position_start": 1,
+            "positions_gained": 0,
+            "session_key": 9839,
+            "team_name": "McLaren"
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "get_championship_teams",
+      "output_formatter": "actions.format_championship_teams_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The team's name, e.g. 'McLaren'. Matches the whole value.",
+          "display_name": "Team name",
+          "examples": [
+            {
+              "label": "McLaren",
+              "value": "McLaren"
+            },
+            {
+              "label": "Ferrari",
+              "value": "Ferrari"
+            }
+          ],
+          "name": "team_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only teams at or above this championship position after the race.",
+          "display_name": "Top N in the championship",
+          "minimum": 1,
+          "name": "max_position",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/get-championship-teams",
+      "result_str_template": "OpenF1 constructors' championship retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "meeting_key": {
+                  "type": "number"
+                },
+                "points_current": {
+                  "type": "number"
+                },
+                "points_gained": {
+                  "type": "number"
+                },
+                "points_start": {
+                  "type": "number"
+                },
+                "position_current": {
+                  "type": "number"
+                },
+                "position_start": {
+                  "type": "number"
+                },
+                "positions_gained": {
+                  "type": "number"
+                },
+                "session_key": {
+                  "type": "number"
+                },
+                "team_name": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_location": {
+      "description": "Get one car's position on track as 3D coordinates, sampled about 3.7 times a second - useful for following its progress around a lap. It does not say which side of the track the car is on, and the origin is arbitrary rather than a fixed point on the circuit. A session and a driver are both required, and a time window is the way to narrow it further.",
+      "display_name": "Get car location",
+      "display_str_template": "Get the OpenF1 track location for {2}.",
+      "handler": "actions.get_location",
+      "id": "openf1_get_location",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "date": "2023-09-16T13:03:35.292000+00:00",
+            "driver_number": 81,
+            "meeting_key": 1219,
+            "session_key": 9161,
+            "x": 567,
+            "y": 3195,
+            "z": 187
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "get_location",
+      "output_formatter": "actions.format_location_output",
+      "parameters": [
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Required. The session to read telemetry from. Pick a meeting first and this lists its sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Required. The driver's car number. Telemetry is per-car, and one car's session is already tens of thousands of samples, so a driver must be chosen. Pick a session first and this lists that session's entries.",
+          "display_name": "Driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "examples": [
+            {
+              "label": "Max Verstappen",
+              "value": "1"
+            },
+            {
+              "label": "Carlos Sainz",
+              "value": "55"
+            }
+          ],
+          "name": "driver_number",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only include records at or after this UTC moment. Narrowing the window is the main way to keep a busy session's result readable.",
+          "display_name": "From",
+          "name": "date_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Optional. Only include records at or before this UTC moment.",
+          "display_name": "To",
+          "name": "date_to",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 5000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 5000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/get-location",
+      "result_str_template": "OpenF1 car locations retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "driver_number": {
+                  "type": "number"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "session_key": {
+                  "type": "number"
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "z": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_session_result": {
+      "description": "Get the classification after a session: finishing position, laps completed, time or best lap, gap to the leader, and whether a driver was disqualified or failed to finish or start. Published a few minutes after the official F1 results. In qualifying the time and gap are three values (Q1, Q2, Q3), so a single best_duration is provided beside them.",
+      "display_name": "Get session result",
+      "display_str_template": "Get the OpenF1 session result.",
+      "handler": "actions.get_session_result",
+      "id": "openf1_get_session_result",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "best_duration": 77.565,
+            "classified": true,
+            "dnf": false,
+            "dns": false,
+            "driver_number": 1,
+            "dsq": false,
+            "duration": 77.565,
+            "gap_to_leader": 0,
+            "gap_to_leader_seconds": 0,
+            "is_lapped": false,
+            "is_qualifying_format": false,
+            "meeting_key": 1143,
+            "number_of_laps": 24,
+            "position": 1,
+            "session_key": 7782
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "get_session_result",
+      "output_formatter": "actions.format_session_result_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The driver's car number. Pick a session first and this lists that session's entries; a number from an earlier step also works.",
+          "display_name": "Driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "examples": [
+            {
+              "label": "Max Verstappen",
+              "value": "1"
+            },
+            {
+              "label": "Carlos Sainz",
+              "value": "55"
+            }
+          ],
+          "name": "driver_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only the driver in this exact position.",
+          "display_name": "Position",
+          "minimum": 1,
+          "name": "position",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only positions at or above this one - 3 for the podium, 10 for the points.",
+          "display_name": "Top N positions",
+          "minimum": 1,
+          "name": "max_position",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/get-session-result",
+      "result_str_template": "OpenF1 session result retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "best_duration": {
+                  "type": "number"
+                },
+                "classified": {
+                  "type": "boolean"
+                },
+                "dnf": {
+                  "type": "boolean"
+                },
+                "dns": {
+                  "type": "boolean"
+                },
+                "driver_number": {
+                  "type": "number"
+                },
+                "dsq": {
+                  "type": "boolean"
+                },
+                "duration": {
+                  "description": "Varies by session: a number, an array of three (Q1, Q2, Q3), or '+1 LAP'. Compare on the derived *_seconds field instead."
+                },
+                "gap_to_leader": {
+                  "description": "Varies by session: a number, an array of three (Q1, Q2, Q3), or '+1 LAP'. Compare on the derived *_seconds field instead."
+                },
+                "gap_to_leader_seconds": {
+                  "type": "number"
+                },
+                "is_lapped": {
+                  "type": "boolean"
+                },
+                "is_qualifying_format": {
+                  "type": "boolean"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "number_of_laps": {
+                  "type": "number"
+                },
+                "position": {
+                  "type": "number"
+                },
+                "session_key": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_starting_grid": {
+      "description": "Get the grid a race started from: each slot, the driver in it, and the qualifying lap that earned it. Published a few minutes after the official F1 results, so it reflects any penalties already applied.",
+      "display_name": "Get starting grid",
+      "display_str_template": "Get the OpenF1 starting grid.",
+      "handler": "actions.get_starting_grid",
+      "id": "openf1_get_starting_grid",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "driver_number": 1,
+            "lap_duration": 76.732,
+            "meeting_key": 1143,
+            "position": 1,
+            "session_key": 7783
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "get_starting_grid",
+      "output_formatter": "actions.format_starting_grid_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The driver's car number. Pick a session first and this lists that session's entries; a number from an earlier step also works.",
+          "display_name": "Driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "examples": [
+            {
+              "label": "Max Verstappen",
+              "value": "1"
+            },
+            {
+              "label": "Carlos Sainz",
+              "value": "55"
+            }
+          ],
+          "name": "driver_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only grid slots at or above this one, e.g. 10 for the top ten starters.",
+          "display_name": "Top N grid slots",
+          "minimum": 1,
+          "name": "max_position",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/get-starting-grid",
+      "result_str_template": "OpenF1 starting grid retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "driver_number": {
+                  "type": "number"
+                },
+                "lap_duration": {
+                  "type": "number"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "position": {
+                  "type": "number"
+                },
+                "session_key": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_drivers": {
+      "description": "List the drivers entered for a session: car number, full and broadcast name, three-letter acronym, team, headshot and the team's livery colour (both as the API's bare RRGGBB and as a ready-to-use #RRGGBB). Car numbers are reassigned between seasons and substitutes come and go, so this is keyed on a session rather than being a standing list.",
+      "display_name": "List drivers",
+      "display_str_template": "List OpenF1 drivers.",
+      "handler": "actions.list_drivers",
+      "id": "openf1_list_drivers",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "broadcast_name": "M VERSTAPPEN",
+            "driver_number": 1,
+            "first_name": "Max",
+            "full_name": "Max VERSTAPPEN",
+            "headshot_url": "https://www.formula1.com/content/dam/fom-website/drivers/M/MAXVER01_Max_Verstappen/maxver01.png.transform/1col/image.png",
+            "last_name": "Verstappen",
+            "meeting_key": 1219,
+            "name_acronym": "VER",
+            "session_key": 9158,
+            "team_colour": "3671C6",
+            "team_colour_hex": "#3671C6",
+            "team_name": "Red Bull Racing"
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "list_drivers",
+      "output_formatter": "actions.format_drivers_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The driver's car number. Pick a session first and this lists that session's entries; a number from an earlier step also works.",
+          "display_name": "Driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "examples": [
+            {
+              "label": "Max Verstappen",
+              "value": "1"
+            },
+            {
+              "label": "Carlos Sainz",
+              "value": "55"
+            }
+          ],
+          "name": "driver_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The team's name, e.g. 'Red Bull Racing' or 'McLaren'. Matches the whole value.",
+          "display_name": "Team name",
+          "name": "team_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The driver's three-letter acronym, e.g. 'VER' or 'NOR'.",
+          "display_name": "Driver acronym",
+          "name": "name_acronym",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/list-drivers",
+      "result_str_template": "OpenF1 drivers retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "broadcast_name": {
+                  "type": "string"
+                },
+                "driver_number": {
+                  "type": "number"
+                },
+                "first_name": {
+                  "type": "string"
+                },
+                "full_name": {
+                  "type": "string"
+                },
+                "headshot_url": {
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "name_acronym": {
+                  "type": "string"
+                },
+                "session_key": {
+                  "type": "number"
+                },
+                "team_colour": {
+                  "type": "string"
+                },
+                "team_colour_hex": {
+                  "type": "string"
+                },
+                "team_name": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_intervals": {
+      "description": "List the gap to the car ahead and to the race leader, updated about every four seconds. Races only. Each gap is a number, '+1 LAP' for a lapped driver, or empty for the leader, so plain interval_seconds, gap_to_leader_seconds, is_lapped and is_leader fields are provided beside them to compare on.",
+      "display_name": "List intervals",
+      "display_str_template": "List OpenF1 intervals.",
+      "handler": "actions.list_intervals",
+      "id": "openf1_list_intervals",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "date": "2023-09-17T13:31:02.395000+00:00",
+            "driver_number": 1,
+            "gap_to_leader": 41.019,
+            "gap_to_leader_seconds": 41.019,
+            "interval": 0.003,
+            "interval_seconds": 0.003,
+            "is_lapped": false,
+            "is_leader": false,
+            "meeting_key": 1219,
+            "session_key": 9165
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "list_intervals",
+      "output_formatter": "actions.format_intervals_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The driver's car number. Pick a session first and this lists that session's entries; a number from an earlier step also works.",
+          "display_name": "Driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "examples": [
+            {
+              "label": "Max Verstappen",
+              "value": "1"
+            },
+            {
+              "label": "Carlos Sainz",
+              "value": "55"
+            }
+          ],
+          "name": "driver_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only readings where the gap to the car ahead is at or under this many seconds - 1 finds the moments a driver was within a second and eligible for DRS.",
+          "display_name": "Maximum interval (seconds)",
+          "minimum": 0,
+          "name": "max_interval",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only include records at or after this UTC moment. Narrowing the window is the main way to keep a busy session's result readable.",
+          "display_name": "From",
+          "name": "date_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Optional. Only include records at or before this UTC moment.",
+          "display_name": "To",
+          "name": "date_to",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/list-intervals",
+      "result_str_template": "OpenF1 intervals retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "driver_number": {
+                  "type": "number"
+                },
+                "gap_to_leader": {
+                  "description": "Varies by session: a number, an array of three (Q1, Q2, Q3), or '+1 LAP'. Compare on the derived *_seconds field instead."
+                },
+                "gap_to_leader_seconds": {
+                  "type": "number"
+                },
+                "interval": {
+                  "description": "Varies by session: a number, an array of three (Q1, Q2, Q3), or '+1 LAP'. Compare on the derived *_seconds field instead."
+                },
+                "interval_seconds": {
+                  "type": "number"
+                },
+                "is_lapped": {
+                  "type": "boolean"
+                },
+                "is_leader": {
+                  "type": "boolean"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "session_key": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_laps": {
+      "description": "List individual laps with sector times, the two intermediate speeds and the speed-trap speed, whether the lap was an out lap from the pits, and the mini-sector codes - decoded here into the yellow/green/purple/pitlane colours a timing screen shows. Filter to one driver, one lap, a range of laps, or laps under a given time. Mini-sectors are not published during races.",
+      "display_name": "List laps",
+      "display_str_template": "List OpenF1 laps.",
+      "handler": "actions.list_laps",
+      "id": "openf1_list_laps",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "date_start": "2023-09-16T13:59:07.606000+00:00",
+            "driver_number": 63,
+            "duration_sector_1": 26.966,
+            "duration_sector_2": 38.657,
+            "duration_sector_3": 26.12,
+            "i1_speed": 307,
+            "i2_speed": 277,
+            "is_pit_out_lap": false,
+            "lap_duration": 91.743,
+            "lap_number": 8,
+            "meeting_key": 1219,
+            "segments_sector_1": [
+              2049,
+              2049,
+              2049,
+              2051,
+              2049,
+              2051,
+              2049,
+              2049
+            ],
+            "segments_sector_1_colours": [
+              "green",
+              "green",
+              "green",
+              "purple",
+              "green",
+              "purple",
+              "green",
+              "green"
+            ],
+            "segments_sector_2": [
+              2049,
+              2049,
+              2049,
+              2049,
+              2049,
+              2049,
+              2049,
+              2049
+            ],
+            "segments_sector_2_colours": [
+              "green",
+              "green",
+              "green",
+              "green",
+              "green",
+              "green",
+              "green",
+              "green"
+            ],
+            "segments_sector_3": [
+              2048,
+              2048,
+              2048,
+              2048,
+              2048,
+              2064,
+              2064,
+              2064
+            ],
+            "segments_sector_3_colours": [
+              "yellow",
+              "yellow",
+              "yellow",
+              "yellow",
+              "yellow",
+              "pitlane",
+              "pitlane",
+              "pitlane"
+            ],
+            "session_key": 9161,
+            "st_speed": 298
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "list_laps",
+      "output_formatter": "actions.format_laps_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The driver's car number. Pick a session first and this lists that session's entries; a number from an earlier step also works.",
+          "display_name": "Driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "examples": [
+            {
+              "label": "Max Verstappen",
+              "value": "1"
+            },
+            {
+              "label": "Carlos Sainz",
+              "value": "55"
+            }
+          ],
+          "name": "driver_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only this exact lap of the session.",
+          "display_name": "Lap number",
+          "minimum": 1,
+          "name": "lap_number",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only laps at or after this lap number.",
+          "display_name": "From lap",
+          "minimum": 1,
+          "name": "min_lap_number",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only laps at or before this lap number.",
+          "display_name": "To lap",
+          "minimum": 1,
+          "name": "max_lap_number",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. True for only out laps from the pits, false for only laps that are not. Leave blank for both - which is a different question from 'false'.",
+          "display_name": "Pit out laps only",
+          "name": "is_pit_out_lap",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Only laps at or under this many seconds - a way to skip safety-car and in/out laps.",
+          "display_name": "Maximum lap time (seconds)",
+          "minimum": 0,
+          "name": "max_lap_duration",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/list-laps",
+      "result_str_template": "OpenF1 laps retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "date_start": {
+                  "type": "string"
+                },
+                "driver_number": {
+                  "type": "number"
+                },
+                "duration_sector_1": {
+                  "type": "number"
+                },
+                "duration_sector_2": {
+                  "type": "number"
+                },
+                "duration_sector_3": {
+                  "type": "number"
+                },
+                "i1_speed": {
+                  "type": "number"
+                },
+                "i2_speed": {
+                  "type": "number"
+                },
+                "is_pit_out_lap": {
+                  "type": "boolean"
+                },
+                "lap_duration": {
+                  "type": "number"
+                },
+                "lap_number": {
+                  "type": "number"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "segments_sector_1": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "segments_sector_1_colours": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "segments_sector_2": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "segments_sector_2_colours": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "segments_sector_3": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "segments_sector_3_colours": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "session_key": {
+                  "type": "number"
+                },
+                "st_speed": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_meetings": {
+      "description": "List Formula 1 race weekends - each Grand Prix and testing weekend from 2023 onward - with the circuit, country, local GMT offset, start and end times, and the meeting key every other action is keyed on. Filter by season, country or circuit, or leave everything blank for the whole calendar. No API key required.",
+      "display_name": "List meetings",
+      "display_str_template": "List OpenF1 meetings.",
+      "handler": "actions.list_meetings",
+      "id": "openf1_list_meetings",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "circuit_image": "https://media.formula1.com/content/dam/fom-website/2018-redesign-assets/Track%20icons%204x3/Singapore%20carbon.png",
+            "circuit_info_url": "https://api.multiviewer.app/api/v1/circuits/61/2026",
+            "circuit_key": 61,
+            "circuit_short_name": "Singapore",
+            "circuit_type": "Temporary - Street",
+            "country_code": "SGP",
+            "country_flag": "https://media.formula1.com/content/dam/fom-website/2018-redesign-assets/Flags%2016x9/singapore-flag.png",
+            "country_key": 157,
+            "country_name": "Singapore",
+            "date_end": "2026-10-11T14:00:00+00:00",
+            "date_start": "2026-10-09T09:30:00+00:00",
+            "gmt_offset": "08:00:00",
+            "is_cancelled": false,
+            "location": "Marina Bay",
+            "meeting_key": 1296,
+            "meeting_name": "Singapore Grand Prix",
+            "meeting_official_name": "FORMULA 1 SINGAPORE AIRLINES SINGAPORE GRAND PRIX 2026",
+            "year": 2026
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "list_meetings",
+      "output_formatter": "actions.format_meetings_output",
+      "parameters": [
+        {
+          "description": "Optional. The season, e.g. 2024. OpenF1's coverage starts at 2023, so an earlier year is refused rather than returning nothing.",
+          "display_name": "Season",
+          "maximum": 2100,
+          "minimum": 2023,
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. The country the weekend was held in, spelled in full, e.g. 'Singapore'. Matches the whole value.",
+          "display_name": "Country name",
+          "examples": [
+            {
+              "label": "Singapore",
+              "value": "Singapore"
+            },
+            {
+              "label": "Belgium",
+              "value": "Belgium"
+            }
+          ],
+          "name": "country_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The three-letter country code, e.g. 'SGP'.",
+          "display_name": "Country code",
+          "name": "country_code",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The circuit's short name, e.g. 'Spa-Francorchamps' or 'Singapore'.",
+          "display_name": "Circuit",
+          "name": "circuit_short_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only include records at or after this UTC moment. Narrowing the window is the main way to keep a busy session's result readable.",
+          "display_name": "From",
+          "name": "date_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Optional. Only include records at or before this UTC moment.",
+          "display_name": "To",
+          "name": "date_to",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/list-meetings",
+      "result_str_template": "OpenF1 meetings retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "circuit_image": {
+                  "type": "string"
+                },
+                "circuit_info_url": {
+                  "type": "string"
+                },
+                "circuit_key": {
+                  "type": "number"
+                },
+                "circuit_short_name": {
+                  "type": "string"
+                },
+                "circuit_type": {
+                  "type": "string"
+                },
+                "country_code": {
+                  "type": "string"
+                },
+                "country_flag": {
+                  "type": "string"
+                },
+                "country_key": {
+                  "type": "number"
+                },
+                "country_name": {
+                  "type": "string"
+                },
+                "date_end": {
+                  "type": "string"
+                },
+                "date_start": {
+                  "type": "string"
+                },
+                "gmt_offset": {
+                  "type": "string"
+                },
+                "is_cancelled": {
+                  "type": "boolean"
+                },
+                "location": {
+                  "type": "string"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "meeting_name": {
+                  "type": "string"
+                },
+                "meeting_official_name": {
+                  "type": "string"
+                },
+                "session_key": {
+                  "type": "number"
+                },
+                "year": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_overtakes": {
+      "description": "List position swaps between two drivers, with who passed whom and the position gained. Races only. This counts changes from pit stops and post-race penalties as well as on-track passes, and OpenF1 notes the data may be incomplete.",
+      "display_name": "List overtakes",
+      "display_str_template": "List OpenF1 overtakes.",
+      "handler": "actions.list_overtakes",
+      "id": "openf1_list_overtakes",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "date": "2024-11-03T15:50:07.565000+00:00",
+            "meeting_key": 1249,
+            "overtaken_driver_number": 4,
+            "overtaking_driver_number": 63,
+            "position": 1,
+            "session_key": 9636
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "list_overtakes",
+      "output_formatter": "actions.format_overtakes_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The car number of the driver doing the passing.",
+          "display_name": "Overtaking driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "name": "overtaking_driver_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The car number of the driver being passed.",
+          "display_name": "Overtaken driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "name": "overtaken_driver_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only passes that put the overtaking driver into this position - 1 finds passes for the lead.",
+          "display_name": "Position gained",
+          "minimum": 1,
+          "name": "position",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only include records at or after this UTC moment. Narrowing the window is the main way to keep a busy session's result readable.",
+          "display_name": "From",
+          "name": "date_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Optional. Only include records at or before this UTC moment.",
+          "display_name": "To",
+          "name": "date_to",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/list-overtakes",
+      "result_str_template": "OpenF1 overtakes retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "overtaken_driver_number": {
+                  "type": "number"
+                },
+                "overtaking_driver_number": {
+                  "type": "number"
+                },
+                "position": {
+                  "type": "number"
+                },
+                "session_key": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_pit_stops": {
+      "description": "List trips through the pit lane, with the lap they happened on, the time spent stationary and the time spent in the lane overall. The stationary time is only recorded from the 2024 US Grand Prix onward; the lane time is available throughout.",
+      "display_name": "List pit stops",
+      "display_str_template": "List OpenF1 pit stops.",
+      "handler": "actions.list_pit_stops",
+      "id": "openf1_list_pit_stops",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "date": "2025-10-26T20:46:37.358000+00:00",
+            "driver_number": 16,
+            "lane_duration": 22.215,
+            "lap_number": 31,
+            "meeting_key": 1272,
+            "pit_duration": 22.215,
+            "session_key": 9877,
+            "stop_duration": 2.2
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "list_pit_stops",
+      "output_formatter": "actions.format_pit_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The driver's car number. Pick a session first and this lists that session's entries; a number from an earlier step also works.",
+          "display_name": "Driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "examples": [
+            {
+              "label": "Max Verstappen",
+              "value": "1"
+            },
+            {
+              "label": "Carlos Sainz",
+              "value": "55"
+            }
+          ],
+          "name": "driver_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only stops made on this lap.",
+          "display_name": "Lap number",
+          "minimum": 1,
+          "name": "lap_number",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only stops at or under this many seconds stationary - 2.5 finds the quick ones. Note this excludes stops before the 2024 US Grand Prix, which have no stationary time recorded.",
+          "display_name": "Maximum stationary time (seconds)",
+          "minimum": 0,
+          "name": "max_stop_duration",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/list-pit-stops",
+      "result_str_template": "OpenF1 pit stops retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "driver_number": {
+                  "type": "number"
+                },
+                "lane_duration": {
+                  "type": "number"
+                },
+                "lap_number": {
+                  "type": "number"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "pit_duration": {
+                  "type": "number"
+                },
+                "session_key": {
+                  "type": "number"
+                },
+                "stop_duration": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_positions": {
+      "description": "List the running order through a session - where each driver started and every change afterwards, each stamped with the moment it happened. A row is written when a position changes rather than at a fixed rate, so a quiet race produces few rows and a chaotic one many.",
+      "display_name": "List positions",
+      "display_str_template": "List OpenF1 positions.",
+      "handler": "actions.list_positions",
+      "id": "openf1_list_positions",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "date": "2023-08-26T09:30:47.199000+00:00",
+            "driver_number": 40,
+            "meeting_key": 1217,
+            "position": 2,
+            "session_key": 9144
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "list_positions",
+      "output_formatter": "actions.format_positions_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The driver's car number. Pick a session first and this lists that session's entries; a number from an earlier step also works.",
+          "display_name": "Driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "examples": [
+            {
+              "label": "Max Verstappen",
+              "value": "1"
+            },
+            {
+              "label": "Carlos Sainz",
+              "value": "55"
+            }
+          ],
+          "name": "driver_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only changes into this exact position.",
+          "display_name": "Position",
+          "minimum": 1,
+          "name": "position",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only positions at or above this one, e.g. 3 to follow the podium places.",
+          "display_name": "Top N positions",
+          "minimum": 1,
+          "name": "max_position",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only include records at or after this UTC moment. Narrowing the window is the main way to keep a busy session's result readable.",
+          "display_name": "From",
+          "name": "date_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Optional. Only include records at or before this UTC moment.",
+          "display_name": "To",
+          "name": "date_to",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/list-positions",
+      "result_str_template": "OpenF1 positions retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "driver_number": {
+                  "type": "number"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "position": {
+                  "type": "number"
+                },
+                "session_key": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_race_control": {
+      "description": "List race control's own narration of a session: flags, safety cars, DRS enabled and disabled, incidents noted, investigated and penalised, and the session being stopped and restarted. Filter by category, flag colour, scope, lap or driver.",
+      "display_name": "List race control messages",
+      "display_str_template": "List OpenF1 race control messages.",
+      "handler": "actions.list_race_control",
+      "id": "openf1_list_race_control",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "category": "Flag",
+            "date": "2023-06-04T14:21:01+00:00",
+            "driver_number": 1,
+            "flag": "BLACK AND WHITE",
+            "lap_number": 59,
+            "meeting_key": 1211,
+            "message": "BLACK AND WHITE FLAG FOR CAR 1 (VER) - TRACK LIMITS",
+            "qualifying_phase": null,
+            "scope": "Driver",
+            "sector": null,
+            "session_key": 9102
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "list_race_control",
+      "output_formatter": "actions.format_race_control_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The driver's car number. Pick a session first and this lists that session's entries; a number from an earlier step also works.",
+          "display_name": "Driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "examples": [
+            {
+              "label": "Max Verstappen",
+              "value": "1"
+            },
+            {
+              "label": "Carlos Sainz",
+              "value": "55"
+            }
+          ],
+          "name": "driver_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The event category, e.g. 'Flag', 'SafetyCar', 'Drs', 'CarEvent' or 'SessionStatus'.",
+          "display_name": "Category",
+          "examples": [
+            {
+              "label": "Flags",
+              "value": "Flag"
+            },
+            {
+              "label": "Safety car",
+              "value": "SafetyCar"
+            }
+          ],
+          "name": "category",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The flag shown, e.g. 'GREEN', 'YELLOW', 'DOUBLE YELLOW', 'RED', 'BLACK AND WHITE' or 'CHEQUERED'.",
+          "display_name": "Flag",
+          "examples": [
+            {
+              "label": "Yellow",
+              "value": "YELLOW"
+            },
+            {
+              "label": "Red",
+              "value": "RED"
+            },
+            {
+              "label": "Black and white",
+              "value": "BLACK AND WHITE"
+            }
+          ],
+          "name": "flag",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. What the message applied to: 'Track', 'Driver' or 'Sector'.",
+          "display_name": "Scope",
+          "name": "scope",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only messages from this lap of a race.",
+          "display_name": "Lap number",
+          "minimum": 1,
+          "name": "lap_number",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only include records at or after this UTC moment. Narrowing the window is the main way to keep a busy session's result readable.",
+          "display_name": "From",
+          "name": "date_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Optional. Only include records at or before this UTC moment.",
+          "display_name": "To",
+          "name": "date_to",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/list-race-control",
+      "result_str_template": "OpenF1 race control messages retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "category": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string"
+                },
+                "driver_number": {
+                  "type": "number"
+                },
+                "flag": {
+                  "type": "string"
+                },
+                "lap_number": {
+                  "type": "number"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "qualifying_phase": {
+                  "type": "number"
+                },
+                "scope": {
+                  "type": "string"
+                },
+                "sector": {
+                  "type": "number"
+                },
+                "session_key": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_sessions": {
+      "description": "List sessions - practice, qualifying, sprint and race - with their start and end times, circuit and session key. A session key is what nearly every other OpenF1 action is keyed on, so this is usually the first step of a workflow. Filter by season, country, circuit, session name or race weekend.",
+      "display_name": "List sessions",
+      "display_str_template": "List OpenF1 sessions.",
+      "handler": "actions.list_sessions",
+      "id": "openf1_list_sessions",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "circuit_key": 7,
+            "circuit_short_name": "Spa-Francorchamps",
+            "country_code": "BEL",
+            "country_key": 16,
+            "country_name": "Belgium",
+            "date_end": "2023-07-29T15:35:00+00:00",
+            "date_start": "2023-07-29T15:05:00+00:00",
+            "gmt_offset": "02:00:00",
+            "is_cancelled": false,
+            "location": "Spa-Francorchamps",
+            "meeting_key": 1216,
+            "session_key": 9140,
+            "session_name": "Sprint Qualifying",
+            "session_type": "Sprint Qualifying",
+            "year": 2023
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "list_sessions",
+      "output_formatter": "actions.format_sessions_output",
+      "parameters": [
+        {
+          "description": "Optional. The season, e.g. 2024. OpenF1 covers 2023 onward.",
+          "display_name": "Season",
+          "maximum": 2100,
+          "minimum": 2023,
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. The country, spelled in full.",
+          "display_name": "Country name",
+          "name": "country_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The circuit's short name.",
+          "display_name": "Circuit",
+          "name": "circuit_short_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The session's name, e.g. 'Practice 1', 'Qualifying', 'Sprint Qualifying' or 'Race'.",
+          "display_name": "Session name",
+          "examples": [
+            {
+              "label": "Race",
+              "value": "Race"
+            },
+            {
+              "label": "Qualifying",
+              "value": "Qualifying"
+            },
+            {
+              "label": "Practice 1",
+              "value": "Practice 1"
+            }
+          ],
+          "name": "session_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The broader type, e.g. 'Practice', 'Qualifying' or 'Race'.",
+          "display_name": "Session type",
+          "name": "session_type",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only include records at or after this UTC moment. Narrowing the window is the main way to keep a busy session's result readable.",
+          "display_name": "From",
+          "name": "date_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Optional. Only include records at or before this UTC moment.",
+          "display_name": "To",
+          "name": "date_to",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/list-sessions",
+      "result_str_template": "OpenF1 sessions retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "circuit_key": {
+                  "type": "number"
+                },
+                "circuit_short_name": {
+                  "type": "string"
+                },
+                "country_code": {
+                  "type": "string"
+                },
+                "country_key": {
+                  "type": "number"
+                },
+                "country_name": {
+                  "type": "string"
+                },
+                "date_end": {
+                  "type": "string"
+                },
+                "date_start": {
+                  "type": "string"
+                },
+                "gmt_offset": {
+                  "type": "string"
+                },
+                "is_cancelled": {
+                  "type": "boolean"
+                },
+                "location": {
+                  "type": "string"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "session_key": {
+                  "type": "number"
+                },
+                "session_name": {
+                  "type": "string"
+                },
+                "session_type": {
+                  "type": "string"
+                },
+                "year": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_stints": {
+      "description": "List stints - each unbroken run on one set of tyres - with the compound, the laps it spanned, how many laps that was, and how old the tyres already were when it began. Filtering on tyre age is how a workflow finds runs started on a scrubbed set.",
+      "display_name": "List stints",
+      "display_str_template": "List OpenF1 stints.",
+      "handler": "actions.list_stints",
+      "id": "openf1_list_stints",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "compound": "SOFT",
+            "driver_number": 16,
+            "lap_count": 20,
+            "lap_end": 20,
+            "lap_start": 1,
+            "meeting_key": 1219,
+            "session_key": 9165,
+            "stint_number": 1,
+            "tyre_age_at_start": 3
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "list_stints",
+      "output_formatter": "actions.format_stints_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The driver's car number. Pick a session first and this lists that session's entries; a number from an earlier step also works.",
+          "display_name": "Driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "examples": [
+            {
+              "label": "Max Verstappen",
+              "value": "1"
+            },
+            {
+              "label": "Carlos Sainz",
+              "value": "55"
+            }
+          ],
+          "name": "driver_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The compound, e.g. SOFT, MEDIUM, HARD, INTERMEDIATE or WET.",
+          "display_name": "Tyre compound",
+          "examples": [
+            {
+              "label": "Soft",
+              "value": "SOFT"
+            },
+            {
+              "label": "Medium",
+              "value": "MEDIUM"
+            },
+            {
+              "label": "Hard",
+              "value": "HARD"
+            }
+          ],
+          "name": "compound",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only this stint of the session, counting from 1.",
+          "display_name": "Stint number",
+          "minimum": 1,
+          "name": "stint_number",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only stints begun on tyres at least this many laps old. 1 or more finds every run on a used set.",
+          "display_name": "Minimum tyre age (laps)",
+          "minimum": 0,
+          "name": "min_tyre_age_at_start",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/list-stints",
+      "result_str_template": "OpenF1 stints retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "compound": {
+                  "type": "string"
+                },
+                "driver_number": {
+                  "type": "number"
+                },
+                "lap_count": {
+                  "type": "number"
+                },
+                "lap_end": {
+                  "type": "number"
+                },
+                "lap_start": {
+                  "type": "number"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "session_key": {
+                  "type": "number"
+                },
+                "stint_number": {
+                  "type": "number"
+                },
+                "tyre_age_at_start": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_team_radio": {
+      "description": "List radio exchanges between drivers and their teams, each with a link to the audio recording. Only a selection of a session's radio is ever released, and OpenF1 notes that far less has been published from 2026 onward - many sessions carry none at all, so an empty result is normal rather than a fault.",
+      "display_name": "List team radio",
+      "display_str_template": "List OpenF1 team radio messages.",
+      "handler": "actions.list_team_radio",
+      "id": "openf1_list_team_radio",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "date": "2023-09-15T09:40:43.005000+00:00",
+            "driver_number": 11,
+            "meeting_key": 1219,
+            "recording_url": "https://livetiming.formula1.com/static/2023/2023-09-17_Singapore_Grand_Prix/2023-09-15_Practice_1/TeamRadio/SERPER01_11_20230915_104008.mp3",
+            "session_key": 9158
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "list_team_radio",
+      "output_formatter": "actions.format_team_radio_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The driver's car number. Pick a session first and this lists that session's entries; a number from an earlier step also works.",
+          "display_name": "Driver",
+          "dynamic_source": "drivers",
+          "dynamic_source_depends_on": [
+            "session_key"
+          ],
+          "examples": [
+            {
+              "label": "Max Verstappen",
+              "value": "1"
+            },
+            {
+              "label": "Carlos Sainz",
+              "value": "55"
+            }
+          ],
+          "name": "driver_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only include records at or after this UTC moment. Narrowing the window is the main way to keep a busy session's result readable.",
+          "display_name": "From",
+          "name": "date_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Optional. Only include records at or before this UTC moment.",
+          "display_name": "To",
+          "name": "date_to",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/list-team-radio",
+      "result_str_template": "OpenF1 team radio messages retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "driver_number": {
+                  "type": "number"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "recording_url": {
+                  "type": "string"
+                },
+                "session_key": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_weather": {
+      "description": "List trackside weather taken once a minute: air and track temperature, humidity, air pressure, wind speed and direction, and whether it was raining. Filter to the readings above a temperature or wind speed to find when conditions turned.",
+      "display_name": "List weather readings",
+      "display_str_template": "List OpenF1 weather readings.",
+      "handler": "actions.list_weather",
+      "id": "openf1_list_weather",
+      "method": "POST",
+      "mock_response": {
+        "output_detail": "summary",
+        "result_count": 1,
+        "results": [
+          {
+            "air_temperature": 27.8,
+            "date": "2023-05-07T18:42:25.233000+00:00",
+            "humidity": 58,
+            "meeting_key": 1208,
+            "pressure": 1018.7,
+            "rainfall": 0,
+            "rainfall_detected": false,
+            "session_key": 9078,
+            "track_temperature": 52.5,
+            "wind_direction": 136,
+            "wind_speed": 2.4
+          }
+        ],
+        "total_matched": 1,
+        "truncated": false
+      },
+      "name": "list_weather",
+      "output_formatter": "actions.format_weather_output",
+      "parameters": [
+        {
+          "description": "Optional. The session to read - pick a meeting first and this lists its practice, qualifying, sprint and race sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Session",
+          "dynamic_source": "sessions",
+          "dynamic_source_depends_on": [
+            "meeting_key"
+          ],
+          "examples": [
+            {
+              "label": "Session key",
+              "value": "9159"
+            },
+            {
+              "label": "The session on now",
+              "value": "latest"
+            }
+          ],
+          "name": "session_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The race weekend to read. Setting this also fills the Session dropdown with that weekend's sessions. Accepts a key from an earlier step, or 'latest' for the session or meeting happening now.",
+          "display_name": "Meeting (Grand Prix)",
+          "dynamic_source": "meetings",
+          "examples": [
+            {
+              "label": "Meeting key",
+              "value": "1219"
+            },
+            {
+              "label": "The current weekend",
+              "value": "latest"
+            }
+          ],
+          "name": "meeting_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only readings at or above this air temperature.",
+          "display_name": "Minimum air temperature (\u00b0C)",
+          "name": "min_air_temperature",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only readings at or above this track temperature - the number that decides tyre behaviour.",
+          "display_name": "Minimum track temperature (\u00b0C)",
+          "name": "min_track_temperature",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only readings at or above this wind speed.",
+          "display_name": "Minimum wind speed (m/s)",
+          "minimum": 0,
+          "name": "min_wind_speed",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only include records at or after this UTC moment. Narrowing the window is the main way to keep a busy session's result readable.",
+          "display_name": "From",
+          "name": "date_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Optional. Only include records at or before this UTC moment.",
+          "display_name": "To",
+          "name": "date_to",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": 100,
+          "description": "Optional. How many rows to return, 1 to 1000 (default 100). OpenF1 has no paging, so the whole matching set is fetched and cut to this; the result says how many matched in total and whether it was cut.",
+          "display_name": "Maximum rows",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "summary",
+          "description": "How much of each row to print into the run output for a person to read. Every row that was returned is listed either way, however many that is: the Maximum rows field above decides that, not this one. 'One line each' gives the fields that matter for this collection; 'Every field' adds everything else the API sent. This only changes what is displayed, never what is saved - a later step sees the same data whichever is chosen. Defaults to one line each.",
+          "display_name": "Show in the run",
+          "name": "output_detail",
+          "options": [
+            {
+              "label": "One line each",
+              "value": "summary"
+            },
+            {
+              "label": "Every field",
+              "value": "full"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openf1/list-weather",
+      "result_str_template": "OpenF1 weather readings retrieved.",
+      "returns": {
+        "properties": {
+          "output_detail": {
+            "type": "string"
+          },
+          "result_count": {
+            "type": "number"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "air_temperature": {
+                  "type": "number"
+                },
+                "date": {
+                  "type": "string"
+                },
+                "humidity": {
+                  "type": "number"
+                },
+                "meeting_key": {
+                  "type": "number"
+                },
+                "pressure": {
+                  "type": "number"
+                },
+                "rainfall": {
+                  "type": "number"
+                },
+                "rainfall_detected": {
+                  "type": "boolean"
+                },
+                "session_key": {
+                  "type": "number"
+                },
+                "track_temperature": {
+                  "type": "number"
+                },
+                "wind_direction": {
+                  "type": "number"
+                },
+                "wind_speed": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_matched": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Read Formula 1 timing and telemetry from OpenF1: the race calendar and session list, entry lists with team colours, classifications and starting grids, championship standings, and how a session actually unfolded - lap and sector times, pit stops, tyre stints, running order, gaps to the car ahead, overtakes, race control's flags and safety cars, trackside weather, and team radio with audio links. Down to the car itself: speed, throttle, brake, gear, RPM, DRS and track position, sampled about 3.7 times a second. Every session from 2023 onward is free and needs no API key.\n\nThis is an independent integration. OpenF1 is an unofficial, open-source project and is not associated with the Formula 1 companies; F1, FORMULA 1, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V.",
+  "display_name": "OpenF1",
+  "id": "openf1"
+}

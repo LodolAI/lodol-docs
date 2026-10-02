@@ -1,0 +1,144 @@
+{
+  "actions": {
+    "send_record": {
+      "description": "Send one record (a lead, contact, or company) to your connected Clay table via its webhook. Each top-level field becomes a column value, Clay appends a new row, and any enrichment, scoring, or sync columns you've configured on the table run on it. Use this to push a single prospect into Clay, for example after a form submission or a CRM update.",
+      "display_name": "Send record to Clay",
+      "display_str_template": "Send a record to the Clay table.",
+      "handler": "actions.send_record",
+      "id": "clay_send_record",
+      "method": "POST",
+      "mock_response": {
+        "delivered": true,
+        "http_status": 200,
+        "object": "clay_webhook_result",
+        "response": {
+          "success": true
+        }
+      },
+      "name": "send_record",
+      "output_formatter": "actions.format_send_record_output",
+      "parameters": [
+        {
+          "description": "The row to add, as a JSON object of field name/value pairs. Each top-level key maps to a column in your Clay table, e.g. {\"email\": \"jane@acme.com\", \"first_name\": \"Jane\", \"company\": \"Acme\", \"domain\": \"acme.com\"}. Use the same field names your Clay table expects. Adds one row per call.",
+          "display_name": "Record",
+          "name": "record",
+          "required": true,
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/clay/send-record",
+      "result_str_template": "Sent a record to Clay.",
+      "returns": {
+        "description": "Delivery outcome for the single record. This is Lodol's result wrapper, not Clay's schema: Clay's webhook returns a lightweight acknowledgement (often an empty body), so 'response' may be null even on success.",
+        "properties": {
+          "delivered": {
+            "description": "True when Clay accepted the record (HTTP 2xx).",
+            "type": "boolean"
+          },
+          "http_status": {
+            "description": "HTTP status code Clay returned (e.g. 200).",
+            "type": "integer"
+          },
+          "object": {
+            "description": "Always 'clay_webhook_result'.",
+            "type": "string"
+          },
+          "response": {
+            "description": "Clay's raw acknowledgement body when it returned JSON; null when the body was empty or non-JSON.",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "send_records": {
+      "description": "Send a list of records (leads, contacts, or companies) to your connected Clay table in one step. Each item is delivered as its own webhook submission, so Clay appends one row per record and runs the table's enrichment on each. Use this to bulk-import a target list, for example a batch of companies to enrich or a list of signups to score. Up to 100 records per call.",
+      "display_name": "Send records to Clay",
+      "display_str_template": "Send multiple records to the Clay table.",
+      "handler": "actions.send_records",
+      "id": "clay_send_records",
+      "method": "POST",
+      "mock_response": {
+        "delivered": 2,
+        "failed": 0,
+        "object": "clay_bulk_webhook_result",
+        "results": [
+          {
+            "delivered": true,
+            "http_status": 200,
+            "index": 0
+          },
+          {
+            "delivered": true,
+            "http_status": 200,
+            "index": 1
+          }
+        ],
+        "total": 2
+      },
+      "name": "send_records",
+      "output_formatter": "actions.format_send_records_output",
+      "parameters": [
+        {
+          "description": "A list of rows to add. Each item is a JSON object of field name/value pairs and becomes one new row in your Clay table, e.g. [{\"email\": \"jane@acme.com\", \"company\": \"Acme\"}, {\"email\": \"sam@globex.com\", \"company\": \"Globex\"}]. Maximum 100 items per call; split larger lists across multiple calls.",
+          "display_name": "Records",
+          "name": "records",
+          "required": true,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/clay/send-records",
+      "result_str_template": "Sent records to Clay.",
+      "returns": {
+        "description": "Summary of the bulk send. Each record is delivered as its own webhook POST (one Clay row each); per-record outcomes are in 'results'. A connection-level auth failure aborts the whole batch, so a partial 'delivered' count reflects only per-record HTTP failures.",
+        "properties": {
+          "delivered": {
+            "description": "How many Clay accepted.",
+            "type": "integer"
+          },
+          "failed": {
+            "description": "How many failed after retries.",
+            "type": "integer"
+          },
+          "object": {
+            "description": "Always 'clay_bulk_webhook_result'.",
+            "type": "string"
+          },
+          "results": {
+            "description": "Per-record outcome, in input order.",
+            "items": {
+              "properties": {
+                "delivered": {
+                  "description": "True if this record was accepted.",
+                  "type": "boolean"
+                },
+                "error": {
+                  "description": "Failure reason when not delivered.",
+                  "type": "string"
+                },
+                "http_status": {
+                  "description": "HTTP status when delivered.",
+                  "type": "integer"
+                },
+                "index": {
+                  "description": "0-based position in the input list.",
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total": {
+            "description": "Number of records submitted.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Send leads, contacts, and companies into a Clay table through its webhook so Clay can dedupe, enrich, score, and sync them. Push a single record or a batch of records in one step.",
+  "display_name": "Clay",
+  "id": "clay"
+}

@@ -1,0 +1,4835 @@
+{
+  "actions": {
+    "cancel_execution": {
+      "description": "Stop a run that is still going. Use it to cut a query loose that is taking longer than it is worth: a cancelled run stops consuming compute, though the credits already spent on it stay spent. Only a run still in flight can be cancelled: Dune has nothing to stop once one has finished, and answers that it cannot find the run at all, so check the status first if the run might already be over.",
+      "display_name": "Cancel an execution",
+      "display_str_template": "Cancel the Dune execution {0}.",
+      "handler": "actions.cancel_execution",
+      "id": "dune_cancel_execution",
+      "method": "POST",
+      "mock_response": {
+        "cancelled": true,
+        "execution_id": "01HKZJ2683PHF9Q9PHHQ8FW4Q1"
+      },
+      "name": "cancel_execution",
+      "output_formatter": "actions.format_cancel_output",
+      "parameters": [
+        {
+          "description": "The execution to read, as returned by a step that started one (Run a saved query, Run SQL, Start a query run, Start a SQL run, or a materialized view refresh).",
+          "display_name": "Execution",
+          "examples": [
+            {
+              "label": "An execution id",
+              "value": "01HKZJ2683PHF9Q9PHHQ8FW4Q1"
+            }
+          ],
+          "name": "execution_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/dune/cancel-execution",
+      "result_str_template": "Cancelled the execution.",
+      "returns": {
+        "properties": {
+          "cancelled": {
+            "description": "Whether Dune actually stopped it",
+            "type": "boolean"
+          },
+          "execution_id": {
+            "description": "The run that was asked to stop",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "clear_table": {
+      "description": "Empty an uploaded table without deleting it: every row goes, the columns stay, and any query or dashboard reading the table keeps working. This is the first half of a full refresh (clear it, then insert the new data), and it frees the storage the old rows were using.",
+      "display_name": "Clear a table",
+      "display_str_template": "Clear the Dune table {0}.",
+      "handler": "actions.clear_table",
+      "id": "dune_clear_table",
+      "method": "POST",
+      "mock_response": {
+        "cleared": true,
+        "full_name": "dune.my_team.interest_rates",
+        "message": "Table cleared",
+        "table": "my_team.interest_rates"
+      },
+      "name": "clear_table",
+      "output_formatter": "actions.format_clear_table_output",
+      "parameters": [
+        {
+          "description": "The uploaded table to act on. Pick one from the list, or type its name as namespace.table_name (the namespace is your Dune username or team handle).",
+          "display_name": "Table",
+          "dynamic_source": "uploaded_tables",
+          "examples": [
+            {
+              "label": "A table",
+              "value": "my_team.interest_rates"
+            }
+          ],
+          "name": "table",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/dune/clear-table",
+      "result_str_template": "Cleared the table.",
+      "returns": {
+        "properties": {
+          "cleared": {
+            "description": "Always true when the step succeeds",
+            "type": "boolean"
+          },
+          "full_name": {
+            "description": "The name to write in SQL",
+            "type": "string"
+          },
+          "message": {
+            "description": "Dune's own message",
+            "type": "string"
+          },
+          "table": {
+            "description": "namespace.table_name that was cleared",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_table": {
+      "description": "Create an empty table on Dune with the columns and types you choose, ready for Insert rows to append to. Use this when data arrives repeatedly and has to build up (daily figures, a feed from another system) because rows can be added without replacing what is already there. For a one-off spreadsheet, Upload a CSV is simpler and works out the columns for you. Once the table exists you can join it to any Dune table in SQL.",
+      "display_name": "Create a table",
+      "display_str_template": "Create the Dune table '{0}'.",
+      "handler": "actions.create_table",
+      "id": "dune_create_table",
+      "method": "POST",
+      "mock_response": {
+        "already_existed": false,
+        "column_count": 2,
+        "columns": [
+          {
+            "name": "day",
+            "type": "timestamp"
+          },
+          {
+            "name": "dgs10",
+            "nullable": true,
+            "type": "double"
+          }
+        ],
+        "example_query": "select * from dune.my_team.interest_rates limit 10",
+        "full_name": "dune.my_team.interest_rates",
+        "message": "Table created",
+        "name": "my_team.interest_rates",
+        "namespace": "my_team",
+        "table_name": "interest_rates"
+      },
+      "name": "create_table",
+      "output_formatter": "actions.format_create_table_output",
+      "parameters": [
+        {
+          "description": "What to call the table. Lower case, letters, numbers and underscores; it must not start with a number.",
+          "display_name": "Table name",
+          "examples": [
+            {
+              "label": "A table name",
+              "value": "interest_rates"
+            }
+          ],
+          "name": "table_name",
+          "required": true,
+          "slugify": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The table's columns, as a list of objects. Each needs a 'name' and a 'type' (varchar, double, bigint, boolean, timestamp, date, varbinary, uint256\u2026), and may set 'nullable' to false to require a value.",
+          "display_name": "Columns",
+          "examples": [
+            {
+              "label": "A date and a number",
+              "value": "[{\"name\": \"day\", \"type\": \"timestamp\", \"nullable\": false}, {\"name\": \"rate\", \"type\": \"double\"}]"
+            },
+            {
+              "label": "An address and an amount",
+              "value": "[{\"name\": \"wallet\", \"type\": \"varbinary\"}, {\"name\": \"amount\", \"type\": \"uint256\"}, {\"name\": \"label\", \"type\": \"varchar\"}]"
+            }
+          ],
+          "name": "schema",
+          "required": true,
+          "schema": {
+            "items": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "nullable": {
+                  "type": "boolean"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Where the table lives: your Dune username, or your team's handle for a table the team shares. Leave it empty and Dune uses the one the API key belongs to.",
+          "display_name": "Namespace",
+          "examples": [
+            {
+              "label": "A team handle",
+              "value": "my_team"
+            }
+          ],
+          "name": "namespace",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What the table holds and where the data came from. Shown next to the table on Dune.",
+          "display_name": "Description",
+          "multiline": true,
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Private tables are visible only to your account or team. Leave off to let anyone on Dune query it.",
+          "display_name": "Keep it private",
+          "name": "is_private",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/dune/create-table",
+      "result_str_template": "Created the table.",
+      "returns": {
+        "properties": {
+          "already_existed": {
+            "description": "Whether a table of that name was already there",
+            "type": "boolean"
+          },
+          "column_count": {
+            "description": "Columns created",
+            "type": "integer"
+          },
+          "columns": {
+            "description": "The columns created",
+            "type": "array"
+          },
+          "example_query": {
+            "description": "SQL that reads the new table",
+            "type": "string"
+          },
+          "full_name": {
+            "description": "The name to write in SQL",
+            "type": "string"
+          },
+          "message": {
+            "description": "Dune's own message",
+            "type": "string"
+          },
+          "name": {
+            "description": "namespace.table_name: what the table fields take",
+            "type": "string"
+          },
+          "namespace": {
+            "description": "Where it lives",
+            "type": "string"
+          },
+          "table_name": {
+            "description": "Its name",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_materialized_view": {
+      "description": "Delete a materialized view, its schedule and the stored table behind it. This cannot be undone, and any query reading the view will stop working. The query the view was built from is left alone.",
+      "display_name": "Delete a materialized view",
+      "display_str_template": "Delete the Dune materialized view {0}.",
+      "handler": "actions.delete_materialized_view",
+      "id": "dune_delete_materialized_view",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "message": "Materialized view deleted",
+        "name": "result_daily_volume"
+      },
+      "name": "delete_materialized_view",
+      "output_formatter": "actions.format_delete_matview_output",
+      "parameters": [
+        {
+          "description": "The materialized view to act on. Pick one from the list, or type its name: the last part only, which always starts with 'result_'.",
+          "display_name": "Materialized view",
+          "dynamic_source": "materialized_views",
+          "examples": [
+            {
+              "label": "A view",
+              "value": "result_daily_volume"
+            }
+          ],
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/dune/delete-materialized-view",
+      "result_str_template": "Deleted the materialized view.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Always true when the step succeeds",
+            "type": "boolean"
+          },
+          "message": {
+            "description": "Dune's own message",
+            "type": "string"
+          },
+          "name": {
+            "description": "The view deleted",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_table": {
+      "description": "Delete an uploaded table and everything in it. This cannot be undone, and any query or dashboard reading the table will stop working. To empty a table but keep it queryable, use Clear a table instead.",
+      "display_name": "Delete a table",
+      "display_str_template": "Delete the Dune table {0}.",
+      "handler": "actions.delete_table",
+      "id": "dune_delete_table",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "full_name": "dune.my_team.interest_rates",
+        "message": "Table deleted",
+        "table": "my_team.interest_rates"
+      },
+      "name": "delete_table",
+      "output_formatter": "actions.format_delete_table_output",
+      "parameters": [
+        {
+          "description": "The uploaded table to act on. Pick one from the list, or type its name as namespace.table_name (the namespace is your Dune username or team handle).",
+          "display_name": "Table",
+          "dynamic_source": "uploaded_tables",
+          "examples": [
+            {
+              "label": "A table",
+              "value": "my_team.interest_rates"
+            }
+          ],
+          "name": "table",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/dune/delete-table",
+      "result_str_template": "Deleted the table.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Always true when the step succeeds",
+            "type": "boolean"
+          },
+          "full_name": {
+            "description": "The name it had in SQL",
+            "type": "string"
+          },
+          "message": {
+            "description": "Dune's own message",
+            "type": "string"
+          },
+          "table": {
+            "description": "namespace.table_name that was deleted",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "execute_pipeline": {
+      "description": "Run several queries and materialized view refreshes together, in an order you define. Each step names either a query or a view, and lists the steps it has to wait for; Dune runs everything that can run at once and holds back the rest. Use it to rebuild a set of related tables in the right order in a single call. For the common case (one query and whatever it depends on), Run a query with its pipeline works this out for you.",
+      "display_name": "Run a pipeline",
+      "display_str_template": "Run a Dune pipeline.",
+      "handler": "actions.execute_pipeline",
+      "id": "dune_execute_pipeline",
+      "method": "POST",
+      "mock_response": {
+        "node_count": 2,
+        "nodes": [
+          {
+            "depends_on": [],
+            "id": 1,
+            "kind": "materialized_view",
+            "materialized_view": "result_daily_volume",
+            "performance": null,
+            "query_id": null
+          },
+          {
+            "depends_on": [
+              1
+            ],
+            "id": 2,
+            "kind": "query",
+            "materialized_view": null,
+            "performance": null,
+            "query_id": 1215383
+          }
+        ],
+        "pipeline_execution_id": "01HZABC1230000000000000000"
+      },
+      "name": "execute_pipeline",
+      "output_formatter": "actions.format_pipeline_started_output",
+      "parameters": [
+        {
+          "description": "The steps to run, as a list of objects. Each one needs an 'id' (a number you choose), and either a 'query_id' or a 'materialized_view' name. Add 'depends_on' with the ids it has to wait for, and 'performance' to set its engine size.",
+          "display_name": "Steps",
+          "examples": [
+            {
+              "label": "Refresh a view, then run the query on it",
+              "value": "[{\"id\": 1, \"materialized_view\": \"result_daily_volume\"}, {\"id\": 2, \"query_id\": 1215383, \"depends_on\": [1]}]"
+            }
+          ],
+          "name": "nodes",
+          "required": true,
+          "schema": {
+            "items": {
+              "properties": {
+                "depends_on": {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "integer"
+                },
+                "materialized_view": {
+                  "type": "string"
+                },
+                "performance": {
+                  "type": "string"
+                },
+                "query_id": {
+                  "type": "integer"
+                },
+                "query_parameters": {
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/dune/execute-pipeline",
+      "result_str_template": "Started the pipeline.",
+      "returns": {
+        "properties": {
+          "node_count": {
+            "description": "Steps submitted",
+            "type": "integer"
+          },
+          "nodes": {
+            "description": "The steps, as Dune received them",
+            "items": {
+              "properties": {
+                "depends_on": {
+                  "description": "Steps it waits for",
+                  "type": "array"
+                },
+                "id": {
+                  "description": "The step's number in the pipeline",
+                  "type": "integer"
+                },
+                "kind": {
+                  "description": "'query' or 'materialized_view'",
+                  "type": "string"
+                },
+                "materialized_view": {
+                  "description": "The view, for a refresh step",
+                  "type": "string"
+                },
+                "performance": {
+                  "description": "The engine size it runs on",
+                  "type": "string"
+                },
+                "query_id": {
+                  "description": "The query, for a query step",
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "pipeline_execution_id": {
+            "description": "Id to follow with Get pipeline status",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "execute_query": {
+      "description": "Start a saved query running and return straight away with its execution id, without waiting for the rows. Use this for a query too slow to hold a workflow open on: start it here, and let a later step, or a scheduled run an hour from now, check it with Get execution status and collect it with Get execution results. For everything else, Run a saved query does all of it in one step.",
+      "display_name": "Start a query run",
+      "display_str_template": "Start the Dune query {0}.",
+      "handler": "actions.execute_query",
+      "id": "dune_execute_query",
+      "method": "POST",
+      "mock_response": {
+        "execution_id": "01HKZJ2683PHF9Q9PHHQ8FW4Q1",
+        "is_finished": false,
+        "query_id": 1215383,
+        "query_url": "https://dune.com/queries/1215383",
+        "state": "QUERY_STATE_PENDING",
+        "state_label": "Queued"
+      },
+      "name": "execute_query",
+      "output_formatter": "actions.format_started_output",
+      "parameters": [
+        {
+          "description": "The query to run, as its id or its address on dune.com. Open the query on Dune and either copy the whole address from the browser bar or take the number out of it: https://dune.com/queries/1215383 and 1215383 both work.",
+          "display_name": "Query",
+          "examples": [
+            {
+              "label": "A query id",
+              "value": "1215383"
+            },
+            {
+              "label": "The address of the query",
+              "value": "https://dune.com/queries/1215383"
+            }
+          ],
+          "name": "query_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How much compute to give the run. Credits are charged for what the run actually uses, so a bigger engine finishes sooner but costs more. Not every plan includes every engine, and Dune rejects one your subscription does not have, so leave this empty unless you know yours does. Empty runs the query on whichever engine it is set to use, which always works.",
+          "display_name": "Engine size",
+          "name": "performance",
+          "options": [
+            {
+              "label": "Medium: Dune's default, and the one every plan has",
+              "value": "medium"
+            },
+            {
+              "label": "Large: 2x compute for heavy joins, on paid plans",
+              "value": "large"
+            },
+            {
+              "label": "Small: cheapest, but not included in every plan",
+              "value": "small"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Values for the query's parameters, as name/value pairs, for example blockchain: ethereum. Leave a parameter out and Dune uses the default set on the query. Skip this entirely for a query without parameters.",
+          "display_name": "Query parameter values",
+          "name": "query_parameters",
+          "object_key_name": "Parameter name",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/dune/execute-query",
+      "result_str_template": "Started the query run.",
+      "returns": {
+        "properties": {
+          "execution_id": {
+            "description": "Id of the run that was started",
+            "type": "string"
+          },
+          "is_finished": {
+            "description": "Whether it has already reached a final state",
+            "type": "boolean"
+          },
+          "query_id": {
+            "description": "The query that ran",
+            "type": "integer"
+          },
+          "query_url": {
+            "description": "Its page on dune.com",
+            "type": "string"
+          },
+          "state": {
+            "description": "Dune's state constant",
+            "type": "string"
+          },
+          "state_label": {
+            "description": "That state in plain words",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "execute_query_pipeline": {
+      "description": "Run a query together with everything it is built on, as one unit: Dune refreshes each materialized view the query depends on, in dependency order, then runs the query itself. Use it when the query reads views that would otherwise be stale; it is the difference between a fresh number and yesterday's. Returns a pipeline execution id to follow with Get pipeline status.",
+      "display_name": "Run a query with its pipeline",
+      "display_str_template": "Run the Dune query {0} with its pipeline.",
+      "handler": "actions.execute_query_pipeline",
+      "id": "dune_execute_query_pipeline",
+      "method": "POST",
+      "mock_response": {
+        "pipeline_execution_id": "01HZABC1230000000000000000",
+        "query_id": 1215383,
+        "query_url": "https://dune.com/queries/1215383"
+      },
+      "name": "execute_query_pipeline",
+      "output_formatter": "actions.format_pipeline_started_output",
+      "parameters": [
+        {
+          "description": "The query to run, as its id or its address on dune.com. Open the query on Dune and either copy the whole address from the browser bar or take the number out of it: https://dune.com/queries/1215383 and 1215383 both work.",
+          "display_name": "Query",
+          "examples": [
+            {
+              "label": "A query id",
+              "value": "1215383"
+            },
+            {
+              "label": "The address of the query",
+              "value": "https://dune.com/queries/1215383"
+            }
+          ],
+          "name": "query_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How much compute to give the run. Credits are charged for what the run actually uses, so a bigger engine finishes sooner but costs more. Not every plan includes every engine, and Dune rejects one your subscription does not have, so leave this empty unless you know yours does. Empty runs the query on whichever engine it is set to use, which always works.",
+          "display_name": "Engine size",
+          "name": "performance",
+          "options": [
+            {
+              "label": "Medium: Dune's default, and the one every plan has",
+              "value": "medium"
+            },
+            {
+              "label": "Large: 2x compute for heavy joins, on paid plans",
+              "value": "large"
+            },
+            {
+              "label": "Small: cheapest, but not included in every plan",
+              "value": "small"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Values for the query's parameters, as name/value pairs, for example blockchain: ethereum. Leave a parameter out and Dune uses the default set on the query. Skip this entirely for a query without parameters.",
+          "display_name": "Query parameter values",
+          "name": "query_parameters",
+          "object_key_name": "Parameter name",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/dune/execute-query-pipeline",
+      "result_str_template": "Started the pipeline.",
+      "returns": {
+        "properties": {
+          "pipeline_execution_id": {
+            "description": "Id to follow with Get pipeline status",
+            "type": "string"
+          },
+          "query_id": {
+            "description": "The query that ran",
+            "type": "integer"
+          },
+          "query_url": {
+            "description": "Its page on dune.com",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "execute_sql": {
+      "description": "Start raw DuneSQL running and return straight away with its execution id, without waiting for the rows. The asynchronous half of Run SQL: use it for a statement too slow to hold a workflow open on, then collect the rows later with Get execution results.",
+      "display_name": "Start a SQL run",
+      "display_str_template": "Start a Dune SQL run.",
+      "handler": "actions.execute_sql",
+      "id": "dune_execute_sql",
+      "method": "POST",
+      "mock_response": {
+        "execution_id": "01HKZJ2683PHF9Q9PHHQ8FW4Q1",
+        "is_finished": false,
+        "query_id": null,
+        "query_url": null,
+        "state": "QUERY_STATE_PENDING",
+        "state_label": "Queued"
+      },
+      "name": "execute_sql",
+      "output_formatter": "actions.format_started_output",
+      "parameters": [
+        {
+          "description": "The DuneSQL to run. Same statement Run SQL takes; this one starts it and returns without waiting for the rows.",
+          "display_name": "SQL",
+          "examples": [
+            {
+              "label": "A daily aggregate",
+              "value": "select date_trunc('day', block_time) as day, count(*) as trades\nfrom dex.trades\nwhere block_time > now() - interval '30' day\ngroup by 1 order by 1"
+            }
+          ],
+          "multiline": true,
+          "name": "sql",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How much compute to give the run. Credits are charged for what the run actually uses, so a bigger engine finishes sooner but costs more. Not every plan includes every engine, and Dune rejects one your subscription does not have, so leave this empty unless you know yours does. Empty runs the query on whichever engine it is set to use, which always works.",
+          "display_name": "Engine size",
+          "name": "performance",
+          "options": [
+            {
+              "label": "Medium: Dune's default, and the one every plan has",
+              "value": "medium"
+            },
+            {
+              "label": "Large: 2x compute for heavy joins, on paid plans",
+              "value": "large"
+            },
+            {
+              "label": "Small: cheapest, but not included in every plan",
+              "value": "small"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/dune/execute-sql",
+      "result_str_template": "Started the SQL run.",
+      "returns": {
+        "properties": {
+          "execution_id": {
+            "description": "Id of the run that was started",
+            "type": "string"
+          },
+          "is_finished": {
+            "description": "Whether it has already reached a final state",
+            "type": "boolean"
+          },
+          "query_id": {
+            "description": "Always null; raw SQL is not a saved query",
+            "type": "integer"
+          },
+          "query_url": {
+            "description": "Always null; there is no page for raw SQL",
+            "type": "string"
+          },
+          "state": {
+            "description": "Dune's state constant",
+            "type": "string"
+          },
+          "state_label": {
+            "description": "That state in plain words",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_dataset": {
+      "description": "Look up one table by name and get its columns, their types and what each one holds. Put it before Run SQL to write a statement against the real column names instead of guessing at them. Costs no credits.",
+      "display_name": "Get a table's columns",
+      "display_str_template": "Get the columns of the Dune table '{0}'.",
+      "handler": "actions.get_dataset",
+      "id": "dune_get_dataset",
+      "method": "POST",
+      "mock_response": {
+        "column_count": 3,
+        "columns": [
+          {
+            "description": "When the trade was included in a block",
+            "name": "block_time",
+            "nullable": false,
+            "type": "timestamp"
+          },
+          {
+            "description": "The DEX the trade happened on",
+            "name": "project",
+            "nullable": false,
+            "type": "varchar"
+          },
+          {
+            "description": "Trade size in US dollars",
+            "name": "amount_usd",
+            "nullable": true,
+            "type": "double"
+          }
+        ],
+        "created_at": "2023-02-14T10:02:11.000Z",
+        "full_name": "dex.trades",
+        "is_private": false,
+        "owner_handle": "dune",
+        "owner_type": "team",
+        "slug": "dex.trades",
+        "type": "spell",
+        "updated_at": "2026-08-25T05:00:00.000Z"
+      },
+      "name": "get_dataset",
+      "output_formatter": "actions.format_get_dataset_output",
+      "parameters": [
+        {
+          "description": "The table's full name, as you would write it in SQL.",
+          "display_name": "Table",
+          "examples": [
+            {
+              "label": "A curated table",
+              "value": "dex.trades"
+            },
+            {
+              "label": "Raw chain data",
+              "value": "ethereum.transactions"
+            },
+            {
+              "label": "An uploaded table",
+              "value": "dune.my_team.interest_rates"
+            }
+          ],
+          "name": "slug",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/dune/get-dataset",
+      "result_str_template": "Retrieved the table.",
+      "returns": {
+        "properties": {
+          "column_count": {
+            "description": "How many columns it has",
+            "type": "integer"
+          },
+          "columns": {
+            "description": "Its columns",
+            "items": {
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "nullable": {
+                  "type": "boolean"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "created_at": {
+            "description": "When it was created",
+            "type": "string"
+          },
+          "full_name": {
+            "description": "The name to write in SQL",
+            "type": "string"
+          },
+          "is_private": {
+            "description": "Whether it is private",
+            "type": "boolean"
+          },
+          "owner_handle": {
+            "description": "Who owns it",
+            "type": "string"
+          },
+          "owner_type": {
+            "description": "Whether that is a user or a team",
+            "type": "string"
+          },
+          "slug": {
+            "description": "The name asked about",
+            "type": "string"
+          },
+          "type": {
+            "description": "What kind of table it is",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When it last changed",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_execution_results": {
+      "description": "Collect the rows a finished run produced, using the execution id from a step that started it. Results stay on Dune for 90 days, so the same execution can be read as many times as you like without running the query again. Use the row, skip, column, filter and ordering options to walk a large result a page at a time, or to pull only the part you need.",
+      "display_name": "Get execution results",
+      "display_str_template": "Get the results of the Dune execution {0}.",
+      "handler": "actions.get_execution_results",
+      "id": "dune_get_execution_results",
+      "method": "POST",
+      "mock_response": {
+        "cancelled_at": null,
+        "column_names": [
+          "block_date",
+          "project",
+          "volume_usd"
+        ],
+        "column_types": [
+          "timestamp",
+          "varchar",
+          "double"
+        ],
+        "columns": [
+          {
+            "name": "block_date",
+            "type": "timestamp"
+          },
+          {
+            "name": "project",
+            "type": "varchar"
+          },
+          {
+            "name": "volume_usd",
+            "type": "double"
+          }
+        ],
+        "datapoint_count": 6,
+        "error_message": null,
+        "error_type": null,
+        "execution_ended_at": "2026-08-25T09:14:11.884Z",
+        "execution_id": "01HKZJ2683PHF9Q9PHHQ8FW4Q1",
+        "execution_started_at": "2026-08-25T09:14:03.010Z",
+        "execution_time_seconds": 8.874,
+        "expires_at": "2026-11-23T09:14:11.884Z",
+        "failed": false,
+        "first_row": {
+          "block_date": "2026-08-25 00:00:00.000 UTC",
+          "project": "uniswap",
+          "volume_usd": 1843992104.51
+        },
+        "has_more": false,
+        "is_finished": true,
+        "next_offset": null,
+        "offset": 0,
+        "query_id": 1215383,
+        "query_url": "https://dune.com/queries/1215383",
+        "result_set_bytes": 214,
+        "row_count": 2,
+        "rows": [
+          {
+            "block_date": "2026-08-25 00:00:00.000 UTC",
+            "project": "uniswap",
+            "volume_usd": 1843992104.51
+          },
+          {
+            "block_date": "2026-08-25 00:00:00.000 UTC",
+            "project": "curve",
+            "volume_usd": 412887320.09
+          }
+        ],
+        "state": "QUERY_STATE_COMPLETED",
+        "state_label": "Completed",
+        "submitted_at": "2026-08-25T09:14:02.221Z",
+        "succeeded": true,
+        "total_result_set_bytes": 214,
+        "total_row_count": 2
+      },
+      "name": "get_execution_results",
+      "output_formatter": "actions.format_results_output",
+      "parameters": [
+        {
+          "description": "The execution to read, as returned by a step that started one (Run a saved query, Run SQL, Start a query run, Start a SQL run, or a materialized view refresh).",
+          "display_name": "Execution",
+          "examples": [
+            {
+              "label": "An execution id",
+              "value": "01HKZJ2683PHF9Q9PHHQ8FW4Q1"
+            }
+          ],
+          "name": "execution_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 1000,
+          "description": "How many rows to bring back in this step. Results are charged by the cell, so asking for what you need rather than everything is what keeps a workflow inside its credit allowance.",
+          "display_name": "Rows to return",
+          "maximum": 50000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many rows to skip before returning any: 0 for the first page. Use the 'next offset' a previous step returned to walk a large result one page at a time.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Bring back only these columns instead of all of them. Cheapest way to cut the cost of a wide result: name the five columns you need rather than paying for fifty. Leave empty for every column.",
+          "display_name": "Only these columns",
+          "examples": [
+            {
+              "label": "A few columns",
+              "value": "tx_hash, amount_usd, block_time"
+            }
+          ],
+          "name": "columns",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Keep only the rows matching this condition, written like a SQL WHERE clause: quote text values, leave numbers unquoted, and combine with AND / OR / IN / LIKE. Dune applies it before sending, so it costs less than filtering afterwards. Literal values only: no now() or interval arithmetic, and no NOT IN or NOT LIKE.",
+          "display_name": "Only rows where",
+          "examples": [
+            {
+              "label": "A threshold",
+              "value": "amount_usd > 1000"
+            },
+            {
+              "label": "One chain",
+              "value": "blockchain = 'ethereum'"
+            },
+            {
+              "label": "Several values",
+              "value": "project IN ('uniswap', 'sushiswap', 'curve')"
+            },
+            {
+              "label": "A date and a threshold",
+              "value": "block_time > '2026-01-31' AND amount_usd > 1000"
+            }
+          ],
+          "name": "filters",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How to order the rows, written like a SQL ORDER BY clause: a column name, 'desc' after it for largest first, and commas between several.",
+          "display_name": "Order by",
+          "examples": [
+            {
+              "label": "Largest first",
+              "value": "amount_usd desc"
+            },
+            {
+              "label": "Two columns",
+              "value": "block_time desc, amount_usd desc"
+            }
+          ],
+          "name": "sort_by",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Instead of a page, take this many rows at random from across the whole result, useful for a spot check of a result too big to read. A sample has no pages, so the rows-to-return and skip options above are ignored when this is set; clear the filter first, because filtering and sampling cannot be combined.",
+          "display_name": "Random sample of",
+          "maximum": 50000,
+          "minimum": 1,
+          "name": "sample_count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Dune stores at most 32GB per result and refuses to serve one that was cut short. Turn this on to take the part that was kept rather than failing the step.",
+          "display_name": "Accept a truncated result",
+          "name": "allow_partial_results",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/dune/get-execution-results",
+      "result_str_template": "Retrieved the results.",
+      "returns": {
+        "properties": {
+          "cancelled_at": {
+            "description": "When it was cancelled, if it was",
+            "type": "string"
+          },
+          "column_names": {
+            "description": "The result's column names",
+            "type": "array"
+          },
+          "column_types": {
+            "description": "The result's column types",
+            "type": "array"
+          },
+          "columns": {
+            "description": "The columns as name/type pairs",
+            "items": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "datapoint_count": {
+            "description": "Cells returned: what this call is billed on",
+            "type": "integer"
+          },
+          "error_message": {
+            "description": "Why it failed, if it did",
+            "type": "string"
+          },
+          "error_type": {
+            "description": "Dune's failure type, if it failed",
+            "type": "string"
+          },
+          "execution_ended_at": {
+            "description": "When it ended",
+            "type": "string"
+          },
+          "execution_id": {
+            "description": "Id of this run",
+            "type": "string"
+          },
+          "execution_started_at": {
+            "description": "When it started",
+            "type": "string"
+          },
+          "execution_time_seconds": {
+            "description": "How long the query took to run",
+            "type": "number"
+          },
+          "expires_at": {
+            "description": "When the stored result expires",
+            "type": "string"
+          },
+          "failed": {
+            "description": "Whether it finished without producing results",
+            "type": "boolean"
+          },
+          "first_row": {
+            "description": "The first row, for a query that returns a single figure",
+            "type": "object"
+          },
+          "has_more": {
+            "description": "Whether more rows are waiting",
+            "type": "boolean"
+          },
+          "is_finished": {
+            "description": "Whether the run has reached a final state",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "Offset to ask for to get the next page",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "The offset this page started at",
+            "type": "integer"
+          },
+          "query_id": {
+            "description": "Id of the query that ran, or null for raw SQL",
+            "type": "integer"
+          },
+          "query_url": {
+            "description": "The query's page on dune.com, when it has one",
+            "type": "string"
+          },
+          "result_set_bytes": {
+            "description": "Bytes in this page",
+            "type": "integer"
+          },
+          "row_count": {
+            "description": "Rows in this page",
+            "type": "integer"
+          },
+          "rows": {
+            "description": "The rows, each an object keyed by column name",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "state": {
+            "description": "Dune's state constant, e.g. QUERY_STATE_COMPLETED",
+            "type": "string"
+          },
+          "state_label": {
+            "description": "That state in plain words",
+            "type": "string"
+          },
+          "submitted_at": {
+            "description": "When the run was submitted",
+            "type": "string"
+          },
+          "succeeded": {
+            "description": "Whether it finished successfully",
+            "type": "boolean"
+          },
+          "total_result_set_bytes": {
+            "description": "Bytes in the whole result",
+            "type": "integer"
+          },
+          "total_row_count": {
+            "description": "How many rows the whole result has",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_execution_results_csv": {
+      "description": "The same rows as Get execution results, but as CSV text rather than a list of objects: ready to write to a file, attach to an email or paste into a spreadsheet. The header row comes back split out separately as well, so a later step can see the column names without parsing the text.",
+      "display_name": "Get execution results as CSV",
+      "display_str_template": "Get the Dune execution {0} as CSV.",
+      "handler": "actions.get_execution_results_csv",
+      "id": "dune_get_execution_results_csv",
+      "method": "POST",
+      "mock_response": {
+        "bytes": 118,
+        "column_names": [
+          "block_date",
+          "project",
+          "volume_usd"
+        ],
+        "csv": "block_date,project,volume_usd\n2026-08-25 00:00:00.000 UTC,uniswap,1843992104.51\n2026-08-25 00:00:00.000 UTC,curve,412887320.09\n",
+        "execution_id": "01HKZJ2683PHF9Q9PHHQ8FW4Q1",
+        "has_more": false,
+        "next_offset": null,
+        "offset": 0,
+        "query_id": null,
+        "query_url": null,
+        "row_count": 2
+      },
+      "name": "get_execution_results_csv",
+      "output_formatter": "actions.format_csv_output",
+      "parameters": [
+        {
+          "description": "The execution to read, as returned by a step that started one (Run a saved query, Run SQL, Start a query run, Start a SQL run, or a materialized view refresh).",
+          "display_name": "Execution",
+          "examples": [
+            {
+              "label": "An execution id",
+              "value": "01HKZJ2683PHF9Q9PHHQ8FW4Q1"
+            }
+          ],
+          "name": "execution_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 1000,
+          "description": "How many rows to bring back in this step. Results are charged by the cell, so asking for what you need rather than everything is what keeps a workflow inside its credit allowance.",
+          "display_name": "Rows to return",
+          "maximum": 50000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many rows to skip before returning any: 0 for the first page. Use the 'next offset' a previous step returned to walk a large result one page at a time.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Bring back only these columns instead of all of them. Cheapest way to cut the cost of a wide result: name the five columns you need rather than paying for fifty. Leave empty for every column.",
+          "display_name": "Only these columns",
+          "examples": [
+            {
+              "label": "A few columns",
+              "value": "tx_hash, amount_usd, block_time"
+            }
+          ],
+          "name": "columns",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Keep only the rows matching this condition, written like a SQL WHERE clause: quote text values, leave numbers unquoted, and combine with AND / OR / IN / LIKE. Dune applies it before sending, so it costs less than filtering afterwards. Literal values only: no now() or interval arithmetic, and no NOT IN or NOT LIKE.",
+          "display_name": "Only rows where",
+          "examples": [
+            {
+              "label": "A threshold",
+              "value": "amount_usd > 1000"
+            },
+            {
+              "label": "One chain",
+              "value": "blockchain = 'ethereum'"
+            },
+            {
+              "label": "Several values",
+              "value": "project IN ('uniswap', 'sushiswap', 'curve')"
+            },
+            {
+              "label": "A date and a threshold",
+              "value": "block_time > '2026-01-31' AND amount_usd > 1000"
+            }
+          ],
+          "name": "filters",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How to order the rows, written like a SQL ORDER BY clause: a column name, 'desc' after it for largest first, and commas between several.",
+          "display_name": "Order by",
+          "examples": [
+            {
+              "label": "Largest first",
+              "value": "amount_usd desc"
+            },
+            {
+              "label": "Two columns",
+              "value": "block_time desc, amount_usd desc"
+            }
+          ],
+          "name": "sort_by",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Instead of a page, take this many rows at random from across the whole result, useful for a spot check of a result too big to read. A sample has no pages, so the rows-to-return and skip options above are ignored when this is set; clear the filter first, because filtering and sampling cannot be combined.",
+          "display_name": "Random sample of",
+          "maximum": 50000,
+          "minimum": 1,
+          "name": "sample_count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Dune stores at most 32GB per result and refuses to serve one that was cut short. Turn this on to take the part that was kept rather than failing the step.",
+          "display_name": "Accept a truncated result",
+          "name": "allow_partial_results",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/dune/get-execution-results-csv",
+      "result_str_template": "Retrieved the CSV.",
+      "returns": {
+        "properties": {
+          "bytes": {
+            "description": "Size of the CSV text",
+            "type": "integer"
+          },
+          "column_names": {
+            "description": "The header row, split up",
+            "type": "array"
+          },
+          "csv": {
+            "description": "The rows as CSV text, header first",
+            "type": "string"
+          },
+          "execution_id": {
+            "description": "Id of the run, when read by run",
+            "type": "string"
+          },
+          "has_more": {
+            "description": "Whether another page may exist",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "Offset for the next page",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "The offset this page started at",
+            "type": "integer"
+          },
+          "query_id": {
+            "description": "Id of the query, when read by query",
+            "type": "integer"
+          },
+          "query_url": {
+            "description": "The query's page on dune.com",
+            "type": "string"
+          },
+          "row_count": {
+            "description": "Rows of data, not counting the header",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_execution_status": {
+      "description": "Check on a run that was started earlier: whether it is queued, running or finished, how many rows it produced, how long it took and how many credits it cost. This is the step to branch a workflow on ('is finished' and 'succeeded' come back as plain true/false), and it costs no credits itself, so a scheduled workflow can poll it freely.",
+      "display_name": "Get execution status",
+      "display_str_template": "Check the Dune execution {0}.",
+      "handler": "actions.get_execution_status",
+      "id": "dune_get_execution_status",
+      "method": "POST",
+      "mock_response": {
+        "cancelled_at": null,
+        "column_names": [
+          "block_date",
+          "project",
+          "volume_usd"
+        ],
+        "column_types": [
+          "timestamp",
+          "varchar",
+          "double"
+        ],
+        "columns": [
+          {
+            "name": "block_date",
+            "type": "timestamp"
+          },
+          {
+            "name": "project",
+            "type": "varchar"
+          },
+          {
+            "name": "volume_usd",
+            "type": "double"
+          }
+        ],
+        "datapoint_count": 6,
+        "error_message": null,
+        "error_type": null,
+        "execution_cost_credits": 12,
+        "execution_ended_at": "2026-08-25T09:14:11.884Z",
+        "execution_id": "01HKZJ2683PHF9Q9PHHQ8FW4Q1",
+        "execution_started_at": "2026-08-25T09:14:03.010Z",
+        "execution_time_seconds": 8.874,
+        "expires_at": "2026-11-23T09:14:11.884Z",
+        "failed": false,
+        "is_finished": true,
+        "query_id": 1215383,
+        "query_url": "https://dune.com/queries/1215383",
+        "queue_position": null,
+        "result_set_bytes": 214,
+        "state": "QUERY_STATE_COMPLETED",
+        "state_label": "Completed",
+        "submitted_at": "2026-08-25T09:14:02.221Z",
+        "succeeded": true,
+        "total_result_set_bytes": 214,
+        "total_row_count": 2
+      },
+      "name": "get_execution_status",
+      "output_formatter": "actions.format_execution_status_output",
+      "parameters": [
+        {
+          "description": "The execution to read, as returned by a step that started one (Run a saved query, Run SQL, Start a query run, Start a SQL run, or a materialized view refresh).",
+          "display_name": "Execution",
+          "examples": [
+            {
+              "label": "An execution id",
+              "value": "01HKZJ2683PHF9Q9PHHQ8FW4Q1"
+            }
+          ],
+          "name": "execution_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/dune/get-execution-status",
+      "result_str_template": "Checked the execution.",
+      "returns": {
+        "properties": {
+          "cancelled_at": {
+            "description": "When it was cancelled, if it was",
+            "type": "string"
+          },
+          "column_names": {
+            "description": "The result's column names",
+            "type": "array"
+          },
+          "column_types": {
+            "description": "The result's column types",
+            "type": "array"
+          },
+          "columns": {
+            "description": "The columns as name/type pairs",
+            "items": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "datapoint_count": {
+            "description": "Cells returned: what this call is billed on",
+            "type": "integer"
+          },
+          "error_message": {
+            "description": "Why it failed, if it did",
+            "type": "string"
+          },
+          "error_type": {
+            "description": "Dune's failure type, if it failed",
+            "type": "string"
+          },
+          "execution_cost_credits": {
+            "description": "Credits the run has consumed",
+            "type": "number"
+          },
+          "execution_ended_at": {
+            "description": "When it ended",
+            "type": "string"
+          },
+          "execution_id": {
+            "description": "Id of this run",
+            "type": "string"
+          },
+          "execution_started_at": {
+            "description": "When it started",
+            "type": "string"
+          },
+          "execution_time_seconds": {
+            "description": "How long the query took to run",
+            "type": "number"
+          },
+          "expires_at": {
+            "description": "When the stored result expires",
+            "type": "string"
+          },
+          "failed": {
+            "description": "Whether it finished without producing results",
+            "type": "boolean"
+          },
+          "is_finished": {
+            "description": "Whether the run has reached a final state",
+            "type": "boolean"
+          },
+          "query_id": {
+            "description": "Id of the query that ran, or null for raw SQL",
+            "type": "integer"
+          },
+          "query_url": {
+            "description": "The query's page on dune.com, when it has one",
+            "type": "string"
+          },
+          "queue_position": {
+            "description": "Place in the queue, while it is waiting",
+            "type": "integer"
+          },
+          "result_set_bytes": {
+            "description": "Bytes in this page",
+            "type": "integer"
+          },
+          "state": {
+            "description": "Dune's state constant, e.g. QUERY_STATE_COMPLETED",
+            "type": "string"
+          },
+          "state_label": {
+            "description": "That state in plain words",
+            "type": "string"
+          },
+          "submitted_at": {
+            "description": "When the run was submitted",
+            "type": "string"
+          },
+          "succeeded": {
+            "description": "Whether it finished successfully",
+            "type": "boolean"
+          },
+          "total_result_set_bytes": {
+            "description": "Bytes in the whole result",
+            "type": "integer"
+          },
+          "total_row_count": {
+            "description": "How many rows the whole result has",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_latest_query_result": {
+      "description": "Read the rows a saved query produced the last time it ran, without running it again. This is the cheap way to read Dune on a schedule: let the query refresh itself on Dune's own scheduler and just collect what is there, instead of paying for an execution every time. Works on any public query as well as your own. For a query with parameters, give the values you want and Dune finds the run that used them.",
+      "display_name": "Get a query's latest results",
+      "display_str_template": "Get the latest results of the Dune query {0}.",
+      "handler": "actions.get_latest_query_result",
+      "id": "dune_get_latest_query_result",
+      "method": "POST",
+      "mock_response": {
+        "cancelled_at": null,
+        "column_names": [
+          "block_date",
+          "project",
+          "volume_usd"
+        ],
+        "column_types": [
+          "timestamp",
+          "varchar",
+          "double"
+        ],
+        "columns": [
+          {
+            "name": "block_date",
+            "type": "timestamp"
+          },
+          {
+            "name": "project",
+            "type": "varchar"
+          },
+          {
+            "name": "volume_usd",
+            "type": "double"
+          }
+        ],
+        "datapoint_count": 6,
+        "error_message": null,
+        "error_type": null,
+        "execution_ended_at": "2026-08-25T09:14:11.884Z",
+        "execution_id": "01HKZJ2683PHF9Q9PHHQ8FW4Q1",
+        "execution_started_at": "2026-08-25T09:14:03.010Z",
+        "execution_time_seconds": 8.874,
+        "expires_at": "2026-11-23T09:14:11.884Z",
+        "failed": false,
+        "first_row": {
+          "block_date": "2026-08-25 00:00:00.000 UTC",
+          "project": "uniswap",
+          "volume_usd": 1843992104.51
+        },
+        "has_more": false,
+        "is_finished": true,
+        "next_offset": null,
+        "offset": 0,
+        "query_id": 1215383,
+        "query_url": "https://dune.com/queries/1215383",
+        "result_set_bytes": 214,
+        "row_count": 2,
+        "rows": [
+          {
+            "block_date": "2026-08-25 00:00:00.000 UTC",
+            "project": "uniswap",
+            "volume_usd": 1843992104.51
+          },
+          {
+            "block_date": "2026-08-25 00:00:00.000 UTC",
+            "project": "curve",
+            "volume_usd": 412887320.09
+          }
+        ],
+        "state": "QUERY_STATE_COMPLETED",
+        "state_label": "Completed",
+        "submitted_at": "2026-08-25T09:14:02.221Z",
+        "succeeded": true,
+        "total_result_set_bytes": 214,
+        "total_row_count": 2
+      },
+      "name": "get_latest_query_result",
+      "output_formatter": "actions.format_results_output",
+      "parameters": [
+        {
+          "description": "The query to run, as its id or its address on dune.com. Open the query on Dune and either copy the whole address from the browser bar or take the number out of it: https://dune.com/queries/1215383 and 1215383 both work.",
+          "display_name": "Query",
+          "examples": [
+            {
+              "label": "A query id",
+              "value": "1215383"
+            },
+            {
+              "label": "The address of the query",
+              "value": "https://dune.com/queries/1215383"
+            }
+          ],
+          "name": "query_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 1000,
+          "description": "How many rows to bring back in this step. Results are charged by the cell, so asking for what you need rather than everything is what keeps a workflow inside its credit allowance.",
+          "display_name": "Rows to return",
+          "maximum": 50000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many rows to skip before returning any: 0 for the first page. Use the 'next offset' a previous step returned to walk a large result one page at a time.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Bring back only these columns instead of all of them. Cheapest way to cut the cost of a wide result: name the five columns you need rather than paying for fifty. Leave empty for every column.",
+          "display_name": "Only these columns",
+          "examples": [
+            {
+              "label": "A few columns",
+              "value": "tx_hash, amount_usd, block_time"
+            }
+          ],
+          "name": "columns",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Keep only the rows matching this condition, written like a SQL WHERE clause: quote text values, leave numbers unquoted, and combine with AND / OR / IN / LIKE. Dune applies it before sending, so it costs less than filtering afterwards. Literal values only: no now() or interval arithmetic, and no NOT IN or NOT LIKE.",
+          "display_name": "Only rows where",
+          "examples": [
+            {
+              "label": "A threshold",
+              "value": "amount_usd > 1000"
+            },
+            {
+              "label": "One chain",
+              "value": "blockchain = 'ethereum'"
+            },
+            {
+              "label": "Several values",
+              "value": "project IN ('uniswap', 'sushiswap', 'curve')"
+            },
+            {
+              "label": "A date and a threshold",
+              "value": "block_time > '2026-01-31' AND amount_usd > 1000"
+            }
+          ],
+          "name": "filters",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How to order the rows, written like a SQL ORDER BY clause: a column name, 'desc' after it for largest first, and commas between several.",
+          "display_name": "Order by",
+          "examples": [
+            {
+              "label": "Largest first",
+              "value": "amount_usd desc"
+            },
+            {
+              "label": "Two columns",
+              "value": "block_time desc, amount_usd desc"
+            }
+          ],
+          "name": "sort_by",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Instead of a page, take this many rows at random from across the whole result, useful for a spot check of a result too big to read. A sample has no pages, so the rows-to-return and skip options above are ignored when this is set; clear the filter first, because filtering and sampling cannot be combined.",
+          "display_name": "Random sample of",
+          "maximum": 50000,
+          "minimum": 1,
+          "name": "sample_count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Dune stores at most 32GB per result and refuses to serve one that was cut short. Turn this on to take the part that was kept rather than failing the step.",
+          "display_name": "Accept a truncated result",
+          "name": "allow_partial_results",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Values for the query's parameters, as name/value pairs, for example blockchain: ethereum. Leave a parameter out and Dune uses the default set on the query. Skip this entirely for a query without parameters.",
+          "display_name": "Query parameter values",
+          "name": "query_parameters",
+          "object_key_name": "Parameter name",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/dune/get-latest-query-result",
+      "result_str_template": "Retrieved the latest results.",
+      "returns": {
+        "properties": {
+          "cancelled_at": {
+            "description": "When it was cancelled, if it was",
+            "type": "string"
+          },
+          "column_names": {
+            "description": "The result's column names",
+            "type": "array"
+          },
+          "column_types": {
+            "description": "The result's column types",
+            "type": "array"
+          },
+          "columns": {
+            "description": "The columns as name/type pairs",
+            "items": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "datapoint_count": {
+            "description": "Cells returned: what this call is billed on",
+            "type": "integer"
+          },
+          "error_message": {
+            "description": "Why it failed, if it did",
+            "type": "string"
+          },
+          "error_type": {
+            "description": "Dune's failure type, if it failed",
+            "type": "string"
+          },
+          "execution_ended_at": {
+            "description": "When it ended",
+            "type": "string"
+          },
+          "execution_id": {
+            "description": "Id of this run",
+            "type": "string"
+          },
+          "execution_started_at": {
+            "description": "When it started",
+            "type": "string"
+          },
+          "execution_time_seconds": {
+            "description": "How long the query took to run",
+            "type": "number"
+          },
+          "expires_at": {
+            "description": "When the stored result expires",
+            "type": "string"
+          },
+          "failed": {
+            "description": "Whether it finished without producing results",
+            "type": "boolean"
+          },
+          "first_row": {
+            "description": "The first row, for a query that returns a single figure",
+            "type": "object"
+          },
+          "has_more": {
+            "description": "Whether more rows are waiting",
+            "type": "boolean"
+          },
+          "is_finished": {
+            "description": "Whether the run has reached a final state",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "Offset to ask for to get the next page",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "The offset this page started at",
+            "type": "integer"
+          },
+          "query_id": {
+            "description": "Id of the query that ran, or null for raw SQL",
+            "type": "integer"
+          },
+          "query_url": {
+            "description": "The query's page on dune.com, when it has one",
+            "type": "string"
+          },
+          "result_set_bytes": {
+            "description": "Bytes in this page",
+            "type": "integer"
+          },
+          "row_count": {
+            "description": "Rows in this page",
+            "type": "integer"
+          },
+          "rows": {
+            "description": "The rows, each an object keyed by column name",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "state": {
+            "description": "Dune's state constant, e.g. QUERY_STATE_COMPLETED",
+            "type": "string"
+          },
+          "state_label": {
+            "description": "That state in plain words",
+            "type": "string"
+          },
+          "submitted_at": {
+            "description": "When the run was submitted",
+            "type": "string"
+          },
+          "succeeded": {
+            "description": "Whether it finished successfully",
+            "type": "boolean"
+          },
+          "total_result_set_bytes": {
+            "description": "Bytes in the whole result",
+            "type": "integer"
+          },
+          "total_row_count": {
+            "description": "How many rows the whole result has",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_latest_query_result_csv": {
+      "description": "The same rows as Get a query's latest results, but as CSV text: ready to write to a file, attach to an email or paste into a spreadsheet. The cheapest way to put a Dune dashboard's numbers somewhere else on a schedule.",
+      "display_name": "Get a query's latest results as CSV",
+      "display_str_template": "Get the latest results of the Dune query {0} as CSV.",
+      "handler": "actions.get_latest_query_result_csv",
+      "id": "dune_get_latest_query_result_csv",
+      "method": "POST",
+      "mock_response": {
+        "bytes": 118,
+        "column_names": [
+          "block_date",
+          "project",
+          "volume_usd"
+        ],
+        "csv": "block_date,project,volume_usd\n2026-08-25 00:00:00.000 UTC,uniswap,1843992104.51\n2026-08-25 00:00:00.000 UTC,curve,412887320.09\n",
+        "execution_id": null,
+        "has_more": false,
+        "next_offset": null,
+        "offset": 0,
+        "query_id": 1215383,
+        "query_url": "https://dune.com/queries/1215383",
+        "row_count": 2
+      },
+      "name": "get_latest_query_result_csv",
+      "output_formatter": "actions.format_csv_output",
+      "parameters": [
+        {
+          "description": "The query to run, as its id or its address on dune.com. Open the query on Dune and either copy the whole address from the browser bar or take the number out of it: https://dune.com/queries/1215383 and 1215383 both work.",
+          "display_name": "Query",
+          "examples": [
+            {
+              "label": "A query id",
+              "value": "1215383"
+            },
+            {
+              "label": "The address of the query",
+              "value": "https://dune.com/queries/1215383"
+            }
+          ],
+          "name": "query_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 1000,
+          "description": "How many rows to bring back in this step. Results are charged by the cell, so asking for what you need rather than everything is what keeps a workflow inside its credit allowance.",
+          "display_name": "Rows to return",
+          "maximum": 50000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many rows to skip before returning any: 0 for the first page. Use the 'next offset' a previous step returned to walk a large result one page at a time.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Bring back only these columns instead of all of them. Cheapest way to cut the cost of a wide result: name the five columns you need rather than paying for fifty. Leave empty for every column.",
+          "display_name": "Only these columns",
+          "examples": [
+            {
+              "label": "A few columns",
+              "value": "tx_hash, amount_usd, block_time"
+            }
+          ],
+          "name": "columns",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Keep only the rows matching this condition, written like a SQL WHERE clause: quote text values, leave numbers unquoted, and combine with AND / OR / IN / LIKE. Dune applies it before sending, so it costs less than filtering afterwards. Literal values only: no now() or interval arithmetic, and no NOT IN or NOT LIKE.",
+          "display_name": "Only rows where",
+          "examples": [
+            {
+              "label": "A threshold",
+              "value": "amount_usd > 1000"
+            },
+            {
+              "label": "One chain",
+              "value": "blockchain = 'ethereum'"
+            },
+            {
+              "label": "Several values",
+              "value": "project IN ('uniswap', 'sushiswap', 'curve')"
+            },
+            {
+              "label": "A date and a threshold",
+              "value": "block_time > '2026-01-31' AND amount_usd > 1000"
+            }
+          ],
+          "name": "filters",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How to order the rows, written like a SQL ORDER BY clause: a column name, 'desc' after it for largest first, and commas between several.",
+          "display_name": "Order by",
+          "examples": [
+            {
+              "label": "Largest first",
+              "value": "amount_usd desc"
+            },
+            {
+              "label": "Two columns",
+              "value": "block_time desc, amount_usd desc"
+            }
+          ],
+          "name": "sort_by",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Instead of a page, take this many rows at random from across the whole result, useful for a spot check of a result too big to read. A sample has no pages, so the rows-to-return and skip options above are ignored when this is set; clear the filter first, because filtering and sampling cannot be combined.",
+          "display_name": "Random sample of",
+          "maximum": 50000,
+          "minimum": 1,
+          "name": "sample_count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Dune stores at most 32GB per result and refuses to serve one that was cut short. Turn this on to take the part that was kept rather than failing the step.",
+          "display_name": "Accept a truncated result",
+          "name": "allow_partial_results",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/dune/get-latest-query-result-csv",
+      "result_str_template": "Retrieved the CSV.",
+      "returns": {
+        "properties": {
+          "bytes": {
+            "description": "Size of the CSV text",
+            "type": "integer"
+          },
+          "column_names": {
+            "description": "The header row, split up",
+            "type": "array"
+          },
+          "csv": {
+            "description": "The rows as CSV text, header first",
+            "type": "string"
+          },
+          "execution_id": {
+            "description": "Id of the run, when read by run",
+            "type": "string"
+          },
+          "has_more": {
+            "description": "Whether another page may exist",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "Offset for the next page",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "The offset this page started at",
+            "type": "integer"
+          },
+          "query_id": {
+            "description": "Id of the query, when read by query",
+            "type": "integer"
+          },
+          "query_url": {
+            "description": "The query's page on dune.com",
+            "type": "string"
+          },
+          "row_count": {
+            "description": "Rows of data, not counting the header",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_materialized_view": {
+      "description": "One materialized view in detail: the query it is built from, its refresh schedule and next refresh, its size, and the ids of its most recent refreshes, which can be read with Get execution results to see what it last produced. Costs no credits.",
+      "display_name": "Get a materialized view",
+      "display_str_template": "Get the Dune materialized view {0}.",
+      "handler": "actions.get_materialized_view",
+      "id": "dune_get_materialized_view",
+      "method": "POST",
+      "mock_response": {
+        "cron_expression": "0 * * * *",
+        "full_name": "dune.my_team.result_daily_volume",
+        "is_private": false,
+        "last_execution_ids": [
+          "01HKZJ2683PHF9Q9PHHQ8FW4Q1"
+        ],
+        "name": "result_daily_volume",
+        "next_refresh_at": "2026-08-25T10:00:00.000Z",
+        "query_id": 1215383,
+        "query_url": "https://dune.com/queries/1215383",
+        "schedule_expires_at": null,
+        "schedule_performance": "medium",
+        "table_size_bytes": 40960
+      },
+      "name": "get_materialized_view",
+      "output_formatter": "actions.format_get_matview_output",
+      "parameters": [
+        {
+          "description": "The materialized view to act on. Pick one from the list, or type its name: the last part only, which always starts with 'result_'.",
+          "display_name": "Materialized view",
+          "dynamic_source": "materialized_views",
+          "examples": [
+            {
+              "label": "A view",
+              "value": "result_daily_volume"
+            }
+          ],
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/dune/get-materialized-view",
+      "result_str_template": "Retrieved the materialized view.",
+      "returns": {
+        "properties": {
+          "cron_expression": {
+            "description": "Its refresh schedule, or null if it only refreshes on demand",
+            "type": "string"
+          },
+          "full_name": {
+            "description": "The name to write in SQL, e.g. dune.my_team.result_daily",
+            "type": "string"
+          },
+          "is_private": {
+            "description": "Whether it is private",
+            "type": "boolean"
+          },
+          "last_execution_ids": {
+            "description": "Ids of its most recent refreshes",
+            "type": "array"
+          },
+          "name": {
+            "description": "The view's name, e.g. result_daily",
+            "type": "string"
+          },
+          "next_refresh_at": {
+            "description": "When it next refreshes",
+            "type": "string"
+          },
+          "query_id": {
+            "description": "The query it is built from",
+            "type": "integer"
+          },
+          "query_url": {
+            "description": "That query's page on dune.com",
+            "type": "string"
+          },
+          "schedule_expires_at": {
+            "description": "When the schedule stops",
+            "type": "string"
+          },
+          "schedule_performance": {
+            "description": "The engine size its refreshes run on",
+            "type": "string"
+          },
+          "table_size_bytes": {
+            "description": "Size of the stored result",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_pipeline_status": {
+      "description": "Check on a pipeline run, step by step: which have finished, which failed and why, and the execution id each produced so its rows can be collected with Get execution results. Costs no credits, so a scheduled workflow can poll it freely.",
+      "display_name": "Get pipeline status",
+      "display_str_template": "Check the Dune pipeline {0}.",
+      "handler": "actions.get_pipeline_status",
+      "id": "dune_get_pipeline_status",
+      "method": "POST",
+      "mock_response": {
+        "error_message": null,
+        "execution_ids": [
+          "01HKZJ2683PHF9Q9PHHQ8FW4Q1"
+        ],
+        "is_finished": true,
+        "node_count": 1,
+        "nodes": [
+          {
+            "error_message": null,
+            "execution_id": "01HKZJ2683PHF9Q9PHHQ8FW4Q1",
+            "id": 1,
+            "kind": "materialized_view",
+            "materialized_view": "dune.my_team.result_base_data",
+            "query_id": null,
+            "state": "QUERY_STATE_COMPLETED",
+            "state_label": "Completed",
+            "succeeded": true
+          }
+        ],
+        "pipeline_execution_id": "01HZABC1230000000000000000",
+        "state": "QUERY_STATE_COMPLETED",
+        "state_label": "Completed",
+        "succeeded": true
+      },
+      "name": "get_pipeline_status",
+      "output_formatter": "actions.format_pipeline_status_output",
+      "parameters": [
+        {
+          "description": "The pipeline run to check, as returned by Run a pipeline or Run a query with its pipeline.",
+          "display_name": "Pipeline execution",
+          "examples": [
+            {
+              "label": "A pipeline execution id",
+              "value": "01HZABC1230000000000000000"
+            }
+          ],
+          "name": "pipeline_execution_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/dune/get-pipeline-status",
+      "result_str_template": "Checked the pipeline.",
+      "returns": {
+        "properties": {
+          "error_message": {
+            "description": "Why the pipeline failed, if it did",
+            "type": "string"
+          },
+          "execution_ids": {
+            "description": "Every execution the pipeline produced",
+            "type": "array"
+          },
+          "is_finished": {
+            "description": "Whether every step has finished",
+            "type": "boolean"
+          },
+          "node_count": {
+            "description": "How many steps",
+            "type": "integer"
+          },
+          "nodes": {
+            "description": "One entry per step",
+            "items": {
+              "properties": {
+                "error_message": {
+                  "type": "string"
+                },
+                "execution_id": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "integer"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "materialized_view": {
+                  "type": "string"
+                },
+                "query_id": {
+                  "type": "integer"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "state_label": {
+                  "type": "string"
+                },
+                "succeeded": {
+                  "type": "boolean"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "pipeline_execution_id": {
+            "description": "The pipeline run being checked",
+            "type": "string"
+          },
+          "state": {
+            "description": "Dune's state constant",
+            "type": "string"
+          },
+          "state_label": {
+            "description": "That state in plain words",
+            "type": "string"
+          },
+          "succeeded": {
+            "description": "Whether every step finished successfully",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_query_pipeline": {
+      "description": "See what a query actually depends on before you run it: every materialized view feeding it, and the order they run in. Use it to understand a query someone else built, to work out what a pipeline run will cost, or to find the views worth refreshing on their own schedule.",
+      "display_name": "Get a query's pipeline",
+      "display_str_template": "Get the pipeline behind the Dune query {0}.",
+      "handler": "actions.get_query_pipeline",
+      "id": "dune_get_query_pipeline",
+      "method": "POST",
+      "mock_response": {
+        "materialized_views": [
+          "dune.my_team.result_base_data"
+        ],
+        "node_count": 2,
+        "nodes": [
+          {
+            "depends_on": [],
+            "id": 1,
+            "kind": "materialized_view",
+            "materialized_view": "dune.my_team.result_base_data",
+            "performance": "medium",
+            "query_id": null
+          },
+          {
+            "depends_on": [
+              1
+            ],
+            "id": 2,
+            "kind": "query",
+            "materialized_view": null,
+            "performance": "medium",
+            "query_id": 1215383
+          }
+        ],
+        "pipeline": {
+          "nodes": []
+        },
+        "query_id": 1215383,
+        "query_ids": [
+          1215383
+        ],
+        "query_url": "https://dune.com/queries/1215383"
+      },
+      "name": "get_query_pipeline",
+      "output_formatter": "actions.format_query_pipeline_output",
+      "parameters": [
+        {
+          "description": "The query to run, as its id or its address on dune.com. Open the query on Dune and either copy the whole address from the browser bar or take the number out of it: https://dune.com/queries/1215383 and 1215383 both work.",
+          "display_name": "Query",
+          "examples": [
+            {
+              "label": "A query id",
+              "value": "1215383"
+            },
+            {
+              "label": "The address of the query",
+              "value": "https://dune.com/queries/1215383"
+            }
+          ],
+          "name": "query_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How much compute to give the run. Credits are charged for what the run actually uses, so a bigger engine finishes sooner but costs more. Not every plan includes every engine, and Dune rejects one your subscription does not have, so leave this empty unless you know yours does. Empty runs the query on whichever engine it is set to use, which always works.",
+          "display_name": "Engine size",
+          "name": "performance",
+          "options": [
+            {
+              "label": "Medium: Dune's default, and the one every plan has",
+              "value": "medium"
+            },
+            {
+              "label": "Large: 2x compute for heavy joins, on paid plans",
+              "value": "large"
+            },
+            {
+              "label": "Small: cheapest, but not included in every plan",
+              "value": "small"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Values for the query's parameters, as name/value pairs, for example blockchain: ethereum. Leave a parameter out and Dune uses the default set on the query. Skip this entirely for a query without parameters.",
+          "display_name": "Query parameter values",
+          "name": "query_parameters",
+          "object_key_name": "Parameter name",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/dune/get-query-pipeline",
+      "result_str_template": "Retrieved the pipeline.",
+      "returns": {
+        "properties": {
+          "materialized_views": {
+            "description": "Names of the views the query depends on",
+            "type": "array"
+          },
+          "node_count": {
+            "description": "How many steps",
+            "type": "integer"
+          },
+          "nodes": {
+            "description": "The steps, in dependency order",
+            "items": {
+              "properties": {
+                "depends_on": {
+                  "description": "Steps it waits for",
+                  "type": "array"
+                },
+                "id": {
+                  "description": "The step's number in the pipeline",
+                  "type": "integer"
+                },
+                "kind": {
+                  "description": "'query' or 'materialized_view'",
+                  "type": "string"
+                },
+                "materialized_view": {
+                  "description": "The view, for a refresh step",
+                  "type": "string"
+                },
+                "performance": {
+                  "description": "The engine size it runs on",
+                  "type": "string"
+                },
+                "query_id": {
+                  "description": "The query, for a query step",
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "pipeline": {
+            "description": "Dune's own pipeline definition, unchanged",
+            "type": "object"
+          },
+          "query_id": {
+            "description": "The query asked about",
+            "type": "integer"
+          },
+          "query_ids": {
+            "description": "Ids of the queries in the pipeline",
+            "type": "array"
+          },
+          "query_url": {
+            "description": "Its page on dune.com",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_usage": {
+      "description": "How many credits this Dune account has used and has left this billing period, plus how much of its storage allowance is taken. Credits are what a Dune workflow actually spends (the Free plan comes with 2,500 a month), so this is the check to put at the top of an expensive scheduled workflow, or on its own schedule to warn someone before the month runs out. Costs no credits itself.",
+      "display_name": "Get credit usage",
+      "display_str_template": "Get the Dune credit usage.",
+      "handler": "actions.get_usage",
+      "id": "dune_get_usage",
+      "method": "POST",
+      "mock_response": {
+        "billing_periods": [
+          {
+            "credits_included": 2500,
+            "credits_remaining": 2081.5,
+            "credits_used": 418.5,
+            "end_date": "2026-09-01",
+            "percent_used": 16.74,
+            "start_date": "2026-08-01"
+          }
+        ],
+        "bytes_allowed": 104857600,
+        "bytes_used": 115262,
+        "credits_included": 2500,
+        "credits_remaining": 2081.5,
+        "credits_used": 418.5,
+        "current_period_end": "2026-09-01",
+        "current_period_start": "2026-08-01",
+        "percent_used": 16.74,
+        "period_count": 1,
+        "private_dashboards": 0,
+        "private_queries": 0,
+        "storage_percent_used": 0.11
+      },
+      "name": "get_usage",
+      "output_formatter": "actions.format_usage_output",
+      "parameters": [
+        {
+          "description": "Only report billing periods from this date onwards. Leave both dates empty for the current period.",
+          "display_name": "From",
+          "name": "start_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only report billing periods up to this date.",
+          "display_name": "To",
+          "name": "end_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        }
+      ],
+      "path": "/actions/library/dune/get-usage",
+      "result_str_template": "Retrieved the usage.",
+      "returns": {
+        "properties": {
+          "billing_periods": {
+            "description": "One entry per billing period",
+            "items": {
+              "properties": {
+                "credits_included": {
+                  "type": "number"
+                },
+                "credits_remaining": {
+                  "type": "number"
+                },
+                "credits_used": {
+                  "type": "number"
+                },
+                "end_date": {
+                  "type": "string"
+                },
+                "percent_used": {
+                  "type": "number"
+                },
+                "start_date": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "bytes_allowed": {
+            "description": "Storage the plan allows",
+            "type": "integer"
+          },
+          "bytes_used": {
+            "description": "Storage used",
+            "type": "integer"
+          },
+          "credits_included": {
+            "description": "Credits the plan includes",
+            "type": "number"
+          },
+          "credits_remaining": {
+            "description": "Credits left: the number to branch on",
+            "type": "number"
+          },
+          "credits_used": {
+            "description": "Credits used in the newest period",
+            "type": "number"
+          },
+          "current_period_end": {
+            "description": "When it ends",
+            "type": "string"
+          },
+          "current_period_start": {
+            "description": "When the newest period began",
+            "type": "string"
+          },
+          "percent_used": {
+            "description": "How much of the allowance is gone",
+            "type": "number"
+          },
+          "period_count": {
+            "description": "How many periods were reported",
+            "type": "integer"
+          },
+          "private_dashboards": {
+            "description": "Private dashboards on the account",
+            "type": "integer"
+          },
+          "private_queries": {
+            "description": "Private queries on the account",
+            "type": "integer"
+          },
+          "storage_percent_used": {
+            "description": "How full the storage allowance is",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "insert_rows": {
+      "description": "Append rows to a table that Create a table made. Rows go up as a list of objects (the same shape an earlier step produces), keyed by column name, so a workflow can carry data straight from another system into Dune without building a file. Rows are added to what is already there rather than replacing it, and either every row in the step lands or none does.",
+      "display_name": "Insert rows",
+      "display_str_template": "Insert rows into the Dune table {0}.",
+      "handler": "actions.insert_rows",
+      "id": "dune_insert_rows",
+      "method": "POST",
+      "mock_response": {
+        "bytes_written": 96,
+        "format": "json",
+        "full_name": "dune.my_team.interest_rates",
+        "rows_sent": 2,
+        "rows_written": 2,
+        "table": "my_team.interest_rates"
+      },
+      "name": "insert_rows",
+      "output_formatter": "actions.format_insert_rows_output",
+      "parameters": [
+        {
+          "description": "The uploaded table to act on. Pick one from the list, or type its name as namespace.table_name (the namespace is your Dune username or team handle).",
+          "display_name": "Table",
+          "dynamic_source": "uploaded_tables",
+          "examples": [
+            {
+              "label": "A table",
+              "value": "my_team.interest_rates"
+            }
+          ],
+          "name": "table",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The rows to add, as a list of objects: one object per row, its keys matching the table's column names.",
+          "display_name": "Rows",
+          "examples": [
+            {
+              "label": "Two rows",
+              "value": "[{\"day\": \"2026-08-24\", \"rate\": 4.28}, {\"day\": \"2026-08-25\", \"rate\": 4.31}]"
+            }
+          ],
+          "name": "rows",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "accepts_file_upload": true,
+          "description": "CSV text to append instead of rows, with the column names on the first line. Use it when the data is already a CSV file; otherwise fill in Rows above.",
+          "display_name": "Or CSV instead",
+          "multiline": true,
+          "name": "csv_data",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/dune/insert-rows",
+      "result_str_template": "Inserted the rows.",
+      "returns": {
+        "properties": {
+          "bytes_written": {
+            "description": "Bytes stored: what the write is billed on",
+            "type": "integer"
+          },
+          "format": {
+            "description": "'json' for rows, 'csv' for CSV text",
+            "type": "string"
+          },
+          "full_name": {
+            "description": "The name to write in SQL",
+            "type": "string"
+          },
+          "rows_sent": {
+            "description": "Rows in the request",
+            "type": "integer"
+          },
+          "rows_written": {
+            "description": "Rows Dune reports it stored",
+            "type": "integer"
+          },
+          "table": {
+            "description": "namespace.table_name that was written to",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_datasets": {
+      "description": "Walk Dune's table catalogue a page at a time, optionally narrowed to one owner or to certain kinds of table. Use it to audit what your team has published, or to build a catalogue of your own; Search tables is the better step when you know what you are looking for. Costs no credits.",
+      "display_name": "List tables",
+      "display_str_template": "List Dune's tables.",
+      "handler": "actions.list_datasets",
+      "id": "dune_list_datasets",
+      "method": "POST",
+      "mock_response": {
+        "datasets": [
+          {
+            "column_count": 2,
+            "columns": [
+              {
+                "description": null,
+                "name": "day",
+                "nullable": false,
+                "type": "timestamp"
+              },
+              {
+                "description": null,
+                "name": "dgs10",
+                "nullable": true,
+                "type": "double"
+              }
+            ],
+            "created_at": "2026-05-15T20:34:58.585Z",
+            "full_name": "dune.my_team.interest_rates",
+            "is_private": false,
+            "owner_handle": "my_team",
+            "owner_type": "team",
+            "type": "uploaded_table",
+            "updated_at": "2026-08-16T21:19:02.459Z"
+          }
+        ],
+        "has_more": false,
+        "next_offset": null,
+        "offset": 0,
+        "returned": 1,
+        "table_names": [
+          "dune.my_team.interest_rates"
+        ],
+        "total": 1
+      },
+      "name": "list_datasets",
+      "output_formatter": "actions.format_list_datasets_output",
+      "parameters": [
+        {
+          "description": "Only keep tables owned by this Dune username or team handle. Leave empty for everyone's. Dune only lets an owner be combined with the table types somebody can actually own, so pair it with uploaded table: data someone uploaded, materialized view: a query's results, stored, transformation table, transformation view below, or with no type at all.",
+          "display_name": "Owned by",
+          "examples": [
+            {
+              "label": "A team",
+              "value": "dune"
+            }
+          ],
+          "name": "owner_handle",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only keep tables of these types. Choose none for all of them. Alongside an owner above, only uploaded table: data someone uploaded, materialized view: a query's results, stored, transformation table, transformation view can be asked for; the rest belong to no one.",
+          "display_name": "Table types",
+          "multi_select": true,
+          "name": "dataset_types",
+          "options": [
+            {
+              "label": "Dune table: raw chain data",
+              "value": "dune_table"
+            },
+            {
+              "label": "Decoded table: a contract's events and calls",
+              "value": "decoded_table"
+            },
+            {
+              "label": "Spell: a community-curated model",
+              "value": "spell"
+            },
+            {
+              "label": "Uploaded table: data someone uploaded",
+              "value": "uploaded_table"
+            },
+            {
+              "label": "Materialized view: a query's results, stored",
+              "value": "materialized_view"
+            },
+            {
+              "label": "Transformation table",
+              "value": "transformation_table"
+            },
+            {
+              "label": "Transformation view",
+              "value": "transformation_view"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": 50,
+          "description": "How many tables to bring back, up to 250.",
+          "display_name": "Results per page",
+          "maximum": 250,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many results to skip before returning any: 0 for the first page. Use the 'next offset' a previous step returned to walk further.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/dune/list-datasets",
+      "result_str_template": "Listed the tables.",
+      "returns": {
+        "properties": {
+          "datasets": {
+            "description": "The tables that matched",
+            "items": {
+              "properties": {
+                "abi_type": {
+                  "description": "Event or call, if decoded",
+                  "type": "string"
+                },
+                "blockchains": {
+                  "description": "Chains it covers",
+                  "type": "array"
+                },
+                "category": {
+                  "description": "Catalogue category",
+                  "type": "string"
+                },
+                "contract_name": {
+                  "description": "Contract, if decoded",
+                  "type": "string"
+                },
+                "dataset_type": {
+                  "description": "What kind of table",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "What it holds",
+                  "type": "string"
+                },
+                "full_name": {
+                  "description": "The name to write in SQL, e.g. dex.trades",
+                  "type": "string"
+                },
+                "owner_scope": {
+                  "description": "Who maintains it",
+                  "type": "string"
+                },
+                "project_name": {
+                  "description": "Protocol, if decoded",
+                  "type": "string"
+                },
+                "schema": {
+                  "description": "Columns, when they were asked for",
+                  "type": "array"
+                },
+                "visibility": {
+                  "description": "Public or private",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "has_more": {
+            "description": "Whether more matches are waiting",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "Offset for the next page",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "The offset this page started at",
+            "type": "integer"
+          },
+          "returned": {
+            "description": "Matches in this page",
+            "type": "integer"
+          },
+          "table_names": {
+            "description": "Just the names, ready to drop into SQL",
+            "type": "array"
+          },
+          "total": {
+            "description": "Matches in total",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_materialized_views": {
+      "description": "Every materialized view this account owns: the query behind each one, how often it refreshes, when it next will, and how much storage it is using. Costs no credits.",
+      "display_name": "List materialized views",
+      "display_str_template": "List the Dune materialized views.",
+      "handler": "actions.list_materialized_views",
+      "id": "dune_list_materialized_views",
+      "method": "POST",
+      "mock_response": {
+        "has_more": false,
+        "materialized_views": [
+          {
+            "cron_expression": "0 * * * *",
+            "full_name": "dune.my_team.result_daily_volume",
+            "is_private": false,
+            "last_execution_ids": [
+              "01HKZJ2683PHF9Q9PHHQ8FW4Q1"
+            ],
+            "name": "result_daily_volume",
+            "next_refresh_at": "2026-08-25T10:00:00.000Z",
+            "query_id": 1215383,
+            "query_url": "https://dune.com/queries/1215383",
+            "schedule_expires_at": null,
+            "schedule_performance": "medium",
+            "table_size_bytes": 40960
+          }
+        ],
+        "next_offset": null,
+        "offset": 0,
+        "returned": 1,
+        "total_size_bytes": 40960,
+        "view_names": [
+          "result_daily_volume"
+        ]
+      },
+      "name": "list_materialized_views",
+      "output_formatter": "actions.format_list_matviews_output",
+      "parameters": [
+        {
+          "default": 50,
+          "description": "How many views to bring back.",
+          "display_name": "Views per page",
+          "maximum": 10000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many results to skip before returning any: 0 for the first page. Use the 'next offset' a previous step returned to walk further.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/dune/list-materialized-views",
+      "result_str_template": "Listed the materialized views.",
+      "returns": {
+        "properties": {
+          "has_more": {
+            "description": "Whether more views are waiting",
+            "type": "boolean"
+          },
+          "materialized_views": {
+            "description": "The views",
+            "items": {
+              "properties": {
+                "cron_expression": {
+                  "description": "Its refresh schedule, or null if it only refreshes on demand",
+                  "type": "string"
+                },
+                "full_name": {
+                  "description": "The name to write in SQL, e.g. dune.my_team.result_daily",
+                  "type": "string"
+                },
+                "is_private": {
+                  "description": "Whether it is private",
+                  "type": "boolean"
+                },
+                "last_execution_ids": {
+                  "description": "Ids of its most recent refreshes",
+                  "type": "array"
+                },
+                "name": {
+                  "description": "The view's name, e.g. result_daily",
+                  "type": "string"
+                },
+                "next_refresh_at": {
+                  "description": "When it next refreshes",
+                  "type": "string"
+                },
+                "query_id": {
+                  "description": "The query it is built from",
+                  "type": "integer"
+                },
+                "query_url": {
+                  "description": "That query's page on dune.com",
+                  "type": "string"
+                },
+                "schedule_expires_at": {
+                  "description": "When the schedule stops",
+                  "type": "string"
+                },
+                "schedule_performance": {
+                  "description": "The engine size its refreshes run on",
+                  "type": "string"
+                },
+                "table_size_bytes": {
+                  "description": "Size of the stored result",
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "next_offset": {
+            "description": "Offset for the next page",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "The offset this page started at",
+            "type": "integer"
+          },
+          "returned": {
+            "description": "Views in this page",
+            "type": "integer"
+          },
+          "total_size_bytes": {
+            "description": "Storage the views in this page take up",
+            "type": "integer"
+          },
+          "view_names": {
+            "description": "Just the names",
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_uploaded_tables": {
+      "description": "Everything this Dune account has uploaded: each table's name, columns, size and when it last changed. Use it to see what is taking up the plan's storage allowance (100MB on the Free plan), or to find the name of a table for a later step. Costs no credits.",
+      "display_name": "List uploaded tables",
+      "display_str_template": "List the tables uploaded to Dune.",
+      "handler": "actions.list_uploaded_tables",
+      "id": "dune_list_uploaded_tables",
+      "method": "POST",
+      "mock_response": {
+        "has_more": false,
+        "next_offset": null,
+        "offset": 0,
+        "returned": 1,
+        "table_names": [
+          "my_team.interest_rates"
+        ],
+        "tables": [
+          {
+            "column_count": 2,
+            "columns": [
+              {
+                "name": "day",
+                "nullable": false,
+                "type": "timestamp"
+              },
+              {
+                "name": "dgs10",
+                "nullable": true,
+                "type": "double"
+              }
+            ],
+            "created_at": "2026-05-15T20:34:58.585Z",
+            "full_name": "dune.my_team.interest_rates",
+            "is_private": false,
+            "name": "my_team.interest_rates",
+            "owner_handle": "my_team",
+            "owner_type": "team",
+            "purged_at": null,
+            "table_size_bytes": 115262,
+            "updated_at": "2026-08-16T21:19:02.459Z"
+          }
+        ],
+        "total_size_bytes": 115262
+      },
+      "name": "list_uploaded_tables",
+      "output_formatter": "actions.format_list_tables_output",
+      "parameters": [
+        {
+          "default": 50,
+          "description": "How many tables to bring back.",
+          "display_name": "Tables per page",
+          "maximum": 10000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many results to skip before returning any: 0 for the first page. Use the 'next offset' a previous step returned to walk further.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/dune/list-uploaded-tables",
+      "result_str_template": "Listed the uploaded tables.",
+      "returns": {
+        "properties": {
+          "has_more": {
+            "description": "Whether more tables are waiting",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "Offset for the next page",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "The offset this page started at",
+            "type": "integer"
+          },
+          "returned": {
+            "description": "Tables in this page",
+            "type": "integer"
+          },
+          "table_names": {
+            "description": "Just the namespace.table_name values",
+            "type": "array"
+          },
+          "tables": {
+            "description": "The uploaded tables",
+            "items": {
+              "properties": {
+                "column_count": {
+                  "description": "How many columns",
+                  "type": "integer"
+                },
+                "columns": {
+                  "description": "Its columns",
+                  "type": "array"
+                },
+                "created_at": {
+                  "description": "When it was created",
+                  "type": "string"
+                },
+                "full_name": {
+                  "description": "The name to write in SQL, e.g. dune.my_team.rates",
+                  "type": "string"
+                },
+                "is_private": {
+                  "description": "Whether it is private",
+                  "type": "boolean"
+                },
+                "name": {
+                  "description": "namespace.table_name: what the table fields take",
+                  "type": "string"
+                },
+                "owner_handle": {
+                  "description": "Who owns it",
+                  "type": "string"
+                },
+                "owner_type": {
+                  "description": "User or team",
+                  "type": "string"
+                },
+                "purged_at": {
+                  "description": "When it was purged, if it was",
+                  "type": "string"
+                },
+                "table_size_bytes": {
+                  "description": "Size, against the plan's storage allowance",
+                  "type": "integer"
+                },
+                "updated_at": {
+                  "description": "When it last changed",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_size_bytes": {
+            "description": "Total size of the tables in this page",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "refresh_materialized_view": {
+      "description": "Rebuild a materialized view now, instead of waiting for its schedule. Use it when something upstream has just changed and the next thing to read the view needs the new numbers. Returns the refresh's execution id, so a later step can wait for it with Get execution status.",
+      "display_name": "Refresh a materialized view",
+      "display_str_template": "Refresh the Dune materialized view {0}.",
+      "handler": "actions.refresh_materialized_view",
+      "id": "dune_refresh_materialized_view",
+      "method": "POST",
+      "mock_response": {
+        "execution_id": "01HZ065JVE23C23FM2HKWQP2RT",
+        "full_name": "dune.my_team.result_daily_volume",
+        "name": "result_daily_volume",
+        "performance": "medium"
+      },
+      "name": "refresh_materialized_view",
+      "output_formatter": "actions.format_refresh_matview_output",
+      "parameters": [
+        {
+          "description": "The materialized view to act on. Pick one from the list, or type its name: the last part only, which always starts with 'result_'.",
+          "display_name": "Materialized view",
+          "dynamic_source": "materialized_views",
+          "examples": [
+            {
+              "label": "A view",
+              "value": "result_daily_volume"
+            }
+          ],
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How much compute to give the run. Credits are charged for what the run actually uses, so a bigger engine finishes sooner but costs more. Not every plan includes every engine, and Dune rejects one your subscription does not have, so leave this empty unless you know yours does. Empty runs the query on whichever engine it is set to use, which always works.",
+          "display_name": "Engine size",
+          "name": "performance",
+          "options": [
+            {
+              "label": "Medium: Dune's default, and the one every plan has",
+              "value": "medium"
+            },
+            {
+              "label": "Large: 2x compute for heavy joins, on paid plans",
+              "value": "large"
+            },
+            {
+              "label": "Small: cheapest, but not included in every plan",
+              "value": "small"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/dune/refresh-materialized-view",
+      "result_str_template": "Started the refresh.",
+      "returns": {
+        "properties": {
+          "execution_id": {
+            "description": "The refresh that was started",
+            "type": "string"
+          },
+          "full_name": {
+            "description": "The name to write in SQL",
+            "type": "string"
+          },
+          "name": {
+            "description": "The view refreshed",
+            "type": "string"
+          },
+          "performance": {
+            "description": "The engine size it runs on",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "run_query": {
+      "description": "Run a query saved on Dune and get its rows back in one step. Running a query on Dune is normally three calls (start it, watch it, collect it), and this does all three: it submits the run, waits for it to finish, and returns the rows, the columns and what it cost in credits. Give it the query's address from dune.com, fill in any parameters the query takes, and narrow the result with the row, column, filter and ordering options so you only pay for the data you actually use. If the query is still running when the wait runs out, the step still succeeds and hands back the execution id for a later step to collect.",
+      "display_name": "Run a saved query",
+      "display_str_template": "Run the Dune query {0}.",
+      "handler": "actions.run_query",
+      "id": "dune_run_query",
+      "method": "POST",
+      "mock_response": {
+        "cancelled_at": null,
+        "column_names": [
+          "block_date",
+          "project",
+          "volume_usd"
+        ],
+        "column_types": [
+          "timestamp",
+          "varchar",
+          "double"
+        ],
+        "columns": [
+          {
+            "name": "block_date",
+            "type": "timestamp"
+          },
+          {
+            "name": "project",
+            "type": "varchar"
+          },
+          {
+            "name": "volume_usd",
+            "type": "double"
+          }
+        ],
+        "datapoint_count": 6,
+        "error_message": null,
+        "error_type": null,
+        "execution_cost_credits": 12,
+        "execution_ended_at": "2026-08-25T09:14:11.884Z",
+        "execution_id": "01HKZJ2683PHF9Q9PHHQ8FW4Q1",
+        "execution_started_at": "2026-08-25T09:14:03.010Z",
+        "execution_time_seconds": 8.874,
+        "expires_at": "2026-11-23T09:14:11.884Z",
+        "failed": false,
+        "first_row": {
+          "block_date": "2026-08-25 00:00:00.000 UTC",
+          "project": "uniswap",
+          "volume_usd": 1843992104.51
+        },
+        "has_more": false,
+        "is_finished": true,
+        "next_offset": null,
+        "offset": 0,
+        "query_id": 1215383,
+        "query_url": "https://dune.com/queries/1215383",
+        "queue_position": null,
+        "result_set_bytes": 214,
+        "row_count": 2,
+        "rows": [
+          {
+            "block_date": "2026-08-25 00:00:00.000 UTC",
+            "project": "uniswap",
+            "volume_usd": 1843992104.51
+          },
+          {
+            "block_date": "2026-08-25 00:00:00.000 UTC",
+            "project": "curve",
+            "volume_usd": 412887320.09
+          }
+        ],
+        "state": "QUERY_STATE_COMPLETED",
+        "state_label": "Completed",
+        "submitted_at": "2026-08-25T09:14:02.221Z",
+        "succeeded": true,
+        "timed_out": false,
+        "total_result_set_bytes": 214,
+        "total_row_count": 2,
+        "wait_seconds": 300
+      },
+      "name": "run_query",
+      "output_formatter": "actions.format_run_query_output",
+      "parameters": [
+        {
+          "description": "The query to run, as its id or its address on dune.com. Open the query on Dune and either copy the whole address from the browser bar or take the number out of it: https://dune.com/queries/1215383 and 1215383 both work.",
+          "display_name": "Query",
+          "examples": [
+            {
+              "label": "A query id",
+              "value": "1215383"
+            },
+            {
+              "label": "The address of the query",
+              "value": "https://dune.com/queries/1215383"
+            }
+          ],
+          "name": "query_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Values for the query's parameters, as name/value pairs, for example blockchain: ethereum. Leave a parameter out and Dune uses the default set on the query. Skip this entirely for a query without parameters.",
+          "display_name": "Query parameter values",
+          "name": "query_parameters",
+          "object_key_name": "Parameter name",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "How much compute to give the run. Credits are charged for what the run actually uses, so a bigger engine finishes sooner but costs more. Not every plan includes every engine, and Dune rejects one your subscription does not have, so leave this empty unless you know yours does. Empty runs the query on whichever engine it is set to use, which always works.",
+          "display_name": "Engine size",
+          "name": "performance",
+          "options": [
+            {
+              "label": "Medium: Dune's default, and the one every plan has",
+              "value": "medium"
+            },
+            {
+              "label": "Large: 2x compute for heavy joins, on paid plans",
+              "value": "large"
+            },
+            {
+              "label": "Small: cheapest, but not included in every plan",
+              "value": "small"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 1000,
+          "description": "How many rows to bring back in this step. Results are charged by the cell, so asking for what you need rather than everything is what keeps a workflow inside its credit allowance.",
+          "display_name": "Rows to return",
+          "maximum": 50000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many rows to skip before returning any: 0 for the first page. Use the 'next offset' a previous step returned to walk a large result one page at a time.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Bring back only these columns instead of all of them. Cheapest way to cut the cost of a wide result: name the five columns you need rather than paying for fifty. Leave empty for every column.",
+          "display_name": "Only these columns",
+          "examples": [
+            {
+              "label": "A few columns",
+              "value": "tx_hash, amount_usd, block_time"
+            }
+          ],
+          "name": "columns",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Keep only the rows matching this condition, written like a SQL WHERE clause: quote text values, leave numbers unquoted, and combine with AND / OR / IN / LIKE. Dune applies it before sending, so it costs less than filtering afterwards. Literal values only: no now() or interval arithmetic, and no NOT IN or NOT LIKE.",
+          "display_name": "Only rows where",
+          "examples": [
+            {
+              "label": "A threshold",
+              "value": "amount_usd > 1000"
+            },
+            {
+              "label": "One chain",
+              "value": "blockchain = 'ethereum'"
+            },
+            {
+              "label": "Several values",
+              "value": "project IN ('uniswap', 'sushiswap', 'curve')"
+            },
+            {
+              "label": "A date and a threshold",
+              "value": "block_time > '2026-01-31' AND amount_usd > 1000"
+            }
+          ],
+          "name": "filters",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How to order the rows, written like a SQL ORDER BY clause: a column name, 'desc' after it for largest first, and commas between several.",
+          "display_name": "Order by",
+          "examples": [
+            {
+              "label": "Largest first",
+              "value": "amount_usd desc"
+            },
+            {
+              "label": "Two columns",
+              "value": "block_time desc, amount_usd desc"
+            }
+          ],
+          "name": "sort_by",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Instead of a page, take this many rows at random from across the whole result, useful for a spot check of a result too big to read. A sample has no pages, so the rows-to-return and skip options above are ignored when this is set; clear the filter first, because filtering and sampling cannot be combined.",
+          "display_name": "Random sample of",
+          "maximum": 50000,
+          "minimum": 1,
+          "name": "sample_count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Dune stores at most 32GB per result and refuses to serve one that was cut short. Turn this on to take the part that was kept rather than failing the step.",
+          "display_name": "Accept a truncated result",
+          "name": "allow_partial_results",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": 300,
+          "description": "How long to wait for the run to finish before handing back. If the run is still going when this runs out the step still succeeds, returning the execution id so a later step can collect the rows with Get execution results.",
+          "display_name": "Wait up to (seconds)",
+          "maximum": 900,
+          "minimum": 0,
+          "name": "wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/dune/run-query",
+      "result_str_template": "Ran the query.",
+      "returns": {
+        "properties": {
+          "cancelled_at": {
+            "description": "When it was cancelled, if it was",
+            "type": "string"
+          },
+          "column_names": {
+            "description": "The result's column names",
+            "type": "array"
+          },
+          "column_types": {
+            "description": "The result's column types",
+            "type": "array"
+          },
+          "columns": {
+            "description": "The columns as name/type pairs",
+            "items": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "datapoint_count": {
+            "description": "Cells returned: what this call is billed on",
+            "type": "integer"
+          },
+          "error_message": {
+            "description": "Why it failed, if it did",
+            "type": "string"
+          },
+          "error_type": {
+            "description": "Dune's failure type, if it failed",
+            "type": "string"
+          },
+          "execution_cost_credits": {
+            "description": "Credits the run consumed",
+            "type": "number"
+          },
+          "execution_ended_at": {
+            "description": "When it ended",
+            "type": "string"
+          },
+          "execution_id": {
+            "description": "Id of this run",
+            "type": "string"
+          },
+          "execution_started_at": {
+            "description": "When it started",
+            "type": "string"
+          },
+          "execution_time_seconds": {
+            "description": "How long the query took to run",
+            "type": "number"
+          },
+          "expires_at": {
+            "description": "When the stored result expires",
+            "type": "string"
+          },
+          "failed": {
+            "description": "Whether it finished without producing results",
+            "type": "boolean"
+          },
+          "first_row": {
+            "description": "The first row, for a query that returns a single figure",
+            "type": "object"
+          },
+          "has_more": {
+            "description": "Whether more rows are waiting",
+            "type": "boolean"
+          },
+          "is_finished": {
+            "description": "Whether the run has reached a final state",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "Offset to ask for to get the next page",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "The offset this page started at",
+            "type": "integer"
+          },
+          "query_id": {
+            "description": "Id of the query that ran, or null for raw SQL",
+            "type": "integer"
+          },
+          "query_url": {
+            "description": "The query's page on dune.com, when it has one",
+            "type": "string"
+          },
+          "queue_position": {
+            "description": "Place in the queue, while the run is still waiting",
+            "type": "integer"
+          },
+          "result_set_bytes": {
+            "description": "Bytes in this page",
+            "type": "integer"
+          },
+          "row_count": {
+            "description": "Rows in this page",
+            "type": "integer"
+          },
+          "rows": {
+            "description": "The rows, each an object keyed by column name",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "state": {
+            "description": "Dune's state constant, e.g. QUERY_STATE_COMPLETED",
+            "type": "string"
+          },
+          "state_label": {
+            "description": "That state in plain words",
+            "type": "string"
+          },
+          "submitted_at": {
+            "description": "When the run was submitted",
+            "type": "string"
+          },
+          "succeeded": {
+            "description": "Whether it finished successfully",
+            "type": "boolean"
+          },
+          "timed_out": {
+            "description": "True when the wait ran out before the run finished",
+            "type": "boolean"
+          },
+          "total_result_set_bytes": {
+            "description": "Bytes in the whole result",
+            "type": "integer"
+          },
+          "total_row_count": {
+            "description": "How many rows the whole result has",
+            "type": "integer"
+          },
+          "wait_seconds": {
+            "description": "How long the step waited",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "run_sql": {
+      "description": "Write DuneSQL and get the answer back, without saving a query first. Dune's warehouse holds decoded data for 100+ chains (blocks, transactions, logs, token transfers, prices, NFT trades and the community's curated tables on top of them), and this runs a statement straight against it, waits for it, and returns the rows. Use Search tables first if you don't know what a table is called. Note that Dune charges for the compute a statement uses, so filter by time and select only the columns you need.",
+      "display_name": "Run SQL",
+      "display_str_template": "Run SQL on Dune.",
+      "handler": "actions.run_sql",
+      "id": "dune_run_sql",
+      "method": "POST",
+      "mock_response": {
+        "cancelled_at": null,
+        "column_names": [
+          "block_date",
+          "project",
+          "volume_usd"
+        ],
+        "column_types": [
+          "timestamp",
+          "varchar",
+          "double"
+        ],
+        "columns": [
+          {
+            "name": "block_date",
+            "type": "timestamp"
+          },
+          {
+            "name": "project",
+            "type": "varchar"
+          },
+          {
+            "name": "volume_usd",
+            "type": "double"
+          }
+        ],
+        "datapoint_count": 6,
+        "error_message": null,
+        "error_type": null,
+        "execution_cost_credits": 12,
+        "execution_ended_at": "2026-08-25T09:14:11.884Z",
+        "execution_id": "01HKZJ2683PHF9Q9PHHQ8FW4Q1",
+        "execution_started_at": "2026-08-25T09:14:03.010Z",
+        "execution_time_seconds": 8.874,
+        "expires_at": "2026-11-23T09:14:11.884Z",
+        "failed": false,
+        "first_row": {
+          "block_date": "2026-08-25 00:00:00.000 UTC",
+          "project": "uniswap",
+          "volume_usd": 1843992104.51
+        },
+        "has_more": false,
+        "is_finished": true,
+        "next_offset": null,
+        "offset": 0,
+        "query_id": null,
+        "query_url": null,
+        "queue_position": null,
+        "result_set_bytes": 214,
+        "row_count": 2,
+        "rows": [
+          {
+            "block_date": "2026-08-25 00:00:00.000 UTC",
+            "project": "uniswap",
+            "volume_usd": 1843992104.51
+          },
+          {
+            "block_date": "2026-08-25 00:00:00.000 UTC",
+            "project": "curve",
+            "volume_usd": 412887320.09
+          }
+        ],
+        "sql": "select block_date, project, sum(amount_usd) as volume_usd from dex.trades group by 1, 2",
+        "state": "QUERY_STATE_COMPLETED",
+        "state_label": "Completed",
+        "submitted_at": "2026-08-25T09:14:02.221Z",
+        "succeeded": true,
+        "timed_out": false,
+        "total_result_set_bytes": 214,
+        "total_row_count": 2,
+        "wait_seconds": 300
+      },
+      "name": "run_sql",
+      "output_formatter": "actions.format_run_sql_output",
+      "parameters": [
+        {
+          "description": "The DuneSQL to run. Dune's SQL is Trino-flavoured: single quotes for text, double quotes for column names that need them, and interval arithmetic for dates.",
+          "display_name": "SQL",
+          "examples": [
+            {
+              "label": "Yesterday's DEX volume by project",
+              "value": "select project, sum(amount_usd) as volume_usd\nfrom dex.trades\nwhere block_time > now() - interval '1' day\ngroup by 1\norder by 2 desc\nlimit 20"
+            },
+            {
+              "label": "A wallet's recent transactions",
+              "value": "select block_time, hash, value / 1e18 as eth\nfrom ethereum.transactions\nwhere \"from\" = 0xd8da6bf26964af9d7eed9e03e53415d37aa96045\n  and block_time > now() - interval '7' day\norder by block_time desc"
+            }
+          ],
+          "multiline": true,
+          "name": "sql",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How much compute to give the run. Credits are charged for what the run actually uses, so a bigger engine finishes sooner but costs more. Not every plan includes every engine, and Dune rejects one your subscription does not have, so leave this empty unless you know yours does. Empty runs the query on whichever engine it is set to use, which always works.",
+          "display_name": "Engine size",
+          "name": "performance",
+          "options": [
+            {
+              "label": "Medium: Dune's default, and the one every plan has",
+              "value": "medium"
+            },
+            {
+              "label": "Large: 2x compute for heavy joins, on paid plans",
+              "value": "large"
+            },
+            {
+              "label": "Small: cheapest, but not included in every plan",
+              "value": "small"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 1000,
+          "description": "How many rows to bring back in this step. Results are charged by the cell, so asking for what you need rather than everything is what keeps a workflow inside its credit allowance.",
+          "display_name": "Rows to return",
+          "maximum": 50000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many rows to skip before returning any: 0 for the first page. Use the 'next offset' a previous step returned to walk a large result one page at a time.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Bring back only these columns instead of all of them. Cheapest way to cut the cost of a wide result: name the five columns you need rather than paying for fifty. Leave empty for every column.",
+          "display_name": "Only these columns",
+          "examples": [
+            {
+              "label": "A few columns",
+              "value": "tx_hash, amount_usd, block_time"
+            }
+          ],
+          "name": "columns",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Keep only the rows matching this condition, written like a SQL WHERE clause: quote text values, leave numbers unquoted, and combine with AND / OR / IN / LIKE. Dune applies it before sending, so it costs less than filtering afterwards. Literal values only: no now() or interval arithmetic, and no NOT IN or NOT LIKE.",
+          "display_name": "Only rows where",
+          "examples": [
+            {
+              "label": "A threshold",
+              "value": "amount_usd > 1000"
+            },
+            {
+              "label": "One chain",
+              "value": "blockchain = 'ethereum'"
+            },
+            {
+              "label": "Several values",
+              "value": "project IN ('uniswap', 'sushiswap', 'curve')"
+            },
+            {
+              "label": "A date and a threshold",
+              "value": "block_time > '2026-01-31' AND amount_usd > 1000"
+            }
+          ],
+          "name": "filters",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How to order the rows, written like a SQL ORDER BY clause: a column name, 'desc' after it for largest first, and commas between several.",
+          "display_name": "Order by",
+          "examples": [
+            {
+              "label": "Largest first",
+              "value": "amount_usd desc"
+            },
+            {
+              "label": "Two columns",
+              "value": "block_time desc, amount_usd desc"
+            }
+          ],
+          "name": "sort_by",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Instead of a page, take this many rows at random from across the whole result, useful for a spot check of a result too big to read. A sample has no pages, so the rows-to-return and skip options above are ignored when this is set; clear the filter first, because filtering and sampling cannot be combined.",
+          "display_name": "Random sample of",
+          "maximum": 50000,
+          "minimum": 1,
+          "name": "sample_count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Dune stores at most 32GB per result and refuses to serve one that was cut short. Turn this on to take the part that was kept rather than failing the step.",
+          "display_name": "Accept a truncated result",
+          "name": "allow_partial_results",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": 300,
+          "description": "How long to wait for the run to finish before handing back. If the run is still going when this runs out the step still succeeds, returning the execution id so a later step can collect the rows with Get execution results.",
+          "display_name": "Wait up to (seconds)",
+          "maximum": 900,
+          "minimum": 0,
+          "name": "wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/dune/run-sql",
+      "result_str_template": "Ran the SQL.",
+      "returns": {
+        "properties": {
+          "cancelled_at": {
+            "description": "When it was cancelled, if it was",
+            "type": "string"
+          },
+          "column_names": {
+            "description": "The result's column names",
+            "type": "array"
+          },
+          "column_types": {
+            "description": "The result's column types",
+            "type": "array"
+          },
+          "columns": {
+            "description": "The columns as name/type pairs",
+            "items": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "datapoint_count": {
+            "description": "Cells returned: what this call is billed on",
+            "type": "integer"
+          },
+          "error_message": {
+            "description": "Why it failed, if it did",
+            "type": "string"
+          },
+          "error_type": {
+            "description": "Dune's failure type, if it failed",
+            "type": "string"
+          },
+          "execution_cost_credits": {
+            "description": "Credits the run consumed",
+            "type": "number"
+          },
+          "execution_ended_at": {
+            "description": "When it ended",
+            "type": "string"
+          },
+          "execution_id": {
+            "description": "Id of this run",
+            "type": "string"
+          },
+          "execution_started_at": {
+            "description": "When it started",
+            "type": "string"
+          },
+          "execution_time_seconds": {
+            "description": "How long the query took to run",
+            "type": "number"
+          },
+          "expires_at": {
+            "description": "When the stored result expires",
+            "type": "string"
+          },
+          "failed": {
+            "description": "Whether it finished without producing results",
+            "type": "boolean"
+          },
+          "first_row": {
+            "description": "The first row, for a query that returns a single figure",
+            "type": "object"
+          },
+          "has_more": {
+            "description": "Whether more rows are waiting",
+            "type": "boolean"
+          },
+          "is_finished": {
+            "description": "Whether the run has reached a final state",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "Offset to ask for to get the next page",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "The offset this page started at",
+            "type": "integer"
+          },
+          "query_id": {
+            "description": "Id of the query that ran, or null for raw SQL",
+            "type": "integer"
+          },
+          "query_url": {
+            "description": "The query's page on dune.com, when it has one",
+            "type": "string"
+          },
+          "queue_position": {
+            "description": "Place in the queue, while the run is still waiting",
+            "type": "integer"
+          },
+          "result_set_bytes": {
+            "description": "Bytes in this page",
+            "type": "integer"
+          },
+          "row_count": {
+            "description": "Rows in this page",
+            "type": "integer"
+          },
+          "rows": {
+            "description": "The rows, each an object keyed by column name",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "sql": {
+            "description": "The statement that ran",
+            "type": "string"
+          },
+          "state": {
+            "description": "Dune's state constant, e.g. QUERY_STATE_COMPLETED",
+            "type": "string"
+          },
+          "state_label": {
+            "description": "That state in plain words",
+            "type": "string"
+          },
+          "submitted_at": {
+            "description": "When the run was submitted",
+            "type": "string"
+          },
+          "succeeded": {
+            "description": "Whether it finished successfully",
+            "type": "boolean"
+          },
+          "timed_out": {
+            "description": "True when the wait ran out before the run finished",
+            "type": "boolean"
+          },
+          "total_result_set_bytes": {
+            "description": "Bytes in the whole result",
+            "type": "integer"
+          },
+          "total_row_count": {
+            "description": "How many rows the whole result has",
+            "type": "integer"
+          },
+          "wait_seconds": {
+            "description": "How long the step waited",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_datasets": {
+      "description": "Find the table to query. Dune's catalogue holds tens of thousands of them (raw chain data, decoded contract events, curated cross-protocol models and everything the community has uploaded), and this searches it in plain language, narrowed by chain, by kind of table and by who maintains it. This is the step to put before Run SQL when you don't already know what something is called: turn on 'include each table's columns' and the next step has the column names to write against. Costs no credits.",
+      "display_name": "Search tables",
+      "display_str_template": "Search Dune's tables for '{0}'.",
+      "handler": "actions.search_datasets",
+      "id": "dune_search_datasets",
+      "method": "POST",
+      "mock_response": {
+        "datasets": [
+          {
+            "abi_type": null,
+            "blockchains": [
+              "ethereum",
+              "base",
+              "arbitrum"
+            ],
+            "category": "spell",
+            "contract_name": null,
+            "dataset_type": "spell",
+            "description": "Every DEX trade Dune decodes, across every chain.",
+            "full_name": "dex.trades",
+            "owner_scope": "dune",
+            "project_name": null,
+            "schema": null,
+            "visibility": "public"
+          },
+          {
+            "abi_type": "event",
+            "blockchains": [
+              "ethereum"
+            ],
+            "category": "decoded",
+            "contract_name": "Pair",
+            "dataset_type": "decoded_table",
+            "description": "Swap events emitted by Uniswap v3 pairs on Ethereum.",
+            "full_name": "uniswap_v3_ethereum.Pair_evt_Swap",
+            "owner_scope": "dune",
+            "project_name": "uniswap_v3",
+            "schema": null,
+            "visibility": "public"
+          }
+        ],
+        "has_more": false,
+        "next_offset": null,
+        "offset": 0,
+        "query": "dex trades",
+        "returned": 2,
+        "table_names": [
+          "dex.trades",
+          "uniswap_v3_ethereum.Pair_evt_Swap"
+        ],
+        "total": 2
+      },
+      "name": "search_datasets",
+      "output_formatter": "actions.format_search_datasets_output",
+      "parameters": [
+        {
+          "description": "What to look for, in plain words: a subject, a protocol or a table name. Leave it empty to browse by the filters alone.",
+          "display_name": "Search for",
+          "examples": [
+            {
+              "label": "A subject",
+              "value": "dex trades"
+            },
+            {
+              "label": "A protocol",
+              "value": "aave lending"
+            },
+            {
+              "label": "A table name",
+              "value": "erc20 transfers"
+            }
+          ],
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only keep tables in these categories. Choose none to search all of them.",
+          "display_name": "Kinds of table",
+          "multi_select": true,
+          "name": "categories",
+          "options": [
+            {
+              "label": "Canonical: Dune's own chain tables",
+              "value": "canonical"
+            },
+            {
+              "label": "Decoded: smart contract events and calls",
+              "value": "decoded"
+            },
+            {
+              "label": "Spell: curated cross-protocol models",
+              "value": "spell"
+            },
+            {
+              "label": "Community: tables people have uploaded or built",
+              "value": "community"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only keep tables for these chains, named the way Dune names them (ethereum, base, arbitrum, solana, polygon\u2026). Leave empty for all of them.",
+          "display_name": "Chains",
+          "examples": [
+            {
+              "label": "Two chains",
+              "value": "ethereum, base"
+            }
+          ],
+          "name": "blockchains",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only keep tables of these types. A finer filter than the categories above; choose none for all of them.",
+          "display_name": "Table types",
+          "multi_select": true,
+          "name": "dataset_types",
+          "options": [
+            {
+              "label": "Dune table: raw chain data",
+              "value": "dune_table"
+            },
+            {
+              "label": "Decoded table: a contract's events and calls",
+              "value": "decoded_table"
+            },
+            {
+              "label": "Spell: a community-curated model",
+              "value": "spell"
+            },
+            {
+              "label": "Uploaded table: data someone uploaded",
+              "value": "uploaded_table"
+            },
+            {
+              "label": "Materialized view: a query's results, stored",
+              "value": "materialized_view"
+            },
+            {
+              "label": "Transformation table",
+              "value": "transformation_table"
+            },
+            {
+              "label": "Transformation view",
+              "value": "transformation_view"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Narrow the search to the tables your own account or your team owns. Leave empty to search everyone's.",
+          "display_name": "Whose tables",
+          "name": "owner_scope",
+          "options": [
+            {
+              "label": "Everyone: Dune's tables and the community's",
+              "value": "all"
+            },
+            {
+              "label": "Mine: tables my own account owns",
+              "value": "me"
+            },
+            {
+              "label": "My team's: tables my team owns",
+              "value": "team"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Bring back the column names and types alongside each match. Turn it on when the next step has to write SQL against what is found; leave it off for a shorter answer.",
+          "display_name": "Include each table's columns",
+          "name": "include_schema",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Also search the tables only your account can see.",
+          "display_name": "Include my private tables",
+          "name": "include_private",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": 50,
+          "description": "How many tables to bring back, up to 250.",
+          "display_name": "Results per page",
+          "maximum": 250,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many results to skip before returning any: 0 for the first page. Use the 'next offset' a previous step returned to walk further.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/dune/search-datasets",
+      "result_str_template": "Found matching tables.",
+      "returns": {
+        "properties": {
+          "datasets": {
+            "description": "The tables that matched",
+            "items": {
+              "properties": {
+                "abi_type": {
+                  "description": "Event or call, if decoded",
+                  "type": "string"
+                },
+                "blockchains": {
+                  "description": "Chains it covers",
+                  "type": "array"
+                },
+                "category": {
+                  "description": "Catalogue category",
+                  "type": "string"
+                },
+                "contract_name": {
+                  "description": "Contract, if decoded",
+                  "type": "string"
+                },
+                "dataset_type": {
+                  "description": "What kind of table",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "What it holds",
+                  "type": "string"
+                },
+                "full_name": {
+                  "description": "The name to write in SQL, e.g. dex.trades",
+                  "type": "string"
+                },
+                "owner_scope": {
+                  "description": "Who maintains it",
+                  "type": "string"
+                },
+                "project_name": {
+                  "description": "Protocol, if decoded",
+                  "type": "string"
+                },
+                "schema": {
+                  "description": "Columns, when they were asked for",
+                  "type": "array"
+                },
+                "visibility": {
+                  "description": "Public or private",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "has_more": {
+            "description": "Whether more matches are waiting",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "Offset for the next page",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "The offset this page started at",
+            "type": "integer"
+          },
+          "query": {
+            "description": "The search that ran",
+            "type": "string"
+          },
+          "returned": {
+            "description": "Matches in this page",
+            "type": "integer"
+          },
+          "table_names": {
+            "description": "Just the names, ready to drop into SQL",
+            "type": "array"
+          },
+          "total": {
+            "description": "Matches in total",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_datasets_by_contract": {
+      "description": "Give a smart contract's address and get back every table Dune has decoded for it: one per event and one per function, each with its real column names. This is how an address becomes something you can write SQL against: paste it in, turn on 'include each table's columns', and the next step can query the contract's activity directly. Costs no credits.",
+      "display_name": "Find tables for a contract",
+      "display_str_template": "Find the Dune tables for the contract {0}.",
+      "handler": "actions.search_datasets_by_contract",
+      "id": "dune_search_datasets_by_contract",
+      "method": "POST",
+      "mock_response": {
+        "contract_address": "0x1f98431c8ad98523631ae4a59f267346ea31f984",
+        "datasets": [
+          {
+            "abi_type": "event",
+            "blockchains": [
+              "ethereum"
+            ],
+            "category": "decoded",
+            "contract_name": "Pair",
+            "dataset_type": "decoded_table",
+            "description": "Swap events emitted by Uniswap v3 pairs on Ethereum.",
+            "full_name": "uniswap_v3_ethereum.Pair_evt_Swap",
+            "owner_scope": "dune",
+            "project_name": "uniswap_v3",
+            "schema": null,
+            "visibility": "public"
+          }
+        ],
+        "has_more": false,
+        "next_offset": null,
+        "offset": 0,
+        "returned": 1,
+        "table_names": [
+          "uniswap_v3_ethereum.Pair_evt_Swap"
+        ],
+        "total": 1
+      },
+      "name": "search_datasets_by_contract",
+      "output_formatter": "actions.format_search_datasets_output",
+      "parameters": [
+        {
+          "description": "The contract to look up. An EVM address is normalised to lower case, so a checksummed copy from a block explorer works as it is.",
+          "display_name": "Contract address",
+          "examples": [
+            {
+              "label": "Uniswap v3 factory",
+              "value": "0x1F98431c8aD98523631AE4a59f267346ea31F984"
+            }
+          ],
+          "name": "contract_address",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only keep tables for these chains, named the way Dune names them (ethereum, base, arbitrum, solana, polygon\u2026). Leave empty for all of them.",
+          "display_name": "Chains",
+          "examples": [
+            {
+              "label": "Two chains",
+              "value": "ethereum, base"
+            }
+          ],
+          "name": "blockchains",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": false,
+          "description": "Bring back the column names and types alongside each match. Turn it on when the next step has to write SQL against what is found; leave it off for a shorter answer.",
+          "display_name": "Include each table's columns",
+          "name": "include_schema",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": 50,
+          "description": "How many tables to bring back, up to 250.",
+          "display_name": "Results per page",
+          "maximum": 250,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many results to skip before returning any: 0 for the first page. Use the 'next offset' a previous step returned to walk further.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/dune/search-datasets-by-contract",
+      "result_str_template": "Found the contract's tables.",
+      "returns": {
+        "properties": {
+          "contract_address": {
+            "description": "The address that was looked up",
+            "type": "string"
+          },
+          "datasets": {
+            "description": "The tables that matched",
+            "items": {
+              "properties": {
+                "abi_type": {
+                  "description": "Event or call, if decoded",
+                  "type": "string"
+                },
+                "blockchains": {
+                  "description": "Chains it covers",
+                  "type": "array"
+                },
+                "category": {
+                  "description": "Catalogue category",
+                  "type": "string"
+                },
+                "contract_name": {
+                  "description": "Contract, if decoded",
+                  "type": "string"
+                },
+                "dataset_type": {
+                  "description": "What kind of table",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "What it holds",
+                  "type": "string"
+                },
+                "full_name": {
+                  "description": "The name to write in SQL, e.g. dex.trades",
+                  "type": "string"
+                },
+                "owner_scope": {
+                  "description": "Who maintains it",
+                  "type": "string"
+                },
+                "project_name": {
+                  "description": "Protocol, if decoded",
+                  "type": "string"
+                },
+                "schema": {
+                  "description": "Columns, when they were asked for",
+                  "type": "array"
+                },
+                "visibility": {
+                  "description": "Public or private",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "has_more": {
+            "description": "Whether more matches are waiting",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "Offset for the next page",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "The offset this page started at",
+            "type": "integer"
+          },
+          "returned": {
+            "description": "Matches in this page",
+            "type": "integer"
+          },
+          "table_names": {
+            "description": "Just the names, ready to drop into SQL",
+            "type": "array"
+          },
+          "total": {
+            "description": "Matches in total",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "upload_csv": {
+      "description": "Turn a CSV into a Dune table in one step, with the columns and their types worked out from the file. The quickest way to get your own data next to onchain data (a list of wallets to label, a price series, a team's targets) and query the two together in SQL. Uploading to a name that already exists replaces what was there, so a scheduled workflow can keep the table current; use Create a table and Insert rows instead when the data has to build up.",
+      "display_name": "Upload a CSV",
+      "display_str_template": "Upload a CSV to the Dune table '{0}'.",
+      "handler": "actions.upload_csv",
+      "id": "dune_upload_csv",
+      "method": "POST",
+      "mock_response": {
+        "bytes": 48,
+        "column_names": [
+          "day",
+          "dgs10"
+        ],
+        "full_name": "dune.my_team.interest_rates",
+        "name": "my_team.interest_rates",
+        "row_count": 2,
+        "success": true,
+        "table_name": "interest_rates"
+      },
+      "name": "upload_csv",
+      "output_formatter": "actions.format_upload_csv_output",
+      "parameters": [
+        {
+          "description": "What to call the table. Lower case, letters, numbers and underscores. Uploading to a name that already exists replaces its contents.",
+          "display_name": "Table name",
+          "examples": [
+            {
+              "label": "A table name",
+              "value": "interest_rates"
+            }
+          ],
+          "name": "table_name",
+          "required": true,
+          "slugify": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "accepts_file_upload": true,
+          "description": "The CSV to upload, with the column names on the first line. Upload a file, or use the data a previous step produced.",
+          "display_name": "CSV",
+          "examples": [
+            {
+              "label": "Two columns",
+              "value": "day,rate\n2026-08-24,4.28\n2026-08-25,4.31"
+            }
+          ],
+          "multiline": true,
+          "name": "csv_data",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What the table holds and where the data came from.",
+          "display_name": "Description",
+          "multiline": true,
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Private tables are visible only to your account or team. Leave off to let anyone on Dune query it.",
+          "display_name": "Keep it private",
+          "name": "is_private",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/dune/upload-csv",
+      "result_str_template": "Uploaded the CSV.",
+      "returns": {
+        "properties": {
+          "bytes": {
+            "description": "Size of the CSV",
+            "type": "integer"
+          },
+          "column_names": {
+            "description": "The header row, split up",
+            "type": "array"
+          },
+          "full_name": {
+            "description": "The name to write in SQL",
+            "type": "string"
+          },
+          "name": {
+            "description": "namespace.table_name: what the table fields take",
+            "type": "string"
+          },
+          "row_count": {
+            "description": "Rows uploaded, not counting the header",
+            "type": "integer"
+          },
+          "success": {
+            "description": "Whether Dune accepted the upload",
+            "type": "boolean"
+          },
+          "table_name": {
+            "description": "Its name",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "upsert_materialized_view": {
+      "description": "Store a query's results as a table that refreshes on a schedule. Anything reading the view gets an answer instantly and for far fewer credits than re-running the query, which is what makes an expensive query usable in a dashboard or on an hourly workflow. Pick how often it should refresh (Dune allows anything from every 15 minutes to weekly), and Dune keeps it current on its own. Naming a view that already exists updates it; either way a refresh starts straight away.",
+      "display_name": "Create or update a materialized view",
+      "display_str_template": "Save the Dune materialized view '{0}'.",
+      "handler": "actions.upsert_materialized_view",
+      "id": "dune_upsert_materialized_view",
+      "method": "POST",
+      "mock_response": {
+        "cron_expression": "0 * * * *",
+        "execution_id": "01HZ065JVE23C23FM2HKWQP2RT",
+        "full_name": null,
+        "is_private": false,
+        "name": "result_daily_volume",
+        "query_id": 1215383,
+        "query_url": "https://dune.com/queries/1215383"
+      },
+      "name": "upsert_materialized_view",
+      "output_formatter": "actions.format_upsert_matview_output",
+      "parameters": [
+        {
+          "description": "What to call the view. Dune requires the name to start with 'result_'. Naming one that already exists updates it rather than creating a second.",
+          "display_name": "View name",
+          "examples": [
+            {
+              "label": "A view name",
+              "value": "result_daily_volume"
+            }
+          ],
+          "name": "name",
+          "required": true,
+          "slugify": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The query whose results the view stores, as its id or its address on dune.com. It has to be a query your account owns.",
+          "display_name": "Built from query",
+          "examples": [
+            {
+              "label": "A query id",
+              "value": "1215383"
+            },
+            {
+              "label": "The address of the query",
+              "value": "https://dune.com/queries/1215383"
+            }
+          ],
+          "name": "query_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How often Dune should rebuild the view. Leave it empty and the view only refreshes when something asks it to.",
+          "display_name": "Refresh",
+          "name": "refresh_schedule",
+          "options": [
+            {
+              "label": "Every 15 minutes (the most often Dune allows)",
+              "value": "every_15_minutes"
+            },
+            {
+              "label": "Every 30 minutes",
+              "value": "every_30_minutes"
+            },
+            {
+              "label": "Every hour, on the hour",
+              "value": "hourly"
+            },
+            {
+              "label": "Every 6 hours",
+              "value": "every_6_hours"
+            },
+            {
+              "label": "Every 12 hours",
+              "value": "every_12_hours"
+            },
+            {
+              "label": "Every day at midnight UTC",
+              "value": "daily"
+            },
+            {
+              "label": "Every Monday at midnight UTC",
+              "value": "weekly"
+            },
+            {
+              "label": "Custom: write the cron expression myself",
+              "value": "custom"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only needed when Refresh is set to Custom: a five-field cron expression, at least 15 minutes apart and at most weekly.",
+          "display_name": "Custom schedule",
+          "examples": [
+            {
+              "label": "Every weekday at 08:00 UTC",
+              "value": "0 8 * * 1-5"
+            },
+            {
+              "label": "Every 20 minutes",
+              "value": "*/20 * * * *"
+            }
+          ],
+          "name": "custom_cron_expression",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How much compute to give the run. Credits are charged for what the run actually uses, so a bigger engine finishes sooner but costs more. Not every plan includes every engine, and Dune rejects one your subscription does not have, so leave this empty unless you know yours does. Empty runs the query on whichever engine it is set to use, which always works.",
+          "display_name": "Engine size",
+          "name": "performance",
+          "options": [
+            {
+              "label": "Medium: Dune's default, and the one every plan has",
+              "value": "medium"
+            },
+            {
+              "label": "Large: 2x compute for heavy joins, on paid plans",
+              "value": "large"
+            },
+            {
+              "label": "Small: cheapest, but not included in every plan",
+              "value": "small"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "When to stop the schedule. Useful for a view that only needs to stay current while something is running. Leave empty to refresh indefinitely.",
+          "display_name": "Stop refreshing after",
+          "name": "schedule_expires_at",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": false,
+          "description": "Private views are visible only to your account or team.",
+          "display_name": "Keep it private",
+          "name": "is_private",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/dune/upsert-materialized-view",
+      "result_str_template": "Saved the materialized view.",
+      "returns": {
+        "properties": {
+          "cron_expression": {
+            "description": "The schedule that was set, if any",
+            "type": "string"
+          },
+          "execution_id": {
+            "description": "The refresh this started: follow it with Get execution status",
+            "type": "string"
+          },
+          "full_name": {
+            "description": "The name to write in SQL, when Dune returns it",
+            "type": "string"
+          },
+          "is_private": {
+            "description": "Whether it was made private",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "The view's name",
+            "type": "string"
+          },
+          "query_id": {
+            "description": "The query it is built from",
+            "type": "integer"
+          },
+          "query_url": {
+            "description": "That query's page on dune.com",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Query blockchain data with Dune: run SQL against decoded data for 100+ chains, run the queries and dashboards your team has already built, and collect the results as rows or CSV. Search the catalogue of tables to find what to query, look up the decoded tables behind any smart contract address, upload your own data to join against onchain activity, and cache expensive queries as materialized views that refresh on a schedule.",
+  "display_name": "Dune",
+  "id": "dune"
+}

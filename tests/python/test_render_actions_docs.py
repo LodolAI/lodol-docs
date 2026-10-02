@@ -1,8 +1,8 @@
 """Unit tests for ``scripts/render-actions-docs.py``.
 
-The renderer consumes ``data/actions.json`` (published by the
-``lodolai/lodol`` server repo) and emits one MDX page per provider plus
-an index and a ``meta.json``. These tests cover:
+The renderer consumes ``data/actions/`` (one JSON file per provider,
+published by the ``lodolai/lodol`` server repo) and emits one MDX page
+per provider plus an index and a ``meta.json``. These tests cover:
 
     - the pure helpers (param-type mapping, mock synthesis, MDX
       escaping, YAML quoting, slug generation)
@@ -517,6 +517,60 @@ class LoadSpecsTests(unittest.TestCase):
             self.assertEqual(len(providers), 1)
             self.assertEqual(providers[0]["id"], "slack")
 
+    def test_loads_one_file_per_provider_from_a_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            for pid in ("zendesk", "airtable"):
+                (directory / f"{pid}.json").write_text(
+                    json.dumps({"id": pid, "display_name": pid, "actions": {}})
+                )
+            providers = ren.load_specs(directory)
+            self.assertEqual([p["id"] for p in providers], ["airtable", "zendesk"])
+
+    def test_directory_ignores_files_that_are_not_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            (directory / "slack.json").write_text(
+                json.dumps({"id": "slack", "display_name": "Slack", "actions": {}})
+            )
+            (directory / "README.md").write_text("Published by lodolai/lodol.")
+            self.assertEqual(
+                [p["id"] for p in ren.load_specs(directory)], ["slack"]
+            )
+
+    def test_directory_skips_a_file_that_is_not_a_provider_object(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            (directory / "broken.json").write_text(json.dumps(["not a dict"]))
+            (directory / "slack.json").write_text(
+                json.dumps({"id": "slack", "display_name": "Slack", "actions": {}})
+            )
+            self.assertEqual(
+                [p["id"] for p in ren.load_specs(directory)], ["slack"]
+            )
+
+    def test_empty_directory_returns_empty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(ren.load_specs(Path(tmp)), [])
+
+    def test_default_input_is_the_per_provider_directory(self):
+        self.assertEqual(ren.DEFAULT_INPUT, ren.DOCS_ROOT / "data" / "actions")
+
+
+@unittest.skipUnless(
+    ren.DEFAULT_INPUT.is_dir(), "no published specs in this checkout"
+)
+class PublishedSpecsTests(unittest.TestCase):
+    """The specs committed in ``data/actions/`` keep the published layout."""
+
+    def test_each_file_is_named_after_its_provider(self):
+        paths = sorted(ren.DEFAULT_INPUT.glob("*.json"))
+        self.assertTrue(paths)
+        for path in paths:
+            provider = json.loads(path.read_text(encoding="utf-8"))
+            self.assertIsInstance(provider, dict, path.name)
+            self.assertEqual(provider.get("id"), path.stem, path.name)
+
 
 class RenderIntegrationTests(unittest.TestCase):
     """End-to-end test through ``render``."""
@@ -618,6 +672,34 @@ class MainIntegrationTests(unittest.TestCase):
             )
             self.assertEqual(rc, 0)
             self.assertTrue((output_dir / "fake.mdx").exists())
+
+    def test_main_reads_a_directory_of_provider_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            input_dir = tmp_path / "actions"
+            input_dir.mkdir()
+            (input_dir / "fake.json").write_text(
+                json.dumps(
+                    {
+                        "id": "fake",
+                        "display_name": "Fake",
+                        "description": "A fake provider.",
+                        "actions": {
+                            "ping": {
+                                "display_name": "Ping",
+                                "description": "Pings.",
+                                "parameters": [],
+                            }
+                        },
+                    }
+                )
+            )
+            output_dir = tmp_path / "out"
+            rc = ren.main(
+                ["--input", str(input_dir), "--output-dir", str(output_dir)]
+            )
+            self.assertEqual(rc, 0)
+            self.assertIn("### Ping", (output_dir / "fake.mdx").read_text())
 
 
 if __name__ == "__main__":

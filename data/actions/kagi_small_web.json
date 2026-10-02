@@ -1,0 +1,523 @@
+{
+  "actions": {
+    "check_site": {
+      "description": "Answer yes or no for one site: is this blog part of Kagi Small Web? Give it an address or a domain in any spelling, with or without https and www, and it comes back with the answer and, when the site is there, its feed address. A site that is not there comes back with the indexed domains closest to it, because a no is usually the wrong suffix or a typo rather than a real absence.",
+      "display_name": "Check whether a site is indexed",
+      "display_str_template": "Check whether a site is in the small web index.",
+      "handler": "actions.check_site",
+      "id": "kagi_small_web_check_site",
+      "method": "POST",
+      "mock_response": {
+        "feed_count": 1,
+        "feed_url": "https://danluu.com/atom.xml",
+        "is_indexed": true,
+        "name": "danluu.com",
+        "similar_sites": [],
+        "site": "danluu.com",
+        "total_count": 41494,
+        "url": "https://danluu.com"
+      },
+      "name": "check_site",
+      "output_formatter": "actions.format_check_output",
+      "parameters": [
+        {
+          "description": "The site to look up, as an address or a domain. 'danluu.com', 'www.danluu.com' and 'https://danluu.com/atom.xml' all ask about the same blog.",
+          "display_name": "Site",
+          "examples": [
+            {
+              "label": "A blog in the index",
+              "value": "danluu.com"
+            },
+            {
+              "label": "A full address",
+              "value": "https://xkcd.com"
+            }
+          ],
+          "name": "site",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/kagi-small-web/check-site",
+      "result_str_template": "Site checked.",
+      "returns": {
+        "properties": {
+          "feed_count": {
+            "description": "How many feeds the index lists for it. Nearly always one; a site with two feeds, or a host that many channels sit on, has more.",
+            "type": "integer"
+          },
+          "feed_url": {
+            "description": "Its feed, ready to hand to a reader.",
+            "type": "string"
+          },
+          "is_indexed": {
+            "description": "Whether the site is in the small web index.",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "What the index calls it. Empty when it is not indexed.",
+            "type": "string"
+          },
+          "similar_sites": {
+            "description": "Indexed domains close to the one asked about, offered when it is not there. A missed check is usually the wrong suffix or a typo.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "site": {
+            "description": "The site asked about, reduced to a plain domain. Whatever was typed, this is what was looked up.",
+            "type": "string"
+          },
+          "total_count": {
+            "description": "How many sites the whole index holds.",
+            "type": "integer"
+          },
+          "url": {
+            "description": "Its home page as the index lists it.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_sites": {
+      "description": "Search the roughly 41,000 sites Kagi has accepted into the small web: personal blogs, one-person YouTube channels and webcomics. Every result carries the site's home page and its feed address, so a workflow can hand them straight to a reader, a database or a blogroll. Searching matches anywhere in the name or either address, so 'comic' finds bigblogcomics.com and 'wordpress.com' finds every blog hosted there. A search that matches more than you asked for says how many it found, so it is clear when it is worth narrowing. To take the whole index rather than a search of it, the result also carries its address as a single OPML file that any reader imports in one go.",
+      "display_name": "Find sites in the index",
+      "display_str_template": "Find sites in the small web index.",
+      "handler": "actions.find_sites",
+      "id": "kagi_small_web_find_sites",
+      "method": "POST",
+      "mock_response": {
+        "contains": "",
+        "count": 3,
+        "index_url": "https://kagi.com/smallweb/opml",
+        "matched_count": 3,
+        "sites": [
+          {
+            "domain": "danluu.com",
+            "feed_url": "https://danluu.com/atom.xml",
+            "name": "danluu.com",
+            "url": "https://danluu.com"
+          },
+          {
+            "domain": "simonwillison.net",
+            "feed_url": "https://simonwillison.net/atom/everything/",
+            "name": "simonwillison.net",
+            "url": "https://simonwillison.net"
+          },
+          {
+            "domain": "xkcd.com",
+            "feed_url": "https://xkcd.com/atom.xml",
+            "name": "xkcd.com",
+            "url": "https://xkcd.com"
+          }
+        ],
+        "total_count": 41494
+      },
+      "name": "find_sites",
+      "output_formatter": "actions.format_sites_output",
+      "parameters": [
+        {
+          "description": "Only sites whose name or address contains this. Every word has to appear, in any order, anywhere in the text, so 'comic' finds bigblogcomics.com and 'wp' finds a wordpress.com blog. Case and accents are ignored. Leave it empty for the whole index.",
+          "display_name": "Search",
+          "examples": [
+            {
+              "label": "Webcomics",
+              "value": "comic"
+            },
+            {
+              "label": "YouTube channels",
+              "value": "youtube.com"
+            },
+            {
+              "label": "One site you have in mind",
+              "value": "xkcd"
+            }
+          ],
+          "name": "contains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 50,
+          "description": "How many sites to return. Fifty by default. The result always says how many matched, so a search worth narrowing is obvious from the step.",
+          "display_name": "How many sites",
+          "maximum": 500,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/kagi-small-web/find-sites",
+      "result_str_template": "Sites retrieved.",
+      "returns": {
+        "properties": {
+          "contains": {
+            "description": "The text searched for, if any.",
+            "type": "string"
+          },
+          "count": {
+            "description": "How many sites came back.",
+            "type": "integer"
+          },
+          "index_url": {
+            "description": "The address of the whole index as an OPML file, which any feed reader can import in one go.",
+            "type": "string"
+          },
+          "matched_count": {
+            "description": "How many sites matched before the limit was applied. Higher than the count means the search is worth narrowing.",
+            "type": "integer"
+          },
+          "sites": {
+            "description": "The sites, in alphabetical order.",
+            "items": {
+              "properties": {
+                "domain": {
+                  "description": "The site's domain, with any 'www.' removed.",
+                  "type": "string"
+                },
+                "feed_url": {
+                  "description": "The RSS or Atom feed to subscribe to, ready to hand to a reader.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "What the index calls the site. Usually its domain, and for a YouTube channel the channel's name.",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "The site's home page.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_count": {
+            "description": "How many sites the whole index holds.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_random_post": {
+      "description": "Pick one post at random from everything the small web has published recently, or from the posts about one subject. This is the step behind a daily reading prompt, a 'something to read' message in a channel, or a surprise link on a home page. Set a repeatable pick when the same post has to come back every run, for a screenshot or a test.",
+      "display_name": "Get a random post",
+      "display_str_template": "Get a random post from the small web.",
+      "handler": "actions.get_random_post",
+      "id": "kagi_small_web_get_random_post",
+      "method": "POST",
+      "mock_response": {
+        "author": "Dan Luu",
+        "chosen_from": 1000,
+        "contains": "",
+        "found": true,
+        "published_at": "2026-09-15T02:30:00+00:00",
+        "seed": "",
+        "site": "danluu.com",
+        "summary": "Hosting bills are mostly a story about defaults. Here is what ten years of a plain static site actually cost, and what changed.",
+        "title": "The cheapest way to keep a blog online for a decade",
+        "url": "https://danluu.com/cheap-blog/"
+      },
+      "name": "get_random_post",
+      "output_formatter": "actions.format_post_output",
+      "parameters": [
+        {
+          "description": "Only posts whose title or summary mentions this. Every word has to appear somewhere, in any order, so 'async rust' finds a post called 'Rust, and async at last'. Words match from the start of a word, so 'program' finds programming while 'rust' does not find trust. Case and accents are ignored. Leave it empty for everything published recently.",
+          "display_name": "About",
+          "examples": [
+            {
+              "label": "Posts about gardening",
+              "value": "garden"
+            },
+            {
+              "label": "Posts about self hosting",
+              "value": "self hosted"
+            },
+            {
+              "label": "Posts about writing",
+              "value": "writing"
+            }
+          ],
+          "name": "contains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Set this to any text to make the pick repeatable: the same text picks the same post for as long as that post is still in the feed. Leave it empty for a different post every run, which is what a daily reading prompt wants.",
+          "display_name": "Repeatable pick",
+          "examples": [
+            {
+              "label": "Pin the pick while building",
+              "value": "preview"
+            }
+          ],
+          "name": "seed",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/kagi-small-web/get-random-post",
+      "result_str_template": "Post picked.",
+      "returns": {
+        "properties": {
+          "author": {
+            "description": "Who wrote it, when the blog says.",
+            "type": "string"
+          },
+          "chosen_from": {
+            "description": "How many posts it was picked from.",
+            "type": "integer"
+          },
+          "contains": {
+            "description": "The words it was narrowed to, if any.",
+            "type": "string"
+          },
+          "found": {
+            "description": "Whether there was a post to pick.",
+            "type": "boolean"
+          },
+          "published_at": {
+            "description": "When it was published, as an ISO 8601 time in UTC.",
+            "type": "string"
+          },
+          "seed": {
+            "description": "The repeatable pick used, if any.",
+            "type": "string"
+          },
+          "site": {
+            "description": "The blog it was published on, as a plain domain.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "The post's own summary as plain readable text.",
+            "type": "string"
+          },
+          "title": {
+            "description": "The post's title.",
+            "type": "string"
+          },
+          "url": {
+            "description": "The address of the post itself.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_posts": {
+      "description": "Read what the small web has just published: personal blogs, one-person YouTube channels and webcomics, with no SEO pages and no press releases. Narrow to a subject, a single blog, an author or a stretch of time, and each post comes back with its title, link, blog, author, time and a plain-text summary ready to post or mail. Worth knowing before you build: the feed holds the most recent posts only, which is roughly the last day and a half, so this is a step to run daily rather than one to ask about last month. Every result says exactly how far back it reached.",
+      "display_name": "List recent posts",
+      "display_str_template": "List recent posts from the small web.",
+      "handler": "actions.list_posts",
+      "id": "kagi_small_web_list_posts",
+      "method": "POST",
+      "mock_response": {
+        "count": 3,
+        "covers_requested_period": true,
+        "filtered": false,
+        "matched_count": 3,
+        "posts": [
+          {
+            "author": "Dan Luu",
+            "published_at": "2026-09-15T02:30:00+00:00",
+            "site": "danluu.com",
+            "summary": "Hosting bills are mostly a story about defaults. Here is what ten years of a plain static site actually cost, and what changed.",
+            "title": "The cheapest way to keep a blog online for a decade",
+            "url": "https://danluu.com/cheap-blog/"
+          },
+          {
+            "author": "Simon Willison",
+            "published_at": "2026-09-14T18:05:00+00:00",
+            "site": "simonwillison.net",
+            "summary": "A forum with eighty people on it needs almost none of the software that a forum with eighty thousand does.",
+            "title": "Notes on running a small forum in 2026",
+            "url": "https://simonwillison.net/2026/Sep/14/small-forum/"
+          },
+          {
+            "author": "",
+            "published_at": "2026-09-14T07:12:00+00:00",
+            "site": "bakingatnight.example",
+            "summary": "",
+            "title": "Sourdough, week eleven",
+            "url": "https://bakingatnight.example/posts/week-eleven/"
+          }
+        ],
+        "requested_since": "",
+        "requested_until": "",
+        "site_count": 3,
+        "window_end": "2026-09-15T02:30:00+00:00",
+        "window_post_count": 1000,
+        "window_start": "2026-09-13T11:40:56+00:00"
+      },
+      "name": "list_posts",
+      "output_formatter": "actions.format_posts_output",
+      "parameters": [
+        {
+          "description": "Only posts whose title or summary mentions this. Every word has to appear somewhere, in any order, so 'async rust' finds a post called 'Rust, and async at last'. Words match from the start of a word, so 'program' finds programming while 'rust' does not find trust. Case and accents are ignored. Leave it empty for everything published recently.",
+          "display_name": "About",
+          "examples": [
+            {
+              "label": "Posts about gardening",
+              "value": "garden"
+            },
+            {
+              "label": "Posts about self hosting",
+              "value": "self hosted"
+            },
+            {
+              "label": "Posts about writing",
+              "value": "writing"
+            }
+          ],
+          "name": "contains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only posts from one blog, given as its address or its domain: 'danluu.com' and 'https://danluu.com/' both work. The list offers the sites that have published in the last day or so, and any other can be typed in. Naming a host that blogs sit on, such as 'tumblr.com', includes every blog underneath it. Leave it empty for the whole small web.",
+          "display_name": "From this site",
+          "dynamic_source": "sites",
+          "dynamic_source_allows_custom": true,
+          "name": "site",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only posts credited to a writer whose name contains these words. Roughly four posts in ten name nobody at all, because the blog does not publish an author, and those can never match. Leave it empty for everyone.",
+          "display_name": "By this author",
+          "name": "author",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only posts published at or after this moment, in UTC. The feed reaches back about a day and a half, so an earlier time returns everything there is and the result says the feed did not go back that far. Leave it empty for the whole feed.",
+          "display_name": "Published after",
+          "name": "published_since",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Only posts published at or before this moment, in UTC. Blogs stamp their own dates, so a handful are always dated a few hours ahead of now; leave this empty to keep them.",
+          "display_name": "Published before",
+          "name": "published_until",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": 25,
+          "description": "How many posts to return. Twenty five by default. The filters run across the whole feed first, so a small number here is the best matches rather than a small search.",
+          "display_name": "How many posts",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Newest first by default. Oldest first starts at the far end of the feed, which is where a step that has already handled today's posts picks up.",
+          "display_name": "Order",
+          "name": "order",
+          "options": [
+            {
+              "label": "Newest first",
+              "value": "newest"
+            },
+            {
+              "label": "Oldest first",
+              "value": "oldest"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/kagi-small-web/list-posts",
+      "result_str_template": "Posts retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many posts came back.",
+            "type": "integer"
+          },
+          "covers_requested_period": {
+            "description": "False when 'Published after' asked for posts older than the feed reaches. The result is everything the feed has, not everything that was published.",
+            "type": "boolean"
+          },
+          "filtered": {
+            "description": "Whether any filter was applied at all.",
+            "type": "boolean"
+          },
+          "matched_count": {
+            "description": "How many posts matched before the limit was applied. Higher than the count means there is more to see behind it.",
+            "type": "integer"
+          },
+          "posts": {
+            "description": "The posts, in the order asked for.",
+            "items": {
+              "properties": {
+                "author": {
+                  "description": "Who wrote it, when the blog says. Empty for the roughly four in ten posts that name nobody.",
+                  "type": "string"
+                },
+                "published_at": {
+                  "description": "When it was published, as an ISO 8601 time in UTC. Blogs stamp their own dates, so this is occasionally a few hours ahead of now.",
+                  "type": "string"
+                },
+                "site": {
+                  "description": "The blog it was published on, as a plain domain with any 'www.' removed.",
+                  "type": "string"
+                },
+                "summary": {
+                  "description": "The post's own summary as plain readable text, with its markup removed. A sentence on most blogs and the whole post on some. Empty for the few posts that publish none.",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "The post's title.",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "The address of the post itself.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "requested_since": {
+            "description": "The 'Published after' time asked for, if any.",
+            "type": "string"
+          },
+          "requested_until": {
+            "description": "The 'Published before' time asked for, if any.",
+            "type": "string"
+          },
+          "site_count": {
+            "description": "How many different blogs the returned posts come from.",
+            "type": "integer"
+          },
+          "window_end": {
+            "description": "The newest post in the feed, as an ISO 8601 time.",
+            "type": "string"
+          },
+          "window_post_count": {
+            "description": "How many posts were read to answer this.",
+            "type": "integer"
+          },
+          "window_start": {
+            "description": "The oldest post the feed still reaches, as an ISO 8601 time. Nothing published before this can be listed.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "description": "Read the small web from a workflow: the personal blogs, one-person YouTube channels and webcomics that Kagi curates as the non-commercial web. List what has just been published, narrowed to a subject, a blog, an author or a stretch of time, with every post carrying a plain-text summary ready to post or mail. Pick one post at random for a daily reading prompt. Search the 41,000 sites in the index and take their feed addresses straight into a reader, or check whether one particular blog is in there. The feed holds the most recent posts only, which is roughly the last day and a half, so every result says how far back it reached. Every action reads: nothing here changes anything. No account or API key required.",
+  "display_name": "Kagi Small Web",
+  "id": "kagi_small_web"
+}
