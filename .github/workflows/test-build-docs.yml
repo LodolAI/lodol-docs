@@ -15,6 +15,9 @@ jobs:
   test-build-docs:
     name: Test that the docs site builds without issue
     runs-on: ubuntu-latest
+    # The build takes under 10 minutes. One stalled in swap would otherwise run
+    # for GitHub's default of 6 hours before failing.
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -48,6 +51,27 @@ jobs:
           sudo mkswap /mnt/build-swap
           sudo swapon /mnt/build-swap
           free -h
+          # Pages written to swap so far, for the report after the build.
+          echo "SWAP_PAGES_OUT_BEFORE_BUILD=$(awk '/^pswpout / {print $2}' /proc/vmstat)" >> "$GITHUB_ENV"
 
       - name: Build docs
         run: npm run build
+
+      # With swap, a build that outgrows the runner's memory slows down instead
+      # of failing, so say so on the run rather than leave a slower build as the
+      # only sign.
+      - name: Report swap used by the build
+        if: always()
+        run: |
+          before="${SWAP_PAGES_OUT_BEFORE_BUILD:-}"
+          if [ -z "$before" ]; then
+            echo "Swap wasn't set up, so there is nothing to report."
+            exit 0
+          fi
+          after="$(awk '/^pswpout / {print $2}' /proc/vmstat)"
+          swapped_mib=$(( (after - before) * $(getconf PAGESIZE) / 1048576 ))
+          if [ "$swapped_mib" -gt 0 ]; then
+            echo "::warning title=Docs build ran short of memory::The build wrote ${swapped_mib} MiB to swap, which slows it down."
+          else
+            echo "The build fit in the runner's memory: nothing was written to swap."
+          fi

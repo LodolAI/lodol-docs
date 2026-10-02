@@ -4,6 +4,15 @@ on:
   push:
     branches: ["main"]
 
+# One deploy at a time, in push order. Without this, two merges a few seconds
+# apart deploy side by side, and users get whichever Docker build finishes
+# last, even if it's the older commit. The check at the end can't catch that,
+# since it only confirms the newest revision created is the one serving.
+# A newer push replaces a deploy that is still waiting its turn.
+concurrency:
+  group: deploy-docs
+  cancel-in-progress: false
+
 env:
   REGION: us-west1
   SERVICE: docs
@@ -15,6 +24,9 @@ jobs:
   deploy-docs:
     name: Deploy to Cloud Run
     runs-on: ubuntu-latest
+    # A deploy takes about 10 minutes. A build stalled in swap would otherwise
+    # hold back the next deploy for GitHub's default of 6 hours.
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -40,6 +52,8 @@ jobs:
           sudo mkswap /mnt/build-swap
           sudo swapon /mnt/build-swap
           free -h
+          # Pages written to swap so far, for the report after the build.
+          echo "SWAP_PAGES_OUT_BEFORE_BUILD=$(awk '/^pswpout / {print $2}' /proc/vmstat)" >> "$GITHUB_ENV"
 
       # Tag by commit as well as latest, so every deployed revision maps back to
       # the exact image that produced it and can be redeployed as-is.
@@ -48,6 +62,25 @@ jobs:
           docker build -t "$IMAGE:$GITHUB_SHA" -t "$IMAGE:latest" .
           docker push "$IMAGE:$GITHUB_SHA"
           docker push "$IMAGE:latest"
+
+      # With swap, a build that outgrows the runner's memory slows down instead
+      # of failing, so say so on the run rather than leave a slower deploy as
+      # the only sign.
+      - name: Report swap used by the build
+        if: always()
+        run: |
+          before="${SWAP_PAGES_OUT_BEFORE_BUILD:-}"
+          if [ -z "$before" ]; then
+            echo "Swap wasn't set up, so there is nothing to report."
+            exit 0
+          fi
+          after="$(awk '/^pswpout / {print $2}' /proc/vmstat)"
+          swapped_mib=$(( (after - before) * $(getconf PAGESIZE) / 1048576 ))
+          if [ "$swapped_mib" -gt 0 ]; then
+            echo "::warning title=Docs build ran short of memory::The build wrote ${swapped_mib} MiB to swap, which slows it down."
+          else
+            echo "The build fit in the runner's memory: nothing was written to swap."
+          fi
 
       # Note the revision serving before this deploy, so a failed deploy can be
       # rolled back with a single command from the job log.
