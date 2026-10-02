@@ -1,22 +1,46 @@
 {
   "actions": {
-    "delete_object": {
-      "description": "Delete a record from an index by its Object ID.",
-      "display_name": "Delete object",
-      "display_str_template": "Delete record '{1}' from the Algolia index '{0}'.",
-      "handler": "actions.delete_object",
-      "id": "algolia_delete_object",
+    "browse_records": {
+      "description": "Read every record in an index, or every record matching a query and filters, up to 1,000 at a time. Give the next cursor back to read the next batch, until has more is false. Unlike a search, a browse is not limited to the first 1,000 results. The API key needs the browse permission.",
+      "display_name": "Browse records",
+      "display_str_template": "Browse the records of the Algolia index '{0}'.",
+      "handler": "actions.browse_records",
+      "id": "algolia_browse_records",
       "method": "POST",
       "mock_response": {
-        "deleted_at": "2026-07-24T12:05:00.000Z",
-        "object_id": "42",
-        "task_id": 8100793
+        "count": 4,
+        "has_more": true,
+        "hits": [
+          {
+            "name": "USB-C Charger",
+            "objectID": "9077987002",
+            "price": 24.99
+          },
+          {
+            "name": "Wireless Mouse",
+            "objectID": "ms-500",
+            "price": 34.99
+          },
+          {
+            "name": "Wireless Earbuds",
+            "objectID": "eb-600",
+            "price": 129.0
+          },
+          {
+            "name": "Wireless Headphones",
+            "objectID": "hp-100",
+            "price": 69.99
+          }
+        ],
+        "next_cursor": "AkFoaXRzUGVyUGFnZT00JmF0dHJpYnV0ZXNUb1JldHJpZXZlPSU1QiUyMm5hbWUlMjIlMkMlMjJwcmljZSUyMiU1RAEBBmhwLTEwMA=="
       },
-      "name": "delete_object",
+      "name": "browse_records",
       "parameters": [
         {
-          "description": "Name of the index the record belongs to.",
+          "description": "The index to use. Index names are case-sensitive.",
           "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
           "examples": [
             {
               "label": "Index",
@@ -28,7 +52,394 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "ID of the record to delete.",
+          "default": "",
+          "description": "Text to search for. Leave empty to match every record, in the index's ranking order.",
+          "display_name": "Search text",
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Algolia filter syntax, like category:shoes AND price < 100, or (brand:Acme OR brand:Zenith) AND NOT discontinued:true. A text attribute must be listed in the index's attributes for faceting to be filtered on; a filter on one that isn't is reported rather than matching nothing.",
+          "display_name": "Filters",
+          "name": "filters",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Attribute names to return for each record, like name and price. Leave empty for every attribute the index returns. The objectID always comes back.",
+          "display_name": "Attributes to return",
+          "name": "attributes_to_retrieve",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": 1000,
+          "description": "How many records to return at a time, from 1 to 1,000 (default 1,000).",
+          "display_name": "Records per batch",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "hits_per_page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The next cursor an earlier Browse records returned, to read the batch after it. It carries that browse's search text, filters and batch size. Leave empty to start.",
+          "display_name": "Cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/algolia/browse-records",
+      "result_str_template": "Read a batch of Algolia records.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many records this batch holds",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "Whether another batch follows",
+            "type": "boolean"
+          },
+          "hits": {
+            "description": "This batch of records",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "description": "Give this to the next Browse records; empty after the last batch",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "clear_objects": {
+      "description": "Delete every record in an index, keeping its settings, synonyms and rules. The API key needs the deleteIndex permission.",
+      "display_name": "Clear an index",
+      "display_str_template": "Clear the records of the Algolia index '{0}'.",
+      "handler": "actions.clear_objects",
+      "id": "algolia_clear_objects",
+      "method": "POST",
+      "mock_response": {
+        "index_name": "lodol_demo_products",
+        "records_deleted": 4,
+        "task_id": 1753626460002,
+        "updated_at": "2026-10-02T22:38:06.875Z"
+      },
+      "name": "clear_objects",
+      "parameters": [
+        {
+          "description": "The index to use. It must exist: Algolia would otherwise create an empty index of that name and report success, so a mistyped name is refused instead.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/algolia/clear-objects",
+      "result_str_template": "Cleared the Algolia index.",
+      "returns": {
+        "properties": {
+          "index_name": {
+            "description": "The index cleared",
+            "type": "string"
+          },
+          "records_deleted": {
+            "description": "How many records it held (null when the API key can't search)",
+            "nullable": true,
+            "type": "number"
+          },
+          "task_id": {
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
+            "type": "number"
+          },
+          "updated_at": {
+            "description": "When Algolia recorded the change",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "copy_or_move_index": {
+      "description": "Copy an index, or only its settings, synonyms or rules, to another index, or move (rename) it. An index already at the destination is replaced. The index copied or moved must exist.",
+      "display_name": "Copy or move an index",
+      "display_str_template": "Copy or move the Algolia index '{0}' to '{1}'.",
+      "handler": "actions.copy_or_move_index",
+      "id": "algolia_copy_or_move_index",
+      "method": "POST",
+      "mock_response": {
+        "destination": "lodol_demo_products_backup",
+        "operation": "copy",
+        "source": "lodol_demo_products",
+        "task_id": 1753626449002,
+        "updated_at": "2026-10-02T22:37:58.431Z"
+      },
+      "name": "copy_or_move_index",
+      "parameters": [
+        {
+          "description": "The index to copy or move.",
+          "display_name": "From index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where to copy or move it. An index of this name is replaced (only the parts copied, when copying some).",
+          "display_name": "To index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "destination",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "copy",
+          "description": "Copy leaves the original in place; move renames it.",
+          "display_name": "Copy or move",
+          "name": "operation",
+          "options": [
+            {
+              "label": "Copy",
+              "value": "copy"
+            },
+            {
+              "label": "Move (rename)",
+              "value": "move"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Copy only these parts, not the records. Leave empty to copy everything, records included. A move always takes everything.",
+          "display_name": "Copy only",
+          "multi_select": true,
+          "name": "scope",
+          "options": [
+            {
+              "label": "Settings",
+              "value": "settings"
+            },
+            {
+              "label": "Synonyms",
+              "value": "synonyms"
+            },
+            {
+              "label": "Rules",
+              "value": "rules"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/algolia/copy-or-move-index",
+      "result_str_template": "Copied or moved the Algolia index.",
+      "returns": {
+        "properties": {
+          "destination": {
+            "description": "Where it went",
+            "type": "string"
+          },
+          "operation": {
+            "description": "copy or move",
+            "type": "string"
+          },
+          "source": {
+            "description": "The index copied or moved",
+            "type": "string"
+          },
+          "task_id": {
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
+            "type": "number"
+          },
+          "updated_at": {
+            "description": "When Algolia recorded the operation",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_by_filter": {
+      "description": "Delete every record matching a filter, like category:discontinued or stock = 0, and say how many matched. A filter on a text attribute the index can't filter on is reported instead of deleting nothing. The API key needs the deleteIndex permission.",
+      "display_name": "Delete records by filter",
+      "display_str_template": "Delete records matching '{1}' from the Algolia index '{0}'.",
+      "handler": "actions.delete_by_filter",
+      "id": "algolia_delete_by_filter",
+      "method": "POST",
+      "mock_response": {
+        "matched": 1,
+        "task_id": 1753626454002,
+        "updated_at": "2026-10-02T22:38:01.889Z"
+      },
+      "name": "delete_by_filter",
+      "parameters": [
+        {
+          "description": "The index to use. It must exist: Algolia would otherwise create an empty index of that name and report success, so a mistyped name is refused instead.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which records to delete, in Algolia filter syntax, like category:discontinued AND stock = 0. Search records with the same filters first to see what would go.",
+          "display_name": "Filters",
+          "name": "filters",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/algolia/delete-by-filter",
+      "result_str_template": "Deleted the matching Algolia records.",
+      "returns": {
+        "properties": {
+          "matched": {
+            "description": "How many records matched and were deleted (null when the API key can't search)",
+            "nullable": true,
+            "type": "number"
+          },
+          "task_id": {
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
+            "type": "number"
+          },
+          "updated_at": {
+            "description": "When Algolia recorded the deletion",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_index": {
+      "description": "Delete an index with its records, settings, synonyms and rules. An index that doesn't exist is not an error: deleted comes back false. The API key needs the deleteIndex permission.",
+      "display_name": "Delete an index",
+      "display_str_template": "Delete the Algolia index '{0}'.",
+      "handler": "actions.delete_index",
+      "id": "algolia_delete_index",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "deleted_at": "2026-10-02T22:38:07.707Z",
+        "index_name": "lodol_demo_products",
+        "task_id": 1753626462002
+      },
+      "name": "delete_index",
+      "parameters": [
+        {
+          "description": "The index to use. Index names are case-sensitive.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/algolia/delete-index",
+      "result_str_template": "Deleted the Algolia index.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Whether there was such an index to delete",
+            "type": "boolean"
+          },
+          "deleted_at": {
+            "description": "When Algolia recorded the deletion",
+            "type": "string"
+          },
+          "index_name": {
+            "description": "The index",
+            "type": "string"
+          },
+          "task_id": {
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_object": {
+      "description": "Delete a record from an index by its object ID. A record that isn't there is not an error: deleted comes back false.",
+      "display_name": "Delete a record",
+      "display_str_template": "Delete record '{1}' from the Algolia index '{0}'.",
+      "handler": "actions.delete_object",
+      "id": "algolia_delete_object",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "deleted_at": "2026-10-02T22:38:05.040Z",
+        "object_id": "eb-600",
+        "task_id": 1753626459002
+      },
+      "name": "delete_object",
+      "parameters": [
+        {
+          "description": "The index to use. It must exist: Algolia would otherwise create an empty index of that name and report success, so a mistyped name is refused instead.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The record's object ID. A record an earlier step returned works too.",
           "display_name": "Object ID",
           "name": "object_id",
           "required": true,
@@ -39,42 +450,50 @@
       "result_str_template": "Deleted the record from Algolia.",
       "returns": {
         "properties": {
+          "deleted": {
+            "description": "Whether there was such a record to delete",
+            "type": "boolean"
+          },
           "deleted_at": {
-            "description": "Timestamp Algolia recorded for the deletion",
+            "description": "When Algolia recorded the deletion",
             "type": "string"
           },
           "object_id": {
-            "description": "ID of the deleted record",
+            "description": "The record's object ID",
             "type": "string"
           },
           "task_id": {
-            "description": "Algolia task ID for the deletion",
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
             "type": "number"
           }
         },
         "type": "object"
       }
     },
-    "get_object": {
-      "description": "Retrieve a single record from an index by its Object ID.",
-      "display_name": "Get object",
-      "display_str_template": "Get record '{1}' from the Algolia index '{0}'.",
-      "handler": "actions.get_object",
-      "id": "algolia_get_object",
+    "delete_objects": {
+      "description": "Delete up to 10,000 records from an index by their object IDs. IDs with no record are listed under not found.",
+      "display_name": "Delete records",
+      "display_str_template": "Delete records from the Algolia index '{0}'.",
+      "handler": "actions.delete_objects",
+      "id": "algolia_delete_objects",
       "method": "POST",
       "mock_response": {
-        "object_id": "42",
-        "record": {
-          "name": "Wireless Headphones",
-          "objectID": "42",
-          "price": 79.99
-        }
+        "count": 1,
+        "deleted_object_ids": [
+          "sp-300"
+        ],
+        "not_found": [
+          "zz-999"
+        ],
+        "task_id": 1753626456002
       },
-      "name": "get_object",
+      "name": "delete_objects",
       "parameters": [
         {
-          "description": "Name of the index the record belongs to.",
+          "description": "The index to use. It must exist: Algolia would otherwise create an empty index of that name and report success, so a mistyped name is refused instead.",
           "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
           "examples": [
             {
               "label": "Index",
@@ -86,15 +505,237 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "ID of the record to retrieve.",
+          "description": "The records' object IDs, as a list or separated by commas. Records an earlier step returned work too.",
+          "display_name": "Object IDs",
+          "name": "object_ids",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/algolia/delete-objects",
+      "result_str_template": "Deleted the records from Algolia.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many records were deleted",
+            "type": "number"
+          },
+          "deleted_object_ids": {
+            "description": "Object IDs of the records deleted",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "not_found": {
+            "description": "Object IDs the index had no record for",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "task_id": {
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_rule": {
+      "description": "Delete a rule from an index by its ID. A rule that isn't there is not an error: deleted comes back false.",
+      "display_name": "Delete a rule",
+      "display_str_template": "Delete rule '{1}' from the Algolia index '{0}'.",
+      "handler": "actions.delete_rule",
+      "id": "algolia_delete_rule",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "rule_id": "promote-earbuds",
+        "task_id": 1753626450002,
+        "updated_at": "2026-10-02T22:37:59.234Z"
+      },
+      "name": "delete_rule",
+      "parameters": [
+        {
+          "description": "The index to use. It must exist: Algolia would otherwise create an empty index of that name and report success, so a mistyped name is refused instead.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The rule's ID, as Search rules returns it.",
+          "display_name": "Rule ID",
+          "name": "rule_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Also make the change on the index's replicas (its copies sorted another way). Off by default, as in Algolia.",
+          "display_name": "Apply to replicas",
+          "name": "forward_to_replicas",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/algolia/delete-rule",
+      "result_str_template": "Deleted the Algolia rule.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Whether there was such a rule to delete",
+            "type": "boolean"
+          },
+          "rule_id": {
+            "description": "The rule's ID",
+            "type": "string"
+          },
+          "task_id": {
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
+            "type": "number"
+          },
+          "updated_at": {
+            "description": "When Algolia recorded the deletion",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_synonym": {
+      "description": "Delete a synonym from an index by its ID. A synonym that isn't there is not an error: deleted comes back false.",
+      "display_name": "Delete a synonym",
+      "display_str_template": "Delete synonym '{1}' from the Algolia index '{0}'.",
+      "handler": "actions.delete_synonym",
+      "id": "algolia_delete_synonym",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "deleted_at": "2026-10-02T22:38:01.077Z",
+        "synonym_id": "lodol-synonym-6fc79aa2fef5",
+        "task_id": 1753626452002
+      },
+      "name": "delete_synonym",
+      "parameters": [
+        {
+          "description": "The index to use. It must exist: Algolia would otherwise create an empty index of that name and report success, so a mistyped name is refused instead.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The synonym's ID, as Search synonyms or Save a synonym returns it.",
+          "display_name": "Synonym ID",
+          "name": "synonym_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Also make the change on the index's replicas (its copies sorted another way). Off by default, as in Algolia.",
+          "display_name": "Apply to replicas",
+          "name": "forward_to_replicas",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/algolia/delete-synonym",
+      "result_str_template": "Deleted the Algolia synonym.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Whether there was such a synonym to delete",
+            "type": "boolean"
+          },
+          "deleted_at": {
+            "description": "When Algolia recorded the deletion",
+            "type": "string"
+          },
+          "synonym_id": {
+            "description": "The synonym's ID",
+            "type": "string"
+          },
+          "task_id": {
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_object": {
+      "description": "Retrieve one record from an index by its object ID.",
+      "display_name": "Get a record",
+      "display_str_template": "Get record '{1}' from the Algolia index '{0}'.",
+      "handler": "actions.get_object",
+      "id": "algolia_get_object",
+      "method": "POST",
+      "mock_response": {
+        "object_id": "hp-100",
+        "record": {
+          "brand": "Sonance",
+          "category": "Audio",
+          "name": "Wireless Headphones",
+          "objectID": "hp-100",
+          "price": 69.99,
+          "stock": 23,
+          "tags": [
+            "bluetooth"
+          ]
+        }
+      },
+      "name": "get_object",
+      "parameters": [
+        {
+          "description": "The index to use. Index names are case-sensitive.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The record's object ID. A record an earlier step returned works too.",
           "display_name": "Object ID",
           "name": "object_id",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Optional list of attribute names to return. Leave empty to return the whole record.",
-          "display_name": "Attributes to retrieve",
+          "description": "Attribute names to return for each record, like name and price. Leave empty for every attribute the index returns. The objectID always comes back.",
+          "display_name": "Attributes to return",
           "name": "attributes_to_retrieve",
           "required": false,
           "schema": {
@@ -111,86 +752,51 @@
       "returns": {
         "properties": {
           "object_id": {
-            "description": "ID of the record",
+            "description": "The record's object ID",
             "type": "string"
           },
           "record": {
-            "description": "The full record, including its objectID",
+            "description": "The record, with its objectID",
             "type": "object"
           }
         },
         "type": "object"
       }
     },
-    "list_indices": {
-      "description": "List the indices in your Algolia application.",
-      "display_name": "List indices",
-      "display_str_template": "List Algolia indices.",
-      "handler": "actions.list_indices",
-      "id": "algolia_list_indices",
+    "get_objects": {
+      "description": "Retrieve several records from an index by their object IDs, up to 10,000. IDs with no record are listed under not found instead of failing the step.",
+      "display_name": "Get records",
+      "display_str_template": "Get records from the Algolia index '{0}'.",
+      "handler": "actions.get_objects",
+      "id": "algolia_get_objects",
       "method": "POST",
       "mock_response": {
-        "indices": [
+        "found_count": 2,
+        "not_found": [
+          "zz-999"
+        ],
+        "records": [
           {
-            "created_at": "2026-01-15T10:00:00.000Z",
-            "entries": 1024,
-            "name": "products",
-            "updated_at": "2026-07-20T18:30:00.000Z"
+            "name": "Wireless Headphones",
+            "objectID": "hp-100",
+            "price": 69.99,
+            "stock": 23
+          },
+          {
+            "name": "Mechanical Keyboard",
+            "objectID": "kb-400",
+            "price": 129.0,
+            "stock": 12
           }
         ]
       },
-      "name": "list_indices",
-      "parameters": [],
-      "path": "/actions/library/algolia/list-indices",
-      "result_str_template": "Fetched Algolia indices.",
-      "returns": {
-        "properties": {
-          "indices": {
-            "description": "List of indices in the application",
-            "items": {
-              "properties": {
-                "created_at": {
-                  "description": "When the index was created",
-                  "type": "string"
-                },
-                "entries": {
-                  "description": "Number of records in the index",
-                  "type": "number"
-                },
-                "name": {
-                  "description": "Index name. Use with the other actions.",
-                  "type": "string"
-                },
-                "updated_at": {
-                  "description": "When the index was last updated",
-                  "type": "string"
-                }
-              },
-              "type": "object"
-            },
-            "type": "array"
-          }
-        },
-        "type": "object"
-      }
-    },
-    "save_object": {
-      "description": "Add a record to an index, or replace an existing record. Provide an Object ID to add/replace a specific record, or leave it blank to let Algolia assign one.",
-      "display_name": "Save object",
-      "display_str_template": "Save a record to the Algolia index '{0}'.",
-      "handler": "actions.save_object",
-      "id": "algolia_save_object",
-      "method": "POST",
-      "mock_response": {
-        "object_id": "42",
-        "task_id": 8100792,
-        "updated_at": "2026-07-24T12:00:00.000Z"
-      },
-      "name": "save_object",
+      "name": "get_objects",
       "parameters": [
         {
-          "description": "Name of the index to write to. Algolia creates the index automatically if it does not exist yet.",
+          "description": "The index to use. Index names are case-sensitive.",
           "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
           "examples": [
             {
               "label": "Index",
@@ -202,14 +808,1041 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The record to store, as attribute/value pairs (for example, name: 'Wireless Headphones', price: 79.99).",
+          "description": "The records' object IDs, as a list or separated by commas. Records an earlier step returned work too.",
+          "display_name": "Object IDs",
+          "name": "object_ids",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Attribute names to return for each record, like name and price. Leave empty for every attribute the index returns. The objectID always comes back.",
+          "display_name": "Attributes to return",
+          "name": "attributes_to_retrieve",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/algolia/get-objects",
+      "result_str_template": "Retrieved the records.",
+      "returns": {
+        "properties": {
+          "found_count": {
+            "description": "How many records were found",
+            "type": "number"
+          },
+          "not_found": {
+            "description": "Object IDs the index has no record for",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "records": {
+            "description": "The records found, in the order asked",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_recommendations": {
+      "description": "Get records Algolia Recommend suggests: related to a record, frequently bought with it, looking like it, or trending. The model must be set up and trained under Recommend in the Algolia dashboard.",
+      "display_name": "Get recommendations",
+      "display_str_template": "Get Algolia recommendations from the index '{0}'.",
+      "handler": "actions.get_recommendations",
+      "id": "algolia_get_recommendations",
+      "method": "POST",
+      "mock_response": {
+        "count": 3,
+        "model": "related-products",
+        "recommendations": [
+          {
+            "_score": 50.7,
+            "objectID": "media-sample-data-10193",
+            "release_date": "2010-06-16",
+            "title": "Toy Story 3",
+            "vote_average": 7.811
+          },
+          {
+            "_score": 49.39,
+            "objectID": "media-sample-data-863",
+            "release_date": "1999-10-30",
+            "title": "Toy Story 2",
+            "vote_average": 7.6
+          },
+          {
+            "_score": 34.95,
+            "objectID": "media-sample-data-979163",
+            "release_date": "2022-06-10",
+            "title": "Beyond Infinity: Buzz and the Journey to Lightyear",
+            "vote_average": 7.0
+          }
+        ]
+      },
+      "name": "get_recommendations",
+      "parameters": [
+        {
+          "description": "The index to use. Index names are case-sensitive.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "related-products",
+          "description": "Which Recommend model to ask (default related products).",
+          "display_name": "Recommendations",
+          "name": "model",
+          "options": [
+            {
+              "label": "Related products",
+              "value": "related-products"
+            },
+            {
+              "label": "Frequently bought together",
+              "value": "bought-together"
+            },
+            {
+              "label": "Looking similar",
+              "value": "looking-similar"
+            },
+            {
+              "label": "Trending items",
+              "value": "trending-items"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The record to recommend from. Needed for every model but trending items.",
+          "display_name": "Object ID",
+          "name": "object_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 10,
+          "description": "How many records to return, from 1 to 30 (default 10).",
+          "display_name": "How many",
+          "maximum": 30,
+          "minimum": 1,
+          "name": "max_recommendations",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "Leave out recommendations Algolia scores below this, from 0 to 100 (default 0, every one).",
+          "display_name": "Minimum score",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "threshold",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Algolia filter syntax, like category:shoes AND price < 100, or (brand:Acme OR brand:Zenith) AND NOT discontinued:true. A text attribute must be listed in the index's attributes for faceting to be filtered on; a filter on one that isn't is reported rather than matching nothing.",
+          "display_name": "Filters",
+          "name": "filters",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Attribute names to return for each record, like name and price. Leave empty for every attribute the index returns. The objectID always comes back.",
+          "display_name": "Attributes to return",
+          "name": "attributes_to_retrieve",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "For trending items: a faceted attribute to look within, like category.",
+          "display_name": "Trending in facet",
+          "name": "facet_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For trending items: the facet's value, like Shoes.",
+          "display_name": "Trending in value",
+          "name": "facet_value",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/algolia/get-recommendations",
+      "result_str_template": "Retrieved Algolia recommendations.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many records came back",
+            "type": "number"
+          },
+          "model": {
+            "description": "The model asked",
+            "type": "string"
+          },
+          "recommendations": {
+            "description": "The recommended records, best first, each with Algolia's _score (0 to 100)",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_search_count": {
+      "description": "Count the searches on an index over a date range, in total and day by day, from Algolia Analytics. The API key needs the analytics permission.",
+      "display_name": "Get search count",
+      "display_str_template": "Count the searches on the Algolia index '{0}'.",
+      "handler": "actions.get_search_count",
+      "id": "algolia_get_search_count",
+      "method": "POST",
+      "mock_response": {
+        "count": 5,
+        "dates": [
+          {
+            "count": 0,
+            "date": "2026-09-25"
+          },
+          {
+            "count": 0,
+            "date": "2026-09-26"
+          },
+          {
+            "count": 0,
+            "date": "2026-09-27"
+          },
+          {
+            "count": 0,
+            "date": "2026-09-28"
+          },
+          {
+            "count": 0,
+            "date": "2026-09-29"
+          },
+          {
+            "count": 0,
+            "date": "2026-09-30"
+          },
+          {
+            "count": 0,
+            "date": "2026-10-01"
+          },
+          {
+            "count": 5,
+            "date": "2026-10-02"
+          }
+        ],
+        "end_date": "",
+        "start_date": ""
+      },
+      "name": "get_search_count",
+      "parameters": [
+        {
+          "description": "The index whose searches to report on.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "First day to report on. Leave empty for the last 8 days. Algolia's free plan keeps 7 days of analytics, paid plans longer.",
+          "display_name": "From",
+          "name": "start_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Last day to report on. Leave empty for today.",
+          "display_name": "To",
+          "name": "end_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "default": "us",
+          "description": "Where the application keeps its analytics and events, shown under Settings > Application in the Algolia dashboard. Most applications use the United States.",
+          "display_name": "Analytics region",
+          "name": "region",
+          "options": [
+            {
+              "label": "United States",
+              "value": "us"
+            },
+            {
+              "label": "Germany (EU)",
+              "value": "de"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/algolia/get-search-count",
+      "result_str_template": "Counted the Algolia searches.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "Searches in the whole range",
+            "type": "number"
+          },
+          "dates": {
+            "description": "Searches per day",
+            "items": {
+              "properties": {
+                "count": {
+                  "description": "Searches that day",
+                  "type": "number"
+                },
+                "date": {
+                  "description": "The day, as YYYY-MM-DD",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "end_date": {
+            "description": "Last day reported on, when given",
+            "type": "string"
+          },
+          "start_date": {
+            "description": "First day reported on, when given",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_searches_without_results": {
+      "description": "Get the most frequent searches on an index that found nothing, over a date range, from Algolia Analytics: a list of what people want and can't find. The API key needs the analytics permission.",
+      "display_name": "Get searches without results",
+      "display_str_template": "Get the searches without results of the Algolia index '{0}'.",
+      "handler": "actions.get_searches_without_results",
+      "id": "algolia_get_searches_without_results",
+      "method": "POST",
+      "mock_response": {
+        "end_date": "",
+        "searches": [
+          {
+            "count": 1,
+            "search": "lamp",
+            "with_filter_count": 0
+          },
+          {
+            "count": 1,
+            "search": "zzzqqq",
+            "with_filter_count": 0
+          }
+        ],
+        "start_date": ""
+      },
+      "name": "get_searches_without_results",
+      "parameters": [
+        {
+          "description": "The index whose searches to report on.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "First day to report on. Leave empty for the last 8 days. Algolia's free plan keeps 7 days of analytics, paid plans longer.",
+          "display_name": "From",
+          "name": "start_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Last day to report on. Leave empty for today.",
+          "display_name": "To",
+          "name": "end_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "default": 10,
+          "description": "How many searches to return, from 1 to 1,000 (default 10).",
+          "display_name": "How many",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "us",
+          "description": "Where the application keeps its analytics and events, shown under Settings > Application in the Algolia dashboard. Most applications use the United States.",
+          "display_name": "Analytics region",
+          "name": "region",
+          "options": [
+            {
+              "label": "United States",
+              "value": "us"
+            },
+            {
+              "label": "Germany (EU)",
+              "value": "de"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/algolia/get-searches-without-results",
+      "result_str_template": "Retrieved the Algolia searches without results.",
+      "returns": {
+        "properties": {
+          "end_date": {
+            "description": "Last day reported on, when given",
+            "type": "string"
+          },
+          "searches": {
+            "description": "The searches, most frequent first",
+            "items": {
+              "properties": {
+                "count": {
+                  "description": "How many times",
+                  "type": "number"
+                },
+                "search": {
+                  "description": "What people searched for",
+                  "type": "string"
+                },
+                "with_filter_count": {
+                  "description": "How many of those had filters applied",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "start_date": {
+            "description": "First day reported on, when given",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_settings": {
+      "description": "Get an index's settings, such as its searchable attributes, attributes for faceting and ranking, under Algolia's names.",
+      "display_name": "Get index settings",
+      "display_str_template": "Get the settings of the Algolia index '{0}'.",
+      "handler": "actions.get_settings",
+      "id": "algolia_get_settings",
+      "method": "POST",
+      "mock_response": {
+        "index_name": "lodol_demo_products",
+        "settings": {
+          "alternativesAsExact": [
+            "ignorePlurals",
+            "singleWordSynonym"
+          ],
+          "attributeForDistinct": null,
+          "attributesForFaceting": [
+            "searchable(brand)",
+            "category",
+            "filterOnly(price)"
+          ],
+          "attributesToHighlight": null,
+          "attributesToRetrieve": null,
+          "attributesToSnippet": null,
+          "customRanking": [
+            "desc(stock)"
+          ],
+          "exactOnSingleWordQuery": "attribute",
+          "highlightPostTag": "</em>",
+          "highlightPreTag": "<em>",
+          "hitsPerPage": 20,
+          "maxValuesPerFacet": 100,
+          "minWordSizefor1Typo": 4,
+          "minWordSizefor2Typos": 8,
+          "numericAttributesToIndex": null,
+          "optionalWords": null,
+          "paginationLimitedTo": 1000,
+          "queryType": "prefixLast",
+          "ranking": [
+            "typo",
+            "geo",
+            "words",
+            "filters",
+            "proximity",
+            "attribute",
+            "exact",
+            "custom"
+          ],
+          "removeWordsIfNoResults": "none",
+          "searchableAttributes": [
+            "name",
+            "brand",
+            "category"
+          ],
+          "separatorsToIndex": "",
+          "unretrievableAttributes": null,
+          "version": 2
+        }
+      },
+      "name": "get_settings",
+      "parameters": [
+        {
+          "description": "The index to use. Index names are case-sensitive.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/algolia/get-settings",
+      "result_str_template": "Retrieved the Algolia index settings.",
+      "returns": {
+        "properties": {
+          "index_name": {
+            "description": "The index",
+            "type": "string"
+          },
+          "settings": {
+            "description": "The settings, like searchableAttributes, attributesForFaceting, customRanking and replicas",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_top_searches": {
+      "description": "Get an index's most frequent searches over a date range from Algolia Analytics, with click and conversion rates when you send click events. The API key needs the analytics permission.",
+      "display_name": "Get top searches",
+      "display_str_template": "Get the top searches of the Algolia index '{0}'.",
+      "handler": "actions.get_top_searches",
+      "id": "algolia_get_top_searches",
+      "method": "POST",
+      "mock_response": {
+        "end_date": "",
+        "searches": [
+          {
+            "average_click_position": 1.0,
+            "click_count": 1,
+            "click_through_rate": 0.5,
+            "conversion_count": 1,
+            "conversion_rate": 0.5,
+            "count": 2,
+            "nb_hits": 1,
+            "search": "desk",
+            "tracked_search_count": 2
+          },
+          {
+            "average_click_position": null,
+            "click_count": 0,
+            "click_through_rate": 0.0,
+            "conversion_count": 0,
+            "conversion_rate": 0.0,
+            "count": 1,
+            "nb_hits": 0,
+            "search": "zzzqqq",
+            "tracked_search_count": 1
+          },
+          {
+            "average_click_position": null,
+            "click_count": 0,
+            "click_through_rate": 0.0,
+            "conversion_count": 0,
+            "conversion_rate": 0.0,
+            "count": 1,
+            "nb_hits": 0,
+            "search": "lamp",
+            "tracked_search_count": 1
+          }
+        ],
+        "start_date": ""
+      },
+      "name": "get_top_searches",
+      "parameters": [
+        {
+          "description": "The index whose searches to report on.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "First day to report on. Leave empty for the last 8 days. Algolia's free plan keeps 7 days of analytics, paid plans longer.",
+          "display_name": "From",
+          "name": "start_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Last day to report on. Leave empty for today.",
+          "display_name": "To",
+          "name": "end_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "default": 10,
+          "description": "How many searches to return, from 1 to 1,000 (default 10).",
+          "display_name": "How many",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Add click-through rates, conversion rates and average click positions. They need click and conversion events sent for the index.",
+          "display_name": "Include click and conversion rates",
+          "name": "with_click_analytics",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": "us",
+          "description": "Where the application keeps its analytics and events, shown under Settings > Application in the Algolia dashboard. Most applications use the United States.",
+          "display_name": "Analytics region",
+          "name": "region",
+          "options": [
+            {
+              "label": "United States",
+              "value": "us"
+            },
+            {
+              "label": "Germany (EU)",
+              "value": "de"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/algolia/get-top-searches",
+      "result_str_template": "Retrieved the top Algolia searches.",
+      "returns": {
+        "properties": {
+          "end_date": {
+            "description": "Last day reported on, when given",
+            "type": "string"
+          },
+          "searches": {
+            "description": "The searches, most frequent first",
+            "items": {
+              "properties": {
+                "average_click_position": {
+                  "description": "Average position of the records clicked (with click rates)",
+                  "nullable": true,
+                  "type": "number"
+                },
+                "click_count": {
+                  "description": "Clicks (with click rates)",
+                  "nullable": true,
+                  "type": "number"
+                },
+                "click_through_rate": {
+                  "description": "Share of tracked searches with a click, 0 to 1 (with click rates)",
+                  "nullable": true,
+                  "type": "number"
+                },
+                "conversion_count": {
+                  "description": "Conversions (with click rates)",
+                  "nullable": true,
+                  "type": "number"
+                },
+                "conversion_rate": {
+                  "description": "Share of tracked searches with a conversion, 0 to 1 (with click rates)",
+                  "nullable": true,
+                  "type": "number"
+                },
+                "count": {
+                  "description": "How many times",
+                  "type": "number"
+                },
+                "nb_hits": {
+                  "description": "How many records it found",
+                  "type": "number"
+                },
+                "search": {
+                  "description": "What people searched for",
+                  "type": "string"
+                },
+                "tracked_search_count": {
+                  "description": "Searches that could be tracked (with click rates)",
+                  "nullable": true,
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "start_date": {
+            "description": "First day reported on, when given",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_indices": {
+      "description": "List the indices in your Algolia application, with their record counts and sizes.",
+      "display_name": "List indices",
+      "display_str_template": "List Algolia indices.",
+      "handler": "actions.list_indices",
+      "id": "algolia_list_indices",
+      "method": "POST",
+      "mock_response": {
+        "count": 3,
+        "indices": [
+          {
+            "created_at": "2026-07-24T20:02:18.542Z",
+            "data_size": 26514404,
+            "entries": 25115,
+            "name": "algolia_movie_sample_dataset",
+            "primary": "",
+            "replicas": [],
+            "updated_at": "2026-07-24T20:48:54.847Z"
+          },
+          {
+            "created_at": "2026-10-02T22:37:42.412Z",
+            "data_size": 670,
+            "entries": 7,
+            "name": "lodol_demo_products",
+            "primary": "",
+            "replicas": [],
+            "updated_at": "2026-10-02T22:37:51.706Z"
+          },
+          {
+            "created_at": "2026-10-02T22:14:23.511Z",
+            "data_size": 234,
+            "entries": 7,
+            "name": "lodol_probe_algolia",
+            "primary": "",
+            "replicas": [],
+            "updated_at": "2026-10-02T22:22:32.448Z"
+          }
+        ]
+      },
+      "name": "list_indices",
+      "parameters": [],
+      "path": "/actions/library/algolia/list-indices",
+      "result_str_template": "Fetched Algolia indices.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many indices there are",
+            "type": "number"
+          },
+          "indices": {
+            "description": "The application's indices",
+            "items": {
+              "properties": {
+                "created_at": {
+                  "description": "When the index was created; empty when it holds no records",
+                  "type": "string"
+                },
+                "data_size": {
+                  "description": "Size of its records, in bytes",
+                  "type": "number"
+                },
+                "entries": {
+                  "description": "Number of records in the index",
+                  "type": "number"
+                },
+                "name": {
+                  "description": "Index name. Use with the other actions.",
+                  "type": "string"
+                },
+                "primary": {
+                  "description": "For a replica, the index it copies; empty otherwise",
+                  "type": "string"
+                },
+                "replicas": {
+                  "description": "The index's replicas",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "updated_at": {
+                  "description": "When the index last changed",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "partial_update_object": {
+      "description": "Change some attributes of a record and keep the rest. A value can also be an operation, like {\"_operation\": \"Increment\", \"value\": 1} for a stock count or AddUnique to add a tag to a list. A record that doesn't exist is added, unless Create if missing is off.",
+      "display_name": "Update a record",
+      "display_str_template": "Update record '{1}' in the Algolia index '{0}'.",
+      "handler": "actions.partial_update_object",
+      "id": "algolia_partial_update_object",
+      "method": "POST",
+      "mock_response": {
+        "object_id": "hp-100",
+        "task_id": 1753626440002,
+        "updated": true,
+        "updated_at": "2026-10-02T22:37:47.852Z"
+      },
+      "name": "partial_update_object",
+      "parameters": [
+        {
+          "description": "The index to write to. Algolia creates it on the first write if it doesn't exist.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The record's object ID. A record an earlier step returned works too.",
+          "display_name": "Object ID",
+          "name": "object_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The attributes to set, like price: 59.99. The operations Increment, Decrement, Add, Remove, AddUnique, IncrementFrom and IncrementSet go as {\"_operation\": \"Decrement\", \"value\": 1}.",
+          "display_name": "Attributes to change",
+          "name": "attributes",
+          "required": true,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "default": true,
+          "description": "Add the record when there is none with this object ID. Turn off to change only records that exist; updated then says whether one was changed.",
+          "display_name": "Create if missing",
+          "name": "create_if_missing",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/algolia/partial-update-object",
+      "result_str_template": "Updated the Algolia record.",
+      "returns": {
+        "properties": {
+          "object_id": {
+            "description": "The record's object ID",
+            "type": "string"
+          },
+          "task_id": {
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
+            "type": "number"
+          },
+          "updated": {
+            "description": "Whether the change was sent: false when the record didn't exist and Create if missing was off",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "description": "When Algolia recorded the change",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "partial_update_objects": {
+      "description": "Change some attributes of up to 10,000 records at once, each given with its objectID, keeping their other attributes. Records that don't exist are added unless Create if missing is off; then they are listed under not found.",
+      "display_name": "Update records",
+      "display_str_template": "Update records in the Algolia index '{0}'.",
+      "handler": "actions.partial_update_objects",
+      "id": "algolia_partial_update_objects",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "not_found": [
+          "zz-999"
+        ],
+        "object_ids": [
+          "kb-400",
+          "ms-500"
+        ],
+        "task_id": 1753626441002
+      },
+      "name": "partial_update_objects",
+      "parameters": [
+        {
+          "description": "The index to write to. Algolia creates it on the first write if it doesn't exist.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "One object per record: its objectID and the attributes to set, which may use operations as in Update a record.",
+          "display_name": "Changes",
+          "name": "records",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": true,
+          "description": "Add records that don't exist. Turn off to change only records that do.",
+          "display_name": "Create if missing",
+          "name": "create_if_missing",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/algolia/partial-update-objects",
+      "result_str_template": "Updated the Algolia records.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many records were changed",
+            "type": "number"
+          },
+          "not_found": {
+            "description": "Object IDs skipped because no such record exists (Create if missing off)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "object_ids": {
+            "description": "Object IDs of the records changed",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "task_id": {
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "save_object": {
+      "description": "Add a record to an index, or replace a record whole by its object ID. Leave the object ID blank to let Algolia assign one. To change only some attributes, use Update a record.",
+      "display_name": "Add or replace a record",
+      "display_str_template": "Save a record to the Algolia index '{0}'.",
+      "handler": "actions.save_object",
+      "id": "algolia_save_object",
+      "method": "POST",
+      "mock_response": {
+        "object_id": "eb-600",
+        "task_id": 1753626438002,
+        "updated_at": "2026-10-02T22:37:47.048Z"
+      },
+      "name": "save_object",
+      "parameters": [
+        {
+          "description": "The index to write to. Algolia creates it on the first write if it doesn't exist.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The record's attributes and values, like name: Wireless Headphones and price: 79.99.",
           "display_name": "Record",
           "name": "record",
           "required": true,
           "type": "ParameterType.OBJECT"
         },
         {
-          "description": "Optional unique ID for the record. When set, an existing record with this ID is fully replaced; when blank, Algolia generates one.",
+          "description": "The record's unique ID. A record with this ID is replaced whole; leave blank for Algolia to make one.",
           "display_name": "Object ID",
           "name": "object_id",
           "required": false,
@@ -221,15 +1854,474 @@
       "returns": {
         "properties": {
           "object_id": {
-            "description": "ID of the saved record",
+            "description": "The saved record's object ID",
             "type": "string"
           },
           "task_id": {
-            "description": "Algolia task ID; indexing completes asynchronously, so the record may take a moment to become searchable.",
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
             "type": "number"
           },
           "updated_at": {
-            "description": "Timestamp Algolia recorded for the write",
+            "description": "When Algolia recorded the write",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "save_objects": {
+      "description": "Add up to 10,000 records to an index at once, replacing any whose objectID is already there. Records without an objectID get one from Algolia. Waiting for the task ID returned waits for all of them.",
+      "display_name": "Add or replace records",
+      "display_str_template": "Save records to the Algolia index '{0}'.",
+      "handler": "actions.save_objects",
+      "id": "algolia_save_objects",
+      "method": "POST",
+      "mock_response": {
+        "count": 6,
+        "object_ids": [
+          "hp-100",
+          "hp-200",
+          "sp-300",
+          "kb-400",
+          "ms-500",
+          "9077987002"
+        ],
+        "task_id": 1753626425002
+      },
+      "name": "save_objects",
+      "parameters": [
+        {
+          "description": "The index to write to. Algolia creates it on the first write if it doesn't exist.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The records, each an object of attributes, with an objectID to add or replace that record.",
+          "display_name": "Records",
+          "name": "records",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/algolia/save-objects",
+      "result_str_template": "Saved the records to Algolia.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many records were sent",
+            "type": "number"
+          },
+          "object_ids": {
+            "description": "The records' object IDs, in the order given",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "task_id": {
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "save_rule": {
+      "description": "Add or replace a rule that pins records to the top of a search, hides records, applies filters or returns banner data: for searches matching a query, or for every search, and if you like only between two dates.",
+      "display_name": "Save a rule",
+      "display_str_template": "Save rule '{1}' on the Algolia index '{0}'.",
+      "handler": "actions.save_rule",
+      "id": "algolia_save_rule",
+      "method": "POST",
+      "mock_response": {
+        "rule": {
+          "conditions": [
+            {
+              "alternatives": false,
+              "anchoring": "contains",
+              "pattern": "headphones"
+            }
+          ],
+          "consequence": {
+            "promote": [
+              {
+                "objectID": "eb-600",
+                "position": 0
+              }
+            ],
+            "userData": {
+              "banner": "New: wireless earbuds"
+            }
+          },
+          "description": "Pin the new earbuds to the top of headphone searches",
+          "enabled": true,
+          "objectID": "promote-earbuds",
+          "validity": [
+            {
+              "from": 1790812800,
+              "until": 1798761599
+            }
+          ]
+        },
+        "rule_id": "promote-earbuds",
+        "task_id": 1753626446002,
+        "updated_at": "2026-10-02T22:37:56.431Z"
+      },
+      "name": "save_rule",
+      "parameters": [
+        {
+          "description": "The index to write to. Algolia creates it on the first write if it doesn't exist.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The rule's ID, like black-friday-tv; a rule with this ID is replaced.",
+          "display_name": "Rule ID",
+          "name": "rule_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The search text the rule applies to, like tv. Leave empty to apply it to every search.",
+          "display_name": "When the search",
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "is",
+          "description": "How the search text must match (default: is exactly).",
+          "display_name": "Matches how",
+          "name": "anchoring",
+          "options": [
+            {
+              "label": "Is exactly",
+              "value": "is"
+            },
+            {
+              "label": "Contains",
+              "value": "contains"
+            },
+            {
+              "label": "Starts with",
+              "value": "startsWith"
+            },
+            {
+              "label": "Ends with",
+              "value": "endsWith"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Object IDs of records to pin, in order, up to 300.",
+          "display_name": "Records to pin",
+          "name": "promote_object_ids",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": 0,
+          "description": "Where the pinned records start, counting from 0 for the top (default 0).",
+          "display_name": "Pin from position",
+          "maximum": 299,
+          "minimum": 0,
+          "name": "promote_position",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Object IDs of records to leave out of the results, up to 50.",
+          "display_name": "Records to hide",
+          "name": "hide_object_ids",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Filters added to the search, in Algolia filter syntax, like brand:Acme.",
+          "display_name": "Filters to apply",
+          "name": "filters",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Data Algolia hands back with the results, for a banner or a redirect on your site, like {\"banner\": \"Free shipping on TVs\"}.",
+          "display_name": "Data to return",
+          "name": "user_data",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "A note on what the rule is for, shown in the Algolia dashboard.",
+          "display_name": "Description",
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Whether the rule is on (default on).",
+          "display_name": "Enabled",
+          "name": "enabled",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "When the rule starts to apply. Leave empty for now.",
+          "display_name": "Active from",
+          "name": "active_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "When the rule stops applying. Leave both dates empty for always.",
+          "display_name": "Active until",
+          "name": "active_until",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": false,
+          "description": "Also make the change on the index's replicas (its copies sorted another way). Off by default, as in Algolia.",
+          "display_name": "Apply to replicas",
+          "name": "forward_to_replicas",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/algolia/save-rule",
+      "result_str_template": "Saved the Algolia rule.",
+      "returns": {
+        "properties": {
+          "rule": {
+            "description": "The rule as saved, in Algolia's format",
+            "type": "object"
+          },
+          "rule_id": {
+            "description": "The rule's ID",
+            "type": "string"
+          },
+          "task_id": {
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
+            "type": "number"
+          },
+          "updated_at": {
+            "description": "When Algolia recorded the change",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "save_synonym": {
+      "description": "Add or replace a synonym on an index: words that find each other (two-way), a term that also finds other words (one-way), an alternative correction, or a placeholder.",
+      "display_name": "Save a synonym",
+      "display_str_template": "Save a synonym on the Algolia index '{0}'.",
+      "handler": "actions.save_synonym",
+      "id": "algolia_save_synonym",
+      "method": "POST",
+      "mock_response": {
+        "synonym": {
+          "corrections": [],
+          "input": "",
+          "objectID": "lodol-synonym-6fc79aa2fef5",
+          "placeholder": "",
+          "replacements": [],
+          "synonyms": [
+            "headphones",
+            "headset",
+            "earphones"
+          ],
+          "type": "synonym",
+          "word": ""
+        },
+        "synonym_id": "lodol-synonym-6fc79aa2fef5",
+        "task_id": 1753626445002,
+        "updated_at": "2026-10-02T22:37:55.619Z"
+      },
+      "name": "save_synonym",
+      "parameters": [
+        {
+          "description": "The index to write to. Algolia creates it on the first write if it doesn't exist.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Two-way: every word that means the same, like sofa, couch and settee. One-way: the words the term also finds. Alternative correction: the corrections. Placeholder: what it stands for.",
+          "display_name": "Words",
+          "name": "words",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": "synonym",
+          "description": "What kind of synonym (default two-way).",
+          "display_name": "Type",
+          "name": "synonym_type",
+          "options": [
+            {
+              "label": "Two-way: the words find each other",
+              "value": "synonym"
+            },
+            {
+              "label": "One-way: the term also finds the words",
+              "value": "onewaysynonym"
+            },
+            {
+              "label": "Alternative correction, ranked as 1 typo",
+              "value": "altcorrection1"
+            },
+            {
+              "label": "Alternative correction, ranked as 2 typos",
+              "value": "altcorrection2"
+            },
+            {
+              "label": "Placeholder",
+              "value": "placeholder"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "One-way: what people type, like phone. Alternative correction: the word to correct. Placeholder: its token in angle brackets, like <street>. Not used for two-way.",
+          "display_name": "Term",
+          "name": "term",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The synonym's ID; one with this ID is replaced. Leave blank to make one from the words, so saving the same synonym again replaces it rather than adding a copy.",
+          "display_name": "Synonym ID",
+          "name": "synonym_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Also make the change on the index's replicas (its copies sorted another way). Off by default, as in Algolia.",
+          "display_name": "Apply to replicas",
+          "name": "forward_to_replicas",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/algolia/save-synonym",
+      "result_str_template": "Saved the Algolia synonym.",
+      "returns": {
+        "properties": {
+          "synonym": {
+            "description": "The synonym as saved",
+            "properties": {
+              "corrections": {
+                "description": "An alternative correction's corrections",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "input": {
+                "description": "What people type, for a one-way synonym",
+                "type": "string"
+              },
+              "objectID": {
+                "description": "The synonym's ID",
+                "type": "string"
+              },
+              "placeholder": {
+                "description": "A placeholder's token, like <street>",
+                "type": "string"
+              },
+              "replacements": {
+                "description": "What a placeholder stands for",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "synonyms": {
+                "description": "Words that find each other, or that the input also finds",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": {
+                "description": "synonym (two-way), onewaysynonym, altcorrection1, altcorrection2 or placeholder",
+                "type": "string"
+              },
+              "word": {
+                "description": "The word an alternative correction corrects",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "synonym_id": {
+            "description": "The synonym's ID",
+            "type": "string"
+          },
+          "task_id": {
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
+            "type": "number"
+          },
+          "updated_at": {
+            "description": "When Algolia recorded the change",
             "type": "string"
           }
         },
@@ -237,29 +2329,53 @@
       }
     },
     "search": {
-      "description": "Search an Algolia index for records matching a query.",
-      "display_name": "Search",
+      "description": "Search an index for records matching a query, narrowed with filters if you like (category:shoes AND price < 100), and count the values of facets such as brand. A search reaches the first 1,000 results at most; Browse records reads every record.",
+      "display_name": "Search records",
       "display_str_template": "Search the Algolia index '{0}' for '{1}'.",
       "handler": "actions.search",
       "id": "algolia_search",
       "method": "POST",
       "mock_response": {
+        "facets": {
+          "brand": {
+            "Keystone": 1,
+            "Sonance": 2
+          },
+          "category": {
+            "Audio": 2,
+            "Computers": 1
+          }
+        },
         "hits": [
           {
-            "name": "Wireless Headphones",
-            "objectID": "42",
-            "price": 79.99
+            "brand": "Keystone",
+            "name": "Wireless Mouse",
+            "objectID": "ms-500",
+            "price": 34.99,
+            "stock": 42
+          },
+          {
+            "brand": "Sonance",
+            "name": "Wireless Earbuds",
+            "objectID": "eb-600",
+            "price": 129.0,
+            "stock": 31
           }
         ],
-        "nb_hits": 1,
+        "hits_per_page": 2,
+        "nb_hits": 3,
+        "nb_pages": 2,
+        "page": 0,
         "processing_time_ms": 1,
-        "query": "headphones"
+        "query": "wireless"
       },
       "name": "search",
       "parameters": [
         {
-          "description": "Name of the index to search.",
+          "description": "The index to use. Index names are case-sensitive.",
           "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
           "examples": [
             {
               "label": "Index",
@@ -272,16 +2388,319 @@
         },
         {
           "default": "",
-          "description": "Search text. Leave empty to return the index's records ranked by their default order.",
-          "display_name": "Query",
+          "description": "Text to search for. Leave empty to match every record, in the index's ranking order.",
+          "display_name": "Search text",
           "name": "query",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
+          "description": "Algolia filter syntax, like category:shoes AND price < 100, or (brand:Acme OR brand:Zenith) AND NOT discontinued:true. A text attribute must be listed in the index's attributes for faceting to be filtered on; a filter on one that isn't is reported rather than matching nothing.",
+          "display_name": "Filters",
+          "name": "filters",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
           "default": 20,
-          "description": "Maximum number of results to return (1-1000, default 20).",
-          "display_name": "Hits per page",
+          "description": "How many records to return, from 0 to 1,000 (default 20). 0 returns only the counts.",
+          "display_name": "Results per page",
+          "maximum": 1000,
+          "minimum": 0,
+          "name": "hits_per_page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "Which page of results to return, counting from 0.",
+          "display_name": "Page",
+          "minimum": 0,
+          "name": "page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Attribute names to return for each record, like name and price. Leave empty for every attribute the index returns. The objectID always comes back.",
+          "display_name": "Attributes to return",
+          "name": "attributes_to_retrieve",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Attributes whose values to count across every matching record, like brand or category; * counts every faceted attribute. They must be in the index's attributes for faceting.",
+          "display_name": "Facets to count",
+          "name": "facets",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": false,
+          "description": "Also return each record's _highlightResult and _snippetResult, which wrap the matched words in <em> tags.",
+          "display_name": "Include match highlights",
+          "name": "include_highlights",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Count this search in the index's Search Analytics. Off by default, so a workflow's searches don't mix with the searches people make.",
+          "display_name": "Count in Algolia Analytics",
+          "name": "count_in_analytics",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/algolia/search",
+      "result_str_template": "Searched the Algolia index.",
+      "returns": {
+        "properties": {
+          "facets": {
+            "description": "For each facet counted, its values and how many matching records hold each, like {\"brand\": {\"Acme\": 12}}",
+            "type": "object"
+          },
+          "hits": {
+            "description": "The matching records on this page, best first",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "hits_per_page": {
+            "description": "Records per page",
+            "type": "number"
+          },
+          "nb_hits": {
+            "description": "How many records match in all",
+            "type": "number"
+          },
+          "nb_pages": {
+            "description": "How many pages a search can reach at this page size",
+            "type": "number"
+          },
+          "page": {
+            "description": "This page's number, from 0",
+            "type": "number"
+          },
+          "processing_time_ms": {
+            "description": "How long Algolia took, in milliseconds",
+            "type": "number"
+          },
+          "query": {
+            "description": "The text searched for",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_facet_values": {
+      "description": "Find the values of a faceted attribute that match some text, like the brands starting with 'app', with how many records hold each. The attribute must be searchable in the index's attributes for faceting, as searchable(brand).",
+      "display_name": "Search facet values",
+      "display_str_template": "Search the values of '{1}' in the Algolia index '{0}'.",
+      "handler": "actions.search_facet_values",
+      "id": "algolia_search_facet_values",
+      "method": "POST",
+      "mock_response": {
+        "exhaustive": true,
+        "facet": "brand",
+        "values": [
+          {
+            "count": 3,
+            "value": "Sonance"
+          }
+        ]
+      },
+      "name": "search_facet_values",
+      "parameters": [
+        {
+          "description": "The index to use. Index names are case-sensitive.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The faceted attribute whose values to search, like brand.",
+          "display_name": "Facet",
+          "examples": [
+            {
+              "label": "Facet",
+              "value": "brand"
+            }
+          ],
+          "name": "facet",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Text the values must match, as people type it (app finds Apple). Leave empty for the most common values.",
+          "display_name": "Value contains",
+          "name": "facet_query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Count only the records this search finds. Leave empty for every record.",
+          "display_name": "Search text",
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Algolia filter syntax, like category:shoes AND price < 100, or (brand:Acme OR brand:Zenith) AND NOT discontinued:true. A text attribute must be listed in the index's attributes for faceting to be filtered on; a filter on one that isn't is reported rather than matching nothing.",
+          "display_name": "Filters",
+          "name": "filters",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 10,
+          "description": "How many values to return, from 1 to 100 (default 10).",
+          "display_name": "How many values",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "max_facet_hits",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/algolia/search-facet-values",
+      "result_str_template": "Found Algolia facet values.",
+      "returns": {
+        "properties": {
+          "exhaustive": {
+            "description": "Whether the counts are exact rather than estimated",
+            "type": "boolean"
+          },
+          "facet": {
+            "description": "The attribute searched",
+            "type": "string"
+          },
+          "values": {
+            "description": "Matching values, most records first",
+            "items": {
+              "properties": {
+                "count": {
+                  "description": "How many records hold it",
+                  "type": "number"
+                },
+                "value": {
+                  "description": "A value of the facet",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_rules": {
+      "description": "List an index's rules, the changes Algolia makes to some searches (pinned or hidden records, filters, banners), or those matching some text.",
+      "display_name": "Search rules",
+      "display_str_template": "Search the rules of the Algolia index '{0}'.",
+      "handler": "actions.search_rules",
+      "id": "algolia_search_rules",
+      "method": "POST",
+      "mock_response": {
+        "nb_hits": 1,
+        "nb_pages": 1,
+        "page": 0,
+        "rules": [
+          {
+            "_metadata": {
+              "lastUpdate": 1790980676
+            },
+            "conditions": [
+              {
+                "alternatives": false,
+                "anchoring": "contains",
+                "pattern": "headphones"
+              }
+            ],
+            "consequence": {
+              "promote": [
+                {
+                  "objectID": "eb-600",
+                  "position": 0
+                }
+              ],
+              "userData": {
+                "banner": "New: wireless earbuds"
+              }
+            },
+            "description": "Pin the new earbuds to the top of headphone searches",
+            "enabled": true,
+            "objectID": "promote-earbuds",
+            "validity": [
+              {
+                "from": 1790812800,
+                "until": 1798761599
+              }
+            ]
+          }
+        ]
+      },
+      "name": "search_rules",
+      "parameters": [
+        {
+          "description": "The index to use. Index names are case-sensitive.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Text in the rules' query, ID or description. Leave empty for all of them.",
+          "display_name": "Containing",
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 0,
+          "description": "Which page of results to return, counting from 0.",
+          "display_name": "Page",
+          "minimum": 0,
+          "name": "page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 100,
+          "description": "How many to return, from 1 to 1,000 (default 100).",
+          "display_name": "Rules per page",
           "maximum": 1000,
           "minimum": 1,
           "name": "hits_per_page",
@@ -289,35 +2708,491 @@
           "type": "ParameterType.NUMBER"
         }
       ],
-      "path": "/actions/library/algolia/search",
-      "result_str_template": "Searched the Algolia index.",
+      "path": "/actions/library/algolia/search-rules",
+      "result_str_template": "Found Algolia rules.",
       "returns": {
         "properties": {
-          "hits": {
-            "description": "Matching records, each including its objectID and the record's attributes.",
+          "nb_hits": {
+            "description": "How many rules match in all",
+            "type": "number"
+          },
+          "nb_pages": {
+            "description": "How many pages there are",
+            "type": "number"
+          },
+          "page": {
+            "description": "This page's number, from 0",
+            "type": "number"
+          },
+          "rules": {
+            "description": "The rules, as Algolia stores them: objectID, conditions, consequence, description, enabled and validity",
             "items": {
               "type": "object"
             },
             "type": "array"
-          },
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_synonyms": {
+      "description": "List an index's synonyms, or those containing some text, optionally of one type.",
+      "display_name": "Search synonyms",
+      "display_str_template": "Search the synonyms of the Algolia index '{0}'.",
+      "handler": "actions.search_synonyms",
+      "id": "algolia_search_synonyms",
+      "method": "POST",
+      "mock_response": {
+        "nb_hits": 1,
+        "synonyms": [
+          {
+            "corrections": [],
+            "input": "",
+            "objectID": "lodol-synonym-6fc79aa2fef5",
+            "placeholder": "",
+            "replacements": [],
+            "synonyms": [
+              "headphones",
+              "headset",
+              "earphones"
+            ],
+            "type": "synonym",
+            "word": ""
+          }
+        ]
+      },
+      "name": "search_synonyms",
+      "parameters": [
+        {
+          "description": "The index to use. Index names are case-sensitive.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Text the synonyms must contain. Leave empty for all of them.",
+          "display_name": "Containing",
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only synonyms of this type. Leave empty for every type.",
+          "display_name": "Type",
+          "name": "synonym_type",
+          "options": [
+            {
+              "label": "Two-way",
+              "value": "synonym"
+            },
+            {
+              "label": "One-way",
+              "value": "onewaysynonym"
+            },
+            {
+              "label": "Alternative correction, 1 typo",
+              "value": "altcorrection1"
+            },
+            {
+              "label": "Alternative correction, 2 typos",
+              "value": "altcorrection2"
+            },
+            {
+              "label": "Placeholder",
+              "value": "placeholder"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 0,
+          "description": "Which page of results to return, counting from 0.",
+          "display_name": "Page",
+          "minimum": 0,
+          "name": "page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 100,
+          "description": "How many to return, from 1 to 1,000 (default 100).",
+          "display_name": "Synonyms per page",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "hits_per_page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/algolia/search-synonyms",
+      "result_str_template": "Found Algolia synonyms.",
+      "returns": {
+        "properties": {
           "nb_hits": {
-            "description": "Total number of records matching the query",
+            "description": "How many synonyms match in all",
             "type": "number"
           },
-          "processing_time_ms": {
-            "description": "Time Algolia took to process the query, in ms",
-            "type": "number"
+          "synonyms": {
+            "description": "The synonyms found",
+            "items": {
+              "properties": {
+                "corrections": {
+                  "description": "An alternative correction's corrections",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "input": {
+                  "description": "What people type, for a one-way synonym",
+                  "type": "string"
+                },
+                "objectID": {
+                  "description": "The synonym's ID",
+                  "type": "string"
+                },
+                "placeholder": {
+                  "description": "A placeholder's token, like <street>",
+                  "type": "string"
+                },
+                "replacements": {
+                  "description": "What a placeholder stands for",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "synonyms": {
+                  "description": "Words that find each other, or that the input also finds",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "description": "synonym (two-way), onewaysynonym, altcorrection1, altcorrection2 or placeholder",
+                  "type": "string"
+                },
+                "word": {
+                  "description": "The word an alternative correction corrects",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "send_event": {
+      "description": "Tell Algolia a user viewed, clicked, added to cart or bought records, for Analytics, Recommend, Dynamic Re-Ranking and Personalization, for example a purchase when an order is paid.",
+      "display_name": "Send an event",
+      "display_str_template": "Send an Algolia {0} event.",
+      "handler": "actions.send_event",
+      "id": "algolia_send_event",
+      "method": "POST",
+      "mock_response": {
+        "event_type": "purchase",
+        "message": "OK",
+        "sent": true
+      },
+      "name": "send_event",
+      "parameters": [
+        {
+          "description": "What the user did.",
+          "display_name": "Event",
+          "name": "event_type",
+          "options": [
+            {
+              "label": "Viewed",
+              "value": "view"
+            },
+            {
+              "label": "Clicked",
+              "value": "click"
+            },
+            {
+              "label": "Converted",
+              "value": "conversion"
+            },
+            {
+              "label": "Added to cart",
+              "value": "add_to_cart"
+            },
+            {
+              "label": "Purchased",
+              "value": "purchase"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A name for this kind of event, up to 64 characters, like Product Purchased.",
+          "display_name": "Event name",
+          "name": "event_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The index the records belong to.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Who did it: a user ID or an anonymous visitor ID, using only letters, digits and = + / _ -. Never an email address or other personal data.",
+          "display_name": "User token",
+          "name": "user_token",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The object IDs of the records concerned, up to 20.",
+          "display_name": "Object IDs",
+          "name": "object_ids",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
-          "query": {
-            "description": "The query that was searched",
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "For a click or conversion after a search, the queryID that search returned, so Algolia credits it. Leave empty otherwise.",
+          "display_name": "Search query ID",
+          "name": "query_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a click with a search query ID: where each record appeared in the results, 1 for the first, one per object ID.",
+          "display_name": "Positions clicked",
+          "name": "positions",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "For an add to cart or a purchase, its total value, like 59.99.",
+          "display_name": "Value",
+          "name": "value",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The value's currency, as a three-letter code like USD.",
+          "display_name": "Currency",
+          "name": "currency",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "us",
+          "description": "Where the application keeps its analytics and events, shown under Settings > Application in the Algolia dashboard. Most applications use the United States.",
+          "display_name": "Analytics region",
+          "name": "region",
+          "options": [
+            {
+              "label": "United States",
+              "value": "us"
+            },
+            {
+              "label": "Germany (EU)",
+              "value": "de"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/algolia/send-event",
+      "result_str_template": "Sent the Algolia event.",
+      "returns": {
+        "properties": {
+          "event_type": {
+            "description": "The event sent",
             "type": "string"
+          },
+          "message": {
+            "description": "Algolia's answer, OK",
+            "type": "string"
+          },
+          "sent": {
+            "description": "Whether Algolia took the event",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "set_settings": {
+      "description": "Change some of an index's settings and keep the others, using Algolia's names, like {\"attributesForFaceting\": [\"brand\", \"searchable(category)\"]} or {\"customRanking\": [\"desc(popularity)\"]}.",
+      "display_name": "Update index settings",
+      "display_str_template": "Update the settings of the Algolia index '{0}'.",
+      "handler": "actions.set_settings",
+      "id": "algolia_set_settings",
+      "method": "POST",
+      "mock_response": {
+        "index_name": "lodol_demo_products",
+        "task_id": 1753626426002,
+        "updated_at": "2026-10-02T22:37:43.209Z"
+      },
+      "name": "set_settings",
+      "parameters": [
+        {
+          "description": "The index to write to. Algolia creates it on the first write if it doesn't exist.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The settings to change, under Algolia's names: searchableAttributes, attributesForFaceting, customRanking, hitsPerPage and the rest. Settings left out stay as they are.",
+          "display_name": "Settings",
+          "name": "settings",
+          "required": true,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "default": false,
+          "description": "Also make the change on the index's replicas (its copies sorted another way). Off by default, as in Algolia.",
+          "display_name": "Apply to replicas",
+          "name": "forward_to_replicas",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/algolia/set-settings",
+      "result_str_template": "Updated the Algolia index settings.",
+      "returns": {
+        "properties": {
+          "index_name": {
+            "description": "The index changed",
+            "type": "string"
+          },
+          "task_id": {
+            "description": "Algolia applies the change in the background; give this to Wait for a task to wait until it is searchable. 0 when nothing was sent.",
+            "type": "number"
+          },
+          "updated_at": {
+            "description": "When Algolia recorded the change",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "wait_for_task": {
+      "description": "Wait until Algolia has applied a change, so the steps after it see it. Algolia applies writes in the background, usually within a few seconds. Give it the task ID (or the whole result) of the step that made the change.",
+      "display_name": "Wait for a task",
+      "display_str_template": "Wait for Algolia task {1} on '{0}'.",
+      "handler": "actions.wait_for_task",
+      "id": "algolia_wait_for_task",
+      "method": "POST",
+      "mock_response": {
+        "published": true,
+        "status": "published",
+        "task_id": 1753626426002,
+        "waited_seconds": 2.5
+      },
+      "name": "wait_for_task",
+      "parameters": [
+        {
+          "description": "The index the change was made to. For a copy or move, the index copied or moved.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Index",
+              "value": "products"
+            }
+          ],
+          "name": "index_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The task ID the change's step returned, or that step's whole result. 0 (a step that changed nothing) returns at once.",
+          "display_name": "Task ID",
+          "name": "task_id",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 60,
+          "description": "How long to wait before failing the step, from 1 to 300 seconds (default 60).",
+          "display_name": "Wait at most (seconds)",
+          "maximum": 300,
+          "minimum": 1,
+          "name": "max_wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/algolia/wait-for-task",
+      "result_str_template": "Algolia finished the task.",
+      "returns": {
+        "properties": {
+          "published": {
+            "description": "Whether the change is applied",
+            "type": "boolean"
+          },
+          "status": {
+            "description": "published once the change is applied",
+            "type": "string"
+          },
+          "task_id": {
+            "description": "The task waited for",
+            "type": "number"
+          },
+          "waited_seconds": {
+            "description": "How long it took",
+            "type": "number"
           }
         },
         "type": "object"
       }
     }
   },
-  "description": "Connect your Algolia application to search indices and add, retrieve, and delete records.",
+  "description": "Search, browse and filter the records in your Algolia indices; add, update and delete records one at a time or thousands at once; manage index settings, synonyms and merchandising rules; copy, move and delete indices; read Search Analytics; send view, click and purchase events; and get Recommend suggestions.",
   "display_name": "Algolia",
   "id": "algolia"
 }
