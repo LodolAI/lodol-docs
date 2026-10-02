@@ -178,6 +178,73 @@ class MockFromReturnsTests(unittest.TestCase):
             {"status": "success"},
         )
 
+    def test_integer_is_a_number(self):
+        self.assertEqual(ren._mock_from_returns({"type": "integer"}), 1)
+
+
+class ReturnsExampleTests(unittest.TestCase):
+    def test_uses_the_first_example_the_schema_lists(self):
+        schema = {"type": "number", "examples": [42.5, 7]}
+        self.assertEqual(ren._returns_example(schema), 42.5)
+
+    def test_an_example_can_be_falsy(self):
+        schema = {"type": "boolean", "examples": [False]}
+        self.assertIs(ren._returns_example(schema), False)
+
+    def test_without_examples_makes_one_up_from_the_type(self):
+        self.assertEqual(ren._returns_example({"type": "string"}), "example_value")
+        self.assertEqual(
+            ren._returns_example({"type": "string", "examples": []}), "example_value"
+        )
+        self.assertEqual(ren._returns_example(None), {"status": "success"})
+
+
+class ResponseSectionTests(unittest.TestCase):
+    """The **Response** part of an action's section."""
+
+    def _section(self, **action):
+        return ren.generate_action_section(
+            "act", {"display_name": "Act", "description": "", **action}
+        )
+
+    def test_starts_with_the_outputs_description(self):
+        out = self._section(
+            returns={"type": "number", "description": "The sum, {rounded}."},
+            mock_response=12,
+        )
+        self.assertIn(
+            "**Response**\n\nThe sum, &#123;rounded&#125;.\n\n```json\n12\n```", out
+        )
+
+    def test_shows_the_schemas_example_when_there_is_no_mock(self):
+        out = self._section(returns={"type": "number", "examples": [42.5]})
+        self.assertIn("```json\n42.5\n```", out)
+
+    def test_a_mock_wins_over_the_schemas_example(self):
+        out = self._section(
+            returns={"type": "number", "examples": [42.5]}, mock_response=3
+        )
+        self.assertIn("```json\n3\n```", out)
+        self.assertNotIn("42.5", out)
+
+    def test_no_output_says_so_instead_of_a_made_up_payload(self):
+        out = self._section(returns={"type": "null"})
+        self.assertIn("**Response**\n\nThis action has no output.", out)
+        self.assertNotIn("```json", out)
+        self.assertNotIn('"status"', out)
+
+    def test_no_output_with_a_description_shows_only_the_description(self):
+        out = self._section(
+            returns={"type": "null", "description": "Nothing; the run pauses here."}
+        )
+        self.assertIn("**Response**\n\nNothing; the run pauses here.", out)
+        self.assertNotIn("has no output", out)
+        self.assertNotIn("```json", out)
+
+    def test_a_mock_is_still_shown_when_the_schema_says_null(self):
+        out = self._section(returns={"type": "null"}, mock_response={"sent": True})
+        self.assertIn('"sent": true', out)
+
 
 class MockToJsonTests(unittest.TestCase):
     def test_none_returns_default_success_payload(self):

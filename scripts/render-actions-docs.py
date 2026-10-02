@@ -114,7 +114,7 @@ def _mock_from_returns(returns: Any) -> Any:
     if rtype == "string":
         return "example_value"
 
-    if rtype == "number":
+    if rtype in ("number", "integer"):
         return 1
 
     if rtype == "boolean":
@@ -142,6 +142,16 @@ def _mock_from_returns(returns: Any) -> Any:
         return obj if obj else {"status": "success"}
 
     return {"status": "success"}
+
+
+def _returns_example(returns: Any) -> Any:
+    """An example of the output ``returns`` describes: the first example the
+    schema lists, else one made up from its type."""
+    if isinstance(returns, dict):
+        examples = returns.get("examples")
+        if isinstance(examples, list) and examples:
+            return examples[0]
+    return _mock_from_returns(returns)
 
 
 def _mock_to_json(mock: Any) -> str:
@@ -317,15 +327,26 @@ def generate_action_section(action_name: str, action: dict) -> str:
         lines.append("")
 
     returns = action.get("returns", {})
-    if mock is not None:
-        response_json = _mock_to_json(mock)
-    else:
-        response_json = _mock_to_json(_mock_from_returns(returns))
+    summary = returns.get("description") if isinstance(returns, dict) else None
+    summary = summary.strip() if isinstance(summary, str) else ""
+    no_output = (
+        mock is None and isinstance(returns, dict) and returns.get("type") == "null"
+    )
 
     lines.append("**Response**")
     lines.append("")
-    lines.append(f"```json\n{response_json}\n```")
-    lines.append("")
+    if summary:
+        lines.append(_escape_mdx(summary))
+        lines.append("")
+    if no_output:
+        # Nothing to show an example of: say so, unless the summary already has.
+        if not summary:
+            lines.append("This action has no output.")
+            lines.append("")
+    else:
+        example = mock if mock is not None else _returns_example(returns)
+        lines.append(f"```json\n{_mock_to_json(example)}\n```")
+        lines.append("")
 
     return "\n".join(lines)
 
