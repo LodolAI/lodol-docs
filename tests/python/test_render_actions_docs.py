@@ -352,6 +352,132 @@ class GenerateActionSectionTests(unittest.TestCase):
         self.assertIn("Mention someone with !\\[](@U123).", out)
         self.assertNotIn("![](", out)
 
+    def test_parameter_row_ends_with_its_choices_and_default(self):
+        action = self._action()
+        action["parameters"][1].update(
+            options=[
+                {"value": "main", "label": "Main thread"},
+                {"value": "side", "label": "Side thread"},
+            ],
+            default="main",
+        )
+        out = ren.generate_action_section("send_message", action)
+        self.assertIn(
+            "| `thread` | string | No | Optional thread id.<br />"
+            "One of: `main` (Main thread), `side` (Side thread). Default: `main`. |",
+            out,
+        )
+
+    def test_parameter_row_without_choices_range_or_default_is_unchanged(self):
+        out = ren.generate_action_section("send_message", self._action())
+        self.assertIn("| `channel` | string | Yes | Target channel id. |", out)
+
+    def test_parameter_without_description_shows_its_facts_alone(self):
+        action = self._action()
+        action["parameters"][0].update(description="", minimum=1, maximum=50)
+        out = ren.generate_action_section("send_message", action)
+        self.assertIn("| `channel` | string | Yes | From 1 to 50. |", out)
+
+
+class ParameterFactsTests(unittest.TestCase):
+    def _options(self, *values):
+        return [{"value": v, "label": f"Label {v}"} for v in values]
+
+    def test_choices_show_labels_that_say_more_than_the_value(self):
+        facts = ren._parameter_facts(
+            {
+                "options": [
+                    {"value": "all", "label": "Films and TV"},
+                    {"value": "movie", "label": "Movie"},
+                ]
+            }
+        )
+        self.assertEqual(facts, "One of: `all` (Films and TV), `movie`.")
+
+    def test_multi_select_and_array_parameters_take_one_or_more(self):
+        options = self._options("a")
+        self.assertTrue(
+            ren._parameter_facts({"options": options, "multi_select": True})
+            .startswith("One or more of: ")
+        )
+        self.assertTrue(
+            ren._parameter_facts({"options": options, "type": "ParameterType.ARRAY"})
+            .startswith("One or more of: ")
+        )
+
+    def test_a_long_choice_list_is_cut_after_ten(self):
+        facts = ren._parameter_facts({"options": self._options(*range(13))})
+        self.assertIn("`9` (Label 9), and 3 more.", facts)
+        self.assertNotIn("`10`", facts)
+
+    def test_a_choice_list_of_twelve_is_listed_in_full(self):
+        facts = ren._parameter_facts({"options": self._options(*range(12))})
+        self.assertIn("`11` (Label 11).", facts)
+        self.assertNotIn("more", facts)
+
+    def test_range(self):
+        self.assertEqual(
+            ren._parameter_facts({"minimum": 1, "maximum": 500}), "From 1 to 500."
+        )
+        self.assertEqual(ren._parameter_facts({"minimum": 0}), "At least 0.")
+        self.assertEqual(ren._parameter_facts({"maximum": 0.5}), "At most 0.5.")
+
+    def test_default_is_written_as_the_caller_would_send_it(self):
+        self.assertEqual(ren._parameter_facts({"default": "all"}), "Default: `all`.")
+        self.assertEqual(ren._parameter_facts({"default": False}), "Default: `false`.")
+        self.assertEqual(ren._parameter_facts({"default": 0}), "Default: `0`.")
+        self.assertEqual(
+            ren._parameter_facts({"default": ["a", "b"]}), 'Default: `["a", "b"]`.'
+        )
+
+    def test_empty_defaults_say_nothing(self):
+        for default in (None, "", [], {}):
+            self.assertEqual(ren._parameter_facts({"default": default}), "")
+
+    def test_choices_then_range_then_default(self):
+        facts = ren._parameter_facts(
+            {
+                "options": [{"value": "10", "label": "10"}],
+                "minimum": 1,
+                "maximum": 10,
+                "default": 10,
+            }
+        )
+        self.assertEqual(facts, "One of: `10`. From 1 to 10. Default: `10`.")
+
+    def test_values_stay_literal_code_and_labels_are_escaped(self):
+        facts = ren._parameter_facts(
+            {
+                "options": [
+                    {"value": "<=", "label": "at most"},
+                    {"value": "a|b", "label": "pipe"},
+                    {"value": "x`y", "label": "tick"},
+                    {"value": "", "label": "Any {kind}"},
+                ]
+            }
+        )
+        # MDX shows code as written, so `<` and braces need no entities there.
+        self.assertEqual(
+            facts,
+            "One of: `<=` (at most), `a\\|b` (pipe), ``x`y`` (tick), "
+            '`""` (Any &#123;kind&#125;).',
+        )
+
+    def test_nothing_declared_says_nothing(self):
+        self.assertEqual(ren._parameter_facts({"name": "q"}), "")
+
+
+class CodeSpanTests(unittest.TestCase):
+    def test_plain_text(self):
+        self.assertEqual(ren._code_span("all"), "`all`")
+
+    def test_backticks_get_a_longer_fence(self):
+        self.assertEqual(ren._code_span("a``b"), "```a``b```")
+        self.assertEqual(ren._code_span("`a"), "`` `a ``")
+
+    def test_pipes_are_escaped_and_newlines_flattened(self):
+        self.assertEqual(ren._code_span("a|b\nc"), "`a\\|b c`")
+
 
 class GenerateProviderMdxTests(unittest.TestCase):
     def test_includes_frontmatter_and_actions(self):

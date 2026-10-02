@@ -202,6 +202,84 @@ def _escape_mdx_cell(text: Any) -> str:
     )
 
 
+#: A parameter's choices are listed in full up to this many; a longer list
+#: shows its first ``CHOICES_SHOWN`` and says how many more there are.
+CHOICES_LISTED_IN_FULL = 12
+CHOICES_SHOWN = 10
+
+
+def _code_span(text: str) -> str:
+    """``text`` as inline code that holds together in an MDX table cell.
+
+    MDX shows code as written, so braces and ``<`` need no escaping (an
+    HTML entity would show as written too). A pipe still ends the cell
+    unless escaped, and a backtick in ``text`` needs a longer fence.
+    """
+    text = text.replace("\n", " ")
+    longest_run = max((len(run) for run in re.findall("`+", text)), default=0)
+    fence = "`" * (longest_run + 1)
+    if text.startswith("`") or text.endswith("`"):
+        text = f" {text} "
+    return f"{fence}{text}{fence}".replace("|", "\\|")
+
+
+def _value_code(value: Any) -> str:
+    """A value as a caller sends it: text as it is, anything else as JSON."""
+    if isinstance(value, str) and value.strip():
+        return _code_span(value)
+    return _code_span(json.dumps(value))
+
+
+def _number(value: Any) -> str | None:
+    """``value`` written out if it is a number, else None."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return json.dumps(value)
+
+
+def _choice(option: dict) -> str:
+    """One allowed value, followed by its label when the label says more."""
+    value = option["value"]
+    text = _value_code(value)
+    label = str(option.get("label") or "").strip()
+    if label and label.casefold() != str(value).strip().casefold():
+        text += f" ({_escape_mdx_cell(label)})"
+    return text
+
+
+def _parameter_facts(param: dict) -> str:
+    """The choices, range and default a parameter declares, as sentences."""
+    facts: list[str] = []
+
+    options = [
+        o for o in param.get("options") or [] if isinstance(o, dict) and "value" in o
+    ]
+    if options:
+        shown = (
+            options
+            if len(options) <= CHOICES_LISTED_IN_FULL
+            else options[:CHOICES_SHOWN]
+        )
+        choices = ", ".join(_choice(o) for o in shown)
+        if len(shown) < len(options):
+            choices += f", and {len(options) - len(shown)} more"
+        several = param.get("multi_select") or _param_type(param.get("type")) == "array"
+        facts.append(f"{'One or more of' if several else 'One of'}: {choices}.")
+
+    low, high = _number(param.get("minimum")), _number(param.get("maximum"))
+    if low is not None and high is not None:
+        facts.append(f"From {low} to {high}.")
+    elif low is not None:
+        facts.append(f"At least {low}.")
+    elif high is not None:
+        facts.append(f"At most {high}.")
+
+    if param.get("default") not in (None, "", [], {}):
+        facts.append(f"Default: {_value_code(param['default'])}.")
+
+    return " ".join(facts)
+
+
 def _yaml_quote(text: Any) -> str:
     s = "" if text is None else str(text)
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
@@ -232,6 +310,9 @@ def generate_action_section(action_name: str, action: dict) -> str:
             ptype = _param_type(p.get("type", "string"))
             req = "Yes" if p.get("required") else "No"
             pdesc = _escape_mdx_cell(p.get("description", ""))
+            facts = _parameter_facts(p)
+            if facts:
+                pdesc = f"{pdesc}<br />{facts}" if pdesc else facts
             lines.append(f"| `{pname}` | {ptype} | {req} | {pdesc} |")
         lines.append("")
 
