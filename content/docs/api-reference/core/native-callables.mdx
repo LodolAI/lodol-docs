@@ -42,8 +42,8 @@ The parsed JSON response body. Primitive responses (`string`, `number`, `boolean
 
 ```json
 {
-  "kind": "CallExpr",
-  "callee": "api.request",
+  "kind": "NativeCallExpr",
+  "name": "api.request",
   "args": [
     { "kind": "Literal", "value": "POST" },
     { "kind": "Literal", "value": "/actions/library/gmail/send" },
@@ -58,6 +58,28 @@ The parsed JSON response body. Primitive responses (`string`, `number`, `boolean
   ]
 }
 ```
+
+### Choosing a connection
+
+A workspace can hold several connections to one app, such as two Slack workspaces, or a restricted and a full-access Stripe key. An action step uses the connection in effect for the member the run acts as: the person who started it, the member who turned on its schedule or trigger, or the creator of the API key that started it. To always act with one particular connection, the step's payload names it with `connection_id`:
+
+```json
+{
+  "kind": "Literal",
+  "value": {
+    "to": "alice@example.com",
+    "subject": "Hello",
+    "body": "World",
+    "connection_id": "665f1a2b3c4d5e6f7a8b9c0f"
+  }
+}
+```
+
+- `connection_id` is the id of one of the workspace's connections to the action's app, written as a plain string rather than an expression. Choosing a connection for a step in the builder sets it, and workflows fetched through this API show it in the step's payload.
+- Any member may name a connection shared with the workspace. A personal connection can be named only by the member who owns it. The step then acts as them in every run, whoever starts it, and only they can change its settings; teammates can still switch it to another connection or remove it.
+- A named connection is never swapped for another. If it has been removed, or its owner has left the workspace, the step fails with an error instead.
+- Copying a workflow to another workspace, or from a template or a share link, removes `connection_id`, so its steps use that workspace's default connection.
+- Duplicating a workflow, or uploading one, keeps `connection_id` only where you could have chosen that connection yourself. Other steps use the default connection.
 
 ---
 
