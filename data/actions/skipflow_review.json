@@ -1,34 +1,7 @@
 {
   "actions": {
-    "human_review": {
-      "description": "Pause the workflow until someone types a reply, then continue with what they wrote. For a yes-or-no decision with named approvers, use Request approval instead.",
-      "display_name": "Ask someone for input",
-      "display_str_template": "Ask someone for input: {0}",
-      "handler": "human_review",
-      "id": "skipflow_review_human_review",
-      "method": "POST",
-      "name": "human_review",
-      "parameters": [
-        {
-          "description": "What the reviewer sees while the run is paused: the question to answer or the details to check.",
-          "display_name": "Details to review",
-          "name": "content",
-          "required": true,
-          "type": "ParameterType.OBJECT"
-        }
-      ],
-      "path": "",
-      "result_str_template": "{human_review,decision}",
-      "returns": {
-        "description": "What the reviewer typed before letting the workflow continue.",
-        "examples": [
-          "Approved. The totals match the purchase order."
-        ],
-        "type": "string"
-      }
-    },
     "request_approval": {
-      "description": "Pause the run until someone approves or rejects it. Approvers get an email and an in-app notification with a link, and can leave a comment. The run waits without using any resources, then continues with the decision: add an If step on approved to act on it. Chain several for multi-level approval, or put them in If branches to route by amount.",
+      "description": "Pause the run until someone approves or rejects it (the default) or, set to ask for a written reply, answers a question that needs human input, like a PO number, a correction or which option to take. People get an email and an in-app notification with a link, and anyone outside the workspace can answer from the link without an account. The run waits without using any resources, then continues with the answer: add an If step on approved to act on a decision, or use reply. Chain several for multi-level approval, or put them in If branches to route by amount.",
       "display_name": "Request approval",
       "display_str_template": "Request approval: {title}",
       "handler": "request_approval",
@@ -44,20 +17,39 @@
           "name": "Jordan Lee"
         },
         "decision": "approved",
+        "reply": "",
         "timed_out": false
       },
       "name": "request_approval",
       "output_formatter": "_format_approval_output",
       "parameters": [
         {
-          "description": "One line approvers see first, for example: Pay @bill.vendor $@bill.total for invoice @bill.number.",
-          "display_name": "What needs approving",
+          "description": "One line people see first. For an approval, what needs approving, for example: Pay @bill.vendor $@bill.total for invoice @bill.number. For a written reply, the question, for example: Which PO number should the @bill.vendor invoice go against?",
+          "display_name": "What to ask",
           "name": "title",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Everything the approver needs to decide: amounts, line items, and links to the source documents. Links are clickable in the email and the app.",
+          "default": "approval",
+          "description": "An approval, where people approve or reject (the default), or a written reply, which the next steps read as reply.",
+          "display_name": "What you need back",
+          "name": "response",
+          "options": [
+            {
+              "label": "Approve or reject",
+              "value": "approval"
+            },
+            {
+              "label": "A written reply",
+              "value": "reply"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Everything people need to answer: amounts, line items, what you need and in what form, and links to the source documents. Links are clickable in the email and the app.",
           "display_name": "Details",
           "multiline": true,
           "name": "details",
@@ -65,23 +57,23 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Email addresses of the people who can approve, separated by commas. People in this workspace decide in the app; anyone else gets a secure link by email, so a client can approve without an account. Leave empty to let anyone in the workspace who can run workflows approve.",
-          "display_name": "Approvers",
+          "description": "Email addresses of the people to ask, separated by commas. People in this workspace answer in the app; anyone else gets a secure link by email, so a client can answer without an account. Leave empty to let anyone in the workspace who can run workflows answer.",
+          "display_name": "Who to ask",
           "name": "approvers",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Only the approvers listed, the listed approvers plus the workspace's owner and admins, or anyone in the workspace who can run workflows (not Viewers).",
-          "display_name": "Who can approve",
+          "description": "Only the people asked, the people asked plus the workspace's owner and admins, or anyone in the workspace who can run workflows (not Viewers).",
+          "display_name": "Who can answer",
           "name": "approver_group",
           "options": [
             {
-              "label": "Only the approvers listed",
+              "label": "Only the people asked",
               "value": "listed"
             },
             {
-              "label": "Approvers listed, plus admins",
+              "label": "People asked, plus admins",
               "value": "admins"
             },
             {
@@ -93,7 +85,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "How long to wait for a decision. Leave empty for 72 hours; at most 720 (30 days). Hours can be fractions, for example 0.5 for half an hour.",
+          "description": "How long to wait for an answer. Leave empty for 72 hours; at most 720 (30 days). Hours can be fractions, for example 0.5 for half an hour.",
           "display_name": "Time limit (hours)",
           "maximum": 720.0,
           "minimum": 0,
@@ -102,29 +94,47 @@
           "type": "ParameterType.NUMBER"
         },
         {
-          "default": "reject",
-          "description": "What happens when the time limit runs out.",
-          "display_name": "If nobody decides in time",
+          "description": "What happens when the time limit runs out. Left unset, an approval is rejected and a written reply stops the run with an error. Continuing without a reply gives the next steps an empty reply with timed_out set.",
+          "display_name": "If nobody answers in time",
           "name": "on_timeout",
           "options": [
             {
               "label": "Treat it as rejected",
-              "value": "reject"
+              "value": "reject",
+              "visible_when": {
+                "response": [
+                  "approval"
+                ]
+              }
             },
             {
               "label": "Treat it as approved",
-              "value": "approve"
+              "value": "approve",
+              "visible_when": {
+                "response": [
+                  "approval"
+                ]
+              }
             },
             {
               "label": "Stop with an error",
               "value": "fail"
+            },
+            {
+              "label": "Continue without a reply",
+              "value": "continue",
+              "visible_when": {
+                "response": [
+                  "reply"
+                ]
+              }
             }
           ],
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Remind the approvers this often while the request waits (at most 10 reminders). Leave empty for no reminders. Hours can be fractions, for example 0.5 for half an hour.",
+          "description": "Remind the people asked this often while the request waits (at most 10 reminders). Leave empty for no reminders. Hours can be fractions, for example 0.5 for half an hour.",
           "display_name": "Remind every (hours)",
           "maximum": 720.0,
           "minimum": 0,
@@ -133,7 +143,7 @@
           "type": "ParameterType.NUMBER"
         },
         {
-          "description": "If nobody has decided after this long, also ask the people in Escalate to. Must be shorter than the time limit. Hours can be fractions, for example 0.5 for half an hour.",
+          "description": "If nobody has answered after this long, also ask the people in Escalate to. Must be shorter than the time limit. Hours can be fractions, for example 0.5 for half an hour.",
           "display_name": "Escalate after (hours)",
           "maximum": 720.0,
           "minimum": 0,
@@ -150,21 +160,31 @@
         },
         {
           "default": false,
-          "description": "The person the run runs as can't approve it: whoever started it, or the workflow's owner for scheduled and triggered runs.",
+          "description": "The person the run runs as can't approve it: whoever started it, or the workflow's owner for scheduled and triggered runs. Approvals only.",
           "display_name": "Require a different approver",
           "name": "require_different_approver",
           "required": false,
-          "type": "ParameterType.BOOLEAN"
+          "type": "ParameterType.BOOLEAN",
+          "visible_when": {
+            "response": [
+              "approval"
+            ]
+          }
         },
         {
-          "description": "Email addresses of whoever prepared this item, for example the person who entered the bill. They can't approve it.",
+          "description": "Email addresses of whoever prepared this item, for example the person who entered the bill. They can't approve it. Approvals only.",
           "display_name": "Prepared by",
           "name": "prepared_by",
           "required": false,
-          "type": "ParameterType.STRING"
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "response": [
+              "approval"
+            ]
+          }
         },
         {
-          "description": "A channel ID or #name to post the request to, with a link to decide. Uses this workspace's Slack connection; the Lodol app must be in the channel.",
+          "description": "A channel ID or #name to post the request to, with a link to answer. Uses this workspace's Slack connection; the Lodol app must be in the channel.",
           "display_name": "Also post to Slack channel",
           "name": "slack_channel",
           "required": false,
@@ -173,7 +193,7 @@
       ],
       "path": "/actions/core/review/request-approval",
       "returns": {
-        "description": "The decision: whether it was approved, who decided and when, and any comment they left.",
+        "description": "The answer: the decision or the written reply, who gave it and when, and any comment left with a decision.",
         "examples": [
           {
             "approval_id": "sample-approval",
@@ -185,6 +205,20 @@
               "name": "Jordan Lee"
             },
             "decision": "approved",
+            "reply": "",
+            "timed_out": false
+          },
+          {
+            "approval_id": "sample-approval",
+            "approved": false,
+            "comment": "",
+            "decided_at": "2026-01-15T16:30:00+00:00",
+            "decided_by": {
+              "email": "jordan@example.com",
+              "name": "Jordan Lee"
+            },
+            "decision": "replied",
+            "reply": "PO-4471",
             "timed_out": false
           }
         ],
@@ -193,19 +227,19 @@
             "type": "string"
           },
           "approved": {
-            "description": "True when the request was approved.",
+            "description": "True when the request was approved. Always false for a written reply.",
             "type": "boolean"
           },
           "comment": {
-            "description": "What the approver wrote, if anything.",
+            "description": "What the approver wrote with their decision, if anything.",
             "type": "string"
           },
           "decided_at": {
-            "description": "When they decided (ISO 8601).",
+            "description": "When they answered (ISO 8601).",
             "type": "string"
           },
           "decided_by": {
-            "description": "Who decided.",
+            "description": "Who answered.",
             "properties": {
               "email": {
                 "type": "string"
@@ -217,11 +251,15 @@
             "type": "object"
           },
           "decision": {
-            "description": "approved or rejected.",
+            "description": "approved or rejected, or replied for a written reply.",
+            "type": "string"
+          },
+          "reply": {
+            "description": "The written reply. Empty for an approval, and when nobody replied in time and the step was set to continue.",
             "type": "string"
           },
           "timed_out": {
-            "description": "True when nobody decided in time and the time-limit outcome was applied.",
+            "description": "True when nobody answered in time and the time-limit outcome was applied.",
             "type": "boolean"
           }
         },
