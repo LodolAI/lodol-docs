@@ -1,4 +1,5 @@
 import { defineConfig, defineDocs } from 'fumadocs-mdx/config';
+import { rehypeCodeOutsideActionReference } from './lib/rehype-code';
 
 export const docs = defineDocs({
   dir: 'content/docs',
@@ -8,4 +9,11 @@ export const docs = defineDocs({
   docs: { async: true },
 });
 
-export default defineConfig();
+export default defineConfig({
+  mdxOptions: {
+    // Highlight code as pages compile everywhere but the action reference,
+    // whose ~9,000 examples ran the build out of memory. See lib/rehype-code.ts.
+    rehypeCodeOptions: false,
+    rehypePlugins: [rehypeCodeOutsideActionReference],
+  },
+});
