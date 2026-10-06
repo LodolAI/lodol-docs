@@ -1,6 +1,6 @@
 ---
 title: Workflows
-description: API endpoints for listing and inspecting workflows.
+description: API endpoints for listing, inspecting and deleting workflows.
 ---
 
 ## Workflows
@@ -153,3 +153,40 @@ curl https://app.skipflow.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d \
 ```
 
 The `program` field contains the full workflow AST. See the [Core](/docs/api-reference/core) section for details on expressions and statements.
+
+---
+
+### Delete a Workflow
+
+```
+DELETE /api/v1/workflows/:id
+```
+
+Permanently deletes a workflow and every version of it, as deleting it from the Workflows page does: any run in progress is stopped, its trigger or schedule stops listening, and it leaves its folders. The secrets and variables scoped to it are detached, not deleted, and its past runs stay readable under [Executions](/docs/api-reference/executions). This cannot be undone.
+
+`:id` is the workflow's `id`, or the ID of any version of it (see [Workflow IDs](#workflow-ids)).
+
+**Required scope:** `workflows:delete`
+
+The member who created the API key must also be allowed to delete workflows in the workspace (the *Delete workflows* role permission); otherwise the request is refused with `403`. See [Scopes](/docs/guides/authentication#scopes).
+
+**Example**
+
+```bash
+curl -X DELETE https://app.skipflow.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d \
+  -H "Authorization: Bearer sk_live_your_api_key"
+```
+
+**Response (200)**
+
+```json
+{
+  "id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "name": "Monthly Client Report",
+  "deleted": true
+}
+```
+
+A workflow that doesn't exist, or has already been deleted, returns `404 Not Found`. A delete that fails returns `500` and leaves the workflow as it was, still armed.
+
+`DELETE` takes no `Idempotency-Key`: repeating it for a workflow that is already gone returns `404`. If a delete times out, check with [Get a Workflow](#get-a-workflow) before sending it again, since it may have happened.
