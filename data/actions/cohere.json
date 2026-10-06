@@ -1,31 +1,438 @@
 {
   "actions": {
-    "generate_model_response": {
-      "description": "Send a prompt to a Cohere Command model and get back its written response.",
-      "display_name": "Generate a Cohere response",
-      "display_str_template": "Generate a Cohere response.",
-      "handler": "actions.generate_model_response",
-      "id": "cohere_generate_model_response",
+    "answer_from_documents": {
+      "description": "Answer a question using only the documents you give it, such as help-center articles or search results, with citations saying which document backs up each part of the answer.",
+      "display_name": "Answer from documents",
+      "display_str_template": "Answer from documents: {question}",
+      "handler": "actions.answer_from_documents",
+      "id": "cohere_answer_from_documents",
       "method": "POST",
       "mock_response": {
+        "answer": "Refunds are issued within 5 business days.",
+        "citations": [
+          {
+            "document_positions": [
+              2
+            ],
+            "text": "within 5 business days"
+          }
+        ],
+        "cited_positions": [
+          2
+        ],
+        "finish_reason": "COMPLETE",
+        "input_tokens": 120,
+        "is_grounded": true,
         "model": "command-a-plus-05-2026",
-        "response_text": "Here is a thoughtful response to your question about artificial intelligence and its applications in modern software development.",
-        "status": "success"
+        "output_tokens": 12,
+        "sources": [
+          {
+            "citation_count": 1,
+            "document": "Refunds are issued within 5 business days of approval.",
+            "position": 2
+          }
+        ],
+        "was_cut_off": false
       },
-      "name": "generate_model_response",
-      "output_formatter": "actions.format_generate_model_response_output",
+      "name": "answer_from_documents",
+      "output_formatter": "actions.format_answer_output",
       "parameters": [
         {
-          "description": "The message or question to send to Cohere.",
-          "display_name": "Prompt",
+          "description": "What to answer, such as 'How long do refunds take?'",
+          "display_name": "Question",
           "multiline": true,
-          "name": "prompt",
+          "name": "question",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
+          "description": "The texts to answer from, one per entry: articles, policy sections, search results, or rows from an earlier step. Citations name them by position, counting from 1.",
+          "display_name": "Documents",
+          "name": "documents",
+          "required": true,
+          "schema": {
+            "items": {},
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "How to answer, such as 'Reply in two sentences' or 'Say you do not know when the documents do not cover it'.",
+          "display_name": "Instructions",
+          "multiline": true,
+          "name": "instructions",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
           "default": "command-a-plus-05-2026",
-          "description": "Which Cohere model to use. Defaults to command-a-plus-05-2026.",
+          "description": "Which Cohere model does the work. Command A+ suits most jobs.",
+          "display_name": "Model",
+          "name": "model",
+          "options": [
+            {
+              "label": "Command A+ (most capable, recommended)",
+              "value": "command-a-plus-05-2026"
+            },
+            {
+              "label": "Command A Reasoning (thinks before it answers)",
+              "value": "command-a-reasoning-08-2025"
+            },
+            {
+              "label": "Command A",
+              "value": "command-a-03-2025"
+            },
+            {
+              "label": "Command R+",
+              "value": "command-r-plus-08-2024"
+            },
+            {
+              "label": "Command R",
+              "value": "command-r-08-2024"
+            },
+            {
+              "label": "Command R7B (fastest, lowest cost)",
+              "value": "command-r7b-12-2024"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The most tokens the response may use; a token is about three-quarters of a word. Leave blank to use the model's own maximum output length.",
+          "display_name": "Maximum response length",
+          "minimum": 1,
+          "name": "max_tokens",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "default",
+          "description": "Whether a reasoning model (Command A+ or Command A Reasoning) thinks before it answers. Thinking is slower, and it counts against the maximum response length. Other models never think. Off works as expected on Command A Reasoning; Command A+ then reasons inside its answer instead.",
+          "display_name": "Thinking",
+          "name": "thinking",
+          "options": [
+            {
+              "label": "Model's default",
+              "value": "default"
+            },
+            {
+              "label": "On",
+              "value": "on"
+            },
+            {
+              "label": "Off",
+              "value": "off"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/cohere/answer-from-documents",
+      "result_str_template": "{answer}",
+      "returns": {
+        "properties": {
+          "answer": {
+            "description": "The answer.",
+            "type": "string"
+          },
+          "citations": {
+            "description": "Each passage of the answer the documents back up.",
+            "items": {
+              "properties": {
+                "document_positions": {
+                  "description": "Which documents back them up, by position from 1.",
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "end": {
+                  "description": "Where those words end in the answer.",
+                  "type": "number"
+                },
+                "start": {
+                  "description": "Where those words start in the answer, from 0.",
+                  "type": "number"
+                },
+                "text": {
+                  "description": "The words in the answer that the documents back up.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "cited_positions": {
+            "description": "The positions of the documents cited, from 1.",
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "finish_reason": {
+            "description": "COMPLETE when it finished, MAX_TOKENS when it was cut off, STOP_SEQUENCE when it stopped at a stop word.",
+            "type": "string"
+          },
+          "input_tokens": {
+            "description": "Tokens read, as billed.",
+            "type": "number"
+          },
+          "is_grounded": {
+            "description": "Whether any document backs up the answer.",
+            "type": "boolean"
+          },
+          "model": {
+            "description": "The model that answered.",
+            "type": "string"
+          },
+          "output_tokens": {
+            "description": "Tokens written, as billed.",
+            "type": "number"
+          },
+          "sources": {
+            "description": "The documents cited, in the order given.",
+            "items": {
+              "properties": {
+                "citation_count": {
+                  "description": "How many passages of the answer cite it.",
+                  "type": "number"
+                },
+                "document": {
+                  "description": "The document's text.",
+                  "type": "string"
+                },
+                "position": {
+                  "description": "The document's position in the list given, from 1.",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "was_cut_off": {
+            "description": "Whether it hit the maximum response length.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "ask_about_image": {
+      "description": "Ask a Cohere vision model a question about one or more pictures: describe a photo, read a chart or a table, or answer a question about a scanned document.",
+      "display_name": "Ask about an image",
+      "display_str_template": "Ask Cohere about an image: {question}",
+      "handler": "actions.ask_about_image",
+      "id": "cohere_ask_about_image",
+      "method": "POST",
+      "mock_response": {
+        "answer": "A monarch butterfly resting on a pink flower.",
+        "finish_reason": "COMPLETE",
+        "image_count": 1,
+        "input_tokens": 790,
+        "model": "command-a-vision-07-2025",
+        "output_tokens": 12,
+        "was_cut_off": false
+      },
+      "name": "ask_about_image",
+      "output_formatter": "actions.format_image_answer_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "accepts_variable_reference": true,
+          "description": "The pictures to look at: upload them, pick files from an earlier step, or paste public web addresses. PNG, JPEG, WebP or GIF (other formats are converted), up to 20.",
+          "display_name": "Images",
+          "name": "images",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "What to ask about the pictures. Leave blank for a detailed description.",
+          "display_name": "Question",
+          "multiline": true,
+          "name": "question",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "command-a-vision-07-2025",
+          "description": "Which Cohere model looks at the pictures. Command A Vision answers at once; Command A+ thinks first, which can take a while.",
+          "display_name": "Model",
+          "name": "model",
+          "options": [
+            {
+              "label": "Command A Vision (answers at once, recommended)",
+              "value": "command-a-vision-07-2025"
+            },
+            {
+              "label": "Command A+ (thinks first; most capable)",
+              "value": "command-a-plus-05-2026"
+            },
+            {
+              "label": "Aya Vision 32B (23 languages)",
+              "value": "c4ai-aya-vision-32b"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "auto",
+          "description": "How closely to look. High reads small print but uses more tokens; Low is faster and cheaper.",
+          "display_name": "Detail",
+          "name": "detail",
+          "options": [
+            {
+              "label": "Automatic",
+              "value": "auto"
+            },
+            {
+              "label": "Low (faster, fewer tokens)",
+              "value": "low"
+            },
+            {
+              "label": "High (reads small print)",
+              "value": "high"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The most tokens the response may use; a token is about three-quarters of a word. Leave blank to use the model's own maximum output length.",
+          "display_name": "Maximum response length",
+          "minimum": 1,
+          "name": "max_tokens",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "default",
+          "description": "Whether a reasoning model (Command A+ or Command A Reasoning) thinks before it answers. Thinking is slower, and it counts against the maximum response length. Other models never think. Off works as expected on Command A Reasoning; Command A+ then reasons inside its answer instead.",
+          "display_name": "Thinking",
+          "name": "thinking",
+          "options": [
+            {
+              "label": "Model's default",
+              "value": "default"
+            },
+            {
+              "label": "On",
+              "value": "on"
+            },
+            {
+              "label": "Off",
+              "value": "off"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/cohere/ask-about-image",
+      "result_str_template": "{answer}",
+      "returns": {
+        "properties": {
+          "answer": {
+            "description": "The model's answer.",
+            "type": "string"
+          },
+          "finish_reason": {
+            "description": "COMPLETE when it finished, MAX_TOKENS when it was cut off, STOP_SEQUENCE when it stopped at a stop word.",
+            "type": "string"
+          },
+          "image_count": {
+            "description": "How many pictures it looked at.",
+            "type": "number"
+          },
+          "input_tokens": {
+            "description": "Tokens read, as billed.",
+            "type": "number"
+          },
+          "model": {
+            "description": "The model that answered.",
+            "type": "string"
+          },
+          "output_tokens": {
+            "description": "Tokens written, as billed.",
+            "type": "number"
+          },
+          "was_cut_off": {
+            "description": "Whether it hit the maximum response length.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "classify_text": {
+      "description": "Have a Command model pick the one category that fits a piece of text, such as routing a support email, and say why. The answer is always exactly one of the categories you list.",
+      "display_name": "Classify text",
+      "display_str_template": "Classify text with Cohere.",
+      "handler": "actions.classify_text",
+      "id": "cohere_classify_text",
+      "method": "POST",
+      "mock_response": {
+        "categories": [
+          "Refund request",
+          "Bug report",
+          "Sales question"
+        ],
+        "category": "Refund request",
+        "input_tokens": 96,
+        "model": "command-a-plus-05-2026",
+        "output_tokens": 21,
+        "reason": "The customer asks for their money back."
+      },
+      "name": "classify_text",
+      "parameters": [
+        {
+          "description": "The text to classify, such as an email, a review or a support ticket.",
+          "display_name": "Text",
+          "multiline": true,
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The categories to choose from, one per entry. The step always returns exactly one of them, spelled as you wrote it.",
+          "display_name": "Categories",
+          "examples": [
+            {
+              "label": "Support triage",
+              "value": "[\"Refund request\", \"Bug report\", \"Sales question\"]"
+            }
+          ],
+          "name": "categories",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Rules for borderline cases, such as 'Anything that mentions money back is a Refund request'.",
+          "display_name": "How to decide",
+          "multiline": true,
+          "name": "instructions",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "command-a-plus-05-2026",
+          "description": "Which Cohere model decides. Command A+ suits most jobs.",
           "display_name": "Model",
           "name": "model",
           "options": [
@@ -42,6 +449,530 @@
               "value": "command-r-plus-08-2024"
             },
             {
+              "label": "Command R",
+              "value": "command-r-08-2024"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/cohere/classify-text",
+      "result_str_template": "{category}",
+      "returns": {
+        "properties": {
+          "categories": {
+            "description": "The categories it chose from.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "category": {
+            "description": "The category chosen.",
+            "type": "string"
+          },
+          "input_tokens": {
+            "description": "Tokens read, as billed.",
+            "type": "number"
+          },
+          "model": {
+            "description": "The model that chose.",
+            "type": "string"
+          },
+          "output_tokens": {
+            "description": "Tokens written, as billed.",
+            "type": "number"
+          },
+          "reason": {
+            "description": "Why, in one sentence.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "count_tokens": {
+      "description": "Count how many tokens a text is for a Cohere model, to check a prompt fits before sending it or to estimate what it will cost.",
+      "display_name": "Count tokens",
+      "display_str_template": "Count Cohere tokens.",
+      "handler": "actions.count_tokens",
+      "id": "cohere_count_tokens",
+      "method": "POST",
+      "mock_response": {
+        "character_count": 12,
+        "model": "command-a-plus-05-2026",
+        "token_count": 3,
+        "token_strings": [
+          "Hello",
+          " world",
+          "!"
+        ],
+        "tokens": [
+          28339,
+          2286,
+          38
+        ]
+      },
+      "name": "count_tokens",
+      "output_formatter": "actions.format_token_count_output",
+      "parameters": [
+        {
+          "description": "The text to count, up to 65,536 characters.",
+          "display_name": "Text",
+          "multiline": true,
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "command-a-plus-05-2026",
+          "description": "The model whose tokens to count: each family splits text its own way. Defaults to command-a-plus-05-2026.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/cohere/count-tokens",
+      "result_str_template": "{token_count} tokens.",
+      "returns": {
+        "properties": {
+          "character_count": {
+            "description": "How many characters the text is.",
+            "type": "number"
+          },
+          "model": {
+            "description": "The model whose tokens were counted.",
+            "type": "string"
+          },
+          "token_count": {
+            "description": "How many tokens the text is.",
+            "type": "number"
+          },
+          "token_strings": {
+            "description": "Each token's text, in order.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tokens": {
+            "description": "The tokens, as the numbers the model reads.",
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_embeddings": {
+      "description": "Turn texts into vectors with Cohere Embed for semantic search, deduplication, clustering or classification, ready to store in a vector database such as Pinecone or Qdrant.",
+      "display_name": "Create embeddings",
+      "display_str_template": "Create embeddings with Cohere.",
+      "handler": "actions.create_embeddings",
+      "id": "cohere_create_embeddings",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "dimensions": 3,
+        "embedding": [
+          0.012,
+          -0.043,
+          0.031
+        ],
+        "embeddings": [
+          [
+            0.012,
+            -0.043,
+            0.031
+          ],
+          [
+            0.018,
+            -0.039,
+            0.027
+          ]
+        ],
+        "input_tokens": 14,
+        "input_type": "search_document",
+        "model": "embed-v5.0-pro"
+      },
+      "name": "create_embeddings",
+      "output_formatter": "actions.format_embeddings_output",
+      "parameters": [
+        {
+          "description": "The texts to turn into vectors, one per entry. Each gives one vector, in the same order; up to 1,000.",
+          "display_name": "Texts",
+          "name": "texts",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": "search_document",
+          "description": "Embed what you store as 'Documents to search' and what you look things up with as 'Search queries': Cohere makes the two kinds to match each other.",
+          "display_name": "What the texts are",
+          "name": "input_type",
+          "options": [
+            {
+              "label": "Documents to search (to store)",
+              "value": "search_document"
+            },
+            {
+              "label": "Search queries (to look up with)",
+              "value": "search_query"
+            },
+            {
+              "label": "Texts to classify",
+              "value": "classification"
+            },
+            {
+              "label": "Texts to group",
+              "value": "clustering"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "embed-v5.0-pro",
+          "description": "Which Embed model to use. Match the model already used for any vectors you will compare these with.",
+          "display_name": "Model",
+          "name": "model",
+          "options": [
+            {
+              "label": "Embed 5 Pro (most capable, recommended)",
+              "value": "embed-v5.0-pro"
+            },
+            {
+              "label": "Embed 5 Fast",
+              "value": "embed-v5.0-fast"
+            },
+            {
+              "label": "Embed 4",
+              "value": "embed-v4.0"
+            },
+            {
+              "label": "Embed Multilingual 3 (1,024 numbers)",
+              "value": "embed-multilingual-v3.0"
+            },
+            {
+              "label": "Embed English 3 (1,024 numbers)",
+              "value": "embed-english-v3.0"
+            },
+            {
+              "label": "Embed Multilingual Light 3 (384 numbers)",
+              "value": "embed-multilingual-light-v3.0"
+            },
+            {
+              "label": "Embed English Light 3 (384 numbers)",
+              "value": "embed-english-light-v3.0"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "full",
+          "description": "Shorter vectors take less storage. Embed 5 and Embed 4 can be shortened; the older models always give their own length.",
+          "display_name": "Vector length",
+          "name": "dimensions",
+          "options": [
+            {
+              "label": "Full length (the model's default)",
+              "value": "full"
+            },
+            {
+              "label": "256 numbers",
+              "value": "256"
+            },
+            {
+              "label": "512 numbers",
+              "value": "512"
+            },
+            {
+              "label": "768 numbers (Embed 5 only)",
+              "value": "768"
+            },
+            {
+              "label": "1,024 numbers",
+              "value": "1024"
+            },
+            {
+              "label": "1,536 numbers",
+              "value": "1536"
+            },
+            {
+              "label": "2,048 numbers (Embed 5 only)",
+              "value": "2048"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/cohere/create-embeddings",
+      "result_str_template": "Created {count} vectors of {dimensions} numbers.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many vectors.",
+            "type": "number"
+          },
+          "dimensions": {
+            "description": "How many numbers each vector has.",
+            "type": "number"
+          },
+          "embedding": {
+            "description": "The first text's vector.",
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "embeddings": {
+            "description": "One vector per text, in the same order.",
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "input_tokens": {
+            "description": "Tokens billed.",
+            "type": "number"
+          },
+          "input_type": {
+            "description": "What the texts were embedded as.",
+            "type": "string"
+          },
+          "model": {
+            "description": "The model used.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "extract_data": {
+      "description": "Pull the fields you name out of text or pictures, such as the total on a photographed receipt or the sender's company in an email, ready for a spreadsheet row or a CRM record. A field the material does not mention comes back empty, never guessed.",
+      "display_name": "Extract data",
+      "display_str_template": "Extract data with Cohere.",
+      "handler": "actions.extract_data",
+      "id": "cohere_extract_data",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "invoice number": "INV-1042",
+          "total": "$1,250.00",
+          "vendor": "Acme Ltd"
+        },
+        "found_fields": [
+          "invoice number",
+          "vendor",
+          "total"
+        ],
+        "input_tokens": 212,
+        "missing_fields": [],
+        "model": "command-a-plus-05-2026",
+        "output_tokens": 31
+      },
+      "name": "extract_data",
+      "parameters": [
+        {
+          "description": "The text to pull the fields out of, such as an email or an invoice. Leave blank when the images hold everything.",
+          "display_name": "Text",
+          "multiline": true,
+          "name": "text",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "accepts_file_upload": true,
+          "accepts_variable_reference": true,
+          "description": "Pictures to read: upload them, pick files from an earlier step, or paste public web addresses. PNG, JPEG, WebP or GIF (other formats are converted), up to 20.",
+          "display_name": "Images",
+          "name": "images",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "The pieces of information you want, one per entry. Add what each means after a colon to steer it: 'total: the amount due in dollars'.",
+          "display_name": "Fields",
+          "examples": [
+            {
+              "label": "Invoice",
+              "value": "[\"invoice number\", \"vendor\", \"total: the amount due\"]"
+            }
+          ],
+          "name": "fields",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Extra rules, such as 'Write dates as YYYY-MM-DD'.",
+          "display_name": "Instructions",
+          "multiline": true,
+          "name": "instructions",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "command-a-plus-05-2026",
+          "description": "Which Cohere model reads the material. Pictures need Command A+ or Command A Vision.",
+          "display_name": "Model",
+          "name": "model",
+          "options": [
+            {
+              "label": "Command A+ (reads images, recommended)",
+              "value": "command-a-plus-05-2026"
+            },
+            {
+              "label": "Command A Vision (reads images)",
+              "value": "command-a-vision-07-2025"
+            },
+            {
+              "label": "Command A",
+              "value": "command-a-03-2025"
+            },
+            {
+              "label": "Command R+",
+              "value": "command-r-plus-08-2024"
+            },
+            {
+              "label": "Command R",
+              "value": "command-r-08-2024"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Instead of 'Fields', paste a JSON Schema whose root is an object, for numbers, lists or nested fields. Every object in it must list its required fields. When set, 'Fields' is ignored.",
+          "display_name": "JSON Schema (advanced)",
+          "multiline": true,
+          "name": "json_schema",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/cohere/extract-data",
+      "result_str_template": "Found {found_fields} fields.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "The fields, by the names asked for.",
+            "type": "object"
+          },
+          "found_fields": {
+            "description": "The fields that were filled.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "input_tokens": {
+            "description": "Tokens read, as billed.",
+            "type": "number"
+          },
+          "missing_fields": {
+            "description": "The fields the material did not mention.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "model": {
+            "description": "The model that read it.",
+            "type": "string"
+          },
+          "output_tokens": {
+            "description": "Tokens written, as billed.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "generate_model_response": {
+      "description": "Send a prompt to a Cohere Command model and get back its written response, as text or as a JSON object a later step can read field by field.",
+      "display_name": "Generate a Cohere response",
+      "display_str_template": "Generate a Cohere response.",
+      "handler": "actions.generate_model_response",
+      "id": "cohere_generate_model_response",
+      "method": "POST",
+      "mock_response": {
+        "data": null,
+        "finish_reason": "COMPLETE",
+        "input_tokens": 18,
+        "model": "command-a-plus-05-2026",
+        "output_tokens": 24,
+        "response_text": "Here is a thoughtful response to your question about artificial intelligence and its applications in modern software development.",
+        "status": "success",
+        "thinking": null,
+        "was_cut_off": false
+      },
+      "name": "generate_model_response",
+      "output_formatter": "actions.format_generate_model_response_output",
+      "parameters": [
+        {
+          "description": "The message or question to send to Cohere.",
+          "display_name": "Prompt",
+          "multiline": true,
+          "name": "prompt",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "command-a-plus-05-2026",
+          "description": "Which Cohere model writes the response. Command A+ suits most jobs; Command A Reasoning thinks first, for harder problems; Command R7B is the fastest. Defaults to command-a-plus-05-2026.",
+          "display_name": "Model",
+          "name": "model",
+          "options": [
+            {
+              "label": "Command A+ (most capable, recommended)",
+              "value": "command-a-plus-05-2026"
+            },
+            {
+              "label": "Command A Reasoning (thinks before it answers)",
+              "value": "command-a-reasoning-08-2025"
+            },
+            {
+              "label": "Command A",
+              "value": "command-a-03-2025"
+            },
+            {
+              "label": "Command R+",
+              "value": "command-r-plus-08-2024"
+            },
+            {
+              "label": "Command R",
+              "value": "command-r-08-2024"
+            },
+            {
               "label": "Command R7B (fastest, lowest cost)",
               "value": "command-r7b-12-2024"
             }
@@ -50,20 +981,94 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Maximum number of tokens Cohere may generate in its response. Raise it for longer replies. Leave blank to use the model's own maximum output length.",
+          "description": "The most tokens the response may use; a token is about three-quarters of a word. Leave blank to use the model's own maximum output length.",
           "display_name": "Maximum response length",
+          "minimum": 1,
           "name": "max_tokens",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How the model should behave, such as 'Answer in one short paragraph' or 'You are a friendly support agent for Acme'.",
+          "display_name": "Instructions",
+          "multiline": true,
+          "name": "instructions",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "From 0 (focused and repeatable) to 1 (most varied). Leave blank for Cohere's default of 0.3.",
+          "display_name": "Creativity (temperature)",
+          "maximum": 1.0,
+          "minimum": 0,
+          "name": "temperature",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "default",
+          "description": "Whether a reasoning model (Command A+ or Command A Reasoning) thinks before it answers. Thinking is slower and uses more tokens, and comes back separately from the response. Other models never think. Off works as expected on Command A Reasoning; Command A+ then reasons inside its answer instead.",
+          "display_name": "Thinking",
+          "name": "thinking",
+          "options": [
+            {
+              "label": "Model's default",
+              "value": "default"
+            },
+            {
+              "label": "On",
+              "value": "on"
+            },
+            {
+              "label": "Off",
+              "value": "off"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "text",
+          "description": "Choose 'A JSON object' to get the response as data, in 'data'. Say in the prompt which fields the object should have.",
+          "display_name": "Response format",
+          "name": "reply_format",
+          "options": [
+            {
+              "label": "Text",
+              "value": "text"
+            },
+            {
+              "label": "A JSON object",
+              "value": "json"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/cohere/generate-model-response",
       "result_str_template": "Cohere response: {cohere_generate_model_response,response_text}",
       "returns": {
         "properties": {
-          "model": {
-            "description": "The Cohere model that produced the response.",
+          "data": {
+            "description": "The response as a JSON object, when the response format is A JSON object.",
+            "type": "object"
+          },
+          "finish_reason": {
+            "description": "COMPLETE when it finished, MAX_TOKENS when it was cut off, STOP_SEQUENCE when it stopped at a stop word.",
             "type": "string"
+          },
+          "input_tokens": {
+            "description": "Tokens read, as billed.",
+            "type": "number"
+          },
+          "model": {
+            "description": "The model that answered.",
+            "type": "string"
+          },
+          "output_tokens": {
+            "description": "Tokens written, as billed.",
+            "type": "number"
           },
           "response_text": {
             "description": "The text that Cohere generated for your prompt.",
@@ -72,13 +1077,758 @@
           "status": {
             "description": "Action execution status.",
             "type": "string"
+          },
+          "thinking": {
+            "description": "The model's reasoning, when it thought first.",
+            "type": "string"
+          },
+          "was_cut_off": {
+            "description": "Whether it hit the maximum response length.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_model": {
+      "description": "Look up one Cohere model: what it is for, how much text it takes in, the abilities it has and whether it is deprecated.",
+      "display_name": "Get a model",
+      "display_str_template": "Get Cohere model {model}.",
+      "handler": "actions.get_model",
+      "id": "cohere_get_model",
+      "method": "POST",
+      "mock_response": {
+        "context_length": 128000,
+        "default_for": [
+          "chat"
+        ],
+        "endpoints": [
+          "chat"
+        ],
+        "features": [
+          "tools",
+          "json_mode",
+          "vision",
+          "reasoning"
+        ],
+        "is_deprecated": false,
+        "is_fine_tuned": false,
+        "name": "command-a-plus-05-2026",
+        "sampling_defaults": {
+          "p": 0.75,
+          "temperature": 0.3
+        },
+        "tokenizer_url": "https://storage.googleapis.com/cohere-public/tokenizers/command-a-plus-05-2026.json"
+      },
+      "name": "get_model",
+      "parameters": [
+        {
+          "description": "The model to look up. Pick one, or type its name, such as command-a-plus-05-2026.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/cohere/get-model",
+      "result_str_template": "{name}",
+      "returns": {
+        "properties": {
+          "context_length": {
+            "description": "The most tokens it can take in at once.",
+            "type": "number"
+          },
+          "default_for": {
+            "description": "The endpoints it is Cohere's default model for.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "endpoints": {
+            "description": "What it can be used for: chat, embed, rerank and so on.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "features": {
+            "description": "Extra abilities, such as tool use, vision or JSON output.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "is_deprecated": {
+            "description": "Whether Cohere has deprecated it.",
+            "type": "boolean"
+          },
+          "is_fine_tuned": {
+            "description": "Whether it is a fine-tuned model.",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "The model's name, to use in any Cohere step.",
+            "type": "string"
+          },
+          "sampling_defaults": {
+            "description": "The settings it uses when a request leaves them out, such as temperature.",
+            "type": "object"
+          },
+          "tokenizer_url": {
+            "description": "Where its tokenizer's configuration lives.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_models": {
+      "description": "List the Cohere models this API key can use, with what each is for, how much text it takes in and the abilities it has.",
+      "display_name": "List models",
+      "display_str_template": "List Cohere models.",
+      "handler": "actions.list_models",
+      "id": "cohere_list_models",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "model_names": [
+          "command-a-plus-05-2026"
+        ],
+        "models": [
+          {
+            "context_length": 128000,
+            "default_for": [
+              "chat"
+            ],
+            "endpoints": [
+              "chat"
+            ],
+            "features": [
+              "tools",
+              "json_mode",
+              "vision",
+              "reasoning"
+            ],
+            "is_deprecated": false,
+            "is_fine_tuned": false,
+            "name": "command-a-plus-05-2026"
+          }
+        ]
+      },
+      "name": "list_models",
+      "parameters": [
+        {
+          "default": "all",
+          "description": "Only models that do this.",
+          "display_name": "What it's for",
+          "name": "endpoint",
+          "options": [
+            {
+              "label": "Anything",
+              "value": "all"
+            },
+            {
+              "label": "Chat",
+              "value": "chat"
+            },
+            {
+              "label": "Embeddings",
+              "value": "embed"
+            },
+            {
+              "label": "Reranking",
+              "value": "rerank"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/cohere/list-models",
+      "result_str_template": "Found {count} models.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many there are.",
+            "type": "number"
+          },
+          "model_names": {
+            "description": "Every model's name, in the same order.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "models": {
+            "description": "The models, by name.",
+            "items": {
+              "properties": {
+                "context_length": {
+                  "description": "The most tokens it can take in at once.",
+                  "type": "number"
+                },
+                "default_for": {
+                  "description": "The endpoints it is Cohere's default model for.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "endpoints": {
+                  "description": "What it can be used for: chat, embed, rerank and so on.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "features": {
+                  "description": "Extra abilities, such as tool use, vision or JSON output.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "is_deprecated": {
+                  "description": "Whether Cohere has deprecated it.",
+                  "type": "boolean"
+                },
+                "is_fine_tuned": {
+                  "description": "Whether it is a fine-tuned model.",
+                  "type": "boolean"
+                },
+                "name": {
+                  "description": "The model's name, to use in any Cohere step.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "parse_document": {
+      "description": "Turn a PDF, a scan or a photo of a document into Markdown with Cohere Parse, keeping its reading order, lists and tables, and describing its pictures. Reads up to 20 pages a step.",
+      "display_name": "Parse a document",
+      "display_str_template": "Parse {document} with Cohere.",
+      "handler": "actions.parse_document",
+      "id": "cohere_parse_document",
+      "method": "POST",
+      "mock_response": {
+        "markdown": "# Invoice INV-1042\n\n<table><tr><td>Total</td><td>$1,250.00</td></tr></table>",
+        "model": "parse-v5.0",
+        "page_count": 1,
+        "pages": [
+          {
+            "images": [],
+            "markdown": "# Invoice INV-1042\n\n<table><tr><td>Total</td><td>$1,250.00</td></tr></table>",
+            "page": 1
+          }
+        ]
+      },
+      "name": "parse_document",
+      "output_formatter": "actions.format_parse_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "description": "The PDF or page image to parse: upload a file, pick one an earlier step produced, or paste a link to one.",
+          "display_name": "Document",
+          "name": "document",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a PDF, the first page to parse. Leave blank to start at page 1.",
+          "display_name": "First page",
+          "minimum": 1,
+          "name": "first_page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "For a PDF, the last page to parse. Leave blank to go to the end; a step parses up to 20 pages.",
+          "display_name": "Last page",
+          "minimum": 1,
+          "name": "last_page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/cohere/parse-document",
+      "result_str_template": "Parsed {page_count} pages.",
+      "returns": {
+        "properties": {
+          "markdown": {
+            "description": "Every page parsed, as one Markdown text.",
+            "type": "string"
+          },
+          "model": {
+            "description": "The model used.",
+            "type": "string"
+          },
+          "page_count": {
+            "description": "How many pages were parsed.",
+            "type": "number"
+          },
+          "pages": {
+            "description": "Each page, in order.",
+            "items": {
+              "properties": {
+                "images": {
+                  "description": "The pictures on the page.",
+                  "items": {
+                    "properties": {
+                      "category": {
+                        "description": "other, flowchart, logo or signature.",
+                        "type": "string"
+                      },
+                      "description": {
+                        "description": "What the picture shows, in Cohere's words.",
+                        "type": "string"
+                      },
+                      "id": {
+                        "description": "How the page's Markdown refers to the picture, such as img-0.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "markdown": {
+                  "description": "The page as Markdown, with tables as HTML.",
+                  "type": "string"
+                },
+                "page": {
+                  "description": "The page number, from 1.",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "rerank_documents": {
+      "description": "Order a list of texts or records by how well each answers a question, best first, with a score from 0 to 1. Useful for picking the passages or rows to hand an AI step.",
+      "display_name": "Rank documents by relevance",
+      "display_str_template": "Rank documents for {query} with Cohere.",
+      "handler": "actions.rerank_documents",
+      "id": "cohere_rerank_documents",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "model": "rerank-v4.0-pro",
+        "query": "What is the capital of France?",
+        "results": [
+          {
+            "document": "Paris is the capital of France.",
+            "position": 2,
+            "rank": 1,
+            "score": 0.98
+          },
+          {
+            "document": "The Loire is France's longest river.",
+            "position": 1,
+            "rank": 2,
+            "score": 0.07
+          }
+        ],
+        "top_document": "Paris is the capital of France.",
+        "top_position": 2,
+        "top_score": 0.98
+      },
+      "name": "rerank_documents",
+      "parameters": [
+        {
+          "description": "What you are looking for, written as a question or a search.",
+          "display_name": "Question",
+          "multiline": true,
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The texts or records to rank, one per entry; up to 1,000. Records are ranked on all of their fields.",
+          "display_name": "Documents",
+          "name": "documents",
+          "required": true,
+          "schema": {
+            "items": {},
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Keep only the best matches. Leave blank to rank them all.",
+          "display_name": "How many to return",
+          "minimum": 1,
+          "name": "top_n",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "rerank-v4.0-pro",
+          "description": "Which Rerank model to use.",
+          "display_name": "Model",
+          "name": "model",
+          "options": [
+            {
+              "label": "Rerank 4 Pro (most accurate, recommended)",
+              "value": "rerank-v4.0-pro"
+            },
+            {
+              "label": "Rerank 4 Fast",
+              "value": "rerank-v4.0-fast"
+            },
+            {
+              "label": "Rerank 3.5",
+              "value": "rerank-v3.5"
+            },
+            {
+              "label": "Rerank Multilingual 3",
+              "value": "rerank-multilingual-v3.0"
+            },
+            {
+              "label": "Rerank English 3",
+              "value": "rerank-english-v3.0"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/cohere/rerank-documents",
+      "result_str_template": "Ranked {count} documents.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many were returned.",
+            "type": "number"
+          },
+          "model": {
+            "description": "The model used.",
+            "type": "string"
+          },
+          "query": {
+            "description": "The question.",
+            "type": "string"
+          },
+          "results": {
+            "description": "The documents, best match first.",
+            "items": {
+              "properties": {
+                "document": {
+                  "description": "The document's text, as Cohere ranked it.",
+                  "type": "string"
+                },
+                "position": {
+                  "description": "Where it was in the list given, starting at 1.",
+                  "type": "number"
+                },
+                "rank": {
+                  "description": "1 for the best match.",
+                  "type": "number"
+                },
+                "score": {
+                  "description": "Relevance from 0 to 1.",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "top_document": {
+            "description": "The best match's text.",
+            "type": "string"
+          },
+          "top_position": {
+            "description": "Where the best match was in the list, from 1.",
+            "type": "number"
+          },
+          "top_score": {
+            "description": "The best match's score, from 0 to 1.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "transcribe_audio": {
+      "description": "Write down what is said in a recording with Cohere Transcribe, in any of 14 languages. Takes MP3, WAV, FLAC or OGG recordings of up to 25 MB.",
+      "display_name": "Transcribe audio",
+      "display_str_template": "Transcribe {recording} with Cohere.",
+      "handler": "actions.transcribe_audio",
+      "id": "cohere_transcribe_audio",
+      "method": "POST",
+      "mock_response": {
+        "language": "en",
+        "model": "cohere-transcribe-03-2026",
+        "text": "Thanks for calling Acme support, how can I help you today?",
+        "word_count": 11
+      },
+      "name": "transcribe_audio",
+      "output_formatter": "actions.format_transcription_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "description": "The recording to transcribe: upload a file, pick one an earlier step produced, or paste a link to one.",
+          "display_name": "Recording",
+          "name": "recording",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "en",
+          "description": "The language being spoken. Cohere Transcribe does not detect it, so pick the one the recording is in.",
+          "display_name": "Language",
+          "name": "language",
+          "options": [
+            {
+              "label": "English",
+              "value": "en"
+            },
+            {
+              "label": "Arabic",
+              "value": "ar"
+            },
+            {
+              "label": "Chinese",
+              "value": "zh"
+            },
+            {
+              "label": "Dutch",
+              "value": "nl"
+            },
+            {
+              "label": "French",
+              "value": "fr"
+            },
+            {
+              "label": "German",
+              "value": "de"
+            },
+            {
+              "label": "Greek",
+              "value": "el"
+            },
+            {
+              "label": "Italian",
+              "value": "it"
+            },
+            {
+              "label": "Japanese",
+              "value": "ja"
+            },
+            {
+              "label": "Korean",
+              "value": "ko"
+            },
+            {
+              "label": "Polish",
+              "value": "pl"
+            },
+            {
+              "label": "Portuguese",
+              "value": "pt"
+            },
+            {
+              "label": "Spanish",
+              "value": "es"
+            },
+            {
+              "label": "Vietnamese",
+              "value": "vi"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "cohere-transcribe-03-2026",
+          "description": "Which Cohere Transcribe model listens.",
+          "display_name": "Model",
+          "name": "model",
+          "options": [
+            {
+              "label": "Cohere Transcribe (recommended)",
+              "value": "cohere-transcribe-03-2026"
+            },
+            {
+              "label": "Cohere Transcribe Arabic (for Arabic speech)",
+              "value": "cohere-transcribe-arabic-07-2026"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/cohere/transcribe-audio",
+      "result_str_template": "{text}",
+      "returns": {
+        "properties": {
+          "language": {
+            "description": "The language listened for, as a code.",
+            "type": "string"
+          },
+          "model": {
+            "description": "The model used.",
+            "type": "string"
+          },
+          "text": {
+            "description": "What was said.",
+            "type": "string"
+          },
+          "word_count": {
+            "description": "How many words were heard.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "translate_text": {
+      "description": "Translate text into another language with Command A Translate, Cohere's model built for translation in 23 languages, or North Small Translate for more than 50.",
+      "display_name": "Translate text",
+      "display_str_template": "Translate text into {target_language} with Cohere.",
+      "handler": "actions.translate_text",
+      "id": "cohere_translate_text",
+      "method": "POST",
+      "mock_response": {
+        "finish_reason": "COMPLETE",
+        "input_tokens": 41,
+        "model": "command-a-translate-08-2025",
+        "output_tokens": 17,
+        "source_language": null,
+        "target_language": "Spanish",
+        "translation": "Los reembolsos se emiten en un plazo de 5 d\u00edas h\u00e1biles.",
+        "was_cut_off": false
+      },
+      "name": "translate_text",
+      "output_formatter": "actions.format_translation_output",
+      "parameters": [
+        {
+          "description": "The text to translate.",
+          "display_name": "Text",
+          "multiline": true,
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The language to translate into, such as Spanish, Japanese or Brazilian Portuguese.",
+          "display_name": "Translate into",
+          "examples": [
+            {
+              "label": "Spanish",
+              "value": "Spanish"
+            },
+            {
+              "label": "French",
+              "value": "French"
+            },
+            {
+              "label": "German",
+              "value": "German"
+            },
+            {
+              "label": "Japanese",
+              "value": "Japanese"
+            }
+          ],
+          "name": "target_language",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The language the text is in. Leave blank to let the model tell.",
+          "display_name": "Translate from",
+          "name": "source_language",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How to translate, such as 'Keep a formal tone' or 'Leave product names in English'.",
+          "display_name": "Instructions",
+          "multiline": true,
+          "name": "instructions",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "command-a-translate-08-2025",
+          "description": "Which Cohere model translates.",
+          "display_name": "Model",
+          "name": "model",
+          "options": [
+            {
+              "label": "Command A Translate (23 languages, recommended)",
+              "value": "command-a-translate-08-2025"
+            },
+            {
+              "label": "North Small Translate (50+ languages)",
+              "value": "north-small-translate-09-2026"
+            },
+            {
+              "label": "Command A+",
+              "value": "command-a-plus-05-2026"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/cohere/translate-text",
+      "result_str_template": "{translation}",
+      "returns": {
+        "properties": {
+          "finish_reason": {
+            "description": "COMPLETE when it finished, MAX_TOKENS when it was cut off, STOP_SEQUENCE when it stopped at a stop word.",
+            "type": "string"
+          },
+          "input_tokens": {
+            "description": "Tokens read, as billed.",
+            "type": "number"
+          },
+          "model": {
+            "description": "The model that answered.",
+            "type": "string"
+          },
+          "output_tokens": {
+            "description": "Tokens written, as billed.",
+            "type": "number"
+          },
+          "source_language": {
+            "description": "The language it was translated from, if given.",
+            "type": "string"
+          },
+          "target_language": {
+            "description": "The language it was translated into.",
+            "type": "string"
+          },
+          "translation": {
+            "description": "The translated text.",
+            "type": "string"
+          },
+          "was_cut_off": {
+            "description": "Whether it hit the maximum response length.",
+            "type": "boolean"
           }
         },
         "type": "object"
       }
     }
   },
-  "description": "Connect Cohere's Command models to answer questions, write text, and generate content in your workflows.",
+  "description": "Use Cohere's Command, Embed, Rerank, Parse and Transcribe models in your workflows. Generate text, answer questions from your documents with citations, extract data, classify and translate text, and read images; create embeddings and rank documents for semantic search; and turn recordings and PDFs into text.",
   "display_name": "Cohere",
   "id": "cohere"
 }
