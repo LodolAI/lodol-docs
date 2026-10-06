@@ -1,5 +1,320 @@
 {
   "actions": {
+    "create_embeddings": {
+      "description": "Turn texts into vectors for semantic search, finding similar items or clustering, ready to store in a vector database.",
+      "display_name": "Create embeddings",
+      "display_str_template": "Embed {texts} with Mistral.",
+      "handler": "actions.create_embeddings",
+      "id": "mistral_create_embeddings",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "dimensions": 3,
+        "embedding": [
+          0.012,
+          -0.043,
+          0.031
+        ],
+        "embeddings": [
+          [
+            0.012,
+            -0.043,
+            0.031
+          ],
+          [
+            0.018,
+            -0.039,
+            0.027
+          ]
+        ],
+        "model": "mistral-embed",
+        "total_tokens": 12
+      },
+      "name": "create_embeddings",
+      "output_formatter": "actions.format_create_embeddings_output",
+      "parameters": [
+        {
+          "description": "The texts to embed, one per entry. Each comes back as one vector, in the same order.",
+          "display_name": "Texts",
+          "examples": [
+            {
+              "label": "Two product descriptions",
+              "value": "[\"Waterproof hiking boots\", \"Lightweight trail running shoes\"]"
+            }
+          ],
+          "name": "texts",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": "mistral-embed",
+          "description": "Which embedding model to use. Defaults to mistral-embed.",
+          "display_name": "Model",
+          "name": "model",
+          "options": [
+            {
+              "label": "Mistral Embed (text, recommended)",
+              "value": "mistral-embed"
+            },
+            {
+              "label": "Codestral Embed (code)",
+              "value": "codestral-embed"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many numbers each vector has, for a vector database that expects a set size. Only Codestral Embed can change it, up to 3,072. Leave blank for the model's own size.",
+          "display_name": "Dimensions",
+          "name": "dimensions",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/mistral/create-embeddings",
+      "result_str_template": "Created {mistral_create_embeddings,count} vectors.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many vectors there are.",
+            "type": "number"
+          },
+          "dimensions": {
+            "description": "How many numbers each vector has.",
+            "type": "number"
+          },
+          "embedding": {
+            "description": "The first text's vector.",
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "embeddings": {
+            "description": "One vector per text, in the same order.",
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "model": {
+            "description": "The embedding model used.",
+            "type": "string"
+          },
+          "total_tokens": {
+            "description": "Tokens billed for the request.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "extract_document_data": {
+      "description": "Pull the fields you name, such as an invoice's number, date and total, out of a PDF, Word or PowerPoint file, or a photo or scan. A field the document doesn't contain comes back empty rather than guessed.",
+      "display_name": "Extract data from a document",
+      "display_str_template": "Extract {fields} from {document} with Mistral.",
+      "handler": "actions.extract_document_data",
+      "id": "mistral_extract_document_data",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "invoice date": "2026-09-14",
+          "invoice number": "INV-2041",
+          "purchase order": null,
+          "total": "$1,200.00"
+        },
+        "found_fields": [
+          "invoice number",
+          "invoice date",
+          "total"
+        ],
+        "missing_fields": [
+          "purchase order"
+        ],
+        "model": "mistral-ocr-4-1",
+        "page_count": 1,
+        "text": "# Invoice INV-2041\n\nDate: 2026-09-14\nBilled to: Acme Corp\n\n| Item | Amount |\n| --- | --- |\n| Consulting | $1,200.00 |\n\n**Total due: $1,200.00**"
+      },
+      "name": "extract_document_data",
+      "output_formatter": "actions.format_extract_document_data_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "description": "The document to read: upload a file, pick one an earlier step produced, or paste a link to one. PDFs, Word and PowerPoint files, and images such as photos or scans all work, up to 50 MB and 1,000 pages.",
+          "display_name": "Document",
+          "name": "document",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The pieces of information you want back, one per entry. Add what each means after a colon to steer it: 'total: the amount due, with its currency'.",
+          "display_name": "Fields to fill",
+          "examples": [
+            {
+              "label": "An invoice",
+              "value": "[\"invoice number\", \"invoice date\", \"vendor\", \"total: the amount due, with its currency\"]"
+            },
+            {
+              "label": "A receipt",
+              "value": "[\"merchant\", \"date\", \"total\", \"payment method\"]"
+            }
+          ],
+          "name": "fields",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional guidance on how to fill the fields, such as 'Write dates as YYYY-MM-DD' or 'Give amounts without a currency symbol'.",
+          "display_name": "Instructions",
+          "multiline": true,
+          "name": "instructions",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which pages to read, counting from 1, such as '1-3, 5'. Leave blank to read every page.",
+          "display_name": "Pages",
+          "name": "pages",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mistral/extract-document-data",
+      "result_str_template": "Found {mistral_extract_document_data,found_fields}.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Each field you named, with its value from the document, or empty when the document doesn't contain it.",
+            "type": "object"
+          },
+          "found_fields": {
+            "description": "The fields that were found.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "missing_fields": {
+            "description": "The fields the document doesn't contain.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "model": {
+            "description": "The Mistral OCR model that read the document.",
+            "type": "string"
+          },
+          "page_count": {
+            "description": "How many pages were read.",
+            "type": "number"
+          },
+          "text": {
+            "description": "The text of every page read, as Markdown, from the same pass.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "extract_document_text": {
+      "description": "Read a PDF, Word or PowerPoint file, or a photo or scan, with Mistral OCR and get its text back as Markdown, page by page, with tables and headings kept.",
+      "display_name": "Extract text from a document",
+      "display_str_template": "Extract the text from {document} with Mistral.",
+      "handler": "actions.extract_document_text",
+      "id": "mistral_extract_document_text",
+      "method": "POST",
+      "mock_response": {
+        "model": "mistral-ocr-4-1",
+        "page_count": 1,
+        "pages": [
+          {
+            "page_number": 1,
+            "text": "# Invoice INV-2041\n\nDate: 2026-09-14\nBilled to: Acme Corp\n\n| Item | Amount |\n| --- | --- |\n| Consulting | $1,200.00 |\n\n**Total due: $1,200.00**"
+          }
+        ],
+        "text": "# Invoice INV-2041\n\nDate: 2026-09-14\nBilled to: Acme Corp\n\n| Item | Amount |\n| --- | --- |\n| Consulting | $1,200.00 |\n\n**Total due: $1,200.00**"
+      },
+      "name": "extract_document_text",
+      "output_formatter": "actions.format_extract_document_text_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "description": "The document to read: upload a file, pick one an earlier step produced, or paste a link to one. PDFs, Word and PowerPoint files, and images such as photos or scans all work, up to 50 MB and 1,000 pages.",
+          "display_name": "Document",
+          "name": "document",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which pages to read, counting from 1, such as '1-3, 5'. Leave blank to read every page.",
+          "display_name": "Pages",
+          "name": "pages",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Drop the text repeated at the top and bottom of each page, such as running titles and page numbers, so it doesn't interrupt the body text.",
+          "display_name": "Leave out page headers and footers",
+          "name": "remove_headers_and_footers",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/mistral/extract-document-text",
+      "result_str_template": "Document text: {mistral_extract_document_text,text}",
+      "returns": {
+        "properties": {
+          "model": {
+            "description": "The Mistral OCR model that read the document.",
+            "type": "string"
+          },
+          "page_count": {
+            "description": "How many pages were read.",
+            "type": "number"
+          },
+          "pages": {
+            "description": "Each page read, in order.",
+            "items": {
+              "properties": {
+                "page_number": {
+                  "description": "The page's number, counting from 1.",
+                  "type": "number"
+                },
+                "text": {
+                  "description": "The page's text as Markdown.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "text": {
+            "description": "The text of every page read, as Markdown, with a blank line between pages.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "generate_model_response": {
       "description": "Send a prompt to a Mistral AI model and get back its written response.",
       "display_name": "Generate a Mistral response",
@@ -36,7 +351,7 @@
         },
         {
           "default": "mistral-large-latest",
-          "description": "Which Mistral model to use. Defaults to mistral-large-latest.",
+          "description": "Which Mistral model to use. Defaults to mistral-large-latest. Mistral's free plan leaves out Mistral Large, Medium and Small; Ministral and Codestral work on it.",
           "display_name": "Model",
           "name": "model",
           "options": [
@@ -53,8 +368,8 @@
               "value": "mistral-small-latest"
             },
             {
-              "label": "Magistral Medium (step-by-step reasoning)",
-              "value": "magistral-medium-latest"
+              "label": "Ministral 8B (smallest and cheapest)",
+              "value": "ministral-8b-latest"
             },
             {
               "label": "Codestral (writing and explaining code)",
@@ -110,9 +425,495 @@
         },
         "type": "object"
       }
+    },
+    "list_models": {
+      "description": "List the Mistral models your API key can use, including your fine-tuned ones, with what each can do, how much text it takes in, and when Mistral plans to retire it.",
+      "display_name": "List models",
+      "display_str_template": "List Mistral models.",
+      "handler": "actions.list_models",
+      "id": "mistral_list_models",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "model_ids": [
+          "mistral-ocr-latest"
+        ],
+        "models": [
+          {
+            "aliases": [
+              "mistral-ocr-4-1"
+            ],
+            "capabilities": [
+              "ocr"
+            ],
+            "deprecation_date": "",
+            "description": "Official mistral-ocr-4-1 Mistral AI model",
+            "id": "mistral-ocr-latest",
+            "max_context_length": 16384,
+            "name": "mistral-ocr-4-1",
+            "replacement_model": "",
+            "type": "base"
+          }
+        ]
+      },
+      "name": "list_models",
+      "output_formatter": "actions.format_list_models_output",
+      "parameters": [
+        {
+          "default": "all",
+          "description": "Only list models that can do this, such as read images or transcribe audio. Leave on 'Anything' for every model.",
+          "display_name": "Can do",
+          "name": "capability",
+          "options": [
+            {
+              "label": "Anything",
+              "value": "all"
+            },
+            {
+              "label": "Chat",
+              "value": "chat"
+            },
+            {
+              "label": "Reads images",
+              "value": "vision"
+            },
+            {
+              "label": "Reasons step by step",
+              "value": "reasoning"
+            },
+            {
+              "label": "Calls tools",
+              "value": "function_calling"
+            },
+            {
+              "label": "Completes code",
+              "value": "code_completion"
+            },
+            {
+              "label": "Reads documents (OCR)",
+              "value": "ocr"
+            },
+            {
+              "label": "Understands audio in a chat",
+              "value": "audio"
+            },
+            {
+              "label": "Transcribes audio",
+              "value": "audio_transcription"
+            },
+            {
+              "label": "Reads text aloud",
+              "value": "speech"
+            },
+            {
+              "label": "Moderates content",
+              "value": "moderation"
+            },
+            {
+              "label": "Classifies text",
+              "value": "classification"
+            },
+            {
+              "label": "Can be fine-tuned",
+              "value": "fine_tuning"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mistral/list-models",
+      "result_str_template": "Found {mistral_list_models,count} models.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many models were listed.",
+            "type": "number"
+          },
+          "model_ids": {
+            "description": "Every model's id, in the same order.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "models": {
+            "description": "Each model, sorted by id.",
+            "items": {
+              "properties": {
+                "aliases": {
+                  "description": "Other ids for the same model, such as its '-latest' alias.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "capabilities": {
+                  "description": "What it can do, like 'chat', 'vision' or 'ocr'.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "deprecation_date": {
+                  "description": "When Mistral plans to retire it, or empty.",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "What the model is for.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The id to use the model by.",
+                  "type": "string"
+                },
+                "max_context_length": {
+                  "description": "How many tokens it can take in at once.",
+                  "type": "number"
+                },
+                "name": {
+                  "description": "The model's name.",
+                  "type": "string"
+                },
+                "replacement_model": {
+                  "description": "The model Mistral suggests moving to, or empty.",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "'base' for Mistral's own models, 'fine-tuned' for yours.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "moderate_text": {
+      "description": "Check text against Mistral's moderation categories, such as hate, violence, self-harm, personal data and jailbreak attempts, and get back which it falls into, with a score for each.",
+      "display_name": "Moderate text",
+      "display_str_template": "Moderate {text} with Mistral.",
+      "handler": "actions.moderate_text",
+      "id": "mistral_moderate_text",
+      "method": "POST",
+      "mock_response": {
+        "categories": {
+          "criminal": false,
+          "dangerous": false,
+          "financial": false,
+          "hate_and_discrimination": false,
+          "health": false,
+          "jailbreaking": false,
+          "law": false,
+          "pii": true,
+          "selfharm": false,
+          "sexual": false,
+          "violence_and_threats": false
+        },
+        "category_scores": {
+          "criminal": 0.0021,
+          "dangerous": 0.0002,
+          "financial": 0.0315,
+          "hate_and_discrimination": 0.0011,
+          "health": 0.0007,
+          "jailbreaking": 0.0002,
+          "law": 0.0009,
+          "pii": 0.91,
+          "selfharm": 0.0001,
+          "sexual": 0.0004,
+          "violence_and_threats": 0.0003
+        },
+        "flagged": true,
+        "flagged_categories": [
+          "pii"
+        ],
+        "highest_category": "pii",
+        "highest_score": 0.91,
+        "model": "mistral-moderation-2603"
+      },
+      "name": "moderate_text",
+      "output_formatter": "actions.format_moderate_text_output",
+      "parameters": [
+        {
+          "description": "The text to check, such as a customer message, a review or an AI-written reply.",
+          "display_name": "Text",
+          "multiline": true,
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional: the message the text answers, such as the question an AI-written reply responds to. Mistral then judges the text in that context, so a reply can be flagged for what it helps with, not just what it says.",
+          "display_name": "In reply to",
+          "multiline": true,
+          "name": "in_reply_to",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mistral/moderate-text",
+      "result_str_template": "Flagged: {mistral_moderate_text,flagged}",
+      "returns": {
+        "properties": {
+          "categories": {
+            "description": "Every category, true when the text falls into it.",
+            "type": "object"
+          },
+          "category_scores": {
+            "description": "Every category's score, from 0 (unlikely) to 1 (likely).",
+            "type": "object"
+          },
+          "flagged": {
+            "description": "Whether the text falls into any category.",
+            "type": "boolean"
+          },
+          "flagged_categories": {
+            "description": "The categories the text falls into, like 'pii' or 'violence_and_threats'.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "highest_category": {
+            "description": "The category with the highest score.",
+            "type": "string"
+          },
+          "highest_score": {
+            "description": "That category's score, from 0 to 1.",
+            "type": "number"
+          },
+          "model": {
+            "description": "The moderation model that checked the text.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "transcribe_audio": {
+      "description": "Turn a recording, such as a call, meeting or voice note, into text with Mistral's Voxtral, optionally labelled by speaker and timestamped.",
+      "display_name": "Transcribe audio",
+      "display_str_template": "Transcribe {audio} with Mistral.",
+      "handler": "actions.transcribe_audio",
+      "id": "mistral_transcribe_audio",
+      "method": "POST",
+      "mock_response": {
+        "duration_seconds": 7,
+        "language": "en",
+        "model": "voxtral-mini-2602",
+        "segments": [
+          {
+            "end": 3.1,
+            "speaker": "speaker_1",
+            "start": 0.4,
+            "text": "Thanks for calling Acme support, this is Dana."
+          },
+          {
+            "end": 6.2,
+            "speaker": "speaker_2",
+            "start": 3.6,
+            "text": "Hi Dana, my invoice shows the wrong total."
+          }
+        ],
+        "speakers": [
+          "speaker_1",
+          "speaker_2"
+        ],
+        "text": "Thanks for calling Acme support, this is Dana. Hi Dana, my invoice shows the wrong total.",
+        "transcript_by_speaker": "speaker_1: Thanks for calling Acme support, this is Dana.\nspeaker_2: Hi Dana, my invoice shows the wrong total."
+      },
+      "name": "transcribe_audio",
+      "output_formatter": "actions.format_transcribe_audio_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "description": "The recording to transcribe: upload a file, pick one an earlier step produced, or paste a link to one. Recordings of up to about three hours work.",
+          "display_name": "Audio",
+          "name": "audio",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "auto",
+          "description": "The language being spoken. Leave it on automatic detection unless the recording is short or noisy enough to fool it.",
+          "display_name": "Language",
+          "name": "language",
+          "options": [
+            {
+              "label": "Detect automatically",
+              "value": "auto"
+            },
+            {
+              "label": "English",
+              "value": "en"
+            },
+            {
+              "label": "Chinese",
+              "value": "zh"
+            },
+            {
+              "label": "Hindi",
+              "value": "hi"
+            },
+            {
+              "label": "Spanish",
+              "value": "es"
+            },
+            {
+              "label": "Arabic",
+              "value": "ar"
+            },
+            {
+              "label": "French",
+              "value": "fr"
+            },
+            {
+              "label": "Portuguese",
+              "value": "pt"
+            },
+            {
+              "label": "Russian",
+              "value": "ru"
+            },
+            {
+              "label": "German",
+              "value": "de"
+            },
+            {
+              "label": "Japanese",
+              "value": "ja"
+            },
+            {
+              "label": "Korean",
+              "value": "ko"
+            },
+            {
+              "label": "Italian",
+              "value": "it"
+            },
+            {
+              "label": "Dutch",
+              "value": "nl"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Label who said what, so the transcript reads as a conversation. Mistral then times the transcript by segment.",
+          "display_name": "Identify speakers",
+          "name": "identify_speakers",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": "none",
+          "description": "Note when each part was said, by segment (a phrase or sentence) or by word. With speakers identified, only segments can be timed.",
+          "display_name": "Timestamps",
+          "name": "timestamps",
+          "options": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "For each segment",
+              "value": "segment"
+            },
+            {
+              "label": "For each word",
+              "value": "word"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Names, jargon or product terms the recording uses, so they're spelled right: one per entry, up to 100 words. A phrase is listened for word by word.",
+          "display_name": "Words to listen for",
+          "examples": [
+            {
+              "label": "Names and products",
+              "value": "[\"Dana Whitfield\", \"Acme\", \"Voxtral\"]"
+            }
+          ],
+          "name": "words_to_listen_for",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/mistral/transcribe-audio",
+      "result_str_template": "Transcript: {mistral_transcribe_audio,text}",
+      "returns": {
+        "properties": {
+          "duration_seconds": {
+            "description": "How long the recording is, in seconds.",
+            "type": "number"
+          },
+          "language": {
+            "description": "The language spoken, as a code like 'en', when Mistral reports it or you set it.",
+            "type": "string"
+          },
+          "model": {
+            "description": "The Voxtral model that transcribed it.",
+            "type": "string"
+          },
+          "segments": {
+            "description": "The transcript in timed stretches (segments, or single words with word timestamps), each with who said it when speakers were identified. Filled when you ask for speakers or timestamps.",
+            "items": {
+              "properties": {
+                "end": {
+                  "description": "When it ends, in seconds.",
+                  "type": "number"
+                },
+                "speaker": {
+                  "description": "Who said it, like 'speaker_1', when speakers were identified.",
+                  "type": "string"
+                },
+                "start": {
+                  "description": "When it starts, in seconds.",
+                  "type": "number"
+                },
+                "text": {
+                  "description": "What was said.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "speakers": {
+            "description": "Each speaker, in the order they first spoke.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "text": {
+            "description": "Everything that was said.",
+            "type": "string"
+          },
+          "transcript_by_speaker": {
+            "description": "The transcript with one line per turn, like 'speaker_1: \u2026', when speakers were identified.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     }
   },
-  "description": "Connect Mistral AI's chat models to answer questions, write text, and generate content in your workflows.",
+  "description": "Use Mistral AI in your workflows: answer questions and write text with its chat models, read documents and pull data out of them with Mistral OCR, transcribe recordings with Voxtral, moderate content, and create embeddings for semantic search.",
   "display_name": "Mistral AI",
   "id": "mistral"
 }
