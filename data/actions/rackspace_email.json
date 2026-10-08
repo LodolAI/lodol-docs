@@ -1,7 +1,7 @@
 {
   "actions": {
     "create_draft": {
-      "description": "Save an email to the Drafts folder without sending it, so someone can check it and send it from their mail app or webmail.",
+      "description": "Save an email to the Drafts folder without sending it, so someone can check it and send it from their mail app or webmail. Give it an email to reply to and the draft is a reply that threads with that email once it is sent.",
       "display_name": "Create a draft",
       "display_str_template": "Save a draft.",
       "handler": "actions.create_draft",
@@ -18,14 +18,14 @@
       "output_formatter": "actions.format_draft_output",
       "parameters": [
         {
-          "description": "Who it will go to, separated by commas. Can be left for whoever sends it.",
+          "description": "Who it will go to, separated by commas. Can be left for whoever sends it; a reply left blank goes to the original's sender.",
           "display_name": "To",
           "name": "to",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The subject line.",
+          "description": "The subject line. A reply left blank reuses the original's subject with 'Re:' in front.",
           "display_name": "Subject",
           "name": "subject",
           "required": false,
@@ -75,6 +75,30 @@
             "type": "array"
           },
           "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "The ID of an email to draft a reply to - the 'id' that 'List emails', 'Move an email' or the 'New email' trigger returns. Leave blank for a new email.",
+          "display_name": "Reply to email",
+          "name": "reply_to_email_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The folder the email being replied to is in. Leave blank for the inbox.",
+          "display_name": "Folder of that email",
+          "dynamic_source": "folders",
+          "dynamic_source_allows_custom": true,
+          "name": "reply_to_folder",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "When replying, include the original email below the draft.",
+          "display_name": "Quote the original",
+          "name": "include_original",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         }
       ],
       "path": "/actions/library/rackspace-email/create-draft",
@@ -317,6 +341,55 @@
           },
           "skipped": {
             "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "flag_email": {
+      "description": "Flag an email, the way a person does in their mail app, so it stands out as needing attention. The flag stays on the email when it is moved, shows in every mail app, and anyone can clear it there. 'List emails' can return flagged emails only.",
+      "display_name": "Flag an email",
+      "display_str_template": "Flag email {email_id}.",
+      "handler": "actions.flag_email",
+      "id": "rackspace_email_flag_email",
+      "method": "POST",
+      "mock_response": {
+        "folder": "INBOX",
+        "id": "4821",
+        "is_flagged": true
+      },
+      "name": "flag_email",
+      "output_formatter": "actions.format_flagged_output",
+      "parameters": [
+        {
+          "description": "The email's ID in its folder - the 'id' that 'List emails' or the 'New email' trigger returns.",
+          "display_name": "Email ID",
+          "name": "email_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The folder the email is in. Leave blank for the inbox.",
+          "display_name": "Folder",
+          "dynamic_source": "folders",
+          "dynamic_source_allows_custom": true,
+          "name": "folder",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/rackspace-email/flag-email",
+      "result_str_template": "Flagged.",
+      "returns": {
+        "properties": {
+          "folder": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "is_flagged": {
+            "type": "boolean"
           }
         },
         "type": "object"
@@ -648,7 +721,7 @@
       }
     },
     "list_emails": {
-      "description": "The newest emails in a folder, newest first, with their text. Filter by sender, subject, date or unread only. Reading them does not mark them as read. Each email's text is read from its first 64 KB, which covers almost every message; 'Get an email' reads one in full.",
+      "description": "The newest emails in a folder, newest first, with their text. Filter by sender, subject, date, unread only or flagged only. Reading them does not mark them as read. Each email's text is read from its first 64 KB, which covers almost every message; 'Get an email' reads one in full.",
       "display_name": "List emails",
       "display_str_template": "List emails.",
       "handler": "actions.list_emails",
@@ -702,6 +775,13 @@
           "description": "Only emails nobody has read yet.",
           "display_name": "Unread only",
           "name": "unread_only",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Only emails that carry a flag, whether a person or 'Flag an email' put it there.",
+          "display_name": "Flagged only",
+          "name": "flagged_only",
           "required": false,
           "type": "ParameterType.BOOLEAN"
         },
@@ -1418,6 +1498,55 @@
           },
           "subject": {
             "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "unflag_email": {
+      "description": "Take the flag off an email, for example once it has been dealt with.",
+      "display_name": "Remove an email's flag",
+      "display_str_template": "Remove the flag from email {email_id}.",
+      "handler": "actions.unflag_email",
+      "id": "rackspace_email_unflag_email",
+      "method": "POST",
+      "mock_response": {
+        "folder": "INBOX",
+        "id": "4821",
+        "is_flagged": false
+      },
+      "name": "unflag_email",
+      "output_formatter": "actions.format_flagged_output",
+      "parameters": [
+        {
+          "description": "The email's ID in its folder - the 'id' that 'List emails' or the 'New email' trigger returns.",
+          "display_name": "Email ID",
+          "name": "email_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The folder the email is in. Leave blank for the inbox.",
+          "display_name": "Folder",
+          "dynamic_source": "folders",
+          "dynamic_source_allows_custom": true,
+          "name": "folder",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/rackspace-email/unflag-email",
+      "result_str_template": "Flag removed.",
+      "returns": {
+        "properties": {
+          "folder": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "is_flagged": {
+            "type": "boolean"
           }
         },
         "type": "object"
