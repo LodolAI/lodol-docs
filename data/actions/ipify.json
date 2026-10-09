@@ -1,20 +1,110 @@
 {
   "actions": {
+    "check_public_ip": {
+      "description": "Answer whether the public IP address ipify sees is one of the addresses or CIDR ranges given, so a workflow can branch on it: alert when Lodol's outbound address has drifted off a third party's allow-list, or confirm it before a call that depends on it. It answers yes or no rather than failing.",
+      "display_name": "Check public IP against an allow-list",
+      "display_str_template": "Check public IP address against {allowed}.",
+      "handler": "actions.check_public_ip",
+      "id": "ipify_check_public_ip",
+      "method": "POST",
+      "mock_response": {
+        "allowed": true,
+        "checked": [
+          "203.0.113.7/32",
+          "98.207.254.0/24"
+        ],
+        "ip": "98.207.254.136",
+        "matched": "98.207.254.0/24",
+        "version": "ipv4"
+      },
+      "name": "check_public_ip",
+      "parameters": [
+        {
+          "description": "The addresses or ranges to check against, as a list or separated by commas: single addresses such as 203.0.113.7 or 2001:db8::1, and ranges in CIDR notation such as 203.0.113.0/24 or 2001:db8::/32.",
+          "display_name": "Allowed addresses",
+          "examples": [
+            {
+              "label": "An address and a range",
+              "value": "203.0.113.7, 198.51.100.0/24"
+            }
+          ],
+          "name": "allowed",
+          "required": true,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": "ipv4",
+          "description": "Which address family to ask for: 'ipv4' (the default) asks api.ipify.org, 'ipv6' asks api6.ipify.org and fails when Lodol has no IPv6 route, and 'any' asks api64.ipify.org for whichever family the network uses.",
+          "display_name": "IP version",
+          "name": "ip_version",
+          "options": [
+            {
+              "label": "IPv4 (default)",
+              "value": "ipv4"
+            },
+            {
+              "label": "Automatic (IPv4 or IPv6)",
+              "value": "any"
+            },
+            {
+              "label": "IPv6 only",
+              "value": "ipv6"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/ipify/check-public-ip",
+      "result_str_template": "Allowed: {ipify_check_public_ip,allowed} ({ipify_check_public_ip,ip}).",
+      "returns": {
+        "properties": {
+          "allowed": {
+            "description": "Whether the address is in one of the allowed addresses or ranges.",
+            "type": "boolean"
+          },
+          "checked": {
+            "description": "The allowed entries as checked, in CIDR notation, repeats removed.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ip": {
+            "description": "The public IP address ipify saw the request come from.",
+            "type": "string"
+          },
+          "matched": {
+            "description": "The allowed address or range the address fell in, or null when none did.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "description": "Which family the address is: 'ipv4' or 'ipv6'.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "get_public_ip": {
-      "description": "Look up the public IP address that ipify sees for the outbound request. Choose IPv4, IPv6, or let ipify return whichever address family the network provides.",
+      "description": "Look up the public IP address that ipify sees for the outbound request: the address a third-party service sees when Lodol calls it. Choose IPv4, IPv6, or let ipify return whichever address family the network provides.",
       "display_name": "Get public IP address",
       "display_str_template": "Get public IP address.",
       "handler": "actions.get_public_ip",
       "id": "ipify_get_public_ip",
       "method": "POST",
       "mock_response": {
-        "ip": "98.207.254.136"
+        "ip": "98.207.254.136",
+        "version": "ipv4"
       },
       "name": "get_public_ip",
       "parameters": [
         {
           "default": "ipv4",
-          "description": "Which address family to return: 'ipv4' (the default), 'ipv6', or 'any' to let ipify choose IPv4 or IPv6.",
+          "description": "Which address family to ask for: 'ipv4' (the default) asks api.ipify.org, 'ipv6' asks api6.ipify.org and fails when Lodol has no IPv6 route, and 'any' asks api64.ipify.org for whichever family the network uses.",
           "display_name": "IP version",
           "name": "ip_version",
           "options": [
@@ -36,18 +126,76 @@
         }
       ],
       "path": "/actions/library/ipify/public-ip",
-      "result_str_template": "Public IP address retrieved.",
+      "result_str_template": "Public IP address: {ipify_get_public_ip,ip}.",
       "returns": {
         "properties": {
           "ip": {
+            "description": "The public IP address ipify saw the request come from.",
             "type": "string"
+          },
+          "version": {
+            "description": "Which family the address is: 'ipv4' or 'ipv6'.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_public_ips": {
+      "description": "Look up both public addresses in one step, from api.ipify.org and api6.ipify.org. A network without an IPv6 route is common and not an error: that family comes back empty with the reason under 'problems'. The step fails only when neither address can be found.",
+      "display_name": "Get public IPv4 and IPv6 addresses",
+      "display_str_template": "Get public IPv4 and IPv6 addresses.",
+      "handler": "actions.get_public_ips",
+      "id": "ipify_get_public_ips",
+      "method": "POST",
+      "mock_response": {
+        "has_ipv4": true,
+        "has_ipv6": true,
+        "ipv4": "98.207.254.136",
+        "ipv6": "2a00:1450:400f:80d::200e",
+        "problems": []
+      },
+      "name": "get_public_ips",
+      "parameters": [],
+      "path": "/actions/library/ipify/public-ips",
+      "result_str_template": "IPv4 {ipify_get_public_ips,ipv4}; IPv6 {ipify_get_public_ips,ipv6}.",
+      "returns": {
+        "properties": {
+          "has_ipv4": {
+            "description": "Whether an IPv4 address was found.",
+            "type": "boolean"
+          },
+          "has_ipv6": {
+            "description": "Whether an IPv6 address was found.",
+            "type": "boolean"
+          },
+          "ipv4": {
+            "description": "The public IPv4 address, or null if none.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ipv6": {
+            "description": "The public IPv6 address, or null if none.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "problems": {
+            "description": "Why a family is missing, one sentence each; empty when both were found.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "type": "object"
       }
     }
   },
-  "description": "Look up your public IP address from ipify's keyless public API, no account or API key required. Works with both IPv4 and IPv6.",
+  "description": "Look up your public IP address from ipify's keyless public API, no account or API key required. Works with both IPv4 and IPv6, and can check the address against an allow-list.",
   "display_name": "ipify",
   "id": "ipify"
 }
