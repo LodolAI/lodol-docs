@@ -46,6 +46,13 @@
           "name": "date",
           "required": false,
           "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Comma-separated provider keys to source the rate from (for example, ECB). Leave blank for the default blended rate.",
+          "display_name": "Providers",
+          "name": "providers",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/frankfurter/convert",
@@ -53,6 +60,61 @@
       "returns": {
         "properties": {
           "conversion": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_coverage": {
+      "description": "Find the first and last dates for which rates exist for a base currency, optionally narrowed to particular quote currencies or providers. Use it to pick a valid date range before fetching a time series or historical rates.",
+      "display_name": "Get coverage",
+      "display_str_template": "Get rate coverage.",
+      "handler": "actions.get_coverage",
+      "id": "frankfurter_coverage",
+      "method": "POST",
+      "mock_response": {
+        "coverage": {
+          "base": "USD",
+          "end_date": "2026-10-08",
+          "providers": null,
+          "quotes": [
+            "EUR",
+            "GBP"
+          ],
+          "start_date": "1949-12-21"
+        }
+      },
+      "name": "get_coverage",
+      "parameters": [
+        {
+          "default": "USD",
+          "description": "Base currency as a 3-letter ISO code (for example, EUR). Defaults to USD when omitted.",
+          "display_name": "Base",
+          "name": "base",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Comma-separated quote currencies the coverage must include (for example, GBP,JPY). Leave blank for the base currency's overall coverage.",
+          "display_name": "Quotes",
+          "name": "quotes",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Comma-separated provider keys to restrict the coverage to (for example, ECB). Leave blank for all providers.",
+          "display_name": "Providers",
+          "name": "providers",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/frankfurter/coverage",
+      "result_str_template": "Coverage retrieved.",
+      "returns": {
+        "properties": {
+          "coverage": {
             "type": "object"
           }
         },
@@ -237,6 +299,219 @@
         "type": "object"
       }
     },
+    "get_provider": {
+      "description": "Get one central bank or official source by its key: its name, country, rate type, pivot currency, publishing cadence, the dates it covers, and every currency it publishes.",
+      "display_name": "Get provider",
+      "display_str_template": "Get provider {0}.",
+      "handler": "actions.get_provider",
+      "id": "frankfurter_provider",
+      "method": "POST",
+      "mock_response": {
+        "provider": {
+          "country_code": "EU",
+          "currencies": [
+            "AUD",
+            "CAD",
+            "CHF",
+            "EUR",
+            "GBP",
+            "JPY",
+            "USD"
+          ],
+          "data_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html",
+          "end_date": "2026-10-08",
+          "frequency": "daily",
+          "key": "ECB",
+          "name": "European Central Bank",
+          "pivot_currency": "EUR",
+          "publish_cadence": "daily",
+          "rate_type": "reference rate",
+          "start_date": "1999-01-04"
+        }
+      },
+      "name": "get_provider",
+      "parameters": [
+        {
+          "description": "The provider's key as listed by List providers (for example, ECB for the European Central Bank or UST for the U.S. Treasury).",
+          "display_name": "Provider key",
+          "name": "key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/frankfurter/provider",
+      "result_str_template": "Provider retrieved.",
+      "returns": {
+        "properties": {
+          "provider": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_provider_rate": {
+      "description": "Get one provider's published rate for a single currency pair, optionally as of a past date.",
+      "display_name": "Get provider single rate",
+      "display_str_template": "Get the {1} to {2} rate from provider {0}.",
+      "handler": "actions.get_provider_rate",
+      "id": "frankfurter_provider_rate",
+      "method": "POST",
+      "mock_response": {
+        "rate": {
+          "base": "EUR",
+          "date": "2026-09-01",
+          "quote": "USD",
+          "rate": 1.159
+        }
+      },
+      "name": "get_provider_rate",
+      "parameters": [
+        {
+          "description": "The provider's key as listed by List providers (for example, ECB for the European Central Bank or UST for the U.S. Treasury).",
+          "display_name": "Provider key",
+          "name": "key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Base currency as a 3-letter ISO code (for example, EUR).",
+          "display_name": "From currency",
+          "name": "base",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Quote currency as a 3-letter ISO code (for example, USD).",
+          "display_name": "To currency",
+          "name": "quote",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional date to price the pair as of, in YYYY-MM-DD format. Defaults to the provider's latest rate.",
+          "display_name": "Date",
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        }
+      ],
+      "path": "/actions/library/frankfurter/provider-rate",
+      "result_str_template": "Provider rate retrieved.",
+      "returns": {
+        "properties": {
+          "rate": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_provider_rates": {
+      "description": "Fetch the rates one provider published, unblended: the latest by default, a single past day with a date, or a series with a start date (and optional end date and weekly or monthly grouping). Use this for compliance or accounting work that must cite a specific central bank's reference rate.",
+      "display_name": "Get provider rates",
+      "display_str_template": "Get exchange rates from provider {0}.",
+      "handler": "actions.get_provider_rates",
+      "id": "frankfurter_provider_rates",
+      "method": "POST",
+      "mock_response": {
+        "rates": [
+          {
+            "base": "EUR",
+            "date": "2026-10-08",
+            "quote": "GBP",
+            "rate": 0.84698
+          },
+          {
+            "base": "EUR",
+            "date": "2026-10-08",
+            "quote": "USD",
+            "rate": 1.1186
+          }
+        ]
+      },
+      "name": "get_provider_rates",
+      "parameters": [
+        {
+          "description": "The provider's key as listed by List providers (for example, ECB for the European Central Bank or UST for the U.S. Treasury).",
+          "display_name": "Provider key",
+          "name": "key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A single day to look up, in YYYY-MM-DD format. Leave blank, along with the start date, for the latest rates. Cannot be combined with a start or end date.",
+          "display_name": "Date",
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "The first date of a range, in YYYY-MM-DD format. Set this instead of a single date to get a time series.",
+          "display_name": "Start date",
+          "name": "from_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "The last date of the range, in YYYY-MM-DD format. Leave blank to run through the latest available date.",
+          "display_name": "End date",
+          "name": "to_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "default": "USD",
+          "description": "Base currency as a 3-letter ISO code (for example, EUR). Defaults to USD when omitted.",
+          "display_name": "Base",
+          "name": "base",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Comma-separated target currencies to return (for example, USD,GBP). Leave blank for every available currency.",
+          "display_name": "Quotes",
+          "name": "quotes",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Downsample a range to one row per week or per month.",
+          "display_name": "Group",
+          "name": "group",
+          "options": [
+            {
+              "label": "Week",
+              "value": "week"
+            },
+            {
+              "label": "Month",
+              "value": "month"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Set to true to include, on each rate, the list of providers that contributed to the blended value.",
+          "display_name": "Expand providers",
+          "name": "expand_providers",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/frankfurter/provider-rates",
+      "result_str_template": "Provider rates retrieved.",
+      "returns": {
+        "properties": {
+          "rates": {
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
     "get_rate": {
       "description": "Get the exchange rate for a single currency pair, optionally as of a past date.",
       "display_name": "Get single rate",
@@ -274,6 +549,13 @@
           "name": "date",
           "required": false,
           "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Comma-separated provider keys to source the rate from (for example, ECB). Leave blank for the default blended rate.",
+          "display_name": "Providers",
+          "name": "providers",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/frankfurter/rate",
@@ -364,6 +646,14 @@
           "name": "providers",
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Set to true to include, on each rate, the list of providers that contributed to the blended value.",
+          "display_name": "Expand providers",
+          "name": "expand_providers",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         }
       ],
       "path": "/actions/library/frankfurter/time-series",
@@ -420,6 +710,13 @@
           ],
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Comma-separated provider keys (for example, ECB). When set, only currencies those providers publish are returned.",
+          "display_name": "Providers",
+          "name": "providers",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/frankfurter/list-currencies",
@@ -472,7 +769,7 @@
       }
     }
   },
-  "description": "Fetch foreign-exchange rates and currency data through Frankfurter's keyless API: latest and historical rates, time series, single-pair lookups, currency conversion, and the list of currencies and central-bank providers. Rates are tracked from 84 central banks back to 1948. No account or API key required.",
+  "description": "Fetch foreign-exchange rates and currency data through Frankfurter's keyless API: latest and historical rates, time series, single-pair lookups, currency conversion, date coverage, the list of currencies, and the central-bank providers behind the rates, including each provider's own unblended rates. Over 220 currencies are tracked from more than 100 central banks and official sources, back to 1948. No account or API key required.",
   "display_name": "Frankfurter",
   "id": "frankfurter"
 }
