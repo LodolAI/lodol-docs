@@ -34,6 +34,7 @@ const catalog: Catalog = {
   entries: [
     { id: 'skipflow_review', name: 'Approvals', description: 'Pause for a person.', href: '/docs/integrations/built-in/review', actions: 1, builtIn: true, icon: 'UserCheck' },
     { id: 'skipflow_conditions', name: 'Decisions', description: 'Choose which steps run.', href: '/docs/integrations/built-in/conditions', actions: 2, builtIn: true, icon: 'Split' },
+    { id: 'skipflow_random', name: 'Random', description: 'Pick random numbers.', href: '/docs/integrations/built-in/random', actions: 4, builtIn: true, icon: 'Dices' },
     { id: 'gmail', name: 'Gmail', description: 'Send email.', href: '/docs/integrations/gmail', actions: 14, builtIn: false },
     { id: 'slack', name: 'Slack', description: 'Send messages.', href: '/docs/integrations/slack', actions: 79, builtIn: false },
   ],
@@ -66,15 +67,17 @@ describe('HomePage', () => {
     expect(link).toHaveAttribute('href', href);
   });
 
-  it('lists the built-in steps from the catalog', () => {
+  it('features a few built-in steps in a set order, and leaves the rest to the directory', () => {
     render(<HomePage />);
-    expect(screen.getByRole('link', { name: 'Approvals' })).toHaveAttribute(
+    const decisions = screen.getByRole('link', { name: 'Decisions' });
+    const approvals = screen.getByRole('link', { name: 'Approvals' });
+    expect(decisions).toHaveAttribute('href', '/docs/integrations/built-in/conditions');
+    expect(approvals).toHaveAttribute('href', '/docs/integrations/built-in/review');
+    expect(decisions.compareDocumentPosition(approvals) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Random' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'All built-in steps' })).toHaveAttribute(
       'href',
-      '/docs/integrations/built-in/review',
-    );
-    expect(screen.getByRole('link', { name: 'Decisions' })).toHaveAttribute(
-      'href',
-      '/docs/integrations/built-in/conditions',
+      '/docs/integrations#built-in-steps',
     );
   });
 

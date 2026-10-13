@@ -571,6 +571,64 @@ class GenerateActionSectionTests(unittest.TestCase):
         self.assertNotIn("facts=", out)
 
 
+class ShownWhenTests(unittest.TestCase):
+    """A parameter the editor only shows for some values of another one."""
+
+    FORMAT = {
+        "name": "format",
+        "display_name": "File type",
+        "options": [
+            {"value": "csv", "label": "CSV file"},
+            {"value": "excel", "label": "Excel file"},
+            {"value": "pdf", "label": "PDF file"},
+        ],
+    }
+
+    def test_names_the_other_parameter_and_its_values_by_their_labels(self):
+        rows = {"name": "rows", "visible_when": {"format": ["csv", "excel"]}}
+        self.assertEqual(
+            ren._shown_when(rows, {"format": self.FORMAT}),
+            "Only when File type is CSV file or Excel file.",
+        )
+
+    def test_lists_three_or_more_values(self):
+        rows = {"name": "rows", "visible_when": {"format": ["csv", "excel", "pdf"]}}
+        self.assertEqual(
+            ren._shown_when(rows, {"format": self.FORMAT}),
+            "Only when File type is CSV file, Excel file or PDF file.",
+        )
+
+    def test_falls_back_to_keys_and_values_it_cannot_name(self):
+        param = {"name": "speed", "visible_when": {"mode": "fast"}}
+        self.assertEqual(ren._shown_when(param, {}), "Only when `mode` is `fast`.")
+
+    def test_says_nothing_for_a_parameter_that_always_shows(self):
+        self.assertEqual(ren._shown_when({"name": "format"}, {}), "")
+
+    def test_comes_first_in_the_field_and_keeps_required(self):
+        action = {
+            "display_name": "Create a file",
+            "parameters": [
+                {**self.FORMAT, "type": "ParameterType.STRING", "required": True},
+                {
+                    "name": "rows",
+                    "display_name": "Rows",
+                    "type": "ParameterType.ARRAY",
+                    "required": True,
+                    "default": [],
+                    "minimum": 1,
+                    "visible_when": {"format": ["csv", "excel"]},
+                },
+            ],
+        }
+        out = ren.generate_action_section("create", action)
+        self.assertIn(
+            '<Field name="Rows" id="rows" type="list" required '
+            'facts="Only when File type is CSV file or Excel file. At least 1." />',
+            out,
+        )
+
+
 class ParameterFactsTests(unittest.TestCase):
     def _options(self, *values):
         return [{"value": v, "label": f"Label {v}"} for v in values]
@@ -939,6 +997,15 @@ class PublishedSpecsTests(unittest.TestCase):
             provider = json.loads(path.read_text(encoding="utf-8"))
             self.assertIsInstance(provider, dict, path.name)
             self.assertEqual(provider.get("id"), path.stem, path.name)
+
+    def test_each_built_in_group_has_its_own_icon(self):
+        """A new group would otherwise show a generic box in the directory."""
+        for path in sorted(ren.DEFAULT_INPUT.glob(f"{ren.BUILT_IN_PREFIX}*.json")):
+            self.assertIn(
+                path.stem, ren.BUILT_IN_ICONS,
+                f"Add a lucide icon name for {path.stem} to BUILT_IN_ICONS "
+                "in scripts/render-actions-docs.py",
+            )
 
 
 class RenderIntegrationTests(unittest.TestCase):

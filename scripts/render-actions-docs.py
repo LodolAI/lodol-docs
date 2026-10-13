@@ -85,6 +85,7 @@ BUILT_IN_ICONS = {
     "skipflow_datetime": "CalendarClock",
     "skipflow_delay": "Hourglass",
     "skipflow_display": "Eye",
+    "skipflow_files": "Files",
     "skipflow_http": "Globe",
     "skipflow_lists": "List",
     "skipflow_loops": "Repeat",
@@ -499,6 +500,39 @@ def _parameter_facts(param: dict) -> str:
     return " ".join(facts)
 
 
+def _or_list(items: list[str]) -> str:
+    """``a``, ``a or b``, ``a, b or c``."""
+    if len(items) < 2:
+        return "".join(items)
+    return f"{', '.join(items[:-1])} or {items[-1]}"
+
+
+def _shown_when(param: dict, siblings: dict[str, dict]) -> str:
+    """When the editor shows a parameter that depends on another one's value,
+    as a sentence: "Only when File type is CSV file or Excel file." Values are
+    named by the labels the editor shows, where the other parameter has them.
+    """
+    rule = param.get("visible_when")
+    if not isinstance(rule, dict):
+        return ""
+    clauses = []
+    for key, values in rule.items():
+        values = values if isinstance(values, list) else [values]
+        other = siblings.get(key) or {}
+        labels = {
+            o["value"]: _one_line(o.get("label"))
+            for o in other.get("options") or []
+            if isinstance(o, dict) and isinstance(o.get("value"), (str, int, float, bool))
+        }
+        named = []
+        for value in values:
+            label = labels.get(value) if isinstance(value, (str, int, float, bool)) else None
+            named.append(label or _value_code(value))
+        other_name = _one_line(other.get("display_name")) or _code_span(str(key))
+        clauses.append(f"{other_name} is {_or_list(named)}")
+    return f"Only when {' and '.join(clauses)}." if clauses else ""
+
+
 def _yaml_quote(text: Any) -> str:
     s = "" if text is None else str(text)
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
@@ -508,9 +542,11 @@ def _yaml_quote(text: Any) -> str:
 # Pages
 # ---------------------------------------------------------------------------
 
-def _input_field(param: dict) -> str:
+def _input_field(param: dict, siblings: dict[str, dict] | None = None) -> str:
     """One input as a ``<Field>``: the label the editor shows, the name a
-    workflow's JSON uses, its type, whether it is required, and what it is."""
+    workflow's JSON uses, its type, whether it is required, and what it is.
+    ``siblings`` are the action's parameters by name, for a parameter that
+    only applies when another one has certain values."""
     name = _one_line(param.get("name"))
     label = _one_line(param.get("display_name")) or name
     attrs = [_jsx_attr("name", label), _jsx_attr("id", name)]
@@ -522,7 +558,9 @@ def _input_field(param: dict) -> str:
     description = _one_line(param.get("description"))
     if description:
         attrs.append(_jsx_attr("description", description))
-    facts = _parameter_facts(param)
+    facts = " ".join(
+        f for f in (_shown_when(param, siblings or {}), _parameter_facts(param)) if f
+    )
     if facts:
         attrs.append(_jsx_attr("facts", facts))
     return f"<Field {' '.join(attrs)} />"
@@ -572,7 +610,8 @@ def generate_action_section(action_name: str, action: dict) -> str:
 
     param_list = list(raw_params) if isinstance(raw_params, (list, tuple)) else []
     param_list = [p for p in param_list if isinstance(p, dict)]
-    lines += _fields(['title="Inputs"'], [_input_field(p) for p in param_list])
+    by_name = {str(p.get("name")): p for p in param_list}
+    lines += _fields(['title="Inputs"'], [_input_field(p, by_name) for p in param_list])
 
     returns = action.get("returns", {})
     returns = returns if isinstance(returns, dict) else {}

@@ -29,6 +29,18 @@ const STARTING_POINTS = [
   },
 ];
 
+// The built-in steps the home page shows, in this order. The directory lists them all.
+const FEATURED_STEPS = [
+  'skipflow_agent',
+  'skipflow_conditions',
+  'skipflow_loops',
+  'skipflow_review',
+  'skipflow_schedule',
+  'skipflow_files',
+  'skipflow_text',
+  'skipflow_http',
+];
+
 const GUIDES = [
   { title: 'Make decisions with If', href: '/docs/guides/conditions' },
   { title: 'Repeat steps for every item', href: '/docs/guides/loops' },
@@ -72,8 +84,8 @@ function MoreLink({ href, children }: { href: string; children: ReactNode }) {
 
 export default function HomePage() {
   const catalog = getCatalog();
-  const builtIns = catalog.entries.filter((entry) => entry.builtIn);
   const byId = new Map(catalog.entries.map((entry) => [entry.id, entry]));
+  const steps = FEATURED_STEPS.flatMap((id) => byId.get(id) ?? []);
   const popular = catalog.popular.flatMap((id) => byId.get(id) ?? []).slice(0, 12);
 
   return (
@@ -136,8 +148,8 @@ export default function HomePage() {
           >
             <span id="built-in-steps">The steps every workflow is made of</span>
           </SectionTitle>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {builtIns.map((step) => (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {steps.map((step) => (
               <Link
                 key={step.id}
                 href={step.href}
