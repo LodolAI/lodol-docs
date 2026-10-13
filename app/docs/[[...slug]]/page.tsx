@@ -12,26 +12,35 @@ import type { Metadata } from 'next';
 
 type PageData = NonNullable<ReturnType<typeof source.getPage>>['data'];
 
-/** An app or built-in step page: its tile beside the title, and a count. */
+function counted(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+/**
+ * An app or built-in step page: its logo or icon beside the title, then
+ * what it is: "App · Email · 14 actions · 1 trigger".
+ */
 function IntegrationHeader({ data }: { data: PageData }) {
   const builtIn = data.integration === 'built-in';
-  const count = data.actions ?? 0;
-  const noun = builtIn ? 'step' : 'action';
+  const facts = [
+    builtIn ? 'Built-in step' : 'App',
+    data.category,
+    counted(data.actions ?? 0, builtIn ? 'step' : 'action'),
+    data.triggers ? counted(data.triggers, 'trigger') : undefined,
+  ].filter(Boolean);
   return (
     <div className="flex items-start gap-4">
       <IntegrationIcon
         name={data.title}
         icon={typeof data.icon === 'string' ? data.icon : undefined}
+        logo={data.logo}
         builtIn={builtIn}
         size="lg"
         className="mt-1"
       />
       <div className="min-w-0 flex-1">
         <DocsTitle className="lodol-page-title">{data.title}</DocsTitle>
-        <p className="mt-1 text-sm text-fd-muted-foreground">
-          {builtIn ? 'Built-in step' : 'App'} · {count} {noun}
-          {count === 1 ? '' : 's'}
-        </p>
+        <p className="mt-1 text-sm text-fd-muted-foreground">{facts.join(' · ')}</p>
       </div>
     </div>
   );
@@ -75,5 +84,7 @@ export async function generateMetadata(props: {
   return {
     title: page.data.title,
     description: page.data.description,
+    // The page in Markdown, for AI tools (see lib/llms.ts).
+    alternates: { types: { 'text/markdown': `${page.url}.md` } },
   };
 }

@@ -11,13 +11,27 @@ export interface CatalogEntry {
   builtIn: boolean;
   /** A lucide icon name, for a built-in step group. */
   icon?: string;
+  /** The app's logo, on lodol.com. */
+  logo?: string;
+  /** The app's categories, its main one first. */
+  categories?: string[];
+  /** How many triggers the app has, if any. */
+  triggers?: number;
+}
+
+/** A set of related categories, such as Communication: Email, Messaging. */
+export interface CategoryGroup {
+  key: string;
+  label: string;
+  categories: string[];
 }
 
 export interface Catalog {
   apps: number;
   appActions: number;
-  /** Ids of the apps the directory shows first. */
+  /** App ids, most popular first. */
   popular: string[];
+  groups: CategoryGroup[];
   entries: CatalogEntry[];
 }
 

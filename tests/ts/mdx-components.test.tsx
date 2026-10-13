@@ -31,6 +31,9 @@ jest.mock('@/components/reference', () => ({
 jest.mock('@/components/integration-directory', () => ({
   IntegrationDirectory: 'integration-directory',
 }));
+jest.mock('@/components/apps-with-triggers', () => ({
+  AppsWithTriggers: 'apps-with-triggers',
+}));
 jest.mock('@/components/workflow-preview', () => ({
   WorkflowPreview: 'workflow-preview',
 }));
@@ -54,6 +57,7 @@ describe('getMDXComponents', () => {
       Example: 'example',
       Endpoint: 'endpoint',
       IntegrationDirectory: 'integration-directory',
+      AppsWithTriggers: 'apps-with-triggers',
       WorkflowPreview: 'workflow-preview',
     });
   });

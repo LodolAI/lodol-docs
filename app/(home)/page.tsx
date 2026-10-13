@@ -186,7 +186,7 @@ export default function HomePage() {
                     href={app.href}
                     className="flex items-center gap-2.5 rounded-xl border border-fd-border bg-fd-background/60 p-2.5 transition-colors hover:border-fd-primary/40"
                   >
-                    <IntegrationIcon name={app.name} size="sm" />
+                    <IntegrationIcon name={app.name} logo={app.logo} size="sm" />
                     <span className="min-w-0 truncate text-sm font-medium text-fd-foreground">{app.name}</span>
                   </Link>
                 </li>

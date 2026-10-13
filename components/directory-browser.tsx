@@ -3,7 +3,9 @@
 import { useDeferredValue, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Search, X } from 'lucide-react';
-import { AppMonogram } from '@/components/app-monogram';
+import { AppTile } from '@/components/app-tile';
+import type { CategoryGroup } from '@/lib/catalog';
+import { cn } from '@/lib/cn';
 
 export interface DirectoryItem {
   id: string;
@@ -12,24 +14,38 @@ export interface DirectoryItem {
   href: string;
   actions: number;
   builtIn: boolean;
-  /** Drawn on the server for built-in steps; apps get their initials. */
+  /** Drawn on the server for built-in steps; apps get their logo. */
   icon?: ReactNode;
+  logo?: string;
+  categories?: string[];
+  triggers?: number;
 }
+
+export type DirectoryGroup = CategoryGroup;
 
 interface DirectoryBrowserProps {
   items: DirectoryItem[];
+  /** App ids, most popular first. */
   popular: string[];
+  groups: DirectoryGroup[];
   apps: number;
 }
+
+/** How many popular apps the directory opens with: even rows of 2, 3 or 4. */
+const POPULAR_SHOWN = 12;
 
 /** Lower case without accents, so "notificación" finds "notificacion". */
 function normalize(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 }
 
+function counted(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
 function countLabel(item: DirectoryItem): string {
-  const noun = item.builtIn ? 'step' : 'action';
-  return `${item.actions} ${noun}${item.actions === 1 ? '' : 's'}`;
+  const actions = counted(item.actions, item.builtIn ? 'step' : 'action');
+  return item.triggers ? `${actions} · ${counted(item.triggers, 'trigger')}` : actions;
 }
 
 function search(items: DirectoryItem[], query: string): DirectoryItem[] {
@@ -38,10 +54,13 @@ function search(items: DirectoryItem[], query: string): DirectoryItem[] {
   const ranked: Array<[number, DirectoryItem]> = [];
   for (const item of items) {
     const name = normalize(item.name);
-    const text = `${name} ${normalize(item.description)}`;
+    const categories = normalize((item.categories ?? []).join(' '));
+    const text = `${name} ${categories} ${normalize(item.description)}`;
     if (!terms.every((term) => text.includes(term))) continue;
-    // Name matches first, best first; then matches in the description.
-    const rank = name === q ? 0 : name.startsWith(q) ? 1 : name.includes(q) ? 2 : 3;
+    // Name matches first, best first; then apps in a matching category;
+    // then matches in the description.
+    const rank =
+      name === q ? 0 : name.startsWith(q) ? 1 : name.includes(q) ? 2 : categories.includes(q) ? 3 : 4;
     ranked.push([rank, item]);
   }
   ranked.sort((a, b) => a[0] - b[0] || a[1].name.localeCompare(b[1].name));
@@ -54,7 +73,7 @@ function Tile({ item }: { item: DirectoryItem }) {
       href={item.href}
       className="group flex gap-3 rounded-xl border border-fd-border bg-fd-card/50 p-3.5 transition-colors hover:border-fd-primary/40 hover:bg-fd-accent/40"
     >
-      {item.icon ?? <AppMonogram name={item.name} size="sm" />}
+      {item.icon ?? <AppTile name={item.name} logo={item.logo} size="sm" />}
       <span className="min-w-0">
         <span className="block truncate text-sm font-medium text-fd-foreground">{item.name}</span>
         <span className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-fd-muted-foreground">
@@ -84,6 +103,72 @@ function SectionHeading({ id, title, children }: { id?: string; title: string; c
       </h2>
       {children && <p className="mt-1 text-sm text-fd-muted-foreground">{children}</p>}
     </div>
+  );
+}
+
+/** Choose a group of categories, or all of them. */
+function CategoryChips({
+  groups,
+  selected,
+  onSelect,
+}: {
+  groups: DirectoryGroup[];
+  selected: string | null;
+  onSelect: (key: string | null) => void;
+}) {
+  const chip = (key: string | null, label: string) => (
+    <button
+      key={key ?? 'all'}
+      type="button"
+      aria-pressed={selected === key}
+      onClick={() => onSelect(key)}
+      className={cn(
+        'shrink-0 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors',
+        selected === key
+          ? 'border-transparent bg-brand-soft text-brand-strong dark:bg-brand/25 dark:text-brand-lilac'
+          : 'border-fd-border text-fd-muted-foreground hover:border-fd-primary/40 hover:text-fd-foreground',
+      )}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div
+      role="group"
+      aria-label="Categories"
+      // On a phone the chips scroll sideways rather than stack five rows deep.
+      className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+    >
+      {chip(null, 'All')}
+      {groups.map((group) => chip(group.key, group.label))}
+    </div>
+  );
+}
+
+/** A group's apps, a section per category, most popular first. */
+function CategoryView({
+  group,
+  items,
+  rank,
+}: {
+  group: DirectoryGroup;
+  items: DirectoryItem[];
+  rank: (item: DirectoryItem) => number;
+}) {
+  return (
+    <>
+      {group.categories.map((category) => {
+        const apps = items
+          .filter((item) => item.categories?.includes(category))
+          .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+        return (
+          <section key={category} aria-label={category}>
+            <SectionHeading title={category}>{counted(apps.length, 'app')}</SectionHeading>
+            <TileGrid items={apps} />
+          </section>
+        );
+      })}
+    </>
   );
 }
 
@@ -169,20 +254,53 @@ function MissingApp() {
   );
 }
 
-export function DirectoryBrowser({ items, popular, apps }: DirectoryBrowserProps) {
+export function DirectoryBrowser({ items, popular, groups, apps }: DirectoryBrowserProps) {
   const [query, setQuery] = useState('');
+  const [groupKey, setGroupKey] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
-  const results = useMemo(
-    () => (deferredQuery.trim() ? search(items, deferredQuery) : null),
-    [items, deferredQuery],
-  );
 
-  const builtInItems = useMemo(() => items.filter((item) => item.builtIn), [items]);
+  // App families (Google, Microsoft…) group apps by maker rather than by
+  // what they do, so they come after the categories of work.
+  const orderedGroups = useMemo(
+    () => [...groups].sort((a, b) => Number(a.key === 'app_families') - Number(b.key === 'app_families')),
+    [groups],
+  );
+  const group = orderedGroups.find((g) => g.key === groupKey) ?? null;
+
   const appItems = useMemo(() => items.filter((item) => !item.builtIn), [items]);
+  const builtInItems = useMemo(() => items.filter((item) => item.builtIn), [items]);
+  const rank = useMemo(() => {
+    const order = new Map(popular.map((id, index) => [id, index]));
+    return (item: DirectoryItem) => order.get(item.id) ?? Number.MAX_SAFE_INTEGER;
+  }, [popular]);
   const popularItems = useMemo(() => {
     const byId = new Map(items.map((item) => [item.id, item]));
-    return popular.flatMap((id) => byId.get(id) ?? []);
+    return popular.flatMap((id) => byId.get(id) ?? []).slice(0, POPULAR_SHOWN);
   }, [items, popular]);
+
+  // In a group, only its apps: built-in steps have no category.
+  const inGroup = useMemo(
+    () =>
+      group
+        ? appItems.filter((item) => item.categories?.some((c) => group.categories.includes(c)))
+        : null,
+    [appItems, group],
+  );
+  const results = useMemo(
+    () => (deferredQuery.trim() ? search(inGroup ?? items, deferredQuery) : null),
+    [items, inGroup, deferredQuery],
+  );
+
+  const q = deferredQuery.trim();
+  const status = results
+    ? results.length === 0
+      ? group
+        ? `Nothing in ${group.label} matches “${q}”.`
+        : `Nothing matches “${q}”.`
+      : `${results.length} ${results.length === 1 ? 'match' : 'matches'}${group ? ` in ${group.label}` : ''}`
+    : group && inGroup
+      ? `${group.label}: ${counted(inGroup.length, 'app')}`
+      : null;
 
   return (
     <div className="not-prose">
@@ -216,21 +334,22 @@ export function DirectoryBrowser({ items, popular, apps }: DirectoryBrowserProps
         )}
       </div>
 
+      {orderedGroups.length > 0 && (
+        <CategoryChips groups={orderedGroups} selected={groupKey} onSelect={setGroupKey} />
+      )}
+
       <p aria-live="polite" className="mt-3 text-sm text-fd-muted-foreground">
-        {results
-          ? results.length === 0
-            ? `Nothing matches “${deferredQuery.trim()}”.`
-            : `${results.length} ${results.length === 1 ? 'match' : 'matches'}`
-          : null}
+        {status}
       </p>
 
       {results ? (
         <div className="mt-4">
-          {results.length > 0 ? (
-            <TileGrid items={results} />
-          ) : (
-            <MissingApp />
-          )}
+          {results.length > 0 ? <TileGrid items={results} /> : <MissingApp />}
+        </div>
+      ) : group && inGroup ? (
+        <div className="mt-6">
+          <CategoryView group={group} items={inGroup} rank={rank} />
+          <MissingApp />
         </div>
       ) : (
         <div className="mt-6">

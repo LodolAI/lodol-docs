@@ -40,12 +40,14 @@ If you run into certificate issues:
 - `npm run start` — Start the production server
 - `npm run lint` — Run ESLint
 - `npm run generate-actions` — Regenerate the Integrations tab from
-  `data/actions/`
+  `data/actions/` and `data/apps.json`
+- `npm run refresh-app-data` — Refresh apps' logos, categories and
+  triggers in `data/apps.json` from lodol.com (see below)
 - `npm test` — Run the Jest suite (TypeScript / React)
 - `npm run test:watch` — Re-run tests on file change
 - `npm run test:coverage` — Generate a coverage report
 - `npm run test:python` — Run the Python tests for the integrations
-  reference renderer (uses the standard-library `unittest` runner — no
+  reference scripts (uses the standard-library `unittest` runner — no
   extra Python dependencies required)
 
 ## How the site is organized
@@ -62,6 +64,11 @@ The docs have three tabs, one per folder marked `"root": true` in
 `(docs)` is a folder group: its name doesn't appear in URLs. Pages that
 moved when the docs were reorganized redirect from their old addresses
 (see `redirects` in `next.config.mjs`).
+
+For AI tools, every page has a Markdown copy at its address plus `.md`,
+`/llms.txt` lists them all, and `/llms-full.txt` holds the Documentation
+and API pages in one file (see `lib/llms.ts`). The integration pages'
+copies are written with the pages, into `public/docs/`.
 
 ## Project Structure
 
@@ -122,6 +129,22 @@ docs:
 
 To preview locally with the current `data/actions/`, just run
 `npm run dev` or `npm run generate-actions` directly.
+
+### Logos, categories and triggers
+
+`data/actions/` doesn't carry apps' logos, categories or triggers yet,
+so they live in `data/apps.json`, which the renderer reads alongside it:
+app pages list their triggers, the directory filters by category, and
+logos load from lodol.com. `npm run refresh-app-data` rewrites the file
+from lodol.com (each app's logo and categories, and its triggers'
+names) and keeps the filters and event fields already recorded for each
+trigger. Those come from Lodol's MCP server, since lodol.com doesn't
+show them: for a new trigger, save its `search_triggers` result as JSON
+and run `npm run refresh-app-data -- --trigger-details <file>`. Until
+then, its page lists the trigger by name and description.
+
+The lasting fix is for `publish-action-specs` to publish this data with
+the specs; `data/apps.json` and the refresh script can then go.
 
 ## Writing pages
 

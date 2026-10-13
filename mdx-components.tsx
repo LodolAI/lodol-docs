@@ -7,6 +7,7 @@ import { isValidElement, type ComponentProps } from 'react';
 import type { MDXComponents } from 'mdx/types';
 import { Endpoint, Example, Field, Fields } from '@/components/reference';
 import { IntegrationDirectory } from '@/components/integration-directory';
+import { AppsWithTriggers } from '@/components/apps-with-triggers';
 import { WorkflowPreview } from '@/components/workflow-preview';
 
 const DefaultPre = defaultMdxComponents.pre;
@@ -53,6 +54,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Example,
     Endpoint,
     IntegrationDirectory,
+    AppsWithTriggers,
     WorkflowPreview,
     ...components,
   };

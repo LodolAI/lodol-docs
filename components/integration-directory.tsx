@@ -3,8 +3,8 @@ import { IntegrationIcon } from '@/components/integration-icon';
 import { DirectoryBrowser, type DirectoryItem } from '@/components/directory-browser';
 
 /**
- * Every app and built-in step, searchable. Built-in steps' icons are drawn
- * here, on the server; apps' initials are cheap enough to draw in the browser.
+ * Every app and built-in step, searchable and by category. Built-in steps'
+ * icons are drawn here, on the server; apps' logos load in the browser.
  */
 export function IntegrationDirectory() {
   const catalog = getCatalog();
@@ -18,11 +18,15 @@ export function IntegrationDirectory() {
     icon: entry.builtIn ? (
       <IntegrationIcon name={entry.name} icon={entry.icon} builtIn size="sm" />
     ) : undefined,
+    logo: entry.logo,
+    categories: entry.categories,
+    triggers: entry.triggers,
   }));
   return (
     <DirectoryBrowser
       items={items}
       popular={catalog.popular}
+      groups={catalog.groups ?? []}
       apps={catalog.apps}
     />
   );

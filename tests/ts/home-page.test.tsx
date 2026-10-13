@@ -31,6 +31,7 @@ const catalog: Catalog = {
   apps: 832,
   appActions: 9917,
   popular: ['gmail', 'not_in_catalog', 'slack'],
+  groups: [],
   entries: [
     { id: 'skipflow_review', name: 'Approvals', description: 'Pause for a person.', href: '/docs/integrations/built-in/review', actions: 1, builtIn: true, icon: 'UserCheck' },
     { id: 'skipflow_conditions', name: 'Decisions', description: 'Choose which steps run.', href: '/docs/integrations/built-in/conditions', actions: 2, builtIn: true, icon: 'Split' },

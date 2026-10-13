@@ -11,9 +11,13 @@ export const docs = defineDocs({
     async: true,
     schema: frontmatterSchema.extend({
       // Set on the pages scripts/render-actions-docs.py generates, so the page
-      // header can show the integration's tile and how many actions it has.
+      // header can show the integration's logo, its main category, and how
+      // many actions and triggers it has.
       integration: z.enum(['app', 'built-in']).optional(),
       actions: z.number().int().nonnegative().optional(),
+      triggers: z.number().int().nonnegative().optional(),
+      logo: z.url().optional(),
+      category: z.string().optional(),
     }),
   },
 });
