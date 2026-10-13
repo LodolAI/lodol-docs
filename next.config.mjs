@@ -7,9 +7,10 @@ const config = {
   reactStrictMode: true,
   output: 'standalone',
   images: {
-    // App logos live on lodol.com (see data/apps.json). Many are PNGs of
-    // 50 KB or more; resized for their tiles they're a few KB each. SVGs
-    // aren't optimized, so they load from lodol.com as they are.
+    // App logos live on lodol.com (each app's spec in data/actions/ names
+    // its own). Many are PNGs of 50 KB or more; resized for their tiles
+    // they're a few KB each. SVGs aren't optimized, so they load from
+    // lodol.com as they are.
     remotePatterns: [{ protocol: 'https', hostname: 'www.lodol.com', pathname: '/app-icons/**' }],
   },
   // Pages that moved when the docs were reorganized into Documentation,

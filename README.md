@@ -40,11 +40,12 @@ If you run into certificate issues:
 - `npm run start` — Start the production server
 - `npm run lint` — Run ESLint
 - `npm run generate-actions` — Regenerate the Integrations tab from
-  `data/actions/` and `data/apps.json`
+  `data/actions/` and `data/directory.json`
 - `npm run generate-llms` — Write `/llms.txt`, `/llms-full.txt` and the
   hand-written pages' Markdown copies into `public/`
-- `npm run refresh-app-data` — Refresh apps' logos, categories and
-  triggers in `data/apps.json` from lodol.com (see below)
+- `npm run refresh-directory` — Refresh the directory's category groups
+  and order of popularity in `data/directory.json` from lodol.com (see
+  below)
 - `npm test` — Run the Jest suite (TypeScript / React)
 - `npm run test:watch` — Re-run tests on file change
 - `npm run test:coverage` — Generate a coverage report
@@ -135,19 +136,16 @@ To preview locally with the current `data/actions/`, just run
 
 ### Logos, categories and triggers
 
-`data/actions/` doesn't carry apps' logos, categories or triggers yet,
-so they live in `data/apps.json`, which the renderer reads alongside it:
-app pages list their triggers, the directory filters by category, and
-logos load from lodol.com. `npm run refresh-app-data` rewrites the file
-from lodol.com (each app's logo and categories, and its triggers'
-names) and keeps the filters and event fields already recorded for each
-trigger. Those come from Lodol's MCP server, since lodol.com doesn't
-show them: for a new trigger, save its `search_triggers` result as JSON
-and run `npm run refresh-app-data -- --trigger-details <file>`. Until
-then, its page lists the trigger by name and description.
+Each app's file in `data/actions/` carries its logo, its categories (the
+one that defines it first) and its triggers, with each filter's label and
+help text and the fields of the event it delivers. Change them in
+`lodolai/lodol` like any other spec.
 
-The lasting fix is for `publish-action-specs` to publish this data with
-the specs; `data/apps.json` and the refresh script can then go.
+Two things belong to the directory as a whole rather than to an app: the
+groups its category filter is sorted into, and the order of popularity
+it lists apps in by default. Both come from lodol.com's integrations
+directory and live in `data/directory.json`. `npm run refresh-directory`
+copies them again; run it when lodol.com's groups or rankings change.
 
 ## Writing pages
 

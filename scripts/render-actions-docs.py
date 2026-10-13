@@ -16,9 +16,10 @@ writes the Integrations tab of the docs:
 * a Markdown copy of each page and of the directory, under
   ``public/docs/``, which AI tools read (see ``/llms.txt``).
 
-Each app's logo, categories and triggers come from ``data/apps.json``,
-which ``scripts/refresh-app-data.py`` writes, until the server publishes
-them with the specs.
+Each app's file carries its logo, categories and triggers too. Only what
+belongs to the directory as a whole, its category groups and the order of
+popularity, comes from ``data/directory.json``, which
+``scripts/refresh-directory.py`` copies from lodol.com.
 
 The artifact is one file per provider, ``data/actions/<provider id>.json``,
 so that no single file approaches GitHub's 100 MB limit.
@@ -49,7 +50,7 @@ from typing import Any
 SCRIPT_DIR = Path(__file__).resolve().parent
 DOCS_ROOT = SCRIPT_DIR.parent
 DEFAULT_INPUT = DOCS_ROOT / "data" / "actions"
-DEFAULT_APP_DATA = DOCS_ROOT / "data" / "apps.json"
+DEFAULT_DIRECTORY = DOCS_ROOT / "data" / "directory.json"
 DEFAULT_OUTPUT_DIR = DOCS_ROOT / "content" / "docs" / "integrations"
 #: Served as static files, so ``/docs/integrations/gmail.md`` is Gmail's
 #: page in Markdown.
@@ -127,7 +128,7 @@ BUILT_IN_GUIDES = {
     "skipflow_workflows": ("Run a workflow from another", "/docs/guides/sub-workflows"),
 }
 
-#: Apps the directory shows first when ``data/apps.json`` has no popularity
+#: Apps the directory shows first when ``data/directory.json`` has no popularity
 #: order. Ids missing from the catalog are skipped.
 POPULAR_APPS = [
     "gmail",
@@ -208,6 +209,33 @@ def visible_actions(provider: dict) -> list[tuple[str, dict]]:
     """A provider's actions in the order its page lists them: by name."""
     actions = [(n, a) for n, a in _actions(provider) if not _is_section_marker(a)]
     return sorted(actions, key=lambda item: _action_name(*item).casefold())
+
+
+def triggers(provider: dict) -> list[dict]:
+    """An app's triggers in the order its page lists them: by name, like its
+    actions. Built-in steps have none."""
+    found = provider.get("triggers") if not is_built_in(provider) else None
+    found = found.values() if isinstance(found, dict) else []
+    return sorted(
+        (t for t in found if isinstance(t, dict)),
+        key=lambda t: _trigger_name(t).casefold(),
+    )
+
+
+def categories(provider: dict) -> list[str]:
+    """An app's categories, the one that defines it first. Built-in steps are
+    grouped by the renderer instead."""
+    if is_built_in(provider):
+        return []
+    return [c for c in provider.get("categories") or [] if isinstance(c, str)]
+
+
+def logo(provider: dict) -> str | None:
+    """An app's logo, if it is a web address. Built-in steps use an icon."""
+    url = provider.get("logo")
+    if is_built_in(provider) or not isinstance(url, str) or not url.startswith("https://"):
+        return None
+    return url
 
 
 # ---------------------------------------------------------------------------
@@ -562,7 +590,7 @@ class FieldInfo:
     """One entry in a list of inputs, outputs, filters or event fields."""
 
     id: str
-    #: The label the editor shows. Outputs and filters have none.
+    #: The label the editor shows. Outputs have none.
     name: str = ""
     #: In the editor's words: text, number, list and so on.
     type: str = ""
@@ -599,10 +627,10 @@ def _output_info(key: str, schema: dict) -> FieldInfo:
 
 
 def _filter_info(param: dict) -> FieldInfo:
-    """One of a trigger's filters. Filters have no label in the specs, so
-    the key is their name."""
+    """One of a trigger's filters, by the label the editor shows."""
     return FieldInfo(
         id=_one_line(param.get("name")),
+        name=_one_line(param.get("display_name")),
         required=bool(param.get("required")),
         description=_one_line(param.get("description")),
     )
@@ -743,18 +771,25 @@ def _trigger_name(trigger: dict) -> str:
 
 def generate_trigger_section(trigger: dict, markdown: bool = False) -> str:
     """A trigger's section: what starts it, its filters and the fields of
-    the event a run starts with. A trigger known only by name shows that."""
+    the event a run starts with."""
     text = (lambda t: t) if markdown else _escape_mdx
     lines = [f"### {text(_trigger_name(trigger))}", ""]
     description = _one_line(trigger.get("description"))
     if description:
         lines += [text(description), ""]
-    params = [p for p in trigger.get("params") or [] if isinstance(p, dict) and p.get("name")]
+    params = [p for p in trigger.get("parameters") or [] if isinstance(p, dict) and p.get("name")]
     if params:
+        # A required field picks what to watch (a channel, a form); the
+        # optional ones only narrow which of its events count.
+        caption = (
+            "What the trigger watches, and which of its events start a run."
+            if any(p.get("required") for p in params)
+            else "Narrow which events start a run."
+        )
         lines += _field_list(
             "Filters",
-            [_filter_info(p) for p in params],
-            "Narrow which events start a run.",
+            [_filter_info(p) for p in sorted(params, key=lambda p: p.get("arg_index", 0))],
+            caption,
             markdown,
         )
     output = trigger.get("output")
@@ -816,16 +851,15 @@ def _first_sentence(text: str) -> str:
     return text
 
 
-def generate_provider_mdx(provider: dict, app: dict | None = None) -> str:
-    """An app's or built-in step group's page. ``app`` is the app's entry in
-    ``data/apps.json``: its logo, categories and triggers."""
+def generate_provider_mdx(provider: dict) -> str:
+    """An app's or built-in step group's page."""
     display = _one_line(provider["display_name"])
     desc = _one_line(provider.get("description", ""))
     built_in = is_built_in(provider)
     actions = visible_actions(provider)
-    app = app if isinstance(app, dict) and not built_in else {}
-    triggers = [t for t in app.get("triggers") or [] if isinstance(t, dict)]
-    categories = [c for c in app.get("categories") or [] if isinstance(c, str)]
+    app_triggers = triggers(provider)
+    app_categories = categories(provider)
+    app_logo = logo(provider)
 
     parts: list[str] = ["---", f"title: {_yaml_quote(display)}"]
     parts.append(
@@ -837,12 +871,12 @@ def generate_provider_mdx(provider: dict, app: dict | None = None) -> str:
         parts.append(
             f"icon: {BUILT_IN_ICONS.get(str(provider['id']), DEFAULT_BUILT_IN_ICON)}"
         )
-    if isinstance(app.get("logo"), str) and app["logo"].startswith("https://"):
-        parts.append(_yaml_line("logo", app["logo"]))
-    if categories:
-        parts.append(_yaml_line("category", categories[0]))
-    if triggers:
-        parts.append(f"triggers: {len(triggers)}")
+    if app_logo:
+        parts.append(_yaml_line("logo", app_logo))
+    if app_categories:
+        parts.append(_yaml_line("category", app_categories[0]))
+    if app_triggers:
+        parts.append(f"triggers: {len(app_triggers)}")
     parts += ["---", ""]
 
     if built_in:
@@ -867,7 +901,7 @@ def generate_provider_mdx(provider: dict, app: dict | None = None) -> str:
     # Anchors are handed out in page order, as fumadocs does, so the action
     # list links to each section's heading.
     slugger = Slugger()
-    trigger_lines = _trigger_sections(display, triggers, slugger) if triggers else []
+    trigger_lines = _trigger_sections(display, app_triggers, slugger) if app_triggers else []
     heading, column = ("Steps", "Step") if built_in else ("Actions", "Action")
     show_overview = len(actions) >= OVERVIEW_MIN_ACTIONS
     if show_overview:
@@ -884,7 +918,7 @@ def generate_provider_mdx(provider: dict, app: dict | None = None) -> str:
     parts += trigger_lines
     if show_overview:
         parts += _action_overview(heading, column, rows)
-    elif triggers and sections:
+    elif app_triggers and sections:
         # Without the overview, the actions still need a heading of their
         # own to follow the triggers.
         parts += [f"## {heading}", ""]
@@ -903,34 +937,33 @@ def _counted(count: int, noun: str) -> str:
     return f"{count} {noun}{'' if count == 1 else 's'}"
 
 
-def _summary_line(provider: dict, app: dict) -> str:
+def _summary_line(provider: dict) -> str:
     """What an app or step group is, as its page's header says it:
     "App · Email · 14 actions · 1 trigger"."""
     built_in = is_built_in(provider)
     parts = ["Built-in step" if built_in else "App"]
-    categories = [c for c in app.get("categories") or [] if isinstance(c, str)]
-    if categories:
-        parts.append(categories[0])
+    app_categories = categories(provider)
+    if app_categories:
+        parts.append(app_categories[0])
     parts.append(_counted(len(visible_actions(provider)), "step" if built_in else "action"))
-    triggers = [t for t in app.get("triggers") or [] if isinstance(t, dict)]
-    if triggers:
-        parts.append(_counted(len(triggers), "trigger"))
+    app_triggers = triggers(provider)
+    if app_triggers:
+        parts.append(_counted(len(app_triggers), "trigger"))
     return " · ".join(parts)
 
 
-def generate_provider_markdown(provider: dict, app: dict | None = None) -> str:
+def generate_provider_markdown(provider: dict) -> str:
     """An app's or built-in step group's page in Markdown, for AI tools: the
     same facts as the page, without the site's components."""
     display = _one_line(provider["display_name"])
     desc = _one_line(provider.get("description", ""))
     built_in = is_built_in(provider)
-    app = app if isinstance(app, dict) and not built_in else {}
-    triggers = [t for t in app.get("triggers") or [] if isinstance(t, dict)]
+    app_triggers = triggers(provider)
 
     lines = [f"# {display}", ""]
     if desc:
         lines += [f"> {desc}", ""]
-    lines += [f"{_summary_line(provider, app)}. Web page: {SITE_URL}{provider_url(provider)}", ""]
+    lines += [f"{_summary_line(provider)}. Web page: {SITE_URL}{provider_url(provider)}", ""]
     if built_in:
         guide = BUILT_IN_GUIDES.get(str(provider["id"]))
         if guide:
@@ -945,7 +978,7 @@ def generate_provider_markdown(provider: dict, app: dict | None = None) -> str:
         if markers:
             lines += [f"Close each section with an {' or '.join(markers)} step.", ""]
 
-    if triggers:
+    if app_triggers:
         lines += [
             "## Triggers",
             "",
@@ -953,7 +986,7 @@ def generate_provider_markdown(provider: dict, app: dict | None = None) -> str:
             f"[how triggers work]({_markdown_url('/docs/concepts/triggers')}).",
             "",
         ]
-        lines += [generate_trigger_section(t, markdown=True) for t in triggers]
+        lines += [generate_trigger_section(t, markdown=True) for t in app_triggers]
 
     actions = visible_actions(provider)
     if actions:
@@ -965,17 +998,14 @@ def generate_provider_markdown(provider: dict, app: dict | None = None) -> str:
     return "\n".join(lines).rstrip("\n") + "\n"
 
 
-def generate_index_markdown(providers: list[dict], app_data: dict | None = None) -> str:
+def generate_index_markdown(providers: list[dict]) -> str:
     """The directory in Markdown: every built-in step group and app, one
     line each, linking to its page's Markdown copy."""
-    app_data = app_data if isinstance(app_data, dict) else {}
-    app_info = app_data.get("apps") if isinstance(app_data.get("apps"), dict) else {}
     apps = sorted((p for p in providers if not is_built_in(p)), key=_sort_key)
     steps = sorted((p for p in providers if is_built_in(p)), key=_sort_key)
 
     def line(p: dict) -> str:
-        info = app_info.get(str(p["id"]))
-        summary = _summary_line(p, info if isinstance(info, dict) else {})
+        summary = _summary_line(p)
         desc = _first_sentence(p.get("description", ""))
         name = _one_line(p["display_name"])
         text = f"{desc} ({summary})" if desc else summary
@@ -1047,8 +1077,8 @@ def generate_built_in_meta_json(providers: list[dict]) -> str:
 
 def _category_groups(groups: Any, entries: list[dict]) -> list[dict]:
     """The category groups the directory filters by, each with the
-    categories that have apps, in ``data/apps.json``'s order. A group with
-    no apps is left out."""
+    categories that have apps, in ``data/directory.json``'s order. A group
+    with no apps is left out."""
     used = {c for e in entries for c in e.get("categories", [])}
     result = []
     for group in groups if isinstance(groups, list) else []:
@@ -1063,13 +1093,12 @@ def _category_groups(groups: Any, entries: list[dict]) -> list[dict]:
 
 
 def generate_catalog(
-    providers: list[dict], app_data: dict | None = None
+    providers: list[dict], directory: dict | None = None
 ) -> dict[str, Any]:
     """What the directory lists and searches, and the counts the home page
-    shows. ``app_data`` is ``data/apps.json``: logos, categories, triggers
-    and the order of popularity."""
-    app_data = app_data if isinstance(app_data, dict) else {}
-    app_info = app_data.get("apps") if isinstance(app_data.get("apps"), dict) else {}
+    shows. ``directory`` is ``data/directory.json``: the category groups and
+    the order of popularity."""
+    directory = directory if isinstance(directory, dict) else {}
     entries = []
     for p in sorted(providers, key=_sort_key):
         built_in = is_built_in(p)
@@ -1085,25 +1114,21 @@ def generate_catalog(
         if built_in:
             entry["icon"] = BUILT_IN_ICONS.get(str(p["id"]), DEFAULT_BUILT_IN_ICON)
         else:
-            info = app_info.get(str(p["id"]))
-            info = info if isinstance(info, dict) else {}
-            if isinstance(info.get("logo"), str) and info["logo"].startswith("https://"):
-                entry["logo"] = info["logo"]
-            categories = [c for c in info.get("categories") or [] if isinstance(c, str)]
-            if categories:
-                entry["categories"] = categories
-            triggers = [t for t in info.get("triggers") or [] if isinstance(t, dict)]
-            if triggers:
-                entry["triggers"] = len(triggers)
+            if logo(p):
+                entry["logo"] = logo(p)
+            if categories(p):
+                entry["categories"] = categories(p)
+            if triggers(p):
+                entry["triggers"] = len(triggers(p))
         entries.append(entry)
     ids = {p["id"] for p in providers if not is_built_in(p)}
     apps = [e for e in entries if not e["builtIn"]]
-    popular = app_data.get("popular") if isinstance(app_data.get("popular"), list) else None
+    popular = directory.get("popular") if isinstance(directory.get("popular"), list) else None
     return {
         "apps": len(apps),
         "appActions": sum(e["actions"] for e in apps),
         "popular": [pid for pid in popular or POPULAR_APPS if pid in ids],
-        "groups": _category_groups(app_data.get("groups"), apps),
+        "groups": _category_groups(directory.get("groups"), apps),
         "entries": entries,
     }
 
@@ -1175,13 +1200,13 @@ def _write(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def load_app_data(path: Path) -> dict[str, Any]:
-    """``data/apps.json``, or nothing (with a warning) if it is missing:
-    the pages are then written without logos, categories or triggers."""
+def load_directory(path: Path) -> dict[str, Any]:
+    """``data/directory.json``, or nothing (with a warning) if it is missing:
+    the directory then has no category groups and a fallback order."""
     if not path.exists():
         print(
-            f"warning: {path} not found; app pages will have no logos, "
-            "categories or triggers. Run scripts/refresh-app-data.py.",
+            f"warning: {path} not found; the directory will have no category "
+            "groups. Run scripts/refresh-directory.py.",
             file=sys.stderr,
         )
         return {}
@@ -1192,15 +1217,13 @@ def load_app_data(path: Path) -> dict[str, Any]:
 def render(
     providers: list[dict],
     output_dir: Path,
-    app_data: dict | None = None,
+    directory: dict | None = None,
     markdown_dir: Path | None = None,
 ) -> int:
     """Render every output into ``output_dir``, and the Markdown copies into
     ``markdown_dir`` when it is given. Both are emptied first so a provider
     the server dropped leaves no page behind. Returns the number of files
     written."""
-    app_data = app_data if isinstance(app_data, dict) else {}
-    app_info = app_data.get("apps") if isinstance(app_data.get("apps"), dict) else {}
     if output_dir.exists():
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
@@ -1210,7 +1233,7 @@ def render(
     _write(output_dir / "index.mdx", generate_index_mdx(providers))
     _write(
         output_dir / "catalog.json",
-        json.dumps(generate_catalog(providers, app_data), ensure_ascii=False) + "\n",
+        json.dumps(generate_catalog(providers, directory), ensure_ascii=False) + "\n",
     )
     written += 3
     if any(is_built_in(p) for p in providers):
@@ -1220,24 +1243,23 @@ def render(
         )
         written += 1
     for p in providers:
-        page = generate_provider_mdx(p, app_info.get(str(p.get("id"))))
+        page = generate_provider_mdx(p)
         _write(output_dir / f"{provider_path(p)}.mdx", page)
         written += 1
     if markdown_dir is not None:
-        written += _render_markdown(providers, markdown_dir, app_data)
+        written += _render_markdown(providers, markdown_dir)
     return written
 
 
-def _render_markdown(providers: list[dict], markdown_dir: Path, app_data: dict) -> int:
+def _render_markdown(providers: list[dict], markdown_dir: Path) -> int:
     """The Markdown copies: one per page in ``markdown_dir``, and the
     directory beside it (``integrations.md``)."""
-    app_info = app_data.get("apps") if isinstance(app_data.get("apps"), dict) else {}
     if markdown_dir.exists():
         shutil.rmtree(markdown_dir)
     markdown_dir.mkdir(parents=True)
-    _write(markdown_dir.parent / f"{markdown_dir.name}.md", generate_index_markdown(providers, app_data))
+    _write(markdown_dir.parent / f"{markdown_dir.name}.md", generate_index_markdown(providers))
     for p in providers:
-        page = generate_provider_markdown(p, app_info.get(str(p.get("id"))))
+        page = generate_provider_markdown(p)
         _write(markdown_dir / f"{provider_path(p)}.md", page)
     return len(providers) + 1
 
@@ -1259,10 +1281,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Where to write the Markdown copies (default: public/docs/integrations).",
     )
     parser.add_argument(
-        "--apps",
+        "--directory",
         type=Path,
-        default=DEFAULT_APP_DATA,
-        help="Each app's logo, categories and triggers (default: data/apps.json).",
+        default=DEFAULT_DIRECTORY,
+        help="The directory's category groups and order of popularity "
+        "(default: data/directory.json).",
     )
     parser.add_argument(
         "--output-dir",
@@ -1279,7 +1302,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  Output dir   : {args.output_dir}")
     print(f"  Providers    : {len(providers)}")
 
-    written = render(providers, args.output_dir, load_app_data(args.apps), args.markdown_dir)
+    written = render(providers, args.output_dir, load_directory(args.directory), args.markdown_dir)
 
     print(f"  Done! {written} files written.")
     return 0

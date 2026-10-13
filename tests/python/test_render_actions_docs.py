@@ -826,18 +826,36 @@ GMAIL_TRIGGER = {
     "id": "gmail_new_email_trigger",
     "display_name": "Gmail New Email",
     "description": "Triggers when a new email arrives in your Gmail inbox",
-    "params": [
-        {"name": "mailbox", "arg_index": 0, "required": True, "description": "The mailbox to watch."},
-        {"name": "sender", "arg_index": 1, "required": False},
+    "parameters": [
+        {
+            "name": "sender",
+            "arg_index": 1,
+            "display_name": "From",
+            "description": "",
+            "required": False,
+        },
+        {
+            "name": "mailbox",
+            "arg_index": 0,
+            "display_name": "Mailbox",
+            "description": "The mailbox to watch.",
+            "required": True,
+        },
     ],
     "output": {"email_id": "string", "attachments": "array", "is_read": "boolean"},
 }
 
+#: What an app's spec carries besides its actions.
 APP = {
     "logo": "https://www.lodol.com/app-icons/gmail-icon.png",
     "categories": ["Email", "Google"],
-    "triggers": [GMAIL_TRIGGER],
+    "triggers": {GMAIL_TRIGGER["id"]: GMAIL_TRIGGER},
 }
+
+
+def _app(provider, **app):
+    """``provider`` with its logo, categories and triggers, as published."""
+    return {**provider, **(app or APP)}
 
 
 class TriggerSectionTests(unittest.TestCase):
@@ -845,13 +863,26 @@ class TriggerSectionTests(unittest.TestCase):
         out = ren.generate_trigger_section(GMAIL_TRIGGER)
         self.assertTrue(out.startswith("### Gmail New Email\n\nTriggers when a new email"))
 
-    def test_lists_its_filters_by_key(self):
+    def test_lists_its_filters_by_label_in_call_order(self):
         out = ren.generate_trigger_section(GMAIL_TRIGGER)
         self.assertIn(
-            '<Fields title="Filters" description="Narrow which events start a run.">', out
+            '<Fields title="Filters" description="What the trigger watches, and which '
+            'of its events start a run.">',
+            out,
         )
-        self.assertIn('<Field id="mailbox" required description="The mailbox to watch." />', out)
-        self.assertIn('<Field id="sender" />', out)
+        mailbox = '<Field name="Mailbox" id="mailbox" required description="The mailbox to watch." />'
+        sender = '<Field name="From" id="sender" />'
+        self.assertIn(mailbox, out)
+        self.assertIn(sender, out)
+        self.assertLess(out.index(mailbox), out.index(sender))
+
+    def test_filters_that_are_all_optional_only_narrow(self):
+        trigger = {
+            "display_name": "New payment",
+            "parameters": [{"name": "status", "display_name": "Status", "required": False}],
+        }
+        out = ren.generate_trigger_section(trigger)
+        self.assertIn('<Fields title="Filters" description="Narrow which events start a run.">', out)
 
     def test_lists_the_fields_of_its_event_in_the_editor_s_words(self):
         out = ren.generate_trigger_section(GMAIL_TRIGGER)
@@ -866,7 +897,7 @@ class TriggerSectionTests(unittest.TestCase):
         )
         self.assertIn('<Field id="amount" description="Amount in dollars." />', out)
 
-    def test_a_trigger_known_only_by_name(self):
+    def test_a_trigger_without_filters_or_event_fields(self):
         out = ren.generate_trigger_section(
             {"display_name": "New card", "description": "Runs when a card is added."}
         )
@@ -880,7 +911,7 @@ class MarkdownCopyTests(unittest.TestCase):
         return _provider("gmail", n=n, display_name="Gmail", description="Send and read email. More.")
 
     def test_starts_with_the_title_summary_and_what_it_is(self):
-        out = ren.generate_provider_markdown(self._gmail(), APP)
+        out = ren.generate_provider_markdown(_app(self._gmail()))
         self.assertTrue(out.startswith("# Gmail\n\n> Send and read email. More.\n\n"))
         self.assertIn(
             "App · Email · 2 actions · 1 trigger. "
@@ -892,7 +923,7 @@ class MarkdownCopyTests(unittest.TestCase):
         param = {"name": "to", "display_name": "To", "type": "ParameterType.STRING", "required": True}
         provider = self._gmail()
         provider["actions"]["act_0"]["parameters"] = [param]
-        out = ren.generate_provider_markdown(provider, APP)
+        out = ren.generate_provider_markdown(_app(provider))
         self.assertNotIn("<Field", out)
         self.assertNotIn("<Example>", out)
 
@@ -924,10 +955,15 @@ class MarkdownCopyTests(unittest.TestCase):
         self.assertIn("**Inputs**: None.", out)
 
     def test_triggers_come_before_actions(self):
-        out = ren.generate_provider_markdown(self._gmail(), APP)
+        out = ren.generate_provider_markdown(_app(self._gmail()))
         self.assertLess(out.index("## Triggers"), out.index("### Gmail New Email"))
         self.assertLess(out.index("### Gmail New Email"), out.index("## Actions"))
-        self.assertIn("**Filters**: Narrow which events start a run.\n\n- `mailbox` (required): The mailbox to watch.", out)
+        self.assertIn(
+            "**Filters**: What the trigger watches, and which of its events start a run.\n\n"
+            "- Mailbox (`mailbox`, required): The mailbox to watch.\n"
+            "- From (`sender`)\n",
+            out,
+        )
         self.assertIn("- `email_id` (text)\n", out)
 
     def test_built_in_steps_link_to_their_guide(self):
@@ -937,8 +973,8 @@ class MarkdownCopyTests(unittest.TestCase):
         self.assertIn("## Steps", out)
 
     def test_the_directory_lists_every_page(self):
-        providers = [self._gmail(), _provider("skipflow_text", display_name="Text", description="")]
-        out = ren.generate_index_markdown(providers, {"apps": {"gmail": APP}})
+        providers = [_app(self._gmail()), _provider("skipflow_text", display_name="Text", description="")]
+        out = ren.generate_index_markdown(providers)
         self.assertTrue(out.startswith("# Integrations\n\n> The 1 apps"))
         self.assertIn(
             "- [Gmail](https://docs.lodol.com/docs/integrations/gmail.md): "
@@ -965,13 +1001,13 @@ class MarkdownCopyTests(unittest.TestCase):
 
 class ProviderPageWithAppDataTests(unittest.TestCase):
     def test_frontmatter_has_the_logo_main_category_and_trigger_count(self):
-        out = ren.generate_provider_mdx(_provider(n=3), APP)
+        out = ren.generate_provider_mdx(_app(_provider(n=3)))
         self.assertIn('logo: "https://www.lodol.com/app-icons/gmail-icon.png"\n', out)
         self.assertIn('category: "Email"\n', out)
         self.assertIn("triggers: 1\n", out)
 
     def test_triggers_come_before_the_actions(self):
-        out = ren.generate_provider_mdx(_provider(n=3), APP)
+        out = ren.generate_provider_mdx(_app(_provider(n=3)))
         self.assertLess(out.index("## Triggers"), out.index("### Gmail New Email"))
         self.assertLess(out.index("### Gmail New Email"), out.index("## Actions"))
         self.assertIn("See [how triggers work](/docs/concepts/triggers).", out)
@@ -979,14 +1015,23 @@ class ProviderPageWithAppDataTests(unittest.TestCase):
     def test_overview_anchors_count_the_trigger_headings(self):
         """A trigger and an action with the same name: the action, later on
         the page, gets the second anchor."""
-        app = {**APP, "triggers": [{**GMAIL_TRIGGER, "display_name": "Act A"}]}
-        out = ren.generate_provider_mdx(_provider(n=3), app)
+        trigger = {**GMAIL_TRIGGER, "display_name": "Act A"}
+        out = ren.generate_provider_mdx(_app(_provider(n=3), triggers={"t": trigger}))
         self.assertIn("| [Act A](#act-a-1) |", out)
         self.assertIn("| [Act B](#act-b) |", out)
 
     def test_actions_get_a_heading_after_triggers_even_without_an_overview(self):
-        out = ren.generate_provider_mdx(_provider(n=1), APP)
+        out = ren.generate_provider_mdx(_app(_provider(n=1)))
         self.assertIn("## Actions\n\n## Act A", out)
+
+    def test_triggers_are_listed_by_name_like_actions(self):
+        triggers = {
+            "slack_new_message_trigger": {"display_name": "New Slack message"},
+            "slack_channel_created_trigger": {"display_name": "Channel created"},
+        }
+        out = ren.generate_provider_mdx(_app(_provider(n=1), triggers=triggers))
+        self.assertLess(out.index("### Channel created"), out.index("### New Slack message"))
+        self.assertIn("triggers: 2\n", out)
 
     def test_an_app_without_data_has_no_triggers_or_logo(self):
         out = ren.generate_provider_mdx(_provider(n=3))
@@ -995,11 +1040,11 @@ class ProviderPageWithAppDataTests(unittest.TestCase):
         self.assertNotIn("category:", out)
 
     def test_only_a_web_address_counts_as_a_logo(self):
-        out = ren.generate_provider_mdx(_provider(), {"logo": "/app-icons/x.png"})
+        out = ren.generate_provider_mdx(_provider(logo="/app-icons/x.png"))
         self.assertNotIn("logo:", out)
 
     def test_built_in_steps_ignore_app_data(self):
-        out = ren.generate_provider_mdx(_provider("skipflow_text"), APP)
+        out = ren.generate_provider_mdx(_app(_provider("skipflow_text")))
         self.assertNotIn("## Triggers", out)
         self.assertNotIn("logo:", out)
 
@@ -1076,14 +1121,23 @@ class CatalogTests(unittest.TestCase):
 
 
 class CatalogWithAppDataTests(unittest.TestCase):
-    PROVIDERS = [_provider("gmail", n=2, display_name="Gmail"), _provider("slack", n=1), _provider("skipflow_text")]
+    PROVIDERS = [
+        _app(_provider("gmail", n=2, display_name="Gmail")),
+        _provider(
+            "slack",
+            n=1,
+            logo="https://www.lodol.com/app-icons/slack.webp",
+            categories=["Messaging"],
+            triggers={},
+        ),
+        _app(_provider("skipflow_text"), categories=["Lodol"]),
+    ]
     DATA = {
         "groups": [
             {"key": "communication", "label": "Communication", "categories": ["Email", "Messaging", "Video"]},
             {"key": "games", "label": "Games", "categories": ["Arcade"]},
         ],
         "popular": ["slack", "removed_app", "gmail"],
-        "apps": {"gmail": APP, "slack": {"logo": "https://www.lodol.com/app-icons/slack.webp", "categories": ["Messaging"]}},
     }
 
     def _entry(self, catalog, pid):
@@ -1119,19 +1173,19 @@ class CatalogWithAppDataTests(unittest.TestCase):
         )
 
 
-class LoadAppDataTests(unittest.TestCase):
+class LoadDirectoryTests(unittest.TestCase):
     def test_reads_the_file(self):
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "apps.json"
-            path.write_text(json.dumps({"apps": {"gmail": APP}}))
-            self.assertEqual(ren.load_app_data(path)["apps"]["gmail"], APP)
+            path = Path(tmp) / "directory.json"
+            path.write_text(json.dumps({"popular": ["gmail"]}))
+            self.assertEqual(ren.load_directory(path), {"popular": ["gmail"]})
 
     def test_a_missing_file_warns_and_gives_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:
             stderr = io.StringIO()
             with contextlib.redirect_stderr(stderr):
-                self.assertEqual(ren.load_app_data(Path(tmp) / "apps.json"), {})
-            self.assertIn("refresh-app-data.py", stderr.getvalue())
+                self.assertEqual(ren.load_directory(Path(tmp) / "directory.json"), {})
+            self.assertIn("refresh-directory.py", stderr.getvalue())
 
 
 class LoadSpecsTests(unittest.TestCase):
@@ -1241,14 +1295,31 @@ class PublishedSpecsTests(unittest.TestCase):
             self.assertIsInstance(provider, dict, path.name)
             self.assertEqual(provider.get("id"), path.stem, path.name)
 
-    def test_app_data_triggers_belong_to_their_app(self):
-        """data/apps.json is keyed by provider id; each trigger's id starts
-        with it, as the server names them."""
-        data = json.loads(ren.DEFAULT_APP_DATA.read_text(encoding="utf-8"))
-        for pid, app in data["apps"].items():
-            self.assertTrue(app["logo"].startswith("https://"), pid)
-            for trigger in app.get("triggers", []):
-                self.assertTrue(trigger.get("id", pid + "_").startswith(pid + "_"), trigger)
+    def test_every_app_has_a_logo_and_a_category(self):
+        """The directory's tiles and filters would otherwise have a gap."""
+        for path in sorted(ren.DEFAULT_INPUT.glob("*.json")):
+            provider = json.loads(path.read_text(encoding="utf-8"))
+            if ren.is_built_in(provider):
+                continue
+            self.assertTrue(ren.logo(provider), path.stem)
+            self.assertTrue(ren.categories(provider), path.stem)
+
+    def test_every_filter_has_a_label_and_says_what_to_enter(self):
+        for path in sorted(ren.DEFAULT_INPUT.glob("*.json")):
+            provider = json.loads(path.read_text(encoding="utf-8"))
+            for trigger in ren.triggers(provider):
+                for param in trigger.get("parameters", []):
+                    where = f"{trigger.get('id')}.{param.get('name')}"
+                    self.assertTrue(param.get("display_name"), where)
+                    self.assertTrue(param.get("description"), where)
+
+    def test_the_directory_groups_every_category_an_app_has(self):
+        """An app whose categories no group lists can't be found by filtering."""
+        directory = json.loads(ren.DEFAULT_DIRECTORY.read_text(encoding="utf-8"))
+        grouped = {c for g in directory["groups"] for c in g["categories"]}
+        for path in sorted(ren.DEFAULT_INPUT.glob("*.json")):
+            provider = json.loads(path.read_text(encoding="utf-8"))
+            self.assertLessEqual(set(ren.categories(provider)), grouped, path.stem)
 
     def test_each_built_in_group_has_its_own_icon(self):
         """A new group would otherwise show a generic box in the directory."""
@@ -1284,7 +1355,7 @@ class RenderIntegrationTests(unittest.TestCase):
     def test_app_data_reaches_the_pages_and_the_catalog(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp) / "out"
-            ren.render([_provider("slack", n=1)], output_dir, {"apps": {"slack": APP}})
+            ren.render([_app(_provider("slack", n=1))], output_dir)
             self.assertIn("## Triggers", (output_dir / "slack.mdx").read_text())
             catalog = json.loads((output_dir / "catalog.json").read_text())
             self.assertEqual(catalog["entries"][0]["triggers"], 1)
