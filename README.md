@@ -41,6 +41,8 @@ If you run into certificate issues:
 - `npm run lint` — Run ESLint
 - `npm run generate-actions` — Regenerate the Integrations tab from
   `data/actions/` and `data/apps.json`
+- `npm run generate-llms` — Write `/llms.txt`, `/llms-full.txt` and the
+  hand-written pages' Markdown copies into `public/`
 - `npm run refresh-app-data` — Refresh apps' logos, categories and
   triggers in `data/apps.json` from lodol.com (see below)
 - `npm test` — Run the Jest suite (TypeScript / React)
@@ -67,8 +69,9 @@ moved when the docs were reorganized redirect from their old addresses
 
 For AI tools, every page has a Markdown copy at its address plus `.md`,
 `/llms.txt` lists them all, and `/llms-full.txt` holds the Documentation
-and API pages in one file (see `lib/llms.ts`). The integration pages'
-copies are written with the pages, into `public/docs/`.
+and API pages in one file. They're static files in `public/`, written
+before each build: the integration pages' copies by
+`scripts/render-actions-docs.py`, the rest by `scripts/render-llms.py`.
 
 ## Project Structure
 

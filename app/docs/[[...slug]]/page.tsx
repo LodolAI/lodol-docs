@@ -84,7 +84,7 @@ export async function generateMetadata(props: {
   return {
     title: page.data.title,
     description: page.data.description,
-    // The page in Markdown, for AI tools (see lib/llms.ts).
+    // The page in Markdown, for AI tools (see scripts/render-llms.py).
     alternates: { types: { 'text/markdown': `${page.url}.md` } },
   };
 }

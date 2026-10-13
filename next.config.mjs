@@ -12,15 +12,6 @@ const config = {
     // aren't optimized, so they load from lodol.com as they are.
     remotePatterns: [{ protocol: 'https', hostname: 'www.lodol.com', pathname: '/app-icons/**' }],
   },
-  // Every page's Markdown copy, for AI tools, is at its address plus .md.
-  // The integration pages' copies are files in public/, which Next serves
-  // before these rewrites; the rest come from app/md.
-  async rewrites() {
-    return [
-      { source: '/docs.md', destination: '/md' },
-      { source: '/docs/:path*.md', destination: '/md/:path*' },
-    ];
-  },
   // Pages that moved when the docs were reorganized into Documentation,
   // Integrations and API. Links to the old addresses keep working.
   async redirects() {

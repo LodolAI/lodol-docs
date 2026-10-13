@@ -12,6 +12,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -23,6 +24,7 @@ SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "refresh-app-dat
 def _load_script():
     spec = importlib.util.spec_from_file_location("refresh_app_data", SCRIPT_PATH)
     module = importlib.util.module_from_spec(spec)
+    sys.modules["refresh_app_data"] = module
     spec.loader.exec_module(module)
     return module
 
