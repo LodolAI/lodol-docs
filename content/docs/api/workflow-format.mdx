@@ -1,0 +1,245 @@
+---
+title: Workflow format
+description: How a workflow's trigger and steps are written as JSON, for reading the program that Get a workflow returns.
+icon: Braces
+---
+
+[Get a workflow](/docs/api/workflows#get-a-workflow) returns a workflow's trigger and steps as `program`: a tree of JSON nodes, each naming what it is with a `kind`. You never need to write one: the editor and your [AI tool](/docs/build-with-ai) do that. This page explains how to read one.
+
+## A program
+
+```json
+{
+  "kind": "Program",
+  "version": 1,
+  "inputs": [],
+  "body": []
+}
+```
+
+`body` is the list of statements, run in order. When the workflow starts from a trigger or a schedule, that's the first statement. `inputs` holds the inputs it declares, and `version` is the version of this format, currently `1`.
+
+## An example
+
+The Stripe example from these docs, as a program: a trigger, then two app actions that read the payment.
+
+```json
+{
+  "kind": "Program",
+  "version": 1,
+  "body": [
+    {
+      "kind": "LetStmt",
+      "name": "payment",
+      "init": {
+        "kind": "NativeCallExpr",
+        "name": "stripe_new_payment_trigger",
+        "args": [{ "kind": "Literal", "value": "succeeded" }]
+      }
+    },
+    {
+      "kind": "LetStmt",
+      "name": "logged",
+      "init": {
+        "kind": "NativeCallExpr",
+        "name": "api.request",
+        "args": [
+          { "kind": "Literal", "value": "POST" },
+          { "kind": "Literal", "value": "/actions/library/google-sheets/append-row" },
+          {
+            "kind": "Literal",
+            "value": {
+              "spreadsheet_url": "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZ",
+              "sheet_name": "Revenue",
+              "row_values": [
+                { "kind": "NowBuiltIn" },
+                { "kind": "MemberExpr", "obj": { "kind": "VarRef", "name": "payment" }, "key": "description" },
+                { "kind": "MemberExpr", "obj": { "kind": "VarRef", "name": "payment" }, "key": "amount" }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "LetStmt",
+      "name": "posted",
+      "init": {
+        "kind": "NativeCallExpr",
+        "name": "api.request",
+        "args": [
+          { "kind": "Literal", "value": "POST" },
+          { "kind": "Literal", "value": "/actions/library/slack/send-message" },
+          {
+            "kind": "Literal",
+            "value": {
+              "text": {
+                "kind": "BinaryExpr",
+                "op": "+",
+                "left": { "kind": "Literal", "value": "New payment: " },
+                "right": { "kind": "MemberExpr", "obj": { "kind": "VarRef", "name": "payment" }, "key": "description" }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+Each step's result is bound to a name with a `LetStmt`: the trigger's event is `payment`, which later steps read with `MemberExpr` nodes. In the editor, those reads are the `@payment.description` references.
+
+## Statements
+
+There are 14 kinds of statement:
+
+| `kind` | Fields | In the editor |
+| --- | --- | --- |
+| `LetStmt` | `name`, `init?` | A step whose result has a name, such as an action or a calculation |
+| `AssignStmt` | `name`, `value` | Changing a value declared earlier |
+| `ExprStmt` | `expr` | A step whose result isn't kept |
+| `BlockStmt` | `body` | A group of statements |
+| `IfStmt` | `cond`, `thenBranch`, `elseBranch?` | **If**, with **Otherwise** as `elseBranch`. An `elseBranch` that is itself an `IfStmt` makes a chain of cases. |
+| `ForOfStmt` | `name`, `iterable`, `body` | **Repeat for each item**. `name` is the current item. |
+| `RepeatStmt` | `count`, `body` | **Repeat N times** |
+| `WhileStmt` | `cond`, `body` | **Repeat while** |
+| `BreakStmt`, `ContinueStmt` | | Leave a loop, or skip to its next pass |
+| `TryStmt` | `tryBranch`, `catchBranch`, `errorName?` | A try section; see [below](#try-sections) |
+| `StopStmt` | `status`, `message?` | End the run early, with `status` `success` or `failure` |
+| `WhenStmt` | `time`, `recurrence?`, `timezone?` | A schedule at a time of day; see [below](#schedules) |
+| `FrequencyStmt` | `value`, `unit` | A schedule every `value` `unit`s (`seconds`, `minutes`, `hours` or `days`) |
+
+### Try sections
+
+A `TryStmt` runs `tryBranch`. If a step inside it fails, the rest of `tryBranch` is skipped and `catchBranch` runs instead, with the failure bound under `errorName` (`error` unless set) as `{ "type": …, "message": … }`. The `type` is `action`, `http`, `timeout`, `variable` or `error`. An empty `catchBranch` lets the run carry on after the failure. A `StopStmt` inside a try still ends the run. See [Handle failures](/docs/guides/failures#let-steps-fail-without-stopping-the-run).
+
+### Schedules
+
+A `WhenStmt` runs the workflow at `time`:
+
+- With `recurrence`, `time` is a time of day (`"08:00"`) and `recurrence` is an iCalendar rule without the `RRULE:` prefix, such as `"FREQ=WEEKLY;BYDAY=MO,WE,FR"` or `"FREQ=MONTHLY;BYMONTHDAY=1"`.
+- Without it, `time` is the next occurrence of a time of day, or an ISO date and time for a single run.
+- `timezone` is an IANA name such as `"America/New_York"`. Without one, the schedule follows the workflow owner's time zone.
+
+## Expressions
+
+Expressions produce values:
+
+| `kind` | Fields | Produces |
+| --- | --- | --- |
+| `Literal` | `value` | A fixed value: text, number, boolean, `null`, list or object |
+| `VarRef` | `name` | A named value: a step's result, the current item of a loop, or an input |
+| `MemberExpr` | `obj`, `key` | A field of an object, such as `payment.amount` |
+| `IndexExpr` | `arr`, `idx` | An item of a list by position, from 0; `-1` is the last. A position past the end gives `null`. |
+| `UnaryExpr` | `op`, `right` | `-` (negate), `+`, or `!` (not) |
+| `BinaryExpr` | `op`, `left`, `right` | `+` `-` `*` `/` `%` `**`, comparisons `==` `!=` `<` `<=` `>` `>=`, and `&&` `\|\|`. `+` joins text when either side is text. |
+| `NativeCallExpr` | `name`, `args` | An app action or a trigger; see [Calls](#calls) |
+| Built-in function | its own fields | See [Built-in functions](#built-in-functions) |
+
+## Calls
+
+### App actions
+
+An app action is a `NativeCallExpr` named `api.request` with three arguments: the method, the action's path, and a payload of its inputs. The path names the app and the action: `/actions/library/google-sheets/append-row` is Google Sheets' **Append row**. The keys of the payload are the action's inputs, as listed on its [integration page](/docs/integrations).
+
+In the payload, a fixed value is written as plain JSON, and a value worked out at run time is an expression node in its place, like `row_values` and `text` above. Any object in the payload with a string `kind` is evaluated, at any depth.
+
+Lodol's own **Request approval** and stored-value steps are calls too, to `/actions/core/review/request-approval` and `/actions/core/variables/get`, `set`, `increment` and `delete`.
+
+### Triggers
+
+A trigger is a `NativeCallExpr` named with the trigger's ID, such as `stripe_new_payment_trigger`, in the first statement. Its `args` are its filters, in order. The `LetStmt` around it names the event.
+
+<Callout title="human.* and web.* calls don't run">
+  Workflows written against older versions of this page may contain `human.*` or `web.*` calls. They do nothing when a workflow runs. To wait for a person, use the [Request approval](/docs/guides/approvals) step.
+</Callout>
+
+## Built-in functions
+
+A built-in function is a node whose `kind` ends in `BuiltIn`, with named fields that are themselves expressions. Each one is a built-in step in the editor.
+
+<Accordions type="multiple">
+  <Accordion title="Text">
+    | `kind` | Fields | In the editor |
+    | --- | --- | --- |
+    | `FormatTextBuiltIn` | `value`, `case` | Format text |
+    | `LowerCaseBuiltIn`, `UpperCaseBuiltIn`, `CapitalizeBuiltIn`, `TitleCaseBuiltIn` | `value` | Format text |
+    | `TrimBuiltIn` | `value`, `mode?` | Trim whitespace |
+    | `TextLengthBuiltIn` | `value` | Count characters |
+    | `WordCountBuiltIn` | `value` | Count words |
+    | `StartsWithBuiltIn` | `string`, `prefix`, `case_sensitive?` | Check start of text |
+    | `EndsWithBuiltIn` | `string`, `suffix`, `case_sensitive?` | Check end of text |
+    | `TextContainsBuiltIn` | `string`, `substring`, `case_sensitive?` | Check if text includes |
+    | `ReplaceBuiltIn` | `string`, `search`, `replace`, `case_sensitive?` | Replace text |
+    | `SplitBuiltIn` | `string`, `delimiter` | Split text |
+    | `JoinBuiltIn` | `list`, `separator` | Join list into text |
+    | `TruncateBuiltIn` | `string`, `length`, `ellipsis?`, `dont_split_words?` | Shorten text |
+    | `ExtractBuiltIn` | `value`, `type`, `pattern?`, `all_matches?` | Extract from text |
+    | `ValidateTextBuiltIn` | `value`, `type`, `region?` | Validate text |
+    | `MatchKeywordsBuiltIn` | `text`, `strong_terms`, `medium_terms?`, `weak_terms?`, `threshold?` | Match keywords |
+    | `StringifyBuiltIn` | `value`, `mode?` | Turns any value into text |
+  </Accordion>
+  <Accordion title="Lists">
+    | `kind` | Fields | In the editor |
+    | --- | --- | --- |
+    | `CreateListBuiltIn` | `items` | Create a list |
+    | `LengthBuiltIn` | `value` | Count items |
+    | `FirstBuiltIn`, `LastBuiltIn` | `value` | Get first item, Get last item |
+    | `SliceBuiltIn` | `list`, `start`, `end?` | Take part of list |
+    | `SortBuiltIn` | `value`, `direction?` | Sort list |
+    | `ReverseBuiltIn` | `value` | Reverse list |
+    | `ShuffleBuiltIn` | `value` | Shuffle list |
+    | `AppendBuiltIn` | `list`, `value` | Add item to end |
+    | `InsertBuiltIn` | `list`, `index`, `value` | Insert item |
+    | `RemoveAtBuiltIn` | `list`, `index` | Remove item by position |
+    | `MergeBuiltIn` | `first`, `second` | Combine two lists |
+    | `RemoveDuplicatesBuiltIn` | `value` | Remove duplicates |
+    | `ListContainsBuiltIn` | `list`, `value` | Check if list includes item |
+    | `IndexOfBuiltIn` | `list`, `value` | Find item position |
+    | `FilterBuiltIn` | `list`, `condition` | Filter list. In `condition`, the current item is `VarRef` `item`. |
+    | `PluckBuiltIn` | `list`, `field` | Get one field from every item |
+    | `GroupByBuiltIn` | `list`, `field` | Group items by a field |
+    | `RandomSampleBuiltIn` | `list`, `count` | Pick random items |
+  </Accordion>
+  <Accordion title="Numbers">
+    | `kind` | Fields | In the editor |
+    | --- | --- | --- |
+    | `RoundBuiltIn` | `value`, `mode`, `decimals?` | Round number. `mode` is `nearest`, `up` or `down`. |
+    | `FormatNumberBuiltIn` | `value`, `style`, `decimals?` | Format number. `style` is `plain`, `thousands`, `usd`, `eur`, `gbp` or `jpy`. |
+    | `TotalBuiltIn` | `value` | Calculate total |
+    | `MeanBuiltIn` | `value` | Calculate average |
+    | `MedianBuiltIn` | `value` | Find middle value |
+    | `ModeBuiltIn` | `value` | Find most common number |
+    | `MinBuiltIn`, `MaxBuiltIn` | `value` | Find minimum value, Find maximum value |
+    | `AbsoluteValueBuiltIn` | `value` | Calculate absolute value |
+    | `RandomIntegerBuiltIn` | `min`, `max` | Pick a random number |
+    | `RandomRealBuiltIn` | `min`, `max` | Pick a random decimal number |
+    | `RandomIdBuiltIn` | `format?` | Generate a unique ID |
+  </Accordion>
+  <Accordion title="Dates and times">
+    | `kind` | Fields | In the editor |
+    | --- | --- | --- |
+    | `NowBuiltIn` | | Current date and time |
+    | `UnixTimestampBuiltIn` | | Current Unix timestamp |
+    | `TodayBuiltIn`, `TomorrowBuiltIn`, `YesterdayBuiltIn` | `timezone?` | Today's, Tomorrow's and Yesterday's date |
+    | `WeekdayNameBuiltIn` | `date` | Day of week |
+    | `DatePartBuiltIn` | `date`, `part` | Get date part |
+    | `FormatDateBuiltIn` | `date`, `format?`, `timezone?` | Make date readable. `format` is `long` (the default), `short`, `date`, `time` or `iso`. |
+    | `AddTimeBuiltIn` | `date`, `amount`, `unit` | Add or subtract time. `unit` includes `weekdays`, which skips weekends. |
+    | `DateDifferenceBuiltIn` | `start`, `end`, `unit` | Difference between dates |
+    | `TimeUntilBuiltIn` | `date` | Time until date |
+    | `IsHolidayBuiltIn`, `IsBusinessDayBuiltIn` | `date`, `region?` | Check holiday, Check business day |
+    | `IsWeekendBuiltIn` | `date` | Check weekend |
+  </Accordion>
+  <Accordion title="Steps that do more">
+    | `kind` | Fields | In the editor |
+    | --- | --- | --- |
+    | `AgentBuiltIn` | `task`, `model`, `instructions?`, `tools?`, `output_schema?`, `files?`, `max_steps?`, `fallback_model?`, `memory_key?`, `memory_window?` | [Run an AI agent](/docs/guides/ai-agents) |
+    | `CallWorkflowBuiltIn` | `workflow_id`, `workflow_name?`, `inputs?` | [Run a workflow](/docs/guides/sub-workflows) |
+    | `HttpRequestBuiltIn` | `url`, `method?`, `headers?`, `query?`, `body?`, `body_format?`, `response_format?`, `on_error?` | [Call an API](/docs/guides/http-and-code#call-an-api) |
+    | `RunPythonBuiltIn` | `code`, `inputs?`, `output_type?` | [Run Python code](/docs/guides/http-and-code#run-python-code) |
+    | `WaitBuiltIn` | `seconds`, `unit?` | Wait. `seconds` is the amount, in `unit`. |
+    | `DisplayBuiltIn` | `value` | Output value |
+  </Accordion>
+</Accordions>

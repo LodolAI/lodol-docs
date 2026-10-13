@@ -1,0 +1,68 @@
+---
+title: Make decisions
+description: Use If to run steps only when something is true, Otherwise for when it isn't, and a chain of Ifs for three or more cases.
+icon: Split
+---
+
+An **If** step runs the steps inside it only when its condition is true. An **Otherwise** step after them holds the steps to run when it isn't. An **End if** step closes the section, and the workflow carries on with whatever comes after it either way.
+
+<WorkflowPreview
+  title="Post only large payments"
+  steps={[
+    { step: 'New Stripe payment', app: 'Stripe', trigger: true },
+    { step: 'Append row', app: 'Google Sheets' },
+    { step: 'If', icon: 'Split', note: '@payment.amount is at least 100000' },
+    { step: 'Send a message to a channel', app: 'Slack', depth: 1, note: '#sales' },
+    { step: 'End if', icon: 'Split' },
+  ]}
+  caption="Every payment is logged; only payments of $1,000 or more are posted. Stripe amounts are in cents."
+/>
+
+## Write the condition
+
+The If step's **Only continue if** field takes the condition. Write it the way you'd say it, as a test of values from earlier steps:
+
+- `@payment.amount` is at least `100000`
+- `@email.subject` contains `invoice`
+- `@row.Status` is `""` (the cell is empty)
+- `@today` is a public holiday
+
+Combine tests with **and** and **or**. A range needs both ends: "days left is at least 0 **and** at most 30", or past dates slip in.
+
+### Or describe it in plain words
+
+When a decision doesn't fit a rule, such as "this email is a sales lead", describe the condition in your own words and let the workflow judge it. Only that condition uses AI; every other step still runs the same way each time.
+
+If later steps need more than a yes or no, such as a category and a reason, use an [AI agent](/docs/guides/ai-agents#get-fields-back) that returns those fields, and test them with ordinary conditions.
+
+## Three or more cases
+
+To choose between several cases, put the next **If** directly inside the **Otherwise**. Lodol treats the chain as one decision with a path for each case, and the last **Otherwise** catches anything left over:
+
+<WorkflowPreview
+  title="Route a support email"
+  steps={[
+    { step: 'Gmail New Email', app: 'Gmail', trigger: true },
+    { step: 'Run an AI agent', icon: 'Sparkles', note: 'returns category' },
+    { step: 'If', icon: 'Split', note: '@triage.output.category is urgent' },
+    { step: 'Send a direct message', app: 'Slack', depth: 1 },
+    { step: 'Otherwise', icon: 'Split' },
+    { step: 'If', icon: 'Split', depth: 1, note: '@triage.output.category is question' },
+    { step: 'Create draft', app: 'Gmail', depth: 2 },
+    { step: 'Otherwise', icon: 'Split', depth: 1 },
+    { step: 'Add label to message', app: 'Gmail', depth: 2 },
+  ]}
+/>
+
+Keep the Otherwise holding nothing but the next If. Steps that every case shares go after the whole chain.
+
+## Avoid the usual surprises
+
+- **Text is compared exactly.** "Paid" is not "paid". Compare text that people type through **Format text** set to lowercase.
+- **Compare money in the unit you mean.** Stripe amounts are in cents. Divide by 100 in a step before the If, and the condition reads "at least 1000".
+- **Compare dates as days.** To check "within 30 days", use **Difference between dates** and compare the number, not the dates themselves.
+- **Approvals give you a yes or no.** After a [Request approval](/docs/guides/approvals) step, test `@approval.approved` rather than matching words someone typed.
+
+## Reference
+
+Every field of the If and Otherwise steps is on the [Decisions](/docs/integrations/built-in/conditions) reference page.

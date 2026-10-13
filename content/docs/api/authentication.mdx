@@ -1,0 +1,61 @@
+---
+title: Authentication
+description: Every request carries an API key. A key belongs to one workspace, its scopes say what it may do, and it can never do more than the member who created it.
+icon: KeyRound
+---
+
+Send your API key as a bearer token in the `Authorization` header of every request:
+
+```bash
+curl https://api-prod.lodol.com/api/v1/workflows \
+  -H "Authorization: Bearer $LODOL_API_KEY"
+```
+
+A request without a valid key gets `401 Unauthorized`.
+
+## Create a key
+
+Create and revoke keys in Lodol under **Settings › API Keys**. Only the workspace's owners and admins can.
+
+- **A key belongs to one workspace.** Every request it makes works with that workspace's workflows and runs, and its runs count toward that workspace's plan.
+- **You see the full key once,** when you create it. Lodol keeps only its first characters and a hash, so a lost key can't be recovered: revoke it and create another.
+- **Keys look like** `sk_live_` followed by a random string with 256 bits of entropy.
+- **Keys can expire.** Set an expiry when you create a key, and create a new one before it lapses.
+
+The number of keys a workspace can have depends on its plan:
+
+| Plan | API keys |
+| --- | --- |
+| Free | 1 |
+| Builder | 10 |
+| Pro | 40 |
+| Enterprise | Custom |
+
+## Scopes
+
+Each key has one or more scopes, which decide the endpoints it can call:
+
+| Scope | Allows |
+| --- | --- |
+| `workflows:read` | Listing workflows and reading a workflow |
+| `workflows:execute` | Starting runs and stopping them |
+| `executions:read` | Listing runs and reading a run |
+| `workflows:delete` | Deleting workflows. Not included unless you tick **Delete workflows** when you create the key. |
+
+Scopes add up: a key with `workflows:read` and `workflows:execute` can list and run workflows, but can't read runs without `executions:read`. Give each key only the scopes its job needs.
+
+## A key acts for the member who created it
+
+A request has to be allowed by both the key's scopes and the [role](/docs/concepts/workflows#who-can-do-what) of the member who created the key:
+
+- Running or stopping a workflow also needs the creator's role to include **Run workflows**.
+- Deleting a workflow also needs the creator's role to include **Delete workflows**.
+
+If the creator's role loses a permission, their keys lose it too. If the creator leaves the workspace, their keys stop working on every endpoint, so create replacement keys before someone leaves.
+
+## Keep keys safe
+
+- Never put a key in code that runs in a browser or a mobile app, or commit it to a repository.
+- Keep keys in environment variables or a secrets manager.
+- Use one key per integration, with the fewest scopes it needs, so you can revoke one without breaking the others.
+- Revoke keys you no longer use.

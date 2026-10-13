@@ -1,0 +1,104 @@
+---
+title: Ask for approval
+description: Pause a run until someone approves or rejects it, or answers a question in writing, then carry on with their answer. People outside your workspace can answer too.
+icon: UserCheck
+---
+
+A **Request approval** step pauses the run and asks people to decide. They get an email and a notice in Lodol, each with a link, and anyone outside your workspace can answer from the link without an account. The run waits without using any resources, then carries on with the answer.
+
+It asks for one of two things, set in **What you need back**:
+
+- **An approval** (the default): people approve or reject. Use it for a sign-off or a control, such as before paying a bill or posting in public.
+- **A written reply**: people answer a question only a person can, such as which PO number an invoice goes against.
+
+## Ask for an approval
+
+<WorkflowPreview
+  title="Approve bills before they're paid"
+  steps={[
+    { step: 'New QuickBooks bill', app: 'QuickBooks', trigger: true },
+    { step: 'Request approval', icon: 'UserCheck', note: 'Pay @bill.vendor_name $@bill.total?' },
+    { step: 'If', icon: 'Split', note: '@approval.approved is true' },
+    { step: 'Pay a QuickBooks bill', app: 'QuickBooks', depth: 1 },
+    { step: 'Otherwise', icon: 'Split' },
+    { step: 'Send message', app: 'Gmail', depth: 1, note: 'to the person who entered it' },
+    { step: 'End if', icon: 'Split' },
+  ]}
+/>
+
+<Steps>
+<Step>
+
+### Say what needs deciding
+
+**What to ask** is the one line people see first, such as `Pay @bill.vendor_name $@bill.total for bill @bill.doc_number`. Put everything else they need in **Details**: amounts, line items and links to the documents. Links are clickable in the email and in Lodol.
+
+</Step>
+<Step>
+
+### Choose who decides
+
+Put their email addresses in **Who to ask**, separated by commas. People in your workspace answer in Lodol; anyone else gets a secure link by email. **Who can answer** sets whether only those people can decide, those people plus the workspace's owner and admins, or anyone in the workspace who can run workflows.
+
+</Step>
+<Step>
+
+### Act on the decision
+
+Add an **If** step after it that tests `@approval.approved`, with the approved steps inside and the rejected steps under **Otherwise**.
+
+</Step>
+</Steps>
+
+<Callout type="warn" title="Leave Who to ask empty, and anyone can decide">
+  With no one listed, anyone in the workspace who can run workflows can approve. That's fine for a quick check, but not for a control. For tiered approvals especially, name the people at each level.
+</Callout>
+
+## Ask for a written reply
+
+Set **What you need back** to a written reply and write the question as **What to ask**: `Which PO number should the @bill.vendor_name bill go against?`. Later steps read the answer as `@answer.reply`.
+
+Use a reply only when a person really has to supply information. For a yes or no, use an approval: it gives you `approved` as true or false, not words to match.
+
+## When nobody answers
+
+| Setting | What it does |
+| --- | --- |
+| **Time limit (hours)** | How long to wait. 72 hours if left empty, at most 720 (30 days). Fractions work: `0.5` is half an hour. |
+| **If nobody answers in time** | For an approval, the request is rejected unless you choose to approve, fail the run, or continue. A reply stops the run with an error unless you choose to continue, which gives the next steps an empty reply with `timed_out` set. |
+| **Remind every (hours)** | Reminds the people asked this often while the request waits, up to 10 reminders. |
+| **Escalate after (hours)** | If nobody has answered after this long, also asks the people in **Escalate to**, or the workspace's owner and admins if that's empty. It must be shorter than the time limit. |
+
+## Keep approvals honest
+
+Two settings keep the person who asked from approving their own request:
+
+- **Require a different approver** stops the person the run runs as from approving it: whoever started the run, or the workflow's owner for a scheduled or triggered run.
+- **Prepared by** names whoever prepared the item, such as the person who entered the bill. They can't approve it.
+
+These apply to approvals, not to written replies.
+
+## Approve in steps
+
+- **Several levels:** chain Request approval steps, each followed by its If, so a second person only sees what the first approved. Use different people at each level, or the second level controls nothing.
+- **Route by amount:** put Request approval steps inside If branches, such as a manager for bills under $5,000 and the finance lead above.
+- **Approve small amounts automatically:** start with an `approved` value set to true, ask for approval only inside an If for large amounts, and act on the result once after the If, so both paths share the same steps.
+
+## Post the request in Slack
+
+**Also post to Slack channel** posts the request to a channel, with a link to answer, using your workspace's Slack connection. The Lodol app must be a member of the channel.
+
+## What the step returns
+
+| Output | What it holds |
+| --- | --- |
+| `approved` | `true` or `false` for an approval |
+| `decision` | The decision, in words |
+| `reply` | The written answer, for a reply |
+| `comment` | Any comment left with a decision |
+| `decided_by` | Who answered |
+| `decided_at` | When they answered |
+| `timed_out` | Whether the time limit ran out |
+| `approval_id` | The request's ID |
+
+Every field of the step is on the [Approvals](/docs/integrations/built-in/review) reference page.

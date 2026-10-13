@@ -1,0 +1,46 @@
+---
+title: Handle failures
+description: When a step fails, the run stops and Lodol tells you. Here's how to find out why, fix it, and keep a run going when a failure shouldn't end it.
+icon: LifeBuoy
+---
+
+Steps that reach outside Lodol can fail for reasons outside your control: an app is down, a record doesn't exist, a key has expired. By default a failed step stops the run, so nothing after it runs on bad data.
+
+## When a run fails
+
+- The run stops at the failed step, with the status `failed`.
+- You get an email as soon as it happens, and a notice in Lodol.
+- The run's history shows every step it took, with timings, and the step that stopped it.
+
+To fix it, open the run, see which step failed and why, and change the workflow. Your [AI tool](/docs/build-with-ai) can do the same: ask it to look at the failed run and fix the workflow. Every change is a new [version](/docs/concepts/workflows#every-change-is-a-version), so you can roll back if a fix makes things worse.
+
+Stopping a run, or a run failing, doesn't undo the steps that already finished.
+
+## Let steps fail without stopping the run
+
+Some failures shouldn't end the run. In a loop over a hundred records, one bad record shouldn't stop the other ninety-nine. Put the steps that can fail in a **try section**:
+
+- If every step in it succeeds, the run carries on as normal.
+- If one fails, the rest of the section is skipped and the steps you set for that case run instead. They can read the failure's `message`, and its `type`: `action`, `http`, `timeout`, `variable` or `error`.
+- With no steps for that case, the failure is skipped and the run carries on with whatever comes after the section.
+
+Use it around a step whose failure you can handle: notify someone, fall back to another source, or record the problem and move on. If nothing in a section can fail, it doesn't need one.
+
+### Find or create
+
+A try section is also the clean way to "find a record, or create it if it doesn't exist": try the lookup, and create the record in the steps that run when the lookup fails. Here, a failed lookup simply means "not found".
+
+## Choose what a step does when it fails
+
+Some steps let you decide how a failure is handled without a try section:
+
+| Step | Setting | Options |
+| --- | --- | --- |
+| [Call an API](/docs/guides/http-and-code#call-an-api) | **If the call fails** | Fail the run (the default), or continue so later steps can check the status, which suits a 404 that just means "not found" |
+| [Request approval](/docs/guides/approvals#when-nobody-answers) | **If nobody answers in time** | Reject, approve, fail the run, or continue |
+
+## Avoid failures before they happen
+
+- **Check lookups that match by name.** Matching an issue's assignee to a Slack user by name is a guess. Test whether the lookup found someone before messaging them.
+- **Fill in every place the workflow points at.** A step whose sheet, channel or record hasn't been chosen yet fails on the first run. Set them all before you turn the workflow on.
+- **Skip empty lists.** A step that summarizes a week of tickets should only run when there are tickets: put it inside an If that checks the count.

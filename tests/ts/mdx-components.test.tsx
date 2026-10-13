@@ -16,24 +16,56 @@ jest.mock('fumadocs-core/highlight', () => ({
   highlight: jest.fn(async () => 'highlighted code'),
 }));
 
+jest.mock('fumadocs-ui/components/steps', () => ({ Steps: 'steps', Step: 'step' }));
+jest.mock('fumadocs-ui/components/tabs', () => ({ Tabs: 'tabs', Tab: 'tab' }));
+jest.mock('fumadocs-ui/components/accordion', () => ({
+  Accordions: 'accordions',
+  Accordion: 'accordion',
+}));
+jest.mock('@/components/reference', () => ({
+  Fields: 'fields',
+  Field: 'field',
+  Example: 'example',
+  Endpoint: 'endpoint',
+}));
+jest.mock('@/components/integration-directory', () => ({
+  IntegrationDirectory: 'integration-directory',
+}));
+jest.mock('@/components/workflow-preview', () => ({
+  WorkflowPreview: 'workflow-preview',
+}));
+
 describe('getMDXComponents', () => {
-  it('returns the fumadocs default components, with its own pre, when no overrides are passed', () => {
+  it('returns the fumadocs defaults, its own pre, and the docs components', () => {
     const components = getMDXComponents();
     expect(components).toEqual({
       h1: 'fumadocs-h1',
       p: 'fumadocs-p',
       code: 'fumadocs-code',
       pre: expect.any(Function),
+      Steps: 'steps',
+      Step: 'step',
+      Tabs: 'tabs',
+      Tab: 'tab',
+      Accordions: 'accordions',
+      Accordion: 'accordion',
+      Fields: 'fields',
+      Field: 'field',
+      Example: 'example',
+      Endpoint: 'endpoint',
+      IntegrationDirectory: 'integration-directory',
+      WorkflowPreview: 'workflow-preview',
     });
   });
 
   it('merges user-provided overrides on top of defaults', () => {
     const Custom = () => null;
-    const components = getMDXComponents({ p: Custom, pre: Custom });
+    const components = getMDXComponents({ p: Custom, pre: Custom, Field: Custom });
     expect(components.p).toBe(Custom);
     expect(components.pre).toBe(Custom);
+    expect(components.Field).toBe(Custom);
     expect(components.h1).toBe('fumadocs-h1');
-    expect(components.code).toBe('fumadocs-code');
+    expect(components.Fields).toBe('fields');
   });
 
   it('allows extending the component map with new entries', () => {

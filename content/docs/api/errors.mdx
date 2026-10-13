@@ -1,0 +1,134 @@
+---
+title: Errors and retries
+description: What each error status means and what to do about it, which requests are safe to retry, and how idempotency keys stop a retry from starting a run twice.
+icon: TriangleAlert
+---
+
+The API uses standard HTTP status codes. Every error has a JSON body with a message saying what went wrong:
+
+```json
+{
+  "error": "The error message describing what went wrong."
+}
+```
+
+## Status codes
+
+| Status | Meaning | What to do |
+| --- | --- | --- |
+| `200` | Success | |
+| `202` | Accepted: the run has started | Follow it with [Get a run](/docs/api/runs#get-a-run) |
+| `400` | The request isn't valid, such as an input that doesn't match the workflow | Fix the request; the message names the problem. Don't retry as is. |
+| `401` | The API key is missing or invalid | Check the `Authorization` header and the key |
+| `402` | The workspace has used its runs for the month | Add runs or turn on extra runs in **Billing**, or wait until the 1st |
+| `403` | The key lacks a scope, its creator's role doesn't allow the action, or the plan doesn't include it | Use a key with the right scope, or change the creator's role |
+| `404` | The workflow or run doesn't exist, or was deleted | Check the ID |
+| `409` | A request with the same `Idempotency-Key` is still being processed | Retry after the `Retry-After` header's seconds |
+| `422` | The `Idempotency-Key` was already used for a different request | Use a new key for a new request |
+| `429` | Too many requests, or too many runs in progress at once | Retry after the `Retry-After` header's seconds |
+| `500` | Something went wrong on Lodol's side | Retry with backoff |
+
+## Common errors
+
+<Accordions type="multiple">
+  <Accordion title="401: Missing or malformed Authorization header">
+    ```json
+    { "error": "Missing or malformed Authorization header" }
+    ```
+
+    The request has no `Authorization: Bearer …` header, or it isn't in that form.
+  </Accordion>
+  <Accordion title="400: An input doesn't match the workflow">
+    Returned by [Run a workflow](/docs/api/runs#run-a-workflow) when its `inputs` don't match the ones the workflow declares. The message names the input, and nothing has started:
+
+    ```json
+    { "error": "'Monthly Client Report' has no input named 'clinet'. Its inputs are: client, month." }
+    ```
+  </Accordion>
+  <Accordion title="402: The month's runs are used up">
+    ```json
+    { "error": "Insufficient credits. Please upgrade your plan or purchase more credits." }
+    ```
+
+    New runs pause until the 1st of the month (UTC), unless you add runs or turn on extra runs in **Billing**.
+  </Accordion>
+  <Accordion title="403: The key isn't allowed to do this">
+    The key lacks the scope the endpoint needs:
+
+    ```json
+    { "error": "API key lacks required scope(s)" }
+    ```
+
+    Or the member who created the key isn't allowed to do it, or has left the workspace:
+
+    ```json
+    { "error": "The member this API key acts for is not allowed to delete workflows in this workspace" }
+    ```
+  </Accordion>
+  <Accordion title="429: Too many requests, or too many runs at once">
+    Over the rate limit:
+
+    ```json
+    { "error": "Rate limit exceeded. Please wait before trying again." }
+    ```
+
+    Or too many runs already in progress:
+
+    ```json
+    { "error": "Concurrent execution limit reached. Your plan allows 5 concurrent executions via the API." }
+    ```
+
+    Both come with a `Retry-After` header saying how many seconds to wait.
+  </Accordion>
+</Accordions>
+
+## Retry safely
+
+Retry `429`, `409` and `5xx` responses, waiting longer each time. When the response has a `Retry-After` header, wait that many seconds; otherwise back off exponentially. Don't retry other `4xx` responses: the request itself needs fixing.
+
+```js tab="JavaScript" tab-group="lang"
+async function lodolRequest(url, options = {}, maxRetries = 3) {
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetch(url, options);
+    const retryable = [409, 429].includes(response.status) || response.status >= 500;
+    if (!retryable || attempt === maxRetries) return response;
+
+    const retryAfter = Number(response.headers.get('Retry-After'));
+    const seconds = retryAfter > 0 ? retryAfter : 2 ** attempt;
+    await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+  }
+}
+```
+
+```python tab="Python"
+import time
+import requests
+
+def lodol_request(method, url, max_retries=3, **kwargs):
+    for attempt in range(max_retries + 1):
+        response = requests.request(method, url, **kwargs)
+        retryable = response.status_code in (409, 429) or response.status_code >= 500
+        if not retryable or attempt == max_retries:
+            return response
+        retry_after = response.headers.get("Retry-After")
+        time.sleep(int(retry_after) if retry_after else 2 ** attempt)
+```
+
+Retry a request that starts a run only with an idempotency key, or a timeout could start the same run twice.
+
+## Idempotency
+
+`POST` requests, [Run a workflow](/docs/api/runs#run-a-workflow) and [Stop a run](/docs/api/runs#stop-a-run), accept an `Idempotency-Key` header. Lodol remembers the response to the first request with each key, and returns that same response to any later request with the same key, instead of doing the work again.
+
+```bash
+curl -X POST https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async \
+  -H "Authorization: Bearer $LODOL_API_KEY" \
+  -H "Idempotency-Key: order-1042-confirmation"
+```
+
+- **Make the key from what the run is for,** such as your own order or event ID, so a retry of the same work always sends the same key. Keys can be up to 256 characters.
+- **Responses are kept for 24 hours.** A repeated request in that time gets the first response back, with an `X-Idempotent-Replayed: true` header.
+- **Requests in flight return `409`.** If the first request with a key is still being processed, a second one gets `409 Conflict` with `Retry-After: 5`.
+- **A key belongs to one request.** Reusing a key for a different request, such as the same workflow with different inputs, returns `422`.
+
+`DELETE` requests take no idempotency key. Deleting a workflow that's already gone returns `404`, so check with [Get a workflow](/docs/api/workflows#get-a-workflow) before retrying a delete that timed out.

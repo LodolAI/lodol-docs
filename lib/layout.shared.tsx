@@ -1,14 +1,8 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
+import { LodolLogo } from '@/components/logo';
 
-function GlobeIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="10"/>
-      <path d="M2 12h20"/>
-      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-    </svg>
-  );
-}
+export const APP_URL = 'https://app.lodol.com';
+export const GITHUB_URL = 'https://github.com/LodolAI/lodol-docs';
 
 function GitHubIcon() {
   return (
@@ -18,36 +12,37 @@ function GitHubIcon() {
   );
 }
 
+/** "Lodol Docs": the brand lockup with a quiet "Docs" beside it. */
+export function NavTitle() {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <LodolLogo className="h-[22px] w-auto text-fd-foreground" />
+      <span className="text-[15px] font-medium text-fd-muted-foreground">Docs</span>
+    </span>
+  );
+}
+
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
-      title: 'Lodol Docs',
+      title: <NavTitle />,
+      url: '/',
     },
     links: [
       {
-        type: 'icon',
-        icon: <GitHubIcon />,
-        text: 'GitHub',
-        label: 'GitHub',
-        url: 'https://github.com/LodolAI/lodol-docs',
+        text: 'Open Lodol',
+        url: APP_URL,
         external: true,
         on: 'nav',
       },
       {
-        type: 'custom',
-        secondary: true,
+        type: 'icon',
+        icon: <GitHubIcon />,
+        text: 'GitHub',
+        label: 'Lodol Docs on GitHub',
+        url: GITHUB_URL,
+        external: true,
         on: 'nav',
-        children: (
-          <a
-            href="https://www.skipflow.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-fd-muted-foreground hover:bg-fd-accent hover:text-fd-accent-foreground transition-colors"
-          >
-            <GlobeIcon />
-            Go to website
-          </a>
-        ),
       },
     ],
   };

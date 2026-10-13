@@ -1,0 +1,199 @@
+---
+title: Quickstart
+description: Create an API key, start a workflow run from your code, and read its result. About five minutes.
+icon: Rocket
+---
+
+You need a Lodol workspace with at least one workflow, and permission to create API keys there: workspace owners and admins can.
+
+<Steps>
+<Step>
+
+### Create an API key
+
+In Lodol, go to **Settings › API Keys** and create a key with the `workflows:read`, `workflows:execute` and `executions:read` scopes. Copy it: the full key is shown only once.
+
+Keep it in an environment variable rather than in your code:
+
+```bash
+export LODOL_API_KEY="sk_live_..."
+```
+
+</Step>
+<Step>
+
+### Find your workflow
+
+List your workflows to get the `id` of the one to run.
+
+```bash tab="cURL" tab-group="lang"
+curl https://api-prod.lodol.com/api/v1/workflows \
+  -H "Authorization: Bearer $LODOL_API_KEY"
+```
+
+```js tab="JavaScript"
+const response = await fetch('https://api-prod.lodol.com/api/v1/workflows', {
+  headers: { Authorization: `Bearer ${process.env.LODOL_API_KEY}` },
+});
+const { workflows } = await response.json();
+console.log(workflows.map((w) => `${w.id}  ${w.name}`).join('\n'));
+```
+
+```python tab="Python"
+import os
+import requests
+
+response = requests.get(
+    "https://api-prod.lodol.com/api/v1/workflows",
+    headers={"Authorization": f"Bearer {os.environ['LODOL_API_KEY']}"},
+)
+for workflow in response.json()["workflows"]:
+    print(workflow["id"], workflow["name"])
+```
+
+Each workflow lists the `inputs` it declares, if any:
+
+```json
+{
+  "workflows": [
+    {
+      "id": "665f1a2b3c4d5e6f7a8b9c0d",
+      "name": "Monthly Client Report",
+      "description": "Builds a client's monthly report and emails it to them",
+      "inputs": [
+        { "name": "client", "type": "text", "required": true, "default": null, "description": "The client to report on" }
+      ]
+    }
+  ]
+}
+```
+
+</Step>
+<Step>
+
+### Start a run
+
+Start the workflow with its inputs. The `Idempotency-Key` makes the request safe to retry: sending it again returns the same run instead of starting another.
+
+```bash tab="cURL" tab-group="lang"
+curl -X POST https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async \
+  -H "Authorization: Bearer $LODOL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: acme-report-2026-05" \
+  -d '{"inputs": {"client": "Acme"}}'
+```
+
+```js tab="JavaScript"
+const response = await fetch(
+  'https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async',
+  {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.LODOL_API_KEY}`,
+      'Content-Type': 'application/json',
+      'Idempotency-Key': 'acme-report-2026-05',
+    },
+    body: JSON.stringify({ inputs: { client: 'Acme' } }),
+  },
+);
+const run = await response.json();
+console.log(run.execution_id, run.status);
+```
+
+```python tab="Python"
+response = requests.post(
+    "https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async",
+    headers={
+        "Authorization": f"Bearer {os.environ['LODOL_API_KEY']}",
+        "Idempotency-Key": "acme-report-2026-05",
+    },
+    json={"inputs": {"client": "Acme"}},
+)
+run = response.json()
+print(run["execution_id"], run["status"])
+```
+
+The API answers straight away with `202 Accepted` and the run's ID, while the run carries on in the background:
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "status": "queued",
+  "created_at": "2026-04-14T10:30:00+00:00"
+}
+```
+
+A workflow with no required inputs can be started without a body.
+
+</Step>
+<Step>
+
+### Wait for the result
+
+Check the run until its status is no longer `queued` or `running`, then fetch it with `include_step_results=true` to get what each step produced.
+
+```bash tab="cURL" tab-group="lang"
+curl "https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?include_step_results=true" \
+  -H "Authorization: Bearer $LODOL_API_KEY"
+```
+
+```js tab="JavaScript"
+const headers = { Authorization: `Bearer ${process.env.LODOL_API_KEY}` };
+const url = `https://api-prod.lodol.com/api/v1/executions/${run.execution_id}`;
+
+let current;
+do {
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+  current = await (await fetch(url, { headers })).json();
+} while (current.status === 'queued' || current.status === 'running');
+
+const result = await (await fetch(`${url}?include_step_results=true`, { headers })).json();
+console.log(result.status, result.steps);
+```
+
+```python tab="Python"
+import time
+
+headers = {"Authorization": f"Bearer {os.environ['LODOL_API_KEY']}"}
+url = f"https://api-prod.lodol.com/api/v1/executions/{run['execution_id']}"
+
+while True:
+    time.sleep(5)
+    current = requests.get(url, headers=headers).json()
+    if current["status"] not in ("queued", "running"):
+        break
+
+result = requests.get(url, headers=headers, params={"include_step_results": "true"}).json()
+print(result["status"], result["steps"])
+```
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "status": "success",
+  "started_at": "2026-04-14T10:30:00+00:00",
+  "completed_at": "2026-04-14T10:30:45+00:00",
+  "steps": [
+    { "index": 0, "status": "completed", "result": "..." },
+    { "index": 1, "status": "completed", "result": "..." }
+  ],
+  "error": null
+}
+```
+
+Every check counts toward your [rate limit](/docs/api/limits), so poll every few seconds rather than in a tight loop.
+
+</Step>
+</Steps>
+
+## Next steps
+
+<Cards>
+  <Card title="Runs" description="Every field of a run, and how inputs are checked and converted." href="/docs/api/runs" />
+  <Card title="Errors and retries" description="What each error means and which ones to retry." href="/docs/api/errors" />
+  <Card title="Limits" description="Requests per minute, and the other limits your plan sets." href="/docs/api/limits" />
+</Cards>
