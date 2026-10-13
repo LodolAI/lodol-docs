@@ -1,37 +1,43 @@
-import { baseOptions } from '@/lib/layout.shared';
+import { isValidElement } from 'react';
+import { baseOptions, APP_URL, GITHUB_URL, NavTitle } from '@/lib/layout.shared';
+
+jest.mock('@/components/logo', () => ({ LodolLogo: () => null }));
+
+type Link = {
+  type?: string;
+  text?: unknown;
+  url?: string;
+  external?: boolean;
+  on?: string;
+  label?: string;
+};
 
 describe('baseOptions', () => {
-  it('returns the expected nav title for the docs site', () => {
+  it('shows the Lodol Docs lockup as the nav title, linking home', () => {
     const opts = baseOptions();
-    expect(opts.nav).toBeDefined();
-    expect(opts.nav?.title).toBe('Lodol Docs');
+    expect(isValidElement(opts.nav?.title)).toBe(true);
+    expect((opts.nav?.title as { type: unknown }).type).toBe(NavTitle);
+    expect(opts.nav?.url).toBe('/');
   });
 
-  it('has a custom secondary website link in the topbar', () => {
-    const opts = baseOptions();
-    const links = (opts.links ?? []) as Array<{ type?: string; secondary?: boolean; on?: string }>;
-    const websiteLink = links.find(l => l.type === 'custom' && l.secondary === true);
-    expect(websiteLink).toBeDefined();
-    expect(websiteLink?.on).toBe('nav');
+  it('links to the Lodol app from the navbar', () => {
+    const links = (baseOptions().links ?? []) as Link[];
+    const app = links.find((l) => l.url === APP_URL);
+    expect(APP_URL).toBe('https://app.lodol.com');
+    expect(app).toMatchObject({ text: 'Open Lodol', external: true, on: 'nav' });
   });
 
-  it('has a GitHub icon button linking to the docs repo in the topbar', () => {
-    const opts = baseOptions();
-    const links = (opts.links ?? []) as Array<{ type?: string; url?: string; external?: boolean; on?: string }>;
-    const githubLink = links.find(l => l.url === 'https://github.com/LodolAI/lodol-docs');
-    expect(githubLink).toBeDefined();
-    expect(githubLink?.type).toBe('icon');
-    expect(githubLink?.external).toBe(true);
-    expect(githubLink?.on).toBe('nav');
+  it('has a GitHub icon button linking to the docs repo in the navbar', () => {
+    const links = (baseOptions().links ?? []) as Link[];
+    const github = links.find((l) => l.url === GITHUB_URL);
+    expect(GITHUB_URL).toBe('https://github.com/LodolAI/lodol-docs');
+    expect(github).toMatchObject({ type: 'icon', external: true, on: 'nav' });
+    expect(github?.label).toBeTruthy();
   });
 
-  it('renders the GitHub icon button before the website link so website appears to the right', () => {
-    const opts = baseOptions();
-    const links = (opts.links ?? []) as Array<{ type?: string; url?: string }>;
-    const githubIndex = links.findIndex(l => l.url === 'https://github.com/LodolAI/lodol-docs');
-    const websiteIndex = links.findIndex(l => l.type === 'custom');
-    expect(githubIndex).toBeGreaterThanOrEqual(0);
-    expect(websiteIndex).toBeGreaterThan(githubIndex);
+  it('no longer links to the old Skipflow website', () => {
+    const links = (baseOptions().links ?? []) as Link[];
+    expect(JSON.stringify(links.map((l) => l.url))).not.toContain('skipflow');
   });
 
   it('returns a fresh options object on every call', () => {

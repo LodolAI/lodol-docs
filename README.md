@@ -1,12 +1,12 @@
 # Lodol Docs
 
-Documentation site for Lodol, built with [Next.js](https://nextjs.org/) and [Fumadocs](https://fumadocs.vercel.app/).
+Documentation site for Lodol, built with [Next.js](https://nextjs.org/) and [Fumadocs](https://fumadocs.vercel.app/). It's served at [docs.lodol.com](https://docs.lodol.com).
 
 ## Prerequisites
 
 - Node.js 18+
 - npm
-- Python 3 (used by the actions API reference renderer)
+- Python 3 (used by the integrations reference renderer)
 
 ## Getting Started
 
@@ -39,27 +39,53 @@ If you run into certificate issues:
 - `npm run build` — Build for production
 - `npm run start` — Start the production server
 - `npm run lint` — Run ESLint
-- `npm run generate-actions` — Regenerate the per-provider action MDX
-  files from `data/actions/`
+- `npm run generate-actions` — Regenerate the Integrations tab from
+  `data/actions/` and `data/apps.json`
+- `npm run generate-llms` — Write `/llms.txt`, `/llms-full.txt` and the
+  hand-written pages' Markdown copies into `public/`
+- `npm run refresh-app-data` — Refresh apps' logos, categories and
+  triggers in `data/apps.json` from lodol.com (see below)
 - `npm test` — Run the Jest suite (TypeScript / React)
 - `npm run test:watch` — Re-run tests on file change
 - `npm run test:coverage` — Generate a coverage report
-- `npm run test:python` — Run the Python tests for the actions docs
-  renderer (uses the standard-library `unittest` runner — no extra
-  Python dependencies required)
+- `npm run test:python` — Run the Python tests for the integrations
+  reference scripts (uses the standard-library `unittest` runner — no
+  extra Python dependencies required)
+
+## How the site is organized
+
+The docs have three tabs, one per folder marked `"root": true` in
+`content/docs/`:
+
+| Tab | Folder | URL | What's in it |
+| --- | --- | --- | --- |
+| Documentation | `content/docs/(docs)/` | `/docs` | What Lodol is, building with an AI tool, concepts, and guides to the built-in steps |
+| Integrations | `content/docs/integrations/` | `/docs/integrations` | Every app and built-in step, generated from `data/actions/` (see below) |
+| API | `content/docs/api/` | `/docs/api` | The developer API: quickstart, authentication, errors, limits, endpoints, and the workflow format |
+
+`(docs)` is a folder group: its name doesn't appear in URLs. Pages that
+moved when the docs were reorganized redirect from their old addresses
+(see `redirects` in `next.config.mjs`).
+
+For AI tools, every page has a Markdown copy at its address plus `.md`,
+`/llms.txt` lists them all, and `/llms-full.txt` holds the Documentation
+and API pages in one file. They're static files in `public/`, written
+before each build: the integration pages' copies by
+`scripts/render-actions-docs.py`, the rest by `scripts/render-llms.py`.
 
 ## Project Structure
 
 ```
-content/         — MDX documentation pages
+content/docs/    — MDX documentation pages, one folder per tab
 app/             — Next.js app router pages and layouts
+components/      — The components pages use (see "Writing pages")
 data/            — Generated/published data consumed at build time
                    (e.g. data/actions/ — see below)
 lib/             — Shared utilities and configuration
 scripts/         — Build-time generators
                    (e.g. scripts/render-actions-docs.py)
 tests/ts/        — Jest tests for TypeScript code
-tests/python/    — unittest tests for the actions docs renderer
+tests/python/    — unittest tests for the integrations renderer
 source.config.ts — Fumadocs MDX source configuration
 ```
 
@@ -74,13 +100,18 @@ The Python `scripts/render-actions-docs.py` script is covered by
 library only — no extra Python dependencies — and can be invoked with
 `npm run test:python`.
 
-## Auto-generated API reference
+## Auto-generated integrations reference
 
-The `content/docs/api-reference/actions/` directory is regenerated on
-every build by `scripts/render-actions-docs.py`. The renderer reads
-`data/actions/` and emits one MDX page per provider plus an index
-and `meta.json`. The directory is `.gitignore`d — do not edit those
-files by hand.
+The `content/docs/integrations/` directory is regenerated on every
+build by `scripts/render-actions-docs.py`, and is `.gitignore`d — do not
+edit those files by hand. From `data/actions/` the renderer writes:
+
+- one page per app, at `/docs/integrations/<app>`;
+- one page per group of Lodol's built-in steps (the `skipflow_*`
+  providers), at `/docs/integrations/built-in/<name>`;
+- the directory page and the `meta.json` files that order the sidebar;
+- `catalog.json`, the list the directory searches and the counts the
+  home page shows.
 
 `data/actions/` is the public contract between the Lodol server
 (closed-source) and these docs (open-source): one JSON file per
@@ -101,3 +132,52 @@ docs:
 
 To preview locally with the current `data/actions/`, just run
 `npm run dev` or `npm run generate-actions` directly.
+
+### Logos, categories and triggers
+
+`data/actions/` doesn't carry apps' logos, categories or triggers yet,
+so they live in `data/apps.json`, which the renderer reads alongside it:
+app pages list their triggers, the directory filters by category, and
+logos load from lodol.com. `npm run refresh-app-data` rewrites the file
+from lodol.com (each app's logo and categories, and its triggers'
+names) and keeps the filters and event fields already recorded for each
+trigger. Those come from Lodol's MCP server, since lodol.com doesn't
+show them: for a new trigger, save its `search_triggers` result as JSON
+and run `npm run refresh-app-data -- --trigger-details <file>`. Until
+then, its page lists the trigger by name and description.
+
+The lasting fix is for `publish-action-specs` to publish this data with
+the specs; `data/apps.json` and the refresh script can then go.
+
+## Writing pages
+
+Every page leads with a one-sentence answer in its `description`, then
+gets straight to it. A few conventions keep the docs consistent:
+
+- **Write for the person building the workflow.** Second person, present
+  tense, short sentences, sentence-case headings. Name things the way
+  the product does: **bold** for what people see in Lodol (step names
+  and field labels, such as **Request approval** and **Who to ask**),
+  and `@payment.amount` for references to a value.
+- **One running example.** The concept pages build on one workflow: a
+  new Stripe payment adds a row to a Google sheet and posts in Slack.
+  Reuse it where it fits rather than inventing a new scenario.
+- **Only document what's true.** Check step names and fields against
+  `data/actions/` or the product, and plan figures against
+  [lodol.com/pricing](https://www.lodol.com/pricing).
+- **End with where to go next**, usually a pair of `Cards`.
+
+Besides Fumadocs' own components (`Cards`, `Callout`, `Steps`, `Tabs`,
+`Accordions`), pages can use:
+
+| Component | For |
+| --- | --- |
+| `<WorkflowPreview steps={[…]} />` | Drawing a workflow the way the editor lists it |
+| `<Fields title="…">` with `<Field />` | Inputs, outputs, parameters and object fields |
+| `<Endpoint method="POST" path="…" />` | An API endpoint's method and path |
+| `<Example>` | An example that stays closed until it's wanted |
+
+Code samples in more than one language use code-fence tabs, with
+`tab-group="lang"` on the first block so the reader's choice carries
+across pages. Inside `<Steps>`, give each `<Step>` a `###` heading:
+`Step` doesn't render a title of its own.

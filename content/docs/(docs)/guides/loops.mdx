@@ -1,0 +1,88 @@
+---
+title: Repeat steps
+description: Use Repeat to run steps once for each item in a list, a set number of times, or while something is true, and avoid the mistakes that make loops quietly wrong.
+icon: Repeat
+---
+
+A **Repeat** step runs the steps inside it more than once. An **End repeat** step closes the section. There are three kinds:
+
+| Step | Runs its steps | Use it when |
+| --- | --- | --- |
+| **Repeat for each item** | Once for each item in a **List** | You have records to handle one at a time: rows, contacts, files |
+| **Repeat N times** | The **Number of times** you set | You know exactly how many passes you need |
+| **Repeat while** | While **Keep repeating while** holds | You don't know in advance, such as fetching pages until there are no more |
+
+## Repeat for each item
+
+Inside the loop, the current item has a name, such as `row`, and steps read it like any value: `@row.Email`.
+
+<WorkflowPreview
+  title="Welcome every new signup"
+  steps={[
+    { step: 'Run on schedule', icon: 'Clock', trigger: true, note: 'every day' },
+    { step: 'Read rows', app: 'Google Sheets', note: 'Signups' },
+    { step: 'Repeat for each item', icon: 'Repeat', note: '@sheet.rows' },
+    { step: 'Send message', app: 'Gmail', depth: 1, note: 'to @row.Email' },
+    { step: 'End repeat', icon: 'Repeat' },
+  ]}
+/>
+
+Two rules keep a loop right:
+
+- **Loop over the list, not the whole result.** An action that returns a list keeps it in a field: loop over `@sheet.rows`, not `@sheet`.
+- **Every step inside should use the item.** A step that never mentions `@row` does the same thing on every pass. If it fetches something, fetch it once before the loop instead.
+
+## Often you don't need a loop
+
+Built-in list steps handle a whole list at once, and are shorter and faster than a loop:
+
+| To | Use |
+| --- | --- |
+| Keep only the items that match a condition | **Filter list** (the current item is `@item` in its condition) |
+| Add up, average or find the largest of a field | **Get one field from every item**, then **Calculate total**, **Calculate average** or **Find maximum value** |
+| Find whether a list includes something | **Check if list includes item** |
+| Take the first few items | **Take part of list** |
+
+And when an app can search for exactly the records you want, such as Zendesk tickets older than a week, use its search action instead of listing everything and testing each one in a loop. It can't miss records that fall past the first page.
+
+## One message per person
+
+To email each person about their own items, don't send one email per item. Group the items first:
+
+<Steps>
+<Step>
+
+### Group the records
+
+Use **Group items by a field** on the list, with **Field to group by** set to the person, such as `owner` or `assignee.displayName`. Each group has a `key` (the shared value), its `items`, and a `count`.
+
+</Step>
+<Step>
+
+### Repeat for each group
+
+Inside the loop, `@group.key` is the person and `@group.count` how many items they have.
+
+</Step>
+<Step>
+
+### Send one message per group
+
+List the items with **Get one field from every item** on `@group.items`, turn the list into lines with **Join list into text**, and send that in one message.
+
+</Step>
+</Steps>
+
+Records with no owner form one group with an empty key. Leave them out in the search itself, or skip the group whose key is empty.
+
+## One message with a line per group
+
+To send a single summary with a line for each group, such as revenue by plan, start with an empty list before the loop. In each pass, work out and format the figure, then use **Add item to end** to add one line to the list. After the loop, **Join list into text** with a line break, and use the result in the message.
+
+## Keep going when one item fails
+
+By default, a step that fails stops the run, so one bad record ends the loop for everyone after it. To skip the failure and carry on with the next item, put the steps that can fail in a try section. See [Handle failures](/docs/guides/failures#let-steps-fail-without-stopping-the-run).
+
+## Reference
+
+Every field of the Repeat steps is on the [Repeat](/docs/integrations/built-in/loops) reference page, and every list step on [Lists](/docs/integrations/built-in/lists).

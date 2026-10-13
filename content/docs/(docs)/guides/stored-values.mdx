@@ -1,0 +1,53 @@
+---
+title: Remember values between runs
+description: Stored values let a workflow pick up where it left off, keep a count, or share a value with other workflows, from one run to the next.
+icon: Database
+---
+
+Each run starts fresh: a step's result lasts only until the run ends. To keep something for the next run, such as the last record a workflow processed, save it as a **stored value**.
+
+## The four steps
+
+| Step | What it does |
+| --- | --- |
+| **Set a stored value** | Saves a **Value** under a **Name**, replacing what was there |
+| **Get a stored value** | Reads it back, or returns the **Default value** when nothing is stored yet |
+| **Increment a stored value** | Adds an **Amount** (1 unless you change it) to a counter and returns the new total |
+| **Delete a stored value** | Removes it; deleting something that was never set does nothing |
+
+Each value has a **Scope**: the whole workspace, shared by every workflow, or just this workflow.
+
+## Pick up where it left off
+
+A scheduled workflow that handles new records can remember how far it got:
+
+<WorkflowPreview
+  steps={[
+    { step: 'Run on schedule', icon: 'Clock', trigger: true, note: 'every hour' },
+    { step: 'Get a stored value', icon: 'Database', note: 'last_seen' },
+    { step: 'List orders', app: 'Shopify', note: 'created after @cursor.value' },
+    { step: 'Repeat for each item', icon: 'Repeat' },
+    { step: 'Create a QuickBooks invoice', app: 'QuickBooks', depth: 1 },
+    { step: 'End repeat', icon: 'Repeat' },
+    { step: 'Set a stored value', icon: 'Database', note: 'last_seen' },
+  ]}
+  caption="Read where the last run stopped, handle what's new, and save the new position."
+/>
+
+**Get a stored value** returns `found`, which is false the first time, and `value`. Give it a **Default value** so the first run knows where to start.
+
+## Count things safely
+
+**Increment a stored value** is safe to run from many runs at once: every increment is counted, with none lost. The counter starts at zero the first time. Its value must be a number; if it holds something else, the step fails and nothing is added.
+
+## Names and fields
+
+Names use letters, digits and underscores, and each part can't start with a digit, such as `last_seen` or `invoice_count`. To work with one field inside a stored object, add a dotted path: `customer.email`. Setting a dotted path fills in any missing objects along the way.
+
+## Letting workflows change a value
+
+A workflow can always read a stored value. To set, increment or delete one that someone created in the workspace, that value needs **Let workflows edit this value** turned on. A value a workflow creates itself can always be edited by workflows.
+
+## Reference
+
+Every field of these steps is on the [Stored Data Values](/docs/integrations/built-in/variables) reference page.

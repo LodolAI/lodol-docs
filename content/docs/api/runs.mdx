@@ -1,0 +1,312 @@
+---
+title: Runs
+description: Start a workflow run with inputs, follow it to its result, list past runs, and stop a run in progress.
+icon: Play
+---
+
+A run is one pass through a workflow. Runs start in the background: you start one, get its ID straight away, and check it until it finishes. The API calls a run an **execution**, so its ID is `execution_id` and its endpoints are under `/executions`.
+
+## The run object
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "workflow_name": "Monthly Client Report",
+  "status": "success",
+  "started_at": "2026-01-15T10:30:00+00:00",
+  "completed_at": "2026-01-15T10:30:03+00:00"
+}
+```
+
+<Fields title="Fields">
+<Field id="execution_id" type="string" description="The run's ID." />
+<Field id="workflow_id" type="string" description="The ID of the workflow that ran. It stays the same when the workflow is edited." />
+<Field id="version_id" type="string" description="The ID of the version of the workflow that ran. It changes as the workflow is edited." />
+<Field id="workflow_name" type="string" description="The workflow's name. Included when listing runs." />
+<Field id="status" type="string" description="queued, running, success, failed or stopped. See Run statuses." />
+<Field id="started_at" type="string" description="When the run started, in ISO 8601." />
+<Field id="completed_at" type="string or null" description="When it finished, in ISO 8601, or null while it's still going." />
+</Fields>
+
+### Run statuses
+
+| Status | Meaning | Final? |
+| --- | --- | --- |
+| `queued` | Started, and about to begin | No |
+| `running` | Working through its steps | No |
+| `success` | Reached the end of the workflow | Yes |
+| `failed` | A step failed and the run stopped there | Yes |
+| `stopped` | Stopped before it finished | Yes |
+
+---
+
+## Run a workflow
+
+<Endpoint method="POST" path="/api/v1/workflows/:id/run-async" />
+
+Starts a run in the background and returns its ID straight away; follow it with [Get a run](#get-a-run). Requires the `workflows:execute` scope, and the member who created the key must be allowed to run workflows (the **Run workflows** role permission).
+
+`:id` can be the workflow's `id` or the ID of any of its versions. Either way, the workflow runs as it is now. Each run counts as one of your plan's monthly runs; when they're used up, the request gets `402`.
+
+<Fields title="Headers">
+<Field id="Idempotency-Key" type="string" description="Makes the request safe to retry: a repeat with the same key returns the first response instead of starting another run. Up to 256 characters, remembered for 24 hours. Reusing a key for a different request, such as the same workflow with different inputs, returns 422. See Idempotency." />
+</Fields>
+
+<Fields title="Body" description="Optional. To give values for the inputs the workflow declares, send a JSON object of at most 500 KB whose only field is inputs.">
+<Field id="inputs" type="object" description="Values for the workflow's inputs, by input name." />
+</Fields>
+
+```json
+{
+  "inputs": {
+    "client": "Acme",
+    "month": "2026-05"
+  }
+}
+```
+
+### How inputs are checked
+
+Each value is converted to its input's declared type:
+
+| Type | Accepts |
+| --- | --- |
+| `text` | Any value, as text |
+| `number` | A number, or text that reads as one, such as `"21"` |
+| `boolean` | `true` or `false`, or text such as `"yes"`, `"no"`, `"on"` or `"0"` |
+| `list` | A list, or comma-separated text |
+| `object` | An object |
+
+An optional input you leave out takes its default, so a workflow with no required inputs can be run without a body. The run is refused with `400`, before anything starts and with a message naming the input, when:
+
+- a value names an input the workflow doesn't declare
+- a required input has no value
+- a value can't be converted to its input's type
+- a value can't be stored with a run, such as `NaN`, `Infinity`, a whole number wider than 64 bits, or lists and objects nested more than 32 levels deep
+
+A workflow that starts from its own trigger or schedule takes no inputs, and sending it some returns `400`. Running it without a body turns it on, so it starts listening for its trigger or schedule.
+
+### Example
+
+```bash tab="cURL" tab-group="lang"
+curl -X POST https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async \
+  -H "Authorization: Bearer $LODOL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: acme-report-2026-05" \
+  -d '{"inputs": {"client": "Acme", "month": "2026-05"}}'
+```
+
+```js tab="JavaScript"
+const response = await fetch(
+  'https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async',
+  {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.LODOL_API_KEY}`,
+      'Content-Type': 'application/json',
+      'Idempotency-Key': 'acme-report-2026-05',
+    },
+    body: JSON.stringify({ inputs: { client: 'Acme', month: '2026-05' } }),
+  },
+);
+const run = await response.json();
+```
+
+```python tab="Python"
+response = requests.post(
+    "https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async",
+    headers={
+        "Authorization": f"Bearer {os.environ['LODOL_API_KEY']}",
+        "Idempotency-Key": "acme-report-2026-05",
+    },
+    json={"inputs": {"client": "Acme", "month": "2026-05"}},
+)
+run = response.json()
+```
+
+**Response `202`:**
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "status": "queued",
+  "created_at": "2026-01-15T10:30:00+00:00"
+}
+```
+
+**Response `400`:**
+
+```json
+{
+  "error": "'Monthly Client Report' needs a value for its 'client' input."
+}
+```
+
+---
+
+## List runs
+
+<Endpoint method="GET" path="/api/v1/executions" />
+
+Returns the workspace's runs, a page at a time. Requires the `executions:read` scope.
+
+<Fields title="Query parameters">
+<Field id="workflow_id" type="string" description="Only runs of this workflow, from every version of it. Takes the workflow's id or the ID of any of its versions." />
+<Field id="limit" type="integer" description="How many runs to return, from 1 to 100." facts="Default: `20`." />
+<Field id="after" type="string" description="For the next page: the execution_id of the last run on the page you have." />
+</Fields>
+
+```bash tab="cURL" tab-group="lang"
+curl "https://api-prod.lodol.com/api/v1/executions?workflow_id=665f1a2b3c4d5e6f7a8b9c0d&limit=10" \
+  -H "Authorization: Bearer $LODOL_API_KEY"
+```
+
+```js tab="JavaScript"
+const params = new URLSearchParams({ workflow_id: '665f1a2b3c4d5e6f7a8b9c0d', limit: '10' });
+const response = await fetch(`https://api-prod.lodol.com/api/v1/executions?${params}`, {
+  headers: { Authorization: `Bearer ${process.env.LODOL_API_KEY}` },
+});
+const { executions } = await response.json();
+```
+
+```python tab="Python"
+response = requests.get(
+    "https://api-prod.lodol.com/api/v1/executions",
+    headers={"Authorization": f"Bearer {os.environ['LODOL_API_KEY']}"},
+    params={"workflow_id": "665f1a2b3c4d5e6f7a8b9c0d", "limit": 10},
+)
+executions = response.json()["executions"]
+```
+
+**Response `200`:** a page of [run objects](#the-run-object).
+
+```json
+{
+  "executions": [
+    {
+      "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+      "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+      "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+      "workflow_name": "Monthly Client Report",
+      "status": "success",
+      "started_at": "2026-01-15T10:30:00+00:00",
+      "completed_at": "2026-01-15T10:30:03+00:00"
+    }
+  ]
+}
+```
+
+---
+
+## Get a run
+
+<Endpoint method="GET" path="/api/v1/executions/:id" />
+
+Returns one run. Requires the `executions:read` scope. Step results are left out unless you ask for them, which keeps checking a run's status quick.
+
+<Fields title="Query parameters">
+<Field id="include_step_results" type="string" description="Set to true to include what each step produced, in steps." />
+</Fields>
+
+```bash tab="cURL" tab-group="lang"
+# Check the status
+curl https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f \
+  -H "Authorization: Bearer $LODOL_API_KEY"
+
+# Get every step's result once it has finished
+curl "https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?include_step_results=true" \
+  -H "Authorization: Bearer $LODOL_API_KEY"
+```
+
+```js tab="JavaScript"
+const response = await fetch(
+  'https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?include_step_results=true',
+  { headers: { Authorization: `Bearer ${process.env.LODOL_API_KEY}` } },
+);
+const run = await response.json();
+```
+
+```python tab="Python"
+response = requests.get(
+    "https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f",
+    headers={"Authorization": f"Bearer {os.environ['LODOL_API_KEY']}"},
+    params={"include_step_results": "true"},
+)
+run = response.json()
+```
+
+**Response `200`:**
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "status": "running",
+  "started_at": "2026-01-15T10:30:00+00:00",
+  "completed_at": null,
+  "error": null
+}
+```
+
+**Response `200`, with `include_step_results=true`:**
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "status": "success",
+  "started_at": "2026-01-15T10:30:00+00:00",
+  "completed_at": "2026-01-15T10:30:03+00:00",
+  "steps": [
+    { "index": 0, "status": "completed", "result": "..." },
+    { "index": 1, "status": "completed", "result": "..." }
+  ],
+  "error": null
+}
+```
+
+---
+
+## Stop a run
+
+<Endpoint method="POST" path="/api/v1/executions/:id/stop" />
+
+Stops a run in progress. Steps that already finished aren't undone. Requires the `workflows:execute` scope, and the member who created the key must be allowed to run workflows. A run that has already finished (`success`, `failed` or `stopped`) returns `400`.
+
+<Fields title="Headers">
+<Field id="Idempotency-Key" type="string" description="Makes the request safe to retry, as for Run a workflow." />
+</Fields>
+
+```bash tab="cURL" tab-group="lang"
+curl -X POST https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f/stop \
+  -H "Authorization: Bearer $LODOL_API_KEY"
+```
+
+```js tab="JavaScript"
+await fetch('https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f/stop', {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${process.env.LODOL_API_KEY}` },
+});
+```
+
+```python tab="Python"
+requests.post(
+    "https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f/stop",
+    headers={"Authorization": f"Bearer {os.environ['LODOL_API_KEY']}"},
+)
+```
+
+**Response `200`:**
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "status": "stopped"
+}
+```

@@ -1,4 +1,4 @@
-import { rehypeCodeOutsideActionReference } from '@/lib/rehype-code';
+import { rehypeCodeOutsideIntegrationReference } from '@/lib/rehype-code';
 
 const mockHighlight = jest.fn();
 
@@ -7,19 +7,19 @@ jest.mock('fumadocs-core/mdx-plugins', () => ({
 }));
 
 function transform(path: string) {
-  const transformer = rehypeCodeOutsideActionReference.call({} as never);
+  const transformer = rehypeCodeOutsideIntegrationReference.call({} as never);
   const tree = { type: 'root' as const, children: [] };
   const file = { path } as never;
   return { result: transformer(tree, file, () => {}), tree, file };
 }
 
-describe('rehypeCodeOutsideActionReference', () => {
+describe('rehypeCodeOutsideIntegrationReference', () => {
   beforeEach(() => mockHighlight.mockReset());
 
   it.each([
-    '/repo/content/docs/guides/quickstart.mdx',
-    '/repo/content/docs/api-reference/executions.mdx',
-    '/repo/content/docs/guides/actions/index.mdx',
+    '/repo/content/docs/api/quickstart.mdx',
+    '/repo/content/docs/(docs)/guides/approvals.mdx',
+    '/repo/content/docs/api/runs.mdx',
   ])('highlights the code on %s as the page compiles', (path) => {
     mockHighlight.mockResolvedValue(undefined);
     const { result, tree, file } = transform(path);
@@ -28,9 +28,10 @@ describe('rehypeCodeOutsideActionReference', () => {
   });
 
   it.each([
-    '/repo/content/docs/api-reference/actions/slack.mdx',
-    '/repo/content/docs/api-reference/actions/index.mdx',
-    'C:\\repo\\content\\docs\\api-reference\\actions\\slack.mdx',
+    '/repo/content/docs/integrations/slack.mdx',
+    '/repo/content/docs/integrations/index.mdx',
+    '/repo/content/docs/integrations/built-in/review.mdx',
+    'C:\\repo\\content\\docs\\integrations\\slack.mdx',
   ])('leaves the code on %s for the page to highlight as it renders', (path) => {
     const { result } = transform(path);
     expect(result).toBeUndefined();
@@ -40,6 +41,6 @@ describe('rehypeCodeOutsideActionReference', () => {
   it('takes no `next`, so unified waits on the promise it returns', () => {
     // unified hands a transformer that declares a third parameter a callback
     // and waits for it to be called, which this transformer never does.
-    expect(rehypeCodeOutsideActionReference.call({} as never)).toHaveLength(2);
+    expect(rehypeCodeOutsideIntegrationReference.call({} as never)).toHaveLength(2);
   });
 });

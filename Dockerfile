@@ -20,6 +20,8 @@ ENV HOSTNAME=0.0.0.0
 
 COPY --from=base /app/.next/standalone ./
 COPY --from=base /app/.next/static ./.next/static
+# The Markdown copies of the integration pages, for AI tools.
+COPY --from=base /app/public ./public
 
 EXPOSE 3000
 CMD ["node", "server.js"]

@@ -1,12 +1,14 @@
 """Unit tests for ``scripts/render-actions-docs.py``.
 
 The renderer consumes ``data/actions/`` (one JSON file per provider,
-published by the ``lodolai/lodol`` server repo) and emits one MDX page
-per provider plus an index and a ``meta.json``. These tests cover:
+published by the ``lodolai/lodol`` server repo) and emits the
+Integrations tab: one MDX page per app or built-in step group, the
+directory page, the ``meta.json`` files and ``catalog.json``. These
+tests cover:
 
     - the pure helpers (param-type mapping, mock synthesis, MDX
-      escaping, YAML quoting, slug generation)
-    - the higher-level MDX/index/meta generators
+      escaping, JSX attributes, YAML quoting, slugs and anchors)
+    - the higher-level page/directory/meta/catalog generators
     - input loading (``load_specs``) including missing/malformed input
     - end-to-end orchestration through ``render`` and ``main``
 
@@ -17,7 +19,9 @@ directly.
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import sys
 import tempfile
@@ -199,8 +203,8 @@ class ReturnsExampleTests(unittest.TestCase):
         self.assertEqual(ren._returns_example(None), {"status": "success"})
 
 
-class ResponseSectionTests(unittest.TestCase):
-    """The **Response** part of an action's section."""
+class OutputsSectionTests(unittest.TestCase):
+    """The outputs and example part of an action's section."""
 
     def _section(self, **action):
         return ren.generate_action_section(
@@ -212,9 +216,26 @@ class ResponseSectionTests(unittest.TestCase):
             returns={"type": "number", "description": "The sum, {rounded}."},
             mock_response=12,
         )
-        self.assertIn(
-            "**Response**\n\nThe sum, &#123;rounded&#125;.\n\n```json\n12\n```", out
+        self.assertIn('<Fields title="Outputs" description="The sum, {rounded}." />', out)
+        self.assertIn("```json\n12\n```", out)
+
+    def test_lists_each_output_field_with_its_type_and_description(self):
+        out = self._section(
+            returns={
+                "type": "object",
+                "properties": {
+                    "label_id": {"type": "string", "description": "Label ID"},
+                    "count": {"type": "integer"},
+                },
+            }
         )
+        self.assertIn('<Field id="label_id" type="text" description="Label ID" />', out)
+        self.assertIn('<Field id="count" type="number" />', out)
+
+    def test_a_primitive_output_says_what_it_returns(self):
+        self.assertIn('description="Returns a number."', self._section(returns={"type": "number"}))
+        self.assertIn('description="Returns text."', self._section(returns={"type": "string"}))
+        self.assertIn('description="Returns a list."', self._section(returns={"type": "array"}))
 
     def test_shows_the_schemas_example_when_there_is_no_mock(self):
         out = self._section(returns={"type": "number", "examples": [42.5]})
@@ -227,9 +248,13 @@ class ResponseSectionTests(unittest.TestCase):
         self.assertIn("```json\n3\n```", out)
         self.assertNotIn("42.5", out)
 
+    def test_the_example_is_tucked_away(self):
+        out = self._section(returns={"type": "number"}, mock_response=3)
+        self.assertIn("<Example>\n\n```json\n3\n```\n\n</Example>", out)
+
     def test_no_output_says_so_instead_of_a_made_up_payload(self):
         out = self._section(returns={"type": "null"})
-        self.assertIn("**Response**\n\nThis action has no output.", out)
+        self.assertIn('<Fields title="Outputs" description="This action has no output." />', out)
         self.assertNotIn("```json", out)
         self.assertNotIn('"status"', out)
 
@@ -237,7 +262,7 @@ class ResponseSectionTests(unittest.TestCase):
         out = self._section(
             returns={"type": "null", "description": "Nothing; the run pauses here."}
         )
-        self.assertIn("**Response**\n\nNothing; the run pauses here.", out)
+        self.assertIn('description="Nothing; the run pauses here."', out)
         self.assertNotIn("has no output", out)
         self.assertNotIn("```json", out)
 
@@ -331,6 +356,112 @@ class ProviderIdToSlugTests(unittest.TestCase):
         self.assertEqual(ren.provider_id_to_slug("a_b_c_d"), "a-b-c-d")
 
 
+class TypeLabelTests(unittest.TestCase):
+    def test_parameter_types_use_the_editors_words(self):
+        self.assertEqual(ren._type_label("ParameterType.STRING"), "text")
+        self.assertEqual(ren._type_label("ParameterType.ARRAY"), "list")
+        self.assertEqual(ren._type_label("ParameterType.BOOLEAN"), "true/false")
+        self.assertEqual(ren._type_label("ParameterType.DATETIME"), "date and time")
+
+    def test_schema_types_too(self):
+        self.assertEqual(ren._type_label("integer"), "number")
+        self.assertEqual(ren._type_label("object"), "object")
+        self.assertEqual(ren._type_label(["string", "null"]), "text")
+
+    def test_unknown_or_missing(self):
+        self.assertEqual(ren._type_label("ParameterType.WEIRD"), "weird")
+        self.assertEqual(ren._type_label(None), "")
+
+
+class JsxAttrTests(unittest.TestCase):
+    def test_plain_text_is_quoted(self):
+        self.assertEqual(ren._jsx_attr("name", "Message ID"), 'name="Message ID"')
+
+    def test_markup_characters_stay_as_written(self):
+        # A quoted attribute holds `<`, braces and pipes as they are.
+        self.assertEqual(
+            ren._jsx_attr("description", "a <b> {c} | `d`"),
+            'description="a <b> {c} | `d`"',
+        )
+
+    def test_quotes_ampersands_and_backslashes_become_an_expression(self):
+        self.assertEqual(ren._jsx_attr("d", 'say "hi"'), 'd={"say \\"hi\\""}')
+        self.assertEqual(ren._jsx_attr("d", "R&D"), 'd={"R&D"}')
+        self.assertEqual(ren._jsx_attr("d", "a\\b"), 'd={"a\\\\b"}')
+
+    def test_line_breaks_are_flattened(self):
+        self.assertEqual(ren._jsx_attr("d", "one\ntwo  three"), 'd="one two three"')
+
+
+class SlugTests(unittest.TestCase):
+    def test_github_slug(self):
+        self.assertEqual(ren.github_slug("Send a message to a channel"), "send-a-message-to-a-channel")
+        self.assertEqual(ren.github_slug("Get (v2) message: <id>!"), "get-v2-message-id")
+        self.assertEqual(ren.github_slug("Today's date"), "todays-date")
+        self.assertEqual(ren.github_slug("Café_au lait"), "café_au-lait")
+
+    def test_repeated_headings_get_a_counter(self):
+        slugger = ren.Slugger()
+        self.assertEqual(
+            [slugger.slug(t) for t in ["Actions", "Send", "Send", "Actions", "Send"]],
+            ["actions", "send", "send-1", "actions-1", "send-2"],
+        )
+
+
+class FirstSentenceTests(unittest.TestCase):
+    def test_takes_the_first_sentence(self):
+        self.assertEqual(
+            ren._first_sentence("Send email. Also read it."), "Send email."
+        )
+
+    def test_keeps_text_without_a_full_stop(self):
+        self.assertEqual(ren._first_sentence("Send email"), "Send email")
+
+    def test_does_not_split_inside_a_word(self):
+        self.assertEqual(
+            ren._first_sentence("Use v1.2 of the API. Then more."),
+            "Use v1.2 of the API.",
+        )
+
+    def test_does_not_stop_at_an_abbreviation_or_initial(self):
+        self.assertEqual(
+            ren._first_sentence("Search the U.S. register, e.g. rules. Then more."),
+            "Search the U.S. register, e.g. rules.",
+        )
+        self.assertEqual(
+            ren._first_sentence("A dataset built by Greta R. Smith. More."),
+            "A dataset built by Greta R. Smith.",
+        )
+
+    def test_a_question_or_exclamation_ends_a_sentence(self):
+        self.assertEqual(ren._first_sentence("Ready? Go."), "Ready?")
+
+
+class BuiltInTests(unittest.TestCase):
+    def test_lodols_own_steps_are_built_in(self):
+        self.assertTrue(ren.is_built_in({"id": "skipflow_review"}))
+        self.assertFalse(ren.is_built_in({"id": "slack"}))
+
+    def test_paths(self):
+        self.assertEqual(ren.provider_path({"id": "google_sheets"}), "google-sheets")
+        self.assertEqual(ren.provider_path({"id": "skipflow_review"}), "built-in/review")
+        self.assertEqual(
+            ren.provider_url({"id": "skipflow_datetime"}),
+            "/docs/integrations/built-in/datetime",
+        )
+
+    def test_section_markers_are_left_out_and_the_rest_sorted_by_name(self):
+        provider = {
+            "id": "skipflow_conditions",
+            "actions": {
+                "else": {"display_name": "Otherwise", "handler": "_control_flow", "parameters": []},
+                "endif": {"display_name": "End if", "handler": "_control_flow", "parameters": []},
+                "if": {"display_name": "If", "handler": "_control_flow", "parameters": [{"name": "condition"}]},
+            },
+        }
+        self.assertEqual([n for n, _ in ren.visible_actions(provider)], ["if", "else"])
+
+
 class GenerateActionSectionTests(unittest.TestCase):
     def _action(self, **overrides):
         base = {
@@ -341,6 +472,7 @@ class GenerateActionSectionTests(unittest.TestCase):
             "parameters": [
                 {
                     "name": "channel",
+                    "display_name": "Channel",
                     "type": "ParameterType.STRING",
                     "required": True,
                     "description": "Target channel id.",
@@ -359,19 +491,28 @@ class GenerateActionSectionTests(unittest.TestCase):
 
     def test_includes_header_and_description(self):
         out = ren.generate_action_section("send_message", self._action())
-        self.assertIn("### Send Message", out)
+        self.assertTrue(out.startswith("## Send Message\n"))
         self.assertIn("Sends a chat message.", out)
 
     def test_does_not_include_endpoint_or_curl(self):
         out = ren.generate_action_section("send_message", self._action())
-        self.assertNotIn("POST /actions/library/slack/send-message", out)
+        self.assertNotIn("/actions/library/slack/send-message", out)
         self.assertNotIn("curl", out)
 
-    def test_includes_parameter_table(self):
+    def test_lists_inputs_by_the_label_the_editor_shows(self):
         out = ren.generate_action_section("send_message", self._action())
-        self.assertIn("**Parameters**", out)
-        self.assertIn("| `channel` | string | Yes |", out)
-        self.assertIn("| `thread` | string | No |", out)
+        self.assertIn(
+            '<Field name="Channel" id="channel" type="text" required '
+            'description="Target channel id." />',
+            out,
+        )
+
+    def test_an_input_without_a_label_is_named_by_its_key(self):
+        out = ren.generate_action_section("send_message", self._action())
+        self.assertIn(
+            '<Field name="thread" id="thread" type="text" description="Optional thread id." />',
+            out,
+        )
 
     def test_uses_mock_response_when_present(self):
         out = ren.generate_action_section("send_message", self._action())
@@ -386,22 +527,15 @@ class GenerateActionSectionTests(unittest.TestCase):
         out = ren.generate_action_section("send_message", action)
         self.assertIn('"id": "example_value"', out)
 
-    def test_omits_parameters_table_when_none(self):
-        action = self._action(parameters=[])
-        out = ren.generate_action_section("send_message", action)
-        self.assertNotIn("**Parameters**", out)
+    def test_an_action_with_no_inputs_says_so(self):
+        out = ren.generate_action_section("send_message", self._action(parameters=[]))
+        self.assertIn('<Fields title="Inputs" />', out)
 
     def test_falls_back_to_action_name_for_display(self):
         action = self._action()
         del action["display_name"]
         out = ren.generate_action_section("my_action_name", action)
-        self.assertIn("### My Action Name", out)
-
-    def test_renders_without_method_field(self):
-        action = self._action()
-        del action["method"]
-        out = ren.generate_action_section("send_message", action)
-        self.assertIn("### Send Message", out)
+        self.assertIn("## My Action Name", out)
 
     def test_escapes_jsx_characters_in_description(self):
         out = ren.generate_action_section(
@@ -412,14 +546,13 @@ class GenerateActionSectionTests(unittest.TestCase):
         self.assertIn("&#123;key:", out)
         self.assertIn("&lt;value>&#125;", out)
 
-    def test_escapes_image_syntax_in_parameter_descriptions(self):
+    def test_parameter_descriptions_keep_markup_characters_as_written(self):
         action = self._action()
-        action["parameters"][0]["description"] = "Mention someone with ![](@U123)."
+        action["parameters"][0]["description"] = "Mention someone with ![](@U123) or {name}."
         out = ren.generate_action_section("send_message", action)
-        self.assertIn("Mention someone with !\\[](@U123).", out)
-        self.assertNotIn("![](", out)
+        self.assertIn('description="Mention someone with ![](@U123) or {name}."', out)
 
-    def test_parameter_row_ends_with_its_choices_and_default(self):
+    def test_an_inputs_choices_and_default_follow_its_description(self):
         action = self._action()
         action["parameters"][1].update(
             options=[
@@ -430,20 +563,72 @@ class GenerateActionSectionTests(unittest.TestCase):
         )
         out = ren.generate_action_section("send_message", action)
         self.assertIn(
-            "| `thread` | string | No | Optional thread id.<br />"
-            "One of: `main` (Main thread), `side` (Side thread). Default: `main`. |",
+            'description="Optional thread id." '
+            'facts="One of: `main` (Main thread), `side` (Side thread). Default: `main`."',
             out,
         )
 
-    def test_parameter_row_without_choices_range_or_default_is_unchanged(self):
+    def test_an_input_without_choices_range_or_default_has_no_facts(self):
         out = ren.generate_action_section("send_message", self._action())
-        self.assertIn("| `channel` | string | Yes | Target channel id. |", out)
+        self.assertNotIn("facts=", out)
 
-    def test_parameter_without_description_shows_its_facts_alone(self):
-        action = self._action()
-        action["parameters"][0].update(description="", minimum=1, maximum=50)
-        out = ren.generate_action_section("send_message", action)
-        self.assertIn("| `channel` | string | Yes | From 1 to 50. |", out)
+
+class ShownWhenTests(unittest.TestCase):
+    """A parameter the editor only shows for some values of another one."""
+
+    FORMAT = {
+        "name": "format",
+        "display_name": "File type",
+        "options": [
+            {"value": "csv", "label": "CSV file"},
+            {"value": "excel", "label": "Excel file"},
+            {"value": "pdf", "label": "PDF file"},
+        ],
+    }
+
+    def test_names_the_other_parameter_and_its_values_by_their_labels(self):
+        rows = {"name": "rows", "visible_when": {"format": ["csv", "excel"]}}
+        self.assertEqual(
+            ren._shown_when(rows, {"format": self.FORMAT}),
+            "Only when File type is CSV file or Excel file.",
+        )
+
+    def test_lists_three_or_more_values(self):
+        rows = {"name": "rows", "visible_when": {"format": ["csv", "excel", "pdf"]}}
+        self.assertEqual(
+            ren._shown_when(rows, {"format": self.FORMAT}),
+            "Only when File type is CSV file, Excel file or PDF file.",
+        )
+
+    def test_falls_back_to_keys_and_values_it_cannot_name(self):
+        param = {"name": "speed", "visible_when": {"mode": "fast"}}
+        self.assertEqual(ren._shown_when(param, {}), "Only when `mode` is `fast`.")
+
+    def test_says_nothing_for_a_parameter_that_always_shows(self):
+        self.assertEqual(ren._shown_when({"name": "format"}, {}), "")
+
+    def test_comes_first_in_the_field_and_keeps_required(self):
+        action = {
+            "display_name": "Create a file",
+            "parameters": [
+                {**self.FORMAT, "type": "ParameterType.STRING", "required": True},
+                {
+                    "name": "rows",
+                    "display_name": "Rows",
+                    "type": "ParameterType.ARRAY",
+                    "required": True,
+                    "default": [],
+                    "minimum": 1,
+                    "visible_when": {"format": ["csv", "excel"]},
+                },
+            ],
+        }
+        out = ren.generate_action_section("create", action)
+        self.assertIn(
+            '<Field name="Rows" id="rows" type="list" required '
+            'facts="Only when File type is CSV file or Excel file. At least 1." />',
+            out,
+        )
 
 
 class ParameterFactsTests(unittest.TestCase):
@@ -512,7 +697,7 @@ class ParameterFactsTests(unittest.TestCase):
         )
         self.assertEqual(facts, "One of: `10`. From 1 to 10. Default: `10`.")
 
-    def test_values_stay_literal_code_and_labels_are_escaped(self):
+    def test_values_are_code_and_labels_plain_text(self):
         facts = ren._parameter_facts(
             {
                 "options": [
@@ -523,11 +708,10 @@ class ParameterFactsTests(unittest.TestCase):
                 ]
             }
         )
-        # MDX shows code as written, so `<` and braces need no entities there.
+        # The facts reach the page as a JSX attribute, shown as written.
         self.assertEqual(
             facts,
-            "One of: `<=` (at most), `a\\|b` (pipe), ``x`y`` (tick), "
-            '`""` (Any &#123;kind&#125;).',
+            'One of: `<=` (at most), `a|b` (pipe), ``x`y`` (tick), `""` (Any {kind}).',
         )
 
     def test_nothing_declared_says_nothing(self):
@@ -542,119 +726,412 @@ class CodeSpanTests(unittest.TestCase):
         self.assertEqual(ren._code_span("a``b"), "```a``b```")
         self.assertEqual(ren._code_span("`a"), "`` `a ``")
 
-    def test_pipes_are_escaped_and_newlines_flattened(self):
-        self.assertEqual(ren._code_span("a|b\nc"), "`a\\|b c`")
+    def test_newlines_are_flattened(self):
+        self.assertEqual(ren._code_span("a|b\nc"), "`a|b c`")
+
+
+def _provider(pid="slack", n=1, **overrides):
+    actions = {
+        f"act_{i}": {
+            "display_name": f"Act {chr(ord('A') + i)}",
+            "description": f"Does thing {i}. More detail.",
+            "parameters": [],
+        }
+        for i in range(n)
+    }
+    base = {"id": pid, "display_name": "Slack", "description": "Talk to your team.", "actions": actions}
+    base.update(overrides)
+    return base
 
 
 class GenerateProviderMdxTests(unittest.TestCase):
-    def test_includes_frontmatter_and_actions(self):
-        provider = {
-            "id": "slack",
-            "display_name": "Slack",
-            "description": "Slack integration.",
-            "actions": {
-                "send": {
-                    "display_name": "Send",
-                    "description": "Send a message.",
-                    "path": "/actions/library/slack/send",
-                    "method": "POST",
-                    "parameters": [],
-                }
-            },
-        }
-        out = ren.generate_provider_mdx(provider)
+    def test_frontmatter_describes_the_app(self):
+        out = ren.generate_provider_mdx(_provider(n=2))
         self.assertTrue(out.startswith("---\n"))
-        self.assertIn('title: "Slack"', out)
-        self.assertIn('description: "API actions for the Slack integration."', out)
-        self.assertIn("## Slack", out)
-        self.assertIn("### Send", out)
+        self.assertIn('title: "Slack"\n', out)
+        self.assertIn('description: "Talk to your team."\n', out)
+        self.assertIn("integration: app\n", out)
+        self.assertIn("actions: 2\n", out)
         self.assertTrue(out.endswith("\n"))
 
+    def test_an_app_without_a_description_still_gets_one(self):
+        out = ren.generate_provider_mdx(_provider(description=""))
+        self.assertIn('description: "What Slack can do in a workflow."', out)
+
+    def test_the_title_is_not_repeated_as_a_heading(self):
+        out = ren.generate_provider_mdx(_provider(n=1))
+        self.assertNotIn("## Slack", out)
+
+    def test_three_or_more_actions_get_an_overview_linking_to_each(self):
+        out = ren.generate_provider_mdx(_provider(n=3))
+        self.assertIn("## Actions\n\n| Action | What it does |", out)
+        self.assertIn("| [Act A](#act-a) | Does thing 0. |", out)
+
+    def test_fewer_than_three_actions_need_no_overview(self):
+        self.assertNotIn("## Actions", ren.generate_provider_mdx(_provider(n=2)))
+
+    def test_anchors_match_headings_even_when_names_repeat(self):
+        provider = _provider(
+            actions={
+                "a": {"display_name": "Send", "parameters": []},
+                "b": {"display_name": "Send", "parameters": []},
+                "c": {"display_name": "Actions", "parameters": []},
+            }
+        )
+        out = ren.generate_provider_mdx(provider)
+        # fumadocs gives the overview "actions", then each heading in order.
+        self.assertIn("[Actions](#actions-1)", out)
+        self.assertIn("[Send](#send)", out)
+        self.assertIn("[Send](#send-1)", out)
+
     def test_skips_non_dict_action_entries(self):
+        provider = _provider(actions={"bogus": "not a dict", "good": {"display_name": "Good", "parameters": []}})
+        out = ren.generate_provider_mdx(provider)
+        self.assertIn("## Good", out)
+        self.assertNotIn("bogus", out)
+
+    def test_built_in_steps_get_their_icon_and_guide(self):
+        provider = _provider("skipflow_review", n=1, display_name="Approvals")
+        out = ren.generate_provider_mdx(provider)
+        self.assertIn("integration: built-in\n", out)
+        self.assertIn("icon: UserCheck\n", out)
+        self.assertIn("[Ask for approval](/docs/guides/approvals)", out)
+
+    def test_a_built_in_step_the_renderer_has_not_met_gets_a_default_icon(self):
+        out = ren.generate_provider_mdx(_provider("skipflow_new_thing", n=1))
+        self.assertIn(f"icon: {ren.DEFAULT_BUILT_IN_ICON}\n", out)
+
+    def test_built_in_steps_list_their_steps_as_steps(self):
+        out = ren.generate_provider_mdx(_provider("skipflow_text", n=3))
+        self.assertIn("## Steps\n\n| Step | What it does |", out)
+
+    def test_section_markers_become_a_note(self):
         provider = {
-            "id": "slack",
-            "display_name": "Slack",
-            "description": "",
+            "id": "skipflow_loops",
+            "display_name": "Repeat",
+            "description": "Run steps more than once.",
             "actions": {
-                "bogus": "not a dict",
-                "good": {
-                    "display_name": "Good",
-                    "description": "",
-                    "path": "/p",
-                    "method": "POST",
-                    "parameters": [],
-                },
+                "endforeach": {"display_name": "End repeat", "handler": "_control_flow", "parameters": []},
+                "endwhile": {"display_name": "End repeat", "handler": "_control_flow", "parameters": []},
+                "foreach": {"display_name": "Repeat for each item", "handler": "_control_flow", "parameters": [{"name": "items"}]},
             },
         }
         out = ren.generate_provider_mdx(provider)
-        self.assertIn("### Good", out)
-        self.assertNotIn("bogus", out)
+        self.assertIn("Close each section with an **End repeat** step.", out)
+        self.assertNotIn("## End repeat", out)
+        self.assertIn("actions: 1\n", out)
+
+
+GMAIL_TRIGGER = {
+    "id": "gmail_new_email_trigger",
+    "display_name": "Gmail New Email",
+    "description": "Triggers when a new email arrives in your Gmail inbox",
+    "params": [
+        {"name": "mailbox", "arg_index": 0, "required": True, "description": "The mailbox to watch."},
+        {"name": "sender", "arg_index": 1, "required": False},
+    ],
+    "output": {"email_id": "string", "attachments": "array", "is_read": "boolean"},
+}
+
+APP = {
+    "logo": "https://www.lodol.com/app-icons/gmail-icon.png",
+    "categories": ["Email", "Google"],
+    "triggers": [GMAIL_TRIGGER],
+}
+
+
+class TriggerSectionTests(unittest.TestCase):
+    def test_names_the_trigger_and_says_what_starts_it(self):
+        out = ren.generate_trigger_section(GMAIL_TRIGGER)
+        self.assertTrue(out.startswith("### Gmail New Email\n\nTriggers when a new email"))
+
+    def test_lists_its_filters_by_key(self):
+        out = ren.generate_trigger_section(GMAIL_TRIGGER)
+        self.assertIn(
+            '<Fields title="Filters" description="Narrow which events start a run.">', out
+        )
+        self.assertIn('<Field id="mailbox" required description="The mailbox to watch." />', out)
+        self.assertIn('<Field id="sender" />', out)
+
+    def test_lists_the_fields_of_its_event_in_the_editor_s_words(self):
+        out = ren.generate_trigger_section(GMAIL_TRIGGER)
+        self.assertIn('<Fields title="Event fields"', out)
+        self.assertIn('<Field id="email_id" type="text" />', out)
+        self.assertIn('<Field id="attachments" type="list" />', out)
+        self.assertIn('<Field id="is_read" type="true/false" />', out)
+
+    def test_a_field_the_server_describes_instead_of_typing(self):
+        out = ren.generate_trigger_section(
+            {"display_name": "New transaction", "output": {"amount": "Amount in dollars."}}
+        )
+        self.assertIn('<Field id="amount" description="Amount in dollars." />', out)
+
+    def test_a_trigger_known_only_by_name(self):
+        out = ren.generate_trigger_section(
+            {"display_name": "New card", "description": "Runs when a card is added."}
+        )
+        self.assertEqual(out, "### New card\n\nRuns when a card is added.\n")
+
+
+class MarkdownCopyTests(unittest.TestCase):
+    """The Markdown copies AI tools read: the page's facts, no components."""
+
+    def _gmail(self, n=2):
+        return _provider("gmail", n=n, display_name="Gmail", description="Send and read email. More.")
+
+    def test_starts_with_the_title_summary_and_what_it_is(self):
+        out = ren.generate_provider_markdown(self._gmail(), APP)
+        self.assertTrue(out.startswith("# Gmail\n\n> Send and read email. More.\n\n"))
+        self.assertIn(
+            "App · Email · 2 actions · 1 trigger. "
+            "Web page: https://docs.lodol.com/docs/integrations/gmail\n",
+            out,
+        )
+
+    def test_has_no_components(self):
+        param = {"name": "to", "display_name": "To", "type": "ParameterType.STRING", "required": True}
+        provider = self._gmail()
+        provider["actions"]["act_0"]["parameters"] = [param]
+        out = ren.generate_provider_markdown(provider, APP)
+        self.assertNotIn("<Field", out)
+        self.assertNotIn("<Example>", out)
+
+    def test_lists_inputs_outputs_and_example(self):
+        action = {
+            "display_name": "Send email",
+            "description": "Send an email.",
+            "parameters": [
+                {"name": "to", "display_name": "To", "type": "ParameterType.STRING", "required": True,
+                 "description": "Who it goes to."},
+                {"name": "cc", "display_name": "CC", "type": "ParameterType.STRING", "default": "a@b.c"},
+            ],
+            "returns": {"type": "object", "properties": {"id": {"type": "string", "description": "Its ID."}}},
+            "mock_response": {"id": "m1"},
+        }
+        out = ren.generate_action_section("send", action, markdown=True, level=3)
+        self.assertTrue(out.startswith("### Send email\n\nSend an email.\n"))
+        self.assertIn("**Inputs**\n\n- To (`to`, text, required): Who it goes to.\n", out)
+        self.assertIn("- CC (`cc`, text): Default: `a@b.c`.\n", out)
+        self.assertIn("**Outputs**\n\n- `id` (text): Its ID.\n", out)
+        self.assertIn('**Example output**\n\n```json\n{\n  "id": "m1"\n}\n```', out)
+
+    def test_facts_follow_a_description_as_a_new_sentence(self):
+        info = ren.FieldInfo(id="x", description="Create it if missing", facts="Default: `true`.")
+        self.assertEqual(ren._markdown_field(info), "- `x`: Create it if missing. Default: `true`.")
+
+    def test_an_action_without_inputs_says_so(self):
+        out = ren.generate_action_section("ping", {"display_name": "Ping"}, markdown=True)
+        self.assertIn("**Inputs**: None.", out)
+
+    def test_triggers_come_before_actions(self):
+        out = ren.generate_provider_markdown(self._gmail(), APP)
+        self.assertLess(out.index("## Triggers"), out.index("### Gmail New Email"))
+        self.assertLess(out.index("### Gmail New Email"), out.index("## Actions"))
+        self.assertIn("**Filters**: Narrow which events start a run.\n\n- `mailbox` (required): The mailbox to watch.", out)
+        self.assertIn("- `email_id` (text)\n", out)
+
+    def test_built_in_steps_link_to_their_guide(self):
+        out = ren.generate_provider_markdown(_provider("skipflow_review", display_name="Approvals"))
+        self.assertIn("Built-in step · 1 step.", out)
+        self.assertIn("(https://docs.lodol.com/docs/guides/approvals.md)", out)
+        self.assertIn("## Steps", out)
+
+    def test_the_directory_lists_every_page(self):
+        providers = [self._gmail(), _provider("skipflow_text", display_name="Text", description="")]
+        out = ren.generate_index_markdown(providers, {"apps": {"gmail": APP}})
+        self.assertTrue(out.startswith("# Integrations\n\n> The 1 apps"))
+        self.assertIn(
+            "- [Gmail](https://docs.lodol.com/docs/integrations/gmail.md): "
+            "Send and read email. (App · Email · 2 actions · 1 trigger)",
+            out,
+        )
+        self.assertIn(
+            "- [Text](https://docs.lodol.com/docs/integrations/built-in/text.md): Built-in step · 1 step",
+            out,
+        )
+        self.assertLess(out.index("## Built-in steps"), out.index("## Apps"))
+
+    def test_render_writes_the_copies_and_the_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            md = Path(tmp) / "public" / "docs" / "integrations"
+            written = ren.render(
+                [self._gmail(), _provider("skipflow_text")], Path(tmp) / "out", {}, md
+            )
+            self.assertTrue((md / "gmail.md").exists())
+            self.assertTrue((md / "built-in" / "text.md").exists())
+            self.assertTrue((md.parent / "integrations.md").exists())
+            self.assertEqual(written, 4 + 2 + 3)
+
+
+class ProviderPageWithAppDataTests(unittest.TestCase):
+    def test_frontmatter_has_the_logo_main_category_and_trigger_count(self):
+        out = ren.generate_provider_mdx(_provider(n=3), APP)
+        self.assertIn('logo: "https://www.lodol.com/app-icons/gmail-icon.png"\n', out)
+        self.assertIn('category: "Email"\n', out)
+        self.assertIn("triggers: 1\n", out)
+
+    def test_triggers_come_before_the_actions(self):
+        out = ren.generate_provider_mdx(_provider(n=3), APP)
+        self.assertLess(out.index("## Triggers"), out.index("### Gmail New Email"))
+        self.assertLess(out.index("### Gmail New Email"), out.index("## Actions"))
+        self.assertIn("See [how triggers work](/docs/concepts/triggers).", out)
+
+    def test_overview_anchors_count_the_trigger_headings(self):
+        """A trigger and an action with the same name: the action, later on
+        the page, gets the second anchor."""
+        app = {**APP, "triggers": [{**GMAIL_TRIGGER, "display_name": "Act A"}]}
+        out = ren.generate_provider_mdx(_provider(n=3), app)
+        self.assertIn("| [Act A](#act-a-1) |", out)
+        self.assertIn("| [Act B](#act-b) |", out)
+
+    def test_actions_get_a_heading_after_triggers_even_without_an_overview(self):
+        out = ren.generate_provider_mdx(_provider(n=1), APP)
+        self.assertIn("## Actions\n\n## Act A", out)
+
+    def test_an_app_without_data_has_no_triggers_or_logo(self):
+        out = ren.generate_provider_mdx(_provider(n=3))
+        self.assertNotIn("## Triggers", out)
+        self.assertNotIn("logo:", out)
+        self.assertNotIn("category:", out)
+
+    def test_only_a_web_address_counts_as_a_logo(self):
+        out = ren.generate_provider_mdx(_provider(), {"logo": "/app-icons/x.png"})
+        self.assertNotIn("logo:", out)
+
+    def test_built_in_steps_ignore_app_data(self):
+        out = ren.generate_provider_mdx(_provider("skipflow_text"), APP)
+        self.assertNotIn("## Triggers", out)
+        self.assertNotIn("logo:", out)
 
 
 class GenerateIndexMdxTests(unittest.TestCase):
-    def test_pluralisation_and_card_links(self):
-        providers = [
-            {
-                "id": "slack",
-                "display_name": "Slack",
-                "actions": {"send": {}, "list": {}},
-            },
-            {
-                "id": "google_sheets",
-                "display_name": "Google Sheets",
-                "actions": {"append": {}},
-            },
-        ]
+    def test_the_directory_page(self):
+        providers = [_provider("slack"), _provider("gmail"), _provider("skipflow_text")]
         out = ren.generate_index_mdx(providers)
-        self.assertIn('description="2 actions available"', out)
-        self.assertIn('description="1 action available"', out)
-        self.assertIn("/docs/api-reference/actions/google-sheets", out)
-        self.assertIn("/docs/api-reference/actions/slack", out)
-
-    def test_alphabetical_ordering(self):
-        providers = [
-            {"id": "zzz", "display_name": "Zeta", "actions": {"a": {}}},
-            {"id": "aaa", "display_name": "Alpha", "actions": {"a": {}}},
-        ]
-        out = ren.generate_index_mdx(providers)
-        self.assertLess(out.index('title="Alpha"'), out.index('title="Zeta"'))
-
-    def test_skips_non_dict_actions_in_count(self):
-        providers = [
-            {
-                "id": "x",
-                "display_name": "X",
-                "actions": {"good": {}, "bogus": "not a dict"},
-            }
-        ]
-        out = ren.generate_index_mdx(providers)
-        self.assertIn('description="1 action available"', out)
+        self.assertIn("title: Integrations\n", out)
+        self.assertIn("The 2 apps and the built-in steps a workflow can use", out)
+        self.assertIn("<IntegrationDirectory />", out)
 
     def test_does_not_reference_direct_api_calls(self):
-        providers = [{"id": "slack", "display_name": "Slack", "actions": {}}]
-        out = ren.generate_index_mdx(providers)
-        self.assertNotIn("call actions directly", out)
+        out = ren.generate_index_mdx([_provider()])
         self.assertNotIn("curl", out)
-        self.assertNotIn("Endpoint Format", out)
-        self.assertNotIn("Request Format", out)
+        self.assertNotIn("/actions/library", out)
 
 
 class GenerateMetaJsonTests(unittest.TestCase):
-    def test_pages_listed_alphabetically_by_display_name(self):
+    def test_is_the_integrations_tab(self):
+        meta = json.loads(ren.generate_meta_json([_provider()]))
+        self.assertEqual(meta["title"], "Integrations")
+        self.assertTrue(meta["root"])
+
+    def test_built_in_steps_come_first_then_apps_by_name(self):
         providers = [
             {"id": "zzz", "display_name": "Zeta", "actions": {}},
+            {"id": "ebay", "display_name": "eBay", "actions": {}},
+            {"id": "skipflow_text", "display_name": "Text", "actions": {}},
             {"id": "aaa", "display_name": "Alpha", "actions": {}},
         ]
         meta = json.loads(ren.generate_meta_json(providers))
-        self.assertEqual(meta["title"], "Actions")
-        self.assertEqual(meta["pages"], ["index", "aaa", "zzz"])
+        self.assertEqual(
+            meta["pages"],
+            ["index", "---Built-in steps---", "...built-in", "---Apps---", "aaa", "ebay", "zzz"],
+        )
 
     def test_underscores_converted_to_hyphens(self):
-        providers = [
-            {"id": "google_sheets", "display_name": "Google Sheets", "actions": {}},
-        ]
-        meta = json.loads(ren.generate_meta_json(providers))
+        meta = json.loads(ren.generate_meta_json([{"id": "google_sheets", "display_name": "Google Sheets", "actions": {}}]))
         self.assertIn("google-sheets", meta["pages"])
+
+    def test_built_in_meta_orders_steps_by_name(self):
+        providers = [
+            {"id": "skipflow_text", "display_name": "Text", "actions": {}},
+            {"id": "skipflow_review", "display_name": "Approvals", "actions": {}},
+        ]
+        meta = json.loads(ren.generate_built_in_meta_json(providers))
+        self.assertEqual(meta["pages"], ["review", "text"])
+
+
+class CatalogTests(unittest.TestCase):
+    def test_counts_and_entries(self):
+        providers = [
+            _provider("slack", n=3),
+            _provider("gmail", n=2, display_name="Gmail"),
+            _provider("skipflow_review", n=1, display_name="Approvals"),
+        ]
+        catalog = ren.generate_catalog(providers)
+        self.assertEqual(catalog["apps"], 2)
+        self.assertEqual(catalog["appActions"], 5)
+        self.assertEqual([e["name"] for e in catalog["entries"]], ["Approvals", "Gmail", "Slack"])
+        approvals = catalog["entries"][0]
+        self.assertEqual(approvals["href"], "/docs/integrations/built-in/review")
+        self.assertTrue(approvals["builtIn"])
+        self.assertEqual(approvals["icon"], "UserCheck")
+
+    def test_entries_carry_a_one_sentence_description(self):
+        catalog = ren.generate_catalog([_provider(description="Talk to your team. And more.")])
+        self.assertEqual(catalog["entries"][0]["description"], "Talk to your team.")
+
+    def test_popular_apps_missing_from_the_catalog_are_left_out(self):
+        catalog = ren.generate_catalog([_provider("slack"), _provider("unknown_app")])
+        self.assertEqual(catalog["popular"], ["slack"])
+
+
+class CatalogWithAppDataTests(unittest.TestCase):
+    PROVIDERS = [_provider("gmail", n=2, display_name="Gmail"), _provider("slack", n=1), _provider("skipflow_text")]
+    DATA = {
+        "groups": [
+            {"key": "communication", "label": "Communication", "categories": ["Email", "Messaging", "Video"]},
+            {"key": "games", "label": "Games", "categories": ["Arcade"]},
+        ],
+        "popular": ["slack", "removed_app", "gmail"],
+        "apps": {"gmail": APP, "slack": {"logo": "https://www.lodol.com/app-icons/slack.webp", "categories": ["Messaging"]}},
+    }
+
+    def _entry(self, catalog, pid):
+        return next(e for e in catalog["entries"] if e["id"] == pid)
+
+    def test_apps_get_their_logo_categories_and_trigger_count(self):
+        catalog = ren.generate_catalog(self.PROVIDERS, self.DATA)
+        gmail = self._entry(catalog, "gmail")
+        self.assertEqual(gmail["logo"], APP["logo"])
+        self.assertEqual(gmail["categories"], ["Email", "Google"])
+        self.assertEqual(gmail["triggers"], 1)
+        self.assertNotIn("triggers", self._entry(catalog, "slack"))
+
+    def test_built_in_steps_keep_their_icons(self):
+        text = self._entry(ren.generate_catalog(self.PROVIDERS, self.DATA), "skipflow_text")
+        self.assertNotIn("logo", text)
+        self.assertNotIn("categories", text)
+
+    def test_popular_apps_follow_the_data_and_skip_missing_ones(self):
+        catalog = ren.generate_catalog(self.PROVIDERS, self.DATA)
+        self.assertEqual(catalog["popular"], ["slack", "gmail"])
+
+    def test_without_data_the_popular_list_is_the_fallback(self):
+        catalog = ren.generate_catalog(self.PROVIDERS)
+        self.assertEqual(catalog["popular"], ["gmail", "slack"])
+        self.assertEqual(catalog["groups"], [])
+
+    def test_groups_keep_only_categories_that_have_apps(self):
+        catalog = ren.generate_catalog(self.PROVIDERS, self.DATA)
+        self.assertEqual(
+            catalog["groups"],
+            [{"key": "communication", "label": "Communication", "categories": ["Email", "Messaging"]}],
+        )
+
+
+class LoadAppDataTests(unittest.TestCase):
+    def test_reads_the_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "apps.json"
+            path.write_text(json.dumps({"apps": {"gmail": APP}}))
+            self.assertEqual(ren.load_app_data(path)["apps"]["gmail"], APP)
+
+    def test_a_missing_file_warns_and_gives_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr):
+                self.assertEqual(ren.load_app_data(Path(tmp) / "apps.json"), {})
+            self.assertIn("refresh-app-data.py", stderr.getvalue())
 
 
 class LoadSpecsTests(unittest.TestCase):
@@ -764,49 +1241,60 @@ class PublishedSpecsTests(unittest.TestCase):
             self.assertIsInstance(provider, dict, path.name)
             self.assertEqual(provider.get("id"), path.stem, path.name)
 
+    def test_app_data_triggers_belong_to_their_app(self):
+        """data/apps.json is keyed by provider id; each trigger's id starts
+        with it, as the server names them."""
+        data = json.loads(ren.DEFAULT_APP_DATA.read_text(encoding="utf-8"))
+        for pid, app in data["apps"].items():
+            self.assertTrue(app["logo"].startswith("https://"), pid)
+            for trigger in app.get("triggers", []):
+                self.assertTrue(trigger.get("id", pid + "_").startswith(pid + "_"), trigger)
+
+    def test_each_built_in_group_has_its_own_icon(self):
+        """A new group would otherwise show a generic box in the directory."""
+        for path in sorted(ren.DEFAULT_INPUT.glob(f"{ren.BUILT_IN_PREFIX}*.json")):
+            self.assertIn(
+                path.stem, ren.BUILT_IN_ICONS,
+                f"Add a lucide icon name for {path.stem} to BUILT_IN_ICONS "
+                "in scripts/render-actions-docs.py",
+            )
+
 
 class RenderIntegrationTests(unittest.TestCase):
     """End-to-end test through ``render``."""
 
-    def test_writes_index_meta_and_provider_files(self):
+    def test_writes_the_directory_catalog_meta_and_pages(self):
         providers = [
-            {
-                "id": "slack",
-                "display_name": "Slack",
-                "description": "Slack integration.",
-                "actions": {
-                    "send": {
-                        "display_name": "Send",
-                        "description": "Sends a message.",
-                        "path": "/actions/library/slack/send",
-                        "method": "POST",
-                        "parameters": [],
-                        "mock_response": {"status": "success"},
-                    }
-                },
-            }
+            _provider("slack", n=1),
+            _provider("skipflow_review", n=1, display_name="Approvals"),
         ]
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp) / "out"
-            ren.render(providers, output_dir)
+            written = ren.render(providers, output_dir)
 
-            self.assertTrue((output_dir / "meta.json").exists())
-            self.assertTrue((output_dir / "index.mdx").exists())
-            self.assertTrue((output_dir / "slack.mdx").exists())
+            for name in ("meta.json", "index.mdx", "catalog.json", "slack.mdx",
+                         "built-in/meta.json", "built-in/review.mdx"):
+                self.assertTrue((output_dir / name).exists(), name)
+            self.assertEqual(written, 6)
 
-            meta = json.loads((output_dir / "meta.json").read_text())
-            self.assertEqual(meta["pages"], ["index", "slack"])
+            catalog = json.loads((output_dir / "catalog.json").read_text())
+            self.assertEqual(catalog["apps"], 1)
+            self.assertIn("## Act A", (output_dir / "slack.mdx").read_text())
 
-            provider_mdx = (output_dir / "slack.mdx").read_text()
-            self.assertIn("### Send", provider_mdx)
-            self.assertIn("Sends a message.", provider_mdx)
+    def test_app_data_reaches_the_pages_and_the_catalog(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "out"
+            ren.render([_provider("slack", n=1)], output_dir, {"apps": {"slack": APP}})
+            self.assertIn("## Triggers", (output_dir / "slack.mdx").read_text())
+            catalog = json.loads((output_dir / "catalog.json").read_text())
+            self.assertEqual(catalog["entries"][0]["triggers"], 1)
 
     def test_writes_provider_files_as_utf8(self):
         providers = [
             {
                 "id": "limits",
                 "display_name": "Limits",
-                "description": "Only values \u2264 10 are accepted.",
+                "description": "Only values ≤ 10 are accepted.",
                 "actions": {},
             }
         ]
@@ -815,21 +1303,30 @@ class RenderIntegrationTests(unittest.TestCase):
             ren.render(providers, output_dir)
 
             provider_mdx = (output_dir / "limits.mdx").read_text(encoding="utf-8")
-            self.assertIn("Only values \u2264 10 are accepted.", provider_mdx)
+            self.assertIn("Only values ≤ 10 are accepted.", provider_mdx)
 
-    def test_recreates_output_dir_files_from_scratch(self):
-        """A stale file from a previous run is removed."""
+    def test_recreates_the_output_directory_from_scratch(self):
+        """A stale page or folder from a previous run is removed."""
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp) / "out"
-            output_dir.mkdir()
+            (output_dir / "built-in").mkdir(parents=True)
             (output_dir / "stale.mdx").write_text("old")
+            (output_dir / "built-in" / "gone.mdx").write_text("old")
 
             ren.render([], output_dir)
 
             self.assertFalse((output_dir / "stale.mdx").exists())
-            # Index + meta are always written, even with zero providers.
+            self.assertFalse((output_dir / "built-in").exists())
+            # The directory, catalog and meta are always written, even with
+            # zero providers.
             self.assertTrue((output_dir / "meta.json").exists())
             self.assertTrue((output_dir / "index.mdx").exists())
+            self.assertTrue((output_dir / "catalog.json").exists())
+
+    def test_the_default_output_is_the_integrations_tab(self):
+        self.assertEqual(
+            ren.DEFAULT_OUTPUT_DIR, ren.DOCS_ROOT / "content" / "docs" / "integrations"
+        )
 
 
 class MainIntegrationTests(unittest.TestCase):
@@ -837,62 +1334,31 @@ class MainIntegrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             input_path = tmp_path / "actions.json"
-            input_path.write_text(
-                json.dumps(
-                    {
-                        "providers": [
-                            {
-                                "id": "fake",
-                                "display_name": "Fake",
-                                "description": "A fake provider.",
-                                "actions": {
-                                    "ping": {
-                                        "display_name": "Ping",
-                                        "description": "Pings.",
-                                        "path": "/actions/library/fake/ping",
-                                        "method": "POST",
-                                        "parameters": [],
-                                    }
-                                },
-                            }
-                        ]
-                    }
-                )
-            )
+            input_path.write_text(json.dumps({"providers": [_provider("fake", n=1)]}))
             output_dir = tmp_path / "out"
+            markdown_dir = tmp_path / "md" / "integrations"
             rc = ren.main(
-                ["--input", str(input_path), "--output-dir", str(output_dir)]
+                ["--input", str(input_path), "--output-dir", str(output_dir),
+                 "--markdown-dir", str(markdown_dir)]
             )
             self.assertEqual(rc, 0)
             self.assertTrue((output_dir / "fake.mdx").exists())
+            self.assertTrue((markdown_dir / "fake.md").exists())
+            self.assertTrue((tmp_path / "md" / "integrations.md").exists())
 
     def test_main_reads_a_directory_of_provider_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             input_dir = tmp_path / "actions"
             input_dir.mkdir()
-            (input_dir / "fake.json").write_text(
-                json.dumps(
-                    {
-                        "id": "fake",
-                        "display_name": "Fake",
-                        "description": "A fake provider.",
-                        "actions": {
-                            "ping": {
-                                "display_name": "Ping",
-                                "description": "Pings.",
-                                "parameters": [],
-                            }
-                        },
-                    }
-                )
-            )
+            (input_dir / "fake.json").write_text(json.dumps(_provider("fake", n=1)))
             output_dir = tmp_path / "out"
             rc = ren.main(
-                ["--input", str(input_dir), "--output-dir", str(output_dir)]
+                ["--input", str(input_dir), "--output-dir", str(output_dir),
+                 "--markdown-dir", str(tmp_path / "md")]
             )
             self.assertEqual(rc, 0)
-            self.assertIn("### Ping", (output_dir / "fake.mdx").read_text())
+            self.assertIn("## Act A", (output_dir / "fake.mdx").read_text())
 
 
 if __name__ == "__main__":

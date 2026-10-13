@@ -1,0 +1,85 @@
+---
+title: Steps and data
+description: Steps are what a workflow does, in order. Each one hands its result to the steps after it, which read it with @ references.
+icon: ListOrdered
+---
+
+A step is one thing a workflow does: add a row, send a message, make a decision, wait for an approval. Steps run in order, and each can use the results of every step before it.
+
+## Two kinds of steps
+
+**App actions** work in one of your apps through your connection to it, such as Google Sheets' **Append row** or Slack's **Send a message to a channel**. There are thousands of them; the [integrations directory](/docs/integrations) lists every one with its inputs and outputs.
+
+**Built-in steps** are Lodol's own. They decide which steps run, repeat steps, wait for people, call AI models, and work with data and files:
+
+| Built-in step | Use it to |
+| --- | --- |
+| [If and Otherwise](/docs/guides/conditions) | Run steps only when something is true |
+| [Repeat](/docs/guides/loops) | Run steps once per item in a list, or several times |
+| [Request approval](/docs/guides/approvals) | Pause until a person approves, rejects or replies |
+| [Run an AI agent](/docs/guides/ai-agents) | Have an AI read, research or decide, and hand back fields |
+| [Text](/docs/integrations/built-in/text), [Lists](/docs/integrations/built-in/lists), [Math](/docs/integrations/built-in/math), [Dates & Times](/docs/integrations/built-in/datetime) | Format, clean up, count and convert values |
+| [Files](/docs/integrations/built-in/files) | Read what's inside a file, make a CSV, Excel or PDF file, or resize an image |
+| [Stored values](/docs/guides/stored-values) | Remember a value from one run to the next |
+| [Wait](/docs/integrations/built-in/delay) | Pause for a while, or until a date and time |
+| [Run a workflow](/docs/guides/sub-workflows) | Use another workflow as a step |
+| [Call an API, Run Python code](/docs/guides/http-and-code) | Reach a service with no app in Lodol, or compute something no step covers |
+
+## Every step hands its result to the steps after it
+
+The trigger's event and each step's result have a name. Later steps read them with an `@` reference: in the editor you type `@` and pick the value, and it appears as a single token in the field.
+
+In the Stripe example, the trigger's event is called `payment`, so the Slack step's **Message** can read:
+
+```txt title="Send a message to a channel › Message"
+New payment: @payment.amount @payment.currency for @payment.description
+```
+
+Stripe sends `amount` in cents, so the finished workflow divides it by 100 and formats it first; see [Money can arrive in cents](#good-to-know-about-data).
+
+References reach as deep as the data goes:
+
+| Reference | Reads |
+| --- | --- |
+| `@payment.amount` | The `amount` field of the trigger's event |
+| `@lead.company.name` | A field inside a field |
+| `@sheet.rows` | A whole list, ready for a [Repeat](/docs/guides/loops) step |
+| `@sheet.rows[0]` | The first item of a list (`[-1]` is the last) |
+
+Every action's integration page lists its **Outputs**: the fields its result has. A step that returns a list puts it inside a field rather than returning the bare list: Google Sheets' **Read rows** returns its rows in `rows`, so a Repeat goes over `@sheet.rows`, not `@sheet`.
+
+## Good to know about data
+
+Data from apps arrives the way the app stores it, which isn't always the way people read it. These are the cases that most often surprise people.
+
+<Accordions type="multiple">
+  <Accordion title="Money can arrive in cents">
+    Stripe and similar apps report amounts in the smallest unit of the currency: `12500` is $125.00. Divide by 100 before you compare the amount with a figure or show it to anyone, so a condition reads the way you'd say it ("is at least 1,000").
+  </Accordion>
+  <Accordion title="Format numbers before people read them">
+    Calculations produce values like `6.234567891`. Before a number appears in an email or message, put it through **Round number**, or **Format number** with a style such as `thousands` or `usd`. There's no percent style: multiply the ratio by 100, round it, and write `%` after it.
+  </Accordion>
+  <Accordion title="Dates arrive as machine text">
+    Apps send dates like `2026-10-06T14:30:00Z`. Use **Make date readable** before a date appears in a message ("Tuesday, October 6 at 2:30 PM"). To check whether a date falls within a window, such as "in the next 30 days", use **Difference between dates** and compare the number of days, rather than comparing the dates as text.
+  </Accordion>
+  <Accordion title="Text is compared exactly">
+    "Paid" is not "paid". When you compare text that people type, like a status column in a sheet, put it through **Format text** as lowercase first, and compare it with lowercase text. To test for an empty cell, compare it with empty text.
+  </Accordion>
+  <Accordion title="Numbers can arrive as text">
+    Spreadsheet cells and some money fields arrive as text. Comparing them with a number works, but adding to them joins the text instead (`0` + `12.50` gives `012.50`). Turn the text into a number with **Extract from text** set to extract a number. To total a column across many rows, use **Get one field from every item** and then **Calculate total**, which read numeric text as numbers and skip blanks.
+  </Accordion>
+  <Accordion title="Read sheet columns by name, not position">
+    Google Sheets' **Read rows** returns each row keyed by its header, so you can read `@row.Email`. Its new-row trigger keeps the columns under `fields`: read `@row.fields.Amount`. Avoid positions like `@row[2]`: if someone reorders the columns, the step quietly reads the wrong one.
+  </Accordion>
+</Accordions>
+
+## Workspace values
+
+Besides step results, a step can read values your workspace keeps, such as a base URL every workflow shares. Write them as `@values.NAME`, for example `@values.BASE_URL`. Keys and passwords don't belong in values: store them as [secrets](/docs/concepts/connections#secrets), which stay encrypted and hidden.
+
+## Next
+
+<Cards>
+  <Card title="Inputs and outputs" description="Give a workflow values when it starts, and hand values back." href="/docs/concepts/inputs-and-outputs" />
+  <Card title="Runs" description="See exactly what each step did, every time." href="/docs/concepts/runs" />
+</Cards>

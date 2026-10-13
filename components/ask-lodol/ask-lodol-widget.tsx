@@ -89,6 +89,8 @@ export function AskLodolWidget() {
   // Count code points (matches the server's Python len()), not UTF-16 units.
   const charCount = [...input].length;
   const overLimit = charCount > MAX_QUERY_CHARS;
+  // The count only matters near the limit, so it stays out of the way until then.
+  const showCount = charCount > MAX_QUERY_CHARS * 0.9;
   const canSend = !pending && !overLimit && input.trim().length > 0;
 
   async function send() {
@@ -252,6 +254,11 @@ export function AskLodolWidget() {
             </button>
           </div>
           <div ref={listRef} className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-3">
+            {messages.length === 0 && !pending && (
+              <p className="my-auto px-2 text-center text-sm text-fd-muted-foreground">
+                Ask anything about building with Lodol. Answers come from these docs.
+              </p>
+            )}
             {messages.map((message, i) =>
               message.role === 'user' ? (
                 <div
@@ -312,9 +319,11 @@ export function AskLodolWidget() {
                 <SendIcon />
               </button>
             </div>
-            <p className={`mt-1 text-xs ${overLimit ? 'text-red-500' : 'text-fd-muted-foreground'}`}>
-              {charCount}/{MAX_QUERY_CHARS} characters
-            </p>
+            {showCount && (
+              <p className={`mt-1 text-xs ${overLimit ? 'text-red-500' : 'text-fd-muted-foreground'}`}>
+                {charCount}/{MAX_QUERY_CHARS} characters
+              </p>
+            )}
           </div>
         </div>
       )}

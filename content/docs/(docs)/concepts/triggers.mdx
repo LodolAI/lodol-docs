@@ -1,0 +1,83 @@
+---
+title: Triggers and schedules
+description: A workflow starts when something happens in an app, at the times you schedule, or when you start it. Each start is one run.
+icon: Zap
+---
+
+Every workflow has one way to start, and it's the first thing in the workflow. Choose it by asking what the automation is for:
+
+| If the goal is… | Start it with | Example |
+| --- | --- | --- |
+| Reacting when something happens | An [app trigger](#app-triggers) | "When a Stripe payment comes in…" |
+| Doing something at regular times | A [schedule](#schedules) | "Every Monday at 9:00, send the pipeline digest." |
+| Doing something once, when you decide | [Nothing: run it on demand](#on-demand) | "Build this month's report for Acme." |
+
+## App triggers
+
+An app trigger starts a run each time an event happens in a connected app: a new payment in Stripe, a new message in a Slack channel, a new email in Gmail, a new response to a form. The run receives the event, and later steps read its fields.
+
+<WorkflowPreview
+  steps={[
+    { step: 'New Stripe payment', app: 'Stripe', trigger: true, note: 'status: succeeded' },
+    { step: 'Append row', app: 'Google Sheets', note: '@payment.amount' },
+  ]}
+/>
+
+Most triggers take **filters** that narrow which events start a run. **New Stripe payment** can be limited to one payment status; **New Slack message** watches the channel you pick and can be limited to one person or a keyword.
+
+<Callout type="warn" title="Filter for the event you actually mean">
+  **New Stripe payment** runs when a payment is *created*, which includes checkouts still waiting for the customer to pay. To log only completed payments, set its status filter to `succeeded`.
+</Callout>
+
+### What a trigger hands to the run
+
+Each trigger delivers a fixed set of fields. New Stripe payment, for example, delivers the payment's `amount`, `currency`, `status`, `customer`, `description` and when it was `created`. A step can only use what the event carries: the Gmail trigger delivers an email's sender, recipients, subject, date and body, but not its attachments. To work with those, add Gmail's [Download attachments](/docs/integrations/gmail#download-attachments) step.
+
+Each app's page lists its triggers, with their filters and the fields each one delivers. These apps have triggers:
+
+<AppsWithTriggers />
+
+For any other app, a [schedule](#schedules) can check for new records instead.
+
+## Schedules
+
+A schedule starts a run at the times you choose. There are three kinds:
+
+- **Every few minutes, hours or days**, such as every 15 minutes. The shortest interval is one minute.
+- **At a time of day, on the days you choose**: every day at 8:00, every Monday, Wednesday and Friday at 17:30, or on the first of each month.
+- **Once**, at a date and time you set.
+
+Times follow the workflow owner's time zone unless you choose another one.
+
+### Choosing between a trigger and a schedule
+
+If the goal is "when something happens", use the app's trigger. A schedule that checks for new records every hour does the same work up to an hour late, and has to work out which records it already handled.
+
+Use a schedule when the goal really is about time, like a weekly digest or a daily check, and keep two things in mind:
+
+- **Look back exactly one interval.** A daily run that reports on "yesterday" sees every day once. A run that only happens on weekdays never sees Saturday or Sunday, so look back to the last working day, or run every day.
+- **Don't overlap windows.** A daily run asking for "everything changed since yesterday" can see the same record on two days. End each window where the next run's begins.
+
+## On demand
+
+A workflow with no trigger and no schedule runs only when something starts it:
+
+- **you**, from the workflow in Lodol
+- **your code**, through the [developer API](/docs/api/runs#run-a-workflow)
+- **another workflow**, with a [Run a workflow](/docs/guides/sub-workflows) step
+- **an AI agent**, which can use the workflow as one of its [tools](/docs/guides/ai-agents#tools)
+
+On-demand workflows can declare [inputs](/docs/concepts/inputs-and-outputs), such as which client to report on, so one workflow can be run for any of them. A workflow with a trigger or a schedule takes no inputs: everything it needs comes from the event or from its steps.
+
+## Turning a workflow on
+
+A workflow with a trigger or a schedule runs only while it's turned on. Once it's on, each event, or each scheduled time, starts one run, until you turn it off or delete it. A workflow waiting for its trigger doesn't use any of your plan's runs.
+
+Saving a change to a workflow that's on pauses it until you turn it back on.
+
+## Next
+
+<Cards>
+  <Card title="Steps and data" description="What steps do with the event, and how they pass results along." href="/docs/concepts/steps-and-data" />
+  <Card title="Runs" description="What happens each time a workflow runs, and how to see it." href="/docs/concepts/runs" />
+</Cards>
