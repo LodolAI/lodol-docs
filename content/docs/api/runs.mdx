@@ -1,6 +1,6 @@
 ---
 title: Runs
-description: Start a workflow run with inputs, follow it to its result, list past runs, and stop a run in progress.
+description: Start a workflow run with inputs, follow it to what it hands back, list past runs, and stop a run in progress.
 icon: Play
 ---
 
@@ -15,8 +15,12 @@ A run is one pass through a workflow. Runs start in the background: you start on
   "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
   "workflow_name": "Monthly Client Report",
   "status": "success",
+  "is_trigger_listener": false,
+  "created_at": "2026-01-15T10:30:00+00:00",
   "started_at": "2026-01-15T10:30:00+00:00",
-  "completed_at": "2026-01-15T10:30:03+00:00"
+  "completed_at": "2026-01-15T10:30:03+00:00",
+  "error": null,
+  "outputs": { "total": 1250, "summary": "A good month for Acme" }
 }
 ```
 
@@ -24,10 +28,14 @@ A run is one pass through a workflow. Runs start in the background: you start on
 <Field id="execution_id" type="string" description="The run's ID." />
 <Field id="workflow_id" type="string" description="The ID of the workflow that ran. It stays the same when the workflow is edited." />
 <Field id="version_id" type="string" description="The ID of the version of the workflow that ran. It changes as the workflow is edited." />
-<Field id="workflow_name" type="string" description="The workflow's name. Included when listing runs." />
-<Field id="status" type="string" description="queued, running, success, failed or stopped. See Run statuses." />
-<Field id="started_at" type="string" description="When the run started, in ISO 8601." />
+<Field id="workflow_name" type="string" description="The workflow's name." />
+<Field id="status" type="string" description="Where the run is, such as running or success. See Run statuses." />
+<Field id="is_trigger_listener" type="boolean" description="Whether this run is a workflow that starts from its own trigger or schedule, listening. See Workflows that start themselves." />
+<Field id="created_at" type="string" description="When the run was started, in ISO 8601." />
+<Field id="started_at" type="string or null" description="When it began working, in ISO 8601, or null while it's queued." />
 <Field id="completed_at" type="string or null" description="When it finished, in ISO 8601, or null while it's still going." />
+<Field id="error" type="string or null" description="Why the run failed, or null." />
+<Field id="outputs" type="object" description="What the run handed back: one field per output its workflow declares, by name. Empty until the run succeeds, and for a workflow that declares none. An output the run never set is null. Only Get a run includes it." />
 </Fields>
 
 ### Run statuses
@@ -36,9 +44,17 @@ A run is one pass through a workflow. Runs start in the background: you start on
 | --- | --- | --- |
 | `queued` | Started, and about to begin | No |
 | `running` | Working through its steps | No |
+| `waiting` | Set aside by a Wait step until its time comes | No |
+| `awaiting_approval` | Waiting for someone to answer an [approval request](/docs/guides/approvals) | No |
 | `success` | Reached the end of the workflow | Yes |
 | `failed` | A step failed and the run stopped there | Yes |
 | `stopped` | Stopped before it finished | Yes |
+
+When you check a run until it's done, wait for one of the final statuses rather than for it to leave `running`: a run waiting on a Wait step or an approval isn't finished.
+
+### Workflows that start themselves
+
+A workflow that starts from its own trigger or schedule doesn't run to an end. Running it turns it on, and the run you get back is the workflow listening: `is_trigger_listener` is set, and its status reads `running` for as long as it listens. Each event or scheduled time it catches starts a run of its own, which [List runs](#list-runs) lists beside it. Don't wait for the listening run to finish; follow the runs it starts instead, and [stop](#stop-a-run) it to turn the workflow off.
 
 ---
 
@@ -48,7 +64,7 @@ A run is one pass through a workflow. Runs start in the background: you start on
 
 Starts a run in the background and returns its ID straight away; follow it with [Get a run](#get-a-run). Requires the `workflows:execute` scope, and the member who created the key must be allowed to run workflows (the **Run workflows** role permission).
 
-`:id` can be the workflow's `id` or the ID of any of its versions. Either way, the workflow runs as it is now. Each run counts as one of your plan's monthly runs; when they're used up, the request gets `402`.
+`:id` can be the workflow's `id` or the ID of any of its versions. Either way, the workflow runs as it is now. Each run counts as one of your plan's monthly runs; when they're used up, the request gets `429` with the code `monthly_run_limit` (see [Error codes](/docs/api/errors#error-codes)).
 
 <Fields title="Headers">
 <Field id="Idempotency-Key" type="string" description="Makes the request safe to retry: a repeat with the same key returns the first response instead of starting another run. Up to 256 characters, remembered for 24 hours. Reusing a key for a different request, such as the same workflow with different inputs, returns 422. See Idempotency." />
@@ -79,14 +95,14 @@ Each value is converted to its input's declared type:
 | `list` | A list, or comma-separated text |
 | `object` | An object |
 
-An optional input you leave out takes its default, so a workflow with no required inputs can be run without a body. The run is refused with `400`, before anything starts and with a message naming the input, when:
+An optional input you leave out takes its default, so a workflow with no required inputs can be run without a body. The run is refused with `400` and the code `invalid_inputs`, before anything starts and with a message naming the input, when:
 
 - a value names an input the workflow doesn't declare
 - a required input has no value
 - a value can't be converted to its input's type
 - a value can't be stored with a run, such as `NaN`, `Infinity`, a whole number wider than 64 bits, or lists and objects nested more than 32 levels deep
 
-A workflow that starts from its own trigger or schedule takes no inputs, and sending it some returns `400`. Running it without a body turns it on, so it starts listening for its trigger or schedule.
+A workflow that starts from its own trigger or schedule takes no inputs, and sending it some returns `400`. Running it without a body turns it on, so it starts listening for its trigger or schedule: the response has `is_trigger_listener` set. See [Workflows that start themselves](#workflows-that-start-themselves).
 
 ### Example
 
@@ -134,6 +150,7 @@ run = response.json()
   "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
   "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
   "status": "queued",
+  "is_trigger_listener": false,
   "created_at": "2026-01-15T10:30:00+00:00"
 }
 ```
@@ -142,7 +159,8 @@ run = response.json()
 
 ```json
 {
-  "error": "'Monthly Client Report' needs a value for its 'client' input."
+  "error": "'Monthly Client Report' needs a value for its 'client' input.",
+  "error_code": "invalid_inputs"
 }
 ```
 
@@ -152,7 +170,7 @@ run = response.json()
 
 <Endpoint method="GET" path="/api/v1/executions" />
 
-Returns the workspace's runs, a page at a time. Requires the `executions:read` scope.
+Returns the workspace's runs, newest first, a page at a time. Requires the `executions:read` scope. The runs a [workflow that starts itself](#workflows-that-start-themselves) starts are listed too, beside its listening run. A workflow another run called isn't listed on its own: it's part of the run that called it.
 
 <Fields title="Query parameters">
 <Field id="workflow_id" type="string" description="Only runs of this workflow, from every version of it. Takes the workflow's id or the ID of any of its versions." />
@@ -182,7 +200,7 @@ response = requests.get(
 executions = response.json()["executions"]
 ```
 
-**Response `200`:** a page of [run objects](#the-run-object).
+**Response `200`:** a page of [run objects](#the-run-object), each with its `error` but without `outputs`: [Get a run](#get-a-run) has them.
 
 ```json
 {
@@ -192,9 +210,12 @@ executions = response.json()["executions"]
       "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
       "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
       "workflow_name": "Monthly Client Report",
-      "status": "success",
+      "status": "failed",
+      "is_trigger_listener": false,
+      "created_at": "2026-01-15T10:30:00+00:00",
       "started_at": "2026-01-15T10:30:00+00:00",
-      "completed_at": "2026-01-15T10:30:03+00:00"
+      "completed_at": "2026-01-15T10:30:03+00:00",
+      "error": "The sales sheet is empty this month."
     }
   ]
 }
@@ -206,7 +227,7 @@ executions = response.json()["executions"]
 
 <Endpoint method="GET" path="/api/v1/executions/:id" />
 
-Returns one run. Requires the `executions:read` scope. Step results are left out unless you ask for them, which keeps checking a run's status quick.
+Returns one run, with the `outputs` it handed back once it has succeeded. Requires the `executions:read` scope. Step results are left out unless you ask for them, which keeps checking a run's status quick; they're for looking into how a run reached its result, while `outputs` is the result.
 
 <Fields title="Query parameters">
 <Field id="include_step_results" type="string" description="Set to true to include what each step produced, in steps." />
@@ -246,10 +267,14 @@ run = response.json()
   "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
   "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
   "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "workflow_name": "Monthly Client Report",
   "status": "running",
+  "is_trigger_listener": false,
+  "created_at": "2026-01-15T10:30:00+00:00",
   "started_at": "2026-01-15T10:30:00+00:00",
   "completed_at": null,
-  "error": null
+  "error": null,
+  "outputs": {}
 }
 ```
 
@@ -260,14 +285,18 @@ run = response.json()
   "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
   "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
   "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "workflow_name": "Monthly Client Report",
   "status": "success",
+  "is_trigger_listener": false,
+  "created_at": "2026-01-15T10:30:00+00:00",
   "started_at": "2026-01-15T10:30:00+00:00",
   "completed_at": "2026-01-15T10:30:03+00:00",
+  "error": null,
+  "outputs": { "total": 1250, "summary": "A good month for Acme" },
   "steps": [
     { "index": 0, "status": "completed", "result": "..." },
     { "index": 1, "status": "completed", "result": "..." }
-  ],
-  "error": null
+  ]
 }
 ```
 
@@ -277,7 +306,7 @@ run = response.json()
 
 <Endpoint method="POST" path="/api/v1/executions/:id/stop" />
 
-Stops a run in progress. Steps that already finished aren't undone. Requires the `workflows:execute` scope, and the member who created the key must be allowed to run workflows. A run that has already finished (`success`, `failed` or `stopped`) returns `400`.
+Stops a run in progress. Steps that already finished aren't undone. Requires the `workflows:execute` scope, and the member who created the key must be allowed to run workflows. A run that has already finished (`success`, `failed` or `stopped`) returns `400` with the code `run_already_finished`: there's nothing to stop, and [Get a run](#get-a-run) says how it ended.
 
 <Fields title="Headers">
 <Field id="Idempotency-Key" type="string" description="Makes the request safe to retry, as for Run a workflow." />

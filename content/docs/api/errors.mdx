@@ -1,16 +1,29 @@
 ---
 title: Errors and retries
-description: What each error status means and what to do about it, which requests are safe to retry, and how idempotency keys stop a retry from starting a run twice.
+description: The error codes the API returns and what to do about each, the request ID to quote to support, which requests are safe to retry, and how idempotency keys stop a retry from starting a run twice.
 icon: TriangleAlert
 ---
 
-The API uses standard HTTP status codes. Every error has a JSON body with a message saying what went wrong:
+The API uses standard HTTP status codes. Every error has a JSON body with a message saying what went wrong, and a code naming the problem:
 
 ```json
 {
-  "error": "The error message describing what went wrong."
+  "error": "Execution not found",
+  "error_code": "not_found"
 }
 ```
+
+Decide what to do from `error_code`. It names the problem and never changes, while the wording of `error` is for people and may be improved. The [error codes](#error-codes) below list every one.
+
+## Request IDs
+
+Every response, error or not, carries an `X-Request-Id` header naming the request:
+
+```http
+X-Request-Id: req_9808efd9bf000072c581da45b425d3c0
+```
+
+When something goes wrong and you contact Lodol's support, quote it: it finds the request in Lodol's records. Log it with any error you keep.
 
 ## Status codes
 
@@ -20,20 +33,44 @@ The API uses standard HTTP status codes. Every error has a JSON body with a mess
 | `202` | Accepted: the run has started | Follow it with [Get a run](/docs/api/runs#get-a-run) |
 | `400` | The request isn't valid, such as an input that doesn't match the workflow | Fix the request; the message names the problem. Don't retry as is. |
 | `401` | The API key is missing or invalid | Check the `Authorization` header and the key |
-| `402` | The workspace has used its runs for the month | Add runs or turn on extra runs in **Billing**, or wait until the 1st |
+| `402` | Lodol Local only: the installation needs a licence | Add the licence in **Settings** |
 | `403` | The key lacks a scope, its creator's role doesn't allow the action, or the plan doesn't include it | Use a key with the right scope, or change the creator's role |
 | `404` | The workflow or run doesn't exist, or was deleted | Check the ID |
 | `409` | A request with the same `Idempotency-Key` is still being processed | Retry after the `Retry-After` header's seconds |
 | `422` | The `Idempotency-Key` was already used for a different request | Use a new key for a new request |
-| `429` | Too many requests, or too many runs in progress at once | Retry after the `Retry-After` header's seconds |
+| `429` | Too many requests, too many runs in progress at once, or the month's runs are used up | Depends on the `error_code`: see [Error codes](#error-codes) |
 | `500` | Something went wrong on Lodol's side | Retry with backoff |
+
+## Error codes
+
+These name a problem precisely, so your code can handle each its own way:
+
+| Code | Status | Meaning | What to do |
+| --- | --- | --- | --- |
+| `missing_api_key` | `401` | No `Authorization: Bearer …` header | Send the key |
+| `invalid_api_key` | `401` | The key is malformed, revoked or expired | Check the key, or make a new one |
+| `missing_scope` | `403` | The key was made without a scope this endpoint needs | Use a key with the scope |
+| `permission_denied` | `403` | The member who made the key isn't allowed to do this | Change their role, or use another member's key |
+| `api_key_owner_inactive` | `403` | The member who made the key has left the workspace, or has no role in it | Make a new key |
+| `item_view_only` | `403` | The key's member can see this workflow but not run or change it | Ask for edit access to it |
+| `workspace_ip_not_allowed` | `403` | The workspace only accepts requests from certain networks | Send the request from an allowed network |
+| `invalid_inputs` | `400` | The run's inputs don't match what the workflow declares, or it takes none | Fix the inputs; the message names the one at fault |
+| `workflow_not_runnable` | `400` | The workflow is a draft, or isn't finished | Publish or fix it in Lodol |
+| `run_already_finished` | `400` | [Stop a run](/docs/api/runs#stop-a-run) on a run that has already finished | Nothing: the run is over. [Get it](/docs/api/runs#get-a-run) to see how it ended |
+| `request_in_progress` | `409` | A request with this `Idempotency-Key` is still being worked on | Retry after the `Retry-After` header's seconds |
+| `idempotency_key_reused` | `422` | This `Idempotency-Key` was already used for a different request | Use a new key for a new request |
+| `rate_limited` | `429` | Too many requests in the last minute | Retry after the `Retry-After` header's seconds |
+| `concurrency_limit` | `429` | As many runs are going as your plan allows at once | Start the run once one finishes. Retrying straight away won't help |
+| `monthly_run_limit` | `429` | The month's runs are used up | Runs come back at `resets_at`; add runs or turn on extra runs in **Billing** to go on now |
+
+Any other error has the code for its kind of problem: `invalid_request` (`400`), `unauthorized` (`401`), `licence_required` (`402`), `forbidden` (`403`), `not_found` (`404`), `method_not_allowed` (`405`), `conflict` (`409`), `request_too_large` (`413`), `unprocessable_request` (`422`), `internal_error` (`500`) or `service_unavailable` (`503`).
 
 ## Common errors
 
 <Accordions type="multiple">
   <Accordion title="401: Missing or malformed Authorization header">
     ```json
-    { "error": "Missing or malformed Authorization header" }
+    { "error": "Missing or malformed Authorization header", "error_code": "missing_api_key" }
     ```
 
     The request has no `Authorization: Bearer …` header, or it isn't in that form.
@@ -42,55 +79,69 @@ The API uses standard HTTP status codes. Every error has a JSON body with a mess
     Returned by [Run a workflow](/docs/api/runs#run-a-workflow) when its `inputs` don't match the ones the workflow declares. The message names the input, and nothing has started:
 
     ```json
-    { "error": "'Monthly Client Report' has no input named 'clinet'. Its inputs are: client, month." }
+    {
+      "error": "'Monthly Client Report' has no input named 'clinet'. Its inputs are: client, month.",
+      "error_code": "invalid_inputs"
+    }
     ```
-  </Accordion>
-  <Accordion title="402: The month's runs are used up">
-    ```json
-    { "error": "Insufficient credits. Please upgrade your plan or purchase more credits." }
-    ```
-
-    New runs pause until the 1st of the month (UTC), unless you add runs or turn on extra runs in **Billing**.
   </Accordion>
   <Accordion title="403: The key isn't allowed to do this">
     The key lacks the scope the endpoint needs:
 
     ```json
-    { "error": "API key lacks required scope(s)" }
+    { "error": "API key lacks required scope(s)", "error_code": "missing_scope" }
     ```
 
     Or the member who created the key isn't allowed to do it, or has left the workspace:
 
     ```json
-    { "error": "The member this API key acts for is not allowed to delete workflows in this workspace" }
+    {
+      "error": "The member this API key acts for is not allowed to delete workflows in this workspace",
+      "error_code": "permission_denied"
+    }
     ```
   </Accordion>
-  <Accordion title="429: Too many requests, or too many runs at once">
-    Over the rate limit:
+  <Accordion title="429: Too many requests, too many runs at once, or no runs left">
+    Over the rate limit, with a `Retry-After` header saying how many seconds to wait:
 
     ```json
-    { "error": "Rate limit exceeded. Please wait before trying again." }
+    { "error": "Rate limit exceeded. Please wait before trying again.", "error_code": "rate_limited" }
     ```
 
-    Or too many runs already in progress:
+    Too many runs already in progress. There's no `Retry-After`: start the run once one of them finishes.
 
     ```json
-    { "error": "Concurrent execution limit reached. Your plan allows 5 concurrent executions via the API." }
+    {
+      "error": "Concurrent execution limit reached. Your plan allows 5 concurrent executions via the API.",
+      "error_code": "concurrency_limit"
+    }
     ```
 
-    Both come with a `Retry-After` header saying how many seconds to wait.
+    The month's runs are used up. `resets_at` says when they come back, `limit` how many runs a month the plan includes, and `extra_runs_spend_limit` how many dollars of extra runs a month the workspace allows (`null` when it pays for none):
+
+    ```json
+    {
+      "error": "This workspace has used all 1,000 runs its plan includes this month. Runs start again on November 1, or upgrade for more runs now.",
+      "error_code": "monthly_run_limit",
+      "limit": 1000,
+      "extra_runs_spend_limit": null,
+      "resets_at": "2026-11-01T00:00:00+00:00"
+    }
+    ```
   </Accordion>
 </Accordions>
 
 ## Retry safely
 
-Retry `429`, `409` and `5xx` responses, waiting longer each time. When the response has a `Retry-After` header, wait that many seconds; otherwise back off exponentially. Don't retry other `4xx` responses: the request itself needs fixing.
+Retry `409`, `5xx`, and `429` with the code `rate_limited`, waiting longer each time. When the response has a `Retry-After` header, wait that many seconds; otherwise back off exponentially. Don't retry other `4xx` responses: the request itself needs fixing. Nor the other `429`s: `concurrency_limit` clears only when a run finishes, and `monthly_run_limit` when the month's runs come back.
 
 ```js tab="JavaScript" tab-group="lang"
 async function lodolRequest(url, options = {}, maxRetries = 3) {
   for (let attempt = 0; ; attempt++) {
     const response = await fetch(url, options);
-    const retryable = [409, 429].includes(response.status) || response.status >= 500;
+    const code = response.status === 429 ? (await response.clone().json()).error_code : null;
+    const retryable =
+      response.status === 409 || response.status >= 500 || code === 'rate_limited';
     if (!retryable || attempt === maxRetries) return response;
 
     const retryAfter = Number(response.headers.get('Retry-After'));
@@ -107,7 +158,12 @@ import requests
 def lodol_request(method, url, max_retries=3, **kwargs):
     for attempt in range(max_retries + 1):
         response = requests.request(method, url, **kwargs)
-        retryable = response.status_code in (409, 429) or response.status_code >= 500
+        code = response.json().get("error_code") if response.status_code == 429 else None
+        retryable = (
+            response.status_code == 409
+            or response.status_code >= 500
+            or code == "rate_limited"
+        )
         if not retryable or attempt == max_retries:
             return response
         retry_after = response.headers.get("Retry-After")

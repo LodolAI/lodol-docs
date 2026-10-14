@@ -121,6 +121,7 @@ The API answers straight away with `202 Accepted` and the run's ID, while the ru
   "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
   "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
   "status": "queued",
+  "is_trigger_listener": false,
   "created_at": "2026-04-14T10:30:00+00:00"
 }
 ```
@@ -132,10 +133,10 @@ A workflow with no required inputs can be started without a body.
 
 ### Wait for the result
 
-Check the run until its status is no longer `queued` or `running`, then fetch it with `include_step_results=true` to get what each step produced.
+Check the run until it finishes: `success`, `failed` or `stopped`. A run that succeeded has what the workflow handed back in `outputs`, one field per output it declares; one that failed says why in `error`.
 
 ```bash tab="cURL" tab-group="lang"
-curl "https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?include_step_results=true" \
+curl https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f \
   -H "Authorization: Bearer $LODOL_API_KEY"
 ```
 
@@ -143,14 +144,14 @@ curl "https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f?incl
 const headers = { Authorization: `Bearer ${process.env.LODOL_API_KEY}` };
 const url = `https://api-prod.lodol.com/api/v1/executions/${run.execution_id}`;
 
-let current;
+const finished = ['success', 'failed', 'stopped'];
+let result;
 do {
   await new Promise((resolve) => setTimeout(resolve, 5000));
-  current = await (await fetch(url, { headers })).json();
-} while (current.status === 'queued' || current.status === 'running');
+  result = await (await fetch(url, { headers })).json();
+} while (!finished.includes(result.status));
 
-const result = await (await fetch(`${url}?include_step_results=true`, { headers })).json();
-console.log(result.status, result.steps);
+console.log(result.status, result.outputs, result.error);
 ```
 
 ```python tab="Python"
@@ -161,12 +162,11 @@ url = f"https://api-prod.lodol.com/api/v1/executions/{run['execution_id']}"
 
 while True:
     time.sleep(5)
-    current = requests.get(url, headers=headers).json()
-    if current["status"] not in ("queued", "running"):
+    result = requests.get(url, headers=headers).json()
+    if result["status"] in ("success", "failed", "stopped"):
         break
 
-result = requests.get(url, headers=headers, params={"include_step_results": "true"}).json()
-print(result["status"], result["steps"])
+print(result["status"], result["outputs"], result["error"])
 ```
 
 ```json
@@ -174,18 +174,18 @@ print(result["status"], result["steps"])
   "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
   "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
   "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "workflow_name": "Monthly Client Report",
   "status": "success",
+  "is_trigger_listener": false,
+  "created_at": "2026-04-14T10:30:00+00:00",
   "started_at": "2026-04-14T10:30:00+00:00",
   "completed_at": "2026-04-14T10:30:45+00:00",
-  "steps": [
-    { "index": 0, "status": "completed", "result": "..." },
-    { "index": 1, "status": "completed", "result": "..." }
-  ],
-  "error": null
+  "error": null,
+  "outputs": { "total": 1250, "summary": "A good month for Acme" }
 }
 ```
 
-Every check counts toward your [rate limit](/docs/api/limits), so poll every few seconds rather than in a tight loop.
+Every check counts toward your [rate limit](/docs/api/limits), so poll every few seconds rather than in a tight loop. To see what each step produced along the way, add `include_step_results=true`.
 
 </Step>
 </Steps>
