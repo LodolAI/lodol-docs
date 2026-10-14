@@ -110,6 +110,7 @@ BUILT_IN_ICONS = {
     "skipflow_schedule": "Clock",
     "skipflow_text": "Type",
     "skipflow_variables": "Database",
+    "skipflow_webhook": "Webhook",
     "skipflow_workflows": "Workflow",
 }
 DEFAULT_BUILT_IN_ICON = "Box"
