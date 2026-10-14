@@ -1,7 +1,113 @@
 {
   "actions": {
+    "combine_pdf": {
+      "description": "Put PDFs and images together as one PDF, in the order you give them: a contract and its signed pages, or a month of receipt photos ready to send to your accountant. Each image gets a page of its own.",
+      "display_name": "Combine into one PDF",
+      "display_str_template": "Combine {files} into one PDF",
+      "handler": "_handled_by_executor",
+      "id": "skipflow_files_combine_pdf",
+      "method": "POST",
+      "mock_response": {
+        "content_type": "application/pdf",
+        "count": 5,
+        "document_ref": "doc_c9f0f895fb98ab9159f51fd0297e236d",
+        "documents": [
+          {
+            "content_type": "application/pdf",
+            "document_ref": "doc_c9f0f895fb98ab9159f51fd0297e236d",
+            "filename": "October receipts.pdf",
+            "size_bytes": 1284096
+          }
+        ],
+        "filename": "October receipts.pdf",
+        "pages": 7,
+        "size_bytes": 1284096
+      },
+      "name": "combine_pdf",
+      "output_formatter": "format_combine_pdf_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "accepts_variable_reference": true,
+          "description": "The PDFs and images (JPG, PNG, WebP, GIF, BMP or TIFF) to combine, in the order they should appear. Upload them, or pick files or a list of files from earlier steps. Each image is fitted on a page the size of the first PDF's pages, or A4 when there are only images.",
+          "display_name": "Files",
+          "name": "files",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "What to call the PDF, such as October receipts. .pdf is added for you. Leave empty to call it combined.",
+          "display_name": "File name",
+          "name": "filename",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/core/files/combine-pdf",
+      "returns": {
+        "description": "The new PDF, kept for 30 days. Give document_ref to a step that takes a file, such as an email's attachments or a drive upload.",
+        "examples": [
+          {
+            "content_type": "application/pdf",
+            "count": 5,
+            "document_ref": "doc_c9f0f895fb98ab9159f51fd0297e236d",
+            "documents": [
+              {
+                "content_type": "application/pdf",
+                "document_ref": "doc_c9f0f895fb98ab9159f51fd0297e236d",
+                "filename": "October receipts.pdf",
+                "size_bytes": 1284096
+              }
+            ],
+            "filename": "October receipts.pdf",
+            "pages": 7,
+            "size_bytes": 1284096
+          }
+        ],
+        "properties": {
+          "content_type": {
+            "description": "Always application/pdf.",
+            "type": "string"
+          },
+          "count": {
+            "description": "How many files were combined.",
+            "type": "integer"
+          },
+          "document_ref": {
+            "description": "The PDF, for a later step that takes one.",
+            "type": "string"
+          },
+          "documents": {
+            "description": "The same PDF as a one-item list, the shape steps that download files return.",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "filename": {
+            "description": "The PDF's name, .pdf included.",
+            "type": "string"
+          },
+          "pages": {
+            "description": "How many pages the PDF has.",
+            "type": "integer"
+          },
+          "size_bytes": {
+            "description": "The PDF's size in bytes.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
     "create": {
-      "description": "Turn rows, text or data into a file you can attach to an email, upload to a drive, or download: a CSV or Excel spreadsheet, a PDF such as an invoice or a report, a text file, or JSON.",
+      "description": "Turn rows, text or data into a file you can attach to an email, upload to a drive, or download: a CSV or Excel spreadsheet, a PDF such as an invoice or a report, a text file, JSON, or a calendar invite that adds events to anyone's calendar.",
       "display_name": "Create a file",
       "display_str_template": "Create {format}",
       "handler": "_handled_by_executor",
@@ -26,7 +132,7 @@
       "parameters": [
         {
           "default": "csv",
-          "description": "CSV and Excel files are spreadsheets made from rows. A PDF is a finished document, such as an invoice, a quote or a report, laid out from text. A text file holds text. JSON holds data for another system to read.",
+          "description": "CSV and Excel files are spreadsheets made from rows. A PDF is a finished document, such as an invoice, a quote or a report, laid out from text. A text file holds text. JSON holds data for another system to read. A calendar invite adds events to Google Calendar, Outlook or Apple Calendar when it is opened.",
           "display_name": "File type",
           "name": "format",
           "options": [
@@ -49,6 +155,10 @@
             {
               "label": "JSON file",
               "value": "json"
+            },
+            {
+              "label": "Calendar invite (.ics)",
+              "value": "calendar"
             }
           ],
           "required": true,
@@ -94,7 +204,19 @@
           }
         },
         {
-          "description": "What to call the file, such as Weekly leads. The right extension is added for you. Leave empty to call it data (or file, for text). A PDF is named after its title.",
+          "description": "One event, or a list of them, such as the rows of a sheet. Each needs a title (or summary, or name) and a start, and can have an end, a location, a description, a url and all_day. Dates are read in your time zone. Without an end, an event lasts an hour, or all day when its start is a date with no time.",
+          "display_name": "Events",
+          "name": "events",
+          "required": true,
+          "type": "ParameterType.ARRAY",
+          "visible_when": {
+            "format": [
+              "calendar"
+            ]
+          }
+        },
+        {
+          "description": "What to call the file, such as Weekly leads. The right extension is added for you. Leave empty to call it data (or file, for text). A PDF is named after its title, and a calendar invite after its event (or invite, for several).",
           "display_name": "File name",
           "name": "filename",
           "required": false,
@@ -118,11 +240,25 @@
             ],
             "filename": "Weekly leads.csv",
             "size_bytes": 2048
+          },
+          {
+            "content_type": "text/calendar",
+            "document_ref": "doc_a87ff679a2f3e71d9181a67b7542122c",
+            "documents": [
+              {
+                "content_type": "text/calendar",
+                "document_ref": "doc_a87ff679a2f3e71d9181a67b7542122c",
+                "filename": "Onboarding call with Jordan Lee.ics",
+                "size_bytes": 412
+              }
+            ],
+            "filename": "Onboarding call with Jordan Lee.ics",
+            "size_bytes": 412
           }
         ],
         "properties": {
           "content_type": {
-            "description": "The file's media type, such as text/csv.",
+            "description": "The file's media type, such as text/csv, or text/calendar for a calendar invite.",
             "type": "string"
           },
           "document_ref": {
@@ -149,7 +285,7 @@
       }
     },
     "edit_image": {
-      "description": "Get a photo ready to post or send: resize or crop it to a post's size, add a watermark, and save it as a smaller JPG, PNG or WebP, all in one step.",
+      "description": "Get a photo ready to post or send: turn it, resize or crop it to a post's size, add a watermark, and save it as a smaller JPG, PNG or WebP, all in one step.",
       "display_name": "Edit an image",
       "display_str_template": "Edit {image}",
       "handler": "_handled_by_executor",
@@ -181,6 +317,32 @@
           "display_name": "Image",
           "name": "image",
           "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "none",
+          "description": "Turn the photo, such as one taken on its side. A phone photo is already turned upright for you; this turns it from there, before it is sized.",
+          "display_name": "Rotate",
+          "name": "rotate",
+          "options": [
+            {
+              "label": "Don't rotate",
+              "value": "none"
+            },
+            {
+              "label": "90\u00b0 clockwise",
+              "value": "clockwise"
+            },
+            {
+              "label": "180\u00b0",
+              "value": "half"
+            },
+            {
+              "label": "90\u00b0 counter-clockwise",
+              "value": "counterclockwise"
+            }
+          ],
+          "required": false,
           "type": "ParameterType.STRING"
         },
         {
@@ -469,8 +631,305 @@
         "type": "object"
       }
     },
+    "edit_pdf": {
+      "description": "Change a PDF's pages: keep only some of them (which also splits a PDF or takes one page out), add text such as PAID or CONFIDENTIAL, add an image such as a logo or a signature, or turn its pages into images.",
+      "display_name": "Edit a PDF",
+      "display_str_template": "Edit {file}",
+      "handler": "_handled_by_executor",
+      "id": "skipflow_files_edit_pdf",
+      "method": "POST",
+      "mock_response": {
+        "content_type": "application/pdf",
+        "document_ref": "doc_45c48cce2e2d7fbdea1afc51c7c6ad26",
+        "document_refs": [
+          "doc_45c48cce2e2d7fbdea1afc51c7c6ad26"
+        ],
+        "documents": [
+          {
+            "content_type": "application/pdf",
+            "document_ref": "doc_45c48cce2e2d7fbdea1afc51c7c6ad26",
+            "filename": "Contract.pdf",
+            "size_bytes": 248310
+          }
+        ],
+        "filename": "Contract.pdf",
+        "pages": 3,
+        "size_bytes": 248310
+      },
+      "name": "edit_pdf",
+      "output_formatter": "format_edit_pdf_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "accepts_variable_reference": true,
+          "description": "The PDF to edit. Upload one, or pick one from an earlier step, such as an email attachment.",
+          "display_name": "PDF",
+          "name": "file",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "keep_pages",
+          "description": "Keep only some pages makes a new PDF of the pages you choose, which is also how you split a PDF or take one page out. Adding text or an image puts it on top of the pages. Turning pages into images makes one image per page.",
+          "display_name": "What to do",
+          "name": "operation",
+          "options": [
+            {
+              "label": "Keep only some pages",
+              "value": "keep_pages"
+            },
+            {
+              "label": "Add text to pages",
+              "value": "add_text"
+            },
+            {
+              "label": "Add an image to pages",
+              "value": "add_image"
+            },
+            {
+              "label": "Turn pages into images",
+              "value": "to_images"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The pages to keep, in the order you want them, such as 1-3, 5 or 2-last. Write last for the last page.",
+          "display_name": "Pages to keep",
+          "name": "pages",
+          "required": true,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "operation": [
+              "keep_pages"
+            ]
+          }
+        },
+        {
+          "description": "The text to put on the pages, such as PAID, CONFIDENTIAL or an invoice number.",
+          "display_name": "Text",
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "operation": [
+              "add_text"
+            ]
+          }
+        },
+        {
+          "accepts_file_upload": true,
+          "accepts_variable_reference": true,
+          "description": "The image to put on the pages, such as a logo, a signature or a stamp. A PNG with a see-through background looks best.",
+          "display_name": "Image",
+          "name": "image",
+          "required": true,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "operation": [
+              "add_image"
+            ]
+          }
+        },
+        {
+          "description": "Which pages, such as 1, 1-3 or last. Leave empty for every page.",
+          "display_name": "Pages",
+          "name": "on_pages",
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "operation": [
+              "add_text",
+              "add_image",
+              "to_images"
+            ]
+          }
+        },
+        {
+          "default": "bottom_right",
+          "description": "Where on each page it goes.",
+          "display_name": "Position",
+          "name": "position",
+          "options": [
+            {
+              "label": "Bottom right",
+              "value": "bottom_right"
+            },
+            {
+              "label": "Bottom left",
+              "value": "bottom_left"
+            },
+            {
+              "label": "Top right",
+              "value": "top_right"
+            },
+            {
+              "label": "Top left",
+              "value": "top_left"
+            },
+            {
+              "label": "Center",
+              "value": "center"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "operation": [
+              "add_text",
+              "add_image"
+            ]
+          }
+        },
+        {
+          "default": "small",
+          "description": "How big it is on the page. Small suits a reference number or a signature; large suits a stamp such as PAID.",
+          "display_name": "Size",
+          "name": "size",
+          "options": [
+            {
+              "label": "Small",
+              "value": "small"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "Large",
+              "value": "large"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "operation": [
+              "add_text",
+              "add_image"
+            ]
+          }
+        },
+        {
+          "default": "png",
+          "description": "PNG keeps text sharp. JPG makes smaller files, and suits scanned pages and photos.",
+          "display_name": "Save as",
+          "name": "image_format",
+          "options": [
+            {
+              "label": "PNG",
+              "value": "png"
+            },
+            {
+              "label": "JPG",
+              "value": "jpg"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "operation": [
+              "to_images"
+            ]
+          }
+        },
+        {
+          "description": "What to call the new file. The right extension is added for you. Leave empty to keep the PDF's name. Images are named by page, such as Contract page 1.png.",
+          "display_name": "File name",
+          "name": "filename",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/core/files/edit-pdf",
+      "returns": {
+        "description": "What was made, kept for 30 days: a new PDF, or one image per page. Give document_ref to a step that takes a file, such as an email's attachments or a drive upload. For images, go through 'documents' with a Repeat for each, or give 'document_refs' to a step that takes several files.",
+        "examples": [
+          {
+            "content_type": "application/pdf",
+            "document_ref": "doc_45c48cce2e2d7fbdea1afc51c7c6ad26",
+            "document_refs": [
+              "doc_45c48cce2e2d7fbdea1afc51c7c6ad26"
+            ],
+            "documents": [
+              {
+                "content_type": "application/pdf",
+                "document_ref": "doc_45c48cce2e2d7fbdea1afc51c7c6ad26",
+                "filename": "Contract.pdf",
+                "size_bytes": 248310
+              }
+            ],
+            "filename": "Contract.pdf",
+            "pages": 3,
+            "size_bytes": 248310
+          },
+          {
+            "content_type": "image/png",
+            "document_ref": "doc_1679091c5a880faf6fb5e6087eb1b2dc",
+            "document_refs": [
+              "doc_1679091c5a880faf6fb5e6087eb1b2dc",
+              "doc_8f14e45fceea167a5a36dedd4bea2543"
+            ],
+            "documents": [
+              {
+                "content_type": "image/png",
+                "document_ref": "doc_1679091c5a880faf6fb5e6087eb1b2dc",
+                "filename": "Contract page 1.png",
+                "size_bytes": 152448
+              },
+              {
+                "content_type": "image/png",
+                "document_ref": "doc_8f14e45fceea167a5a36dedd4bea2543",
+                "filename": "Contract page 2.png",
+                "size_bytes": 139904
+              }
+            ],
+            "filename": "Contract page 1.png",
+            "pages": 2,
+            "size_bytes": 152448
+          }
+        ],
+        "properties": {
+          "content_type": {
+            "description": "That file's media type: application/pdf, image/png or image/jpeg.",
+            "type": "string"
+          },
+          "document_ref": {
+            "description": "The new PDF, for a later step that takes a file. When pages were turned into images, the first image.",
+            "type": "string"
+          },
+          "document_refs": {
+            "description": "The same files as a plain list, for a step that takes several, such as an email's attachments.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "documents": {
+            "description": "Every file made, in page order: the one PDF, or one image per page. Each has document_ref, filename, content_type and size_bytes.",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "filename": {
+            "description": "That file's name, extension included.",
+            "type": "string"
+          },
+          "pages": {
+            "description": "How many pages the new PDF has, or how many pages were turned into images.",
+            "type": "integer"
+          },
+          "size_bytes": {
+            "description": "That file's size in bytes.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
     "read": {
-      "description": "Get what's inside a file: the rows of a CSV or Excel sheet, the text of a PDF or Word document, or the data in a JSON file. Works with an upload, an email attachment, or a file an earlier step downloaded.",
+      "description": "Get what's inside a file: the rows of a CSV or Excel sheet, the text of a PDF or Word document and how many pages a PDF has, the data in a JSON or XML file, or an image's size and shape. Works with an upload, an email attachment, or a file an earlier step downloaded.",
       "display_name": "Read a file",
       "display_str_template": "Read {file}",
       "handler": "_handled_by_executor",
@@ -485,6 +944,8 @@
           "Email",
           "Company"
         ],
+        "image": null,
+        "pages": null,
         "rows": [
           {
             "Company": "Acme Corp",
@@ -526,11 +987,18 @@
           "name": "has_header",
           "required": false,
           "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "For an XML file, the part to read, such as //item for every item. Leave empty to read the whole file.",
+          "display_name": "Part to read",
+          "name": "part",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/core/files/read",
       "returns": {
-        "description": "What's inside the file. A spreadsheet's rows are in 'rows', each keyed by its column header (row.Email); a document's words are in 'text'; a JSON file's value is in 'data'.",
+        "description": "What's inside the file. A spreadsheet's rows are in 'rows', each keyed by its column header (row.Email); a document's words are in 'text' and a PDF's page count in 'pages'; a JSON or XML file's value is in 'data'; an image's size and shape are in 'image'.",
         "examples": [
           {
             "count": 2,
@@ -541,6 +1009,8 @@
               "Email",
               "Company"
             ],
+            "image": null,
+            "pages": null,
             "rows": [
               {
                 "Company": "Acme Corp",
@@ -555,6 +1025,52 @@
             ],
             "text": "Name,Email,Company\nJordan Lee,jordan@acme.test,Acme Corp\nSam Rivera,sam@northwind.test,Northwind",
             "type": "csv"
+          },
+          {
+            "count": 0,
+            "data": null,
+            "filename": "INV-1042.pdf",
+            "headers": [],
+            "image": null,
+            "pages": 1,
+            "rows": [],
+            "text": "Invoice INV-1042\n\nDesk lamp      2   $84.00\nTotal due          $84.00",
+            "type": "pdf"
+          },
+          {
+            "count": 0,
+            "data": {
+              "order": {
+                "customer": "Jordan Lee",
+                "id": "1042",
+                "total": "84.00"
+              }
+            },
+            "filename": "orders.xml",
+            "headers": [],
+            "image": null,
+            "pages": null,
+            "rows": [],
+            "text": "<orders><order id=\"1042\"><customer>Jordan Lee</customer><total>84.00</total></order></orders>",
+            "type": "xml"
+          },
+          {
+            "count": 0,
+            "data": null,
+            "filename": "Linen shirt.jpg",
+            "headers": [],
+            "image": {
+              "format": "jpg",
+              "height": 4032,
+              "orientation": "portrait",
+              "size_bytes": 2481920,
+              "transparent": false,
+              "width": 3024
+            },
+            "pages": null,
+            "rows": [],
+            "text": "",
+            "type": "image"
           }
         ],
         "properties": {
@@ -563,7 +1079,7 @@
             "type": "integer"
           },
           "data": {
-            "description": "A JSON file's value: an object, a list, or a single value. Empty (null) for any other file."
+            "description": "A JSON or XML file's value: an object, a list, or a single value. In XML, each element's attributes and the elements inside it are its fields, a tag repeated inside one element is a list, and an element holding only text is that text. With a Part to read, the parts found, as a list. Empty (null) for any other file."
           },
           "filename": {
             "description": "The file's name.",
@@ -576,6 +1092,47 @@
             },
             "type": "array"
           },
+          "image": {
+            "description": "An image's details, as it is seen (a photo taken on its side counts as upright). Empty (null) for any other file.",
+            "nullable": true,
+            "properties": {
+              "format": {
+                "description": "What kind of image it is: jpg, png, webp, gif, bmp, tiff or avif.",
+                "type": "string"
+              },
+              "height": {
+                "description": "The image's height in pixels.",
+                "type": "integer"
+              },
+              "orientation": {
+                "description": "Its shape: landscape (wider than tall), portrait (taller than wide) or square.",
+                "enum": [
+                  "landscape",
+                  "portrait",
+                  "square"
+                ],
+                "type": "string"
+              },
+              "size_bytes": {
+                "description": "The image's file size in bytes.",
+                "type": "integer"
+              },
+              "transparent": {
+                "description": "Whether any of it is see-through, such as a logo's background.",
+                "type": "boolean"
+              },
+              "width": {
+                "description": "The image's width in pixels.",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "pages": {
+            "description": "How many pages a PDF has. Empty (null) for any other file.",
+            "nullable": true,
+            "type": "integer"
+          },
           "rows": {
             "description": "One object per data row of a spreadsheet, keyed by column header. Empty for a document.",
             "items": {
@@ -584,7 +1141,7 @@
             "type": "array"
           },
           "text": {
-            "description": "Everything in the file as text: a document's words, or a spreadsheet's cells line by line.",
+            "description": "Everything in the file as text: a document's words, or a spreadsheet's cells line by line. Empty for an image.",
             "type": "string"
           },
           "type": {
@@ -595,7 +1152,9 @@
               "pdf",
               "word",
               "json",
-              "text"
+              "xml",
+              "text",
+              "image"
             ],
             "type": "string"
           }
@@ -807,7 +1366,7 @@
   "categories": [
     "Lodol"
   ],
-  "description": "Read what's inside a file, turn your data into a CSV, Excel, PDF, text or JSON file, resize, crop and watermark an image, or zip and unzip files.",
+  "description": "Read files, make CSV, Excel, PDF, text, JSON and calendar files, edit images and PDFs, and zip or unzip files.",
   "display_name": "Files",
   "id": "skipflow_files",
   "logo": "https://www.lodol.com/app-icons/files-by-lodol-icon.svg",
