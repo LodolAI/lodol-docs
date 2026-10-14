@@ -1,7 +1,84 @@
 {
   "actions": {
+    "cancel_follow_up": {
+      "beta": true,
+      "description": "Withdraw a follow-up message that is still waiting in the session's queue. Once the agent has picked it up it can no longer be withdrawn; cancel the run it started instead.",
+      "display_name": "Cancel follow-up message",
+      "display_str_template": "Withdraw follow-up message {message_id} from Browser Use session {session_id}",
+      "handler": "actions.cancel_follow_up",
+      "id": "browser_use_cancel_follow_up",
+      "method": "POST",
+      "mock_response": {
+        "created_at": "2026-07-27T18:07:02.118Z",
+        "is_waiting": false,
+        "message_id": 42,
+        "mode": "queue",
+        "run_id": null,
+        "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
+        "status": "cancelled",
+        "text": "Now open the top result and summarize it"
+      },
+      "name": "cancel_follow_up",
+      "output_formatter": "actions.format_cancel_follow_up_output",
+      "parameters": [
+        {
+          "description": "The session (conversation) to use: the 'session_id' returned by 'Start a browser task', 'Get run' or 'List sessions'.",
+          "display_name": "Session ID",
+          "name": "session_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The 'message_id' that 'Send follow-up message' returned.",
+          "display_name": "Message ID",
+          "minimum": 0,
+          "name": "message_id",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browser-use/cancel-follow-up",
+      "result_str_template": "Withdrew the follow-up message.",
+      "returns": {
+        "properties": {
+          "created_at": {
+            "description": "When the message was sent (ISO 8601).",
+            "type": "string"
+          },
+          "is_waiting": {
+            "description": "True while the message is still pending or dispatching; once false it has either started 'run_id' or never will.",
+            "type": "boolean"
+          },
+          "message_id": {
+            "description": "The message's ID. Pass it to 'Get follow-up message' to find the run it starts, or to 'Cancel follow-up message'.",
+            "type": "integer"
+          },
+          "mode": {
+            "description": "'queue' (runs after the current turn) or 'interrupt' (cancels the current turn).",
+            "type": "string"
+          },
+          "run_id": {
+            "description": "The run the message started, or null until Browser Use starts it. Pass it to 'Get run status' and 'Get run'.",
+            "type": "string"
+          },
+          "session_id": {
+            "description": "The session the message was sent to.",
+            "type": "string"
+          },
+          "status": {
+            "description": "One of pending, dispatching, consumed (it started its run), cancelled, superseded, or failed.",
+            "type": "string"
+          },
+          "text": {
+            "description": "The message itself.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "cancel_run": {
-      "description": "Stop a run that is still in flight. A run that has already finished is returned unchanged.",
+      "description": "Stop a run that is still in flight. A run that has already finished is returned unchanged. The run's browser stays up for follow-ups; stop it with 'Stop browser' if you are done.",
       "display_name": "Cancel run",
       "display_str_template": "Cancel Browser Use run {run_id}",
       "handler": "actions.cancel_run",
@@ -15,7 +92,7 @@
         "id": "3f1c8a52-6f47-4f1a-9d2f-27b0c5d9a1e4",
         "is_terminal": true,
         "judgement": null,
-        "model": "minimax-m3",
+        "model": "gpt-6-luna",
         "result": null,
         "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
         "status": "cancelled",
@@ -31,7 +108,7 @@
       "output_formatter": "actions.format_cancel_run_output",
       "parameters": [
         {
-          "description": "The ID of the Browser Use run (the 'id' returned by 'Run a browser task' or 'List runs').",
+          "description": "The ID of the Browser Use run (the 'id' returned by 'Start a browser task' or 'List runs').",
           "display_name": "Run ID",
           "name": "run_id",
           "required": true,
@@ -99,7 +176,7 @@
             "type": "string"
           },
           "total_cost_usd": {
-            "description": "What the run cost, in US dollars.",
+            "description": "What the run's model and web searches cost, in US dollars. Browser time is billed to the session: see 'Get session cost'.",
             "type": "string"
           },
           "total_input_tokens": {
@@ -115,7 +192,880 @@
             "type": "string"
           },
           "workspace_id": {
-            "description": "ID of the workspace the run's files live in.",
+            "description": "ID of the workspace the run's files live in. Pass it to 'List workspace files' to see what the agent saved.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_browser": {
+      "beta": true,
+      "description": "Start a cloud browser with no agent, and get a live view link a person can open to use it, for example to sign in to a site so a profile keeps the login. Billed by the hour from the start (unused time is refunded): stop it with 'Stop browser' when done.",
+      "display_name": "Start a browser",
+      "display_str_template": "Start a Browser Use cloud browser",
+      "handler": "actions.create_browser",
+      "id": "browser_use_create_browser",
+      "method": "POST",
+      "mock_response": {
+        "agent_session_id": null,
+        "browser_cost_usd": "0.02",
+        "cdp_url": "wss://cdp.browser-use.com/e2a8f0c4",
+        "finished_at": null,
+        "id": "e2a8f0c4-51d7-4b6e-8f19-7c3a9d0b2e65",
+        "is_active": true,
+        "live_url": "https://live.browser-use.com/session/e2a8f0c4",
+        "proxy_cost_usd": "0",
+        "proxy_used_mb": "0",
+        "recording_available": null,
+        "recording_url": null,
+        "started_at": "2026-07-27T18:10:00.000Z",
+        "status": "active",
+        "timeout_at": "2026-07-27T19:10:00.000Z"
+      },
+      "name": "create_browser",
+      "output_formatter": "actions.format_browser_output",
+      "parameters": [
+        {
+          "description": "ID of a Browser Use browser profile to load, so the browser starts with its saved cookies and logins. Leave blank for a clean browser.",
+          "display_name": "Browser profile ID",
+          "name": "profile_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Two-letter ISO country code to route the browser through, such as 'us', 'de', or 'jp'. Defaults to the United States. Enter 'none' to run without a proxy.",
+          "display_name": "Proxy country",
+          "name": "proxy_country_code",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 60,
+          "description": "Stop the browser on its own after this many minutes (1-240).",
+          "display_name": "Stop after (minutes)",
+          "maximum": 240,
+          "minimum": 1,
+          "name": "timeout_minutes",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Browser window width in pixels (320-6144). Leave blank for the default.",
+          "display_name": "Screen width (px)",
+          "maximum": 6144,
+          "minimum": 320,
+          "name": "screen_width",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Browser window height in pixels (320-3456). Leave blank for the default.",
+          "display_name": "Screen height (px)",
+          "maximum": 3456,
+          "minimum": 320,
+          "name": "screen_height",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Record the browser to a video, which 'Get browser' links to once it has stopped.",
+          "display_name": "Record the browser",
+          "name": "record",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": true,
+          "description": "Let the browser detect and solve CAPTCHAs on its own. Turn off to handle them yourself.",
+          "display_name": "Solve CAPTCHAs",
+          "name": "solve_captchas",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/browser-use/create-browser",
+      "result_str_template": "Started the browser.",
+      "returns": {
+        "properties": {
+          "agent_session_id": {
+            "description": "The agent session that started the browser, or null for one started with 'Start a browser'.",
+            "type": "string"
+          },
+          "browser_cost_usd": {
+            "description": "What the browser's running time cost, in US dollars.",
+            "type": "string"
+          },
+          "cdp_url": {
+            "description": "Chrome DevTools Protocol URL, for automation tools.",
+            "type": "string"
+          },
+          "finished_at": {
+            "description": "When the browser stopped (ISO 8601), or null.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The browser's ID.",
+            "type": "string"
+          },
+          "is_active": {
+            "description": "True while the browser is running (and billing).",
+            "type": "boolean"
+          },
+          "live_url": {
+            "description": "Link to watch and control the browser live. Treat it like a password: anyone with it can use the browser.",
+            "type": "string"
+          },
+          "proxy_cost_usd": {
+            "description": "What its proxy traffic cost, in US dollars.",
+            "type": "string"
+          },
+          "proxy_used_mb": {
+            "description": "Proxy traffic used, in megabytes.",
+            "type": "string"
+          },
+          "recording_available": {
+            "description": "False when no recording will ever appear (recording was off). Null in lists.",
+            "type": "boolean"
+          },
+          "recording_url": {
+            "description": "Download link for the recording, once a recorded browser has stopped and the video is processed. Only 'Get browser' fills it in.",
+            "type": "string"
+          },
+          "started_at": {
+            "description": "When the browser started (ISO 8601).",
+            "type": "string"
+          },
+          "status": {
+            "description": "Either 'active' or 'stopped'.",
+            "type": "string"
+          },
+          "timeout_at": {
+            "description": "When the browser stops on its own (ISO 8601).",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_profile": {
+      "beta": true,
+      "description": "Create a browser profile, which keeps cookies and logins between runs. Sign in once, with a run or by hand in the live view of 'Start a browser', then start later runs with the profile to skip the login.",
+      "display_name": "Create profile",
+      "display_str_template": "Create a Browser Use profile",
+      "handler": "actions.create_profile",
+      "id": "browser_use_create_profile",
+      "method": "POST",
+      "mock_response": {
+        "cookie_domains": [],
+        "created_at": "2026-07-20T09:15:00.000Z",
+        "external_user_id": "customer-1042",
+        "id": "b7e4c1d2-8a90-4f3e-9c55-0d2f6a1e7b34",
+        "last_used_at": null,
+        "name": "Acme admin login",
+        "updated_at": "2026-07-27T18:06:49.000Z"
+      },
+      "name": "create_profile",
+      "output_formatter": "actions.format_profile_output",
+      "parameters": [
+        {
+          "description": "A name to recognize the profile by, such as 'Acme admin login'.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Your own identifier for whoever the profile belongs to, so you can find it again with 'List profiles' (Browser Use recommends one profile per end user).",
+          "display_name": "Your user ID",
+          "name": "external_user_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/create-profile",
+      "result_str_template": "Created the profile.",
+      "returns": {
+        "properties": {
+          "cookie_domains": {
+            "description": "Sites the profile holds cookies (logins) for.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "created_at": {
+            "description": "When the profile was created (ISO 8601).",
+            "type": "string"
+          },
+          "external_user_id": {
+            "description": "Your own user identifier for the profile, or null.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The profile's ID. Pass it as 'Browser profile ID' to start a browser that is already signed in.",
+            "type": "string"
+          },
+          "last_used_at": {
+            "description": "When a browser last used the profile (ISO 8601).",
+            "type": "string"
+          },
+          "name": {
+            "description": "The profile's name, or null.",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the profile was last updated (ISO 8601).",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_workspace": {
+      "beta": true,
+      "description": "Create an empty workspace: a place for files that outlasts any one run. Upload input files to it, pass its ID to 'Start a browser task', and download what the agent saves there.",
+      "display_name": "Create workspace",
+      "display_str_template": "Create a Browser Use workspace",
+      "handler": "actions.create_workspace",
+      "id": "browser_use_create_workspace",
+      "method": "POST",
+      "mock_response": {
+        "archived": false,
+        "created_at": "2026-07-27T17:58:00.000Z",
+        "id": "51b0f8a3-9a3d-4f7c-bb2e-6e1d0c4a9f22",
+        "name": "Lead research",
+        "updated_at": "2026-07-27T17:58:00.000Z"
+      },
+      "name": "create_workspace",
+      "output_formatter": "actions.format_workspace_output",
+      "parameters": [
+        {
+          "description": "A name to recognize the workspace by.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/create-workspace",
+      "result_str_template": "Created the workspace.",
+      "returns": {
+        "properties": {
+          "archived": {
+            "description": "Whether the workspace has been deleted (archived).",
+            "type": "boolean"
+          },
+          "created_at": {
+            "description": "When the workspace was created (ISO 8601).",
+            "type": "string"
+          },
+          "id": {
+            "description": "The workspace's ID. Pass it as 'Workspace ID' to 'Start a browser task' and the file actions.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The workspace's name, or null.",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the workspace was last updated (ISO 8601).",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_profile": {
+      "beta": true,
+      "description": "Permanently delete a browser profile and the cookies and logins it holds. Browsers already running with it are not affected.",
+      "display_name": "Delete profile",
+      "display_str_template": "Delete Browser Use profile {profile_id}",
+      "handler": "actions.delete_profile",
+      "id": "browser_use_delete_profile",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "profile_id": "b7e4c1d2-8a90-4f3e-9c55-0d2f6a1e7b34"
+      },
+      "name": "delete_profile",
+      "output_formatter": "actions.format_delete_profile_output",
+      "parameters": [
+        {
+          "description": "The browser profile's ID, from 'List profiles' or 'Create profile'.",
+          "display_name": "Profile ID",
+          "name": "profile_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/delete-profile",
+      "result_str_template": "Deleted the profile.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Always true once it is deleted.",
+            "type": "boolean"
+          },
+          "profile_id": {
+            "description": "The profile that was deleted.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_session": {
+      "beta": true,
+      "description": "Delete a session so it can no longer be opened or continued. A run still in progress is cancelled first, and waiting follow-up messages are dropped.",
+      "display_name": "Delete session",
+      "display_str_template": "Delete Browser Use session {session_id}",
+      "handler": "actions.delete_session",
+      "id": "browser_use_delete_session",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31"
+      },
+      "name": "delete_session",
+      "output_formatter": "actions.format_delete_session_output",
+      "parameters": [
+        {
+          "description": "The session (conversation) to use: the 'session_id' returned by 'Start a browser task', 'Get run' or 'List sessions'.",
+          "display_name": "Session ID",
+          "name": "session_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/delete-session",
+      "result_str_template": "Deleted the session.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Always true once it is deleted.",
+            "type": "boolean"
+          },
+          "session_id": {
+            "description": "The session that was deleted.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_workspace": {
+      "beta": true,
+      "description": "Delete (archive) a workspace so runs can no longer use it. Deleting one that is already gone does nothing.",
+      "display_name": "Delete workspace",
+      "display_str_template": "Delete Browser Use workspace {workspace_id}",
+      "handler": "actions.delete_workspace",
+      "id": "browser_use_delete_workspace",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "workspace_id": "51b0f8a3-9a3d-4f7c-bb2e-6e1d0c4a9f22"
+      },
+      "name": "delete_workspace",
+      "output_formatter": "actions.format_delete_workspace_output",
+      "parameters": [
+        {
+          "description": "The workspace holding the files: the 'workspace_id' a run returns, or the 'id' from 'Create workspace'.",
+          "display_name": "Workspace ID",
+          "name": "workspace_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/delete-workspace",
+      "result_str_template": "Deleted the workspace.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Always true once it is deleted.",
+            "type": "boolean"
+          },
+          "workspace_id": {
+            "description": "The workspace that was deleted.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_workspace_file": {
+      "beta": true,
+      "description": "Delete one file from a workspace.",
+      "display_name": "Delete workspace file",
+      "display_str_template": "Delete {path} from Browser Use workspace {workspace_id}",
+      "handler": "actions.delete_workspace_file",
+      "id": "browser_use_delete_workspace_file",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "path": "uploads/brief.pdf",
+        "workspace_id": "51b0f8a3-9a3d-4f7c-bb2e-6e1d0c4a9f22"
+      },
+      "name": "delete_workspace_file",
+      "output_formatter": "actions.format_delete_workspace_file_output",
+      "parameters": [
+        {
+          "description": "The workspace holding the files: the 'workspace_id' a run returns, or the 'id' from 'Create workspace'.",
+          "display_name": "Workspace ID",
+          "name": "workspace_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The file's path in the workspace, as 'List workspace files' shows it, such as 'uploads/leads.csv'.",
+          "display_name": "File path",
+          "name": "path",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/delete-workspace-file",
+      "result_str_template": "Deleted the workspace file.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Always true once it is deleted.",
+            "type": "boolean"
+          },
+          "path": {
+            "description": "The path that was deleted.",
+            "type": "string"
+          },
+          "workspace_id": {
+            "description": "The workspace the file was in.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "download_workspace_file": {
+      "beta": true,
+      "description": "Save a file from a workspace, such as a report or spreadsheet the agent made, so later steps can email it, upload it elsewhere, or read it. Up to 100 MB.",
+      "display_name": "Download workspace file",
+      "display_str_template": "Download {path} from Browser Use workspace {workspace_id}",
+      "handler": "actions.download_workspace_file",
+      "id": "browser_use_download_workspace_file",
+      "method": "POST",
+      "mock_response": {
+        "content_type": "text/csv",
+        "document_ref": "doc_7f3a9c21e4b84d0f9a6c3e1b5d2f8a47",
+        "documents": [
+          {
+            "content_type": "text/csv",
+            "document_ref": "doc_7f3a9c21e4b84d0f9a6c3e1b5d2f8a47",
+            "filename": "desks.csv",
+            "size_bytes": 1832,
+            "url": "/actions/core/serve-document/doc_7f3a9c21e4b84d0f9a6c3e1b5d2f8a47"
+          }
+        ],
+        "filename": "desks.csv",
+        "path": "desks.csv",
+        "size_bytes": 1832,
+        "url": "/actions/core/serve-document/doc_7f3a9c21e4b84d0f9a6c3e1b5d2f8a47",
+        "workspace_id": "51b0f8a3-9a3d-4f7c-bb2e-6e1d0c4a9f22"
+      },
+      "name": "download_workspace_file",
+      "output_formatter": "actions.format_download_workspace_file_output",
+      "parameters": [
+        {
+          "description": "The workspace holding the files: the 'workspace_id' a run returns, or the 'id' from 'Create workspace'.",
+          "display_name": "Workspace ID",
+          "name": "workspace_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The file's path in the workspace, as 'List workspace files' shows it, such as 'desks.csv'.",
+          "display_name": "File path",
+          "name": "path",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The name to save the file under. Leave blank to keep its own name.",
+          "display_name": "Save as",
+          "name": "filename",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/download-workspace-file",
+      "result_str_template": "Downloaded the workspace file.",
+      "returns": {
+        "properties": {
+          "content_type": {
+            "description": "The file's MIME type.",
+            "type": "string"
+          },
+          "document_ref": {
+            "description": "Reference to the saved file, for steps that take a file (email it, upload it elsewhere, and so on).",
+            "type": "string"
+          },
+          "documents": {
+            "description": "The saved file, as a one-item list of documents.",
+            "items": {
+              "properties": {
+                "content_type": {
+                  "type": "string"
+                },
+                "document_ref": {
+                  "type": "string"
+                },
+                "filename": {
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "filename": {
+            "description": "The saved file's name.",
+            "type": "string"
+          },
+          "path": {
+            "description": "Where the file was in the workspace.",
+            "type": "string"
+          },
+          "size_bytes": {
+            "description": "The file's size in bytes.",
+            "type": "integer"
+          },
+          "url": {
+            "description": "Link to view the saved file.",
+            "type": "string"
+          },
+          "workspace_id": {
+            "description": "The workspace the file came from.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_account": {
+      "beta": true,
+      "description": "Read your Browser Use credit balance and how many browsers are running against the project's limit, for example to alert before credits run out.",
+      "display_name": "Get account",
+      "display_str_template": "Get the Browser Use account",
+      "handler": "actions.get_account",
+      "id": "browser_use_get_account",
+      "method": "POST",
+      "mock_response": {
+        "active_browser_count": 2,
+        "additional_credits_usd": 48.75,
+        "concurrent_browser_limit": 50,
+        "is_free_tier": false,
+        "monthly_credits_usd": 0,
+        "name": "Acme Ops",
+        "plan_name": null,
+        "project_id": "proj_4f2a9c",
+        "subscription_status": null,
+        "total_credits_usd": 48.75
+      },
+      "name": "get_account",
+      "output_formatter": "actions.format_get_account_output",
+      "parameters": [],
+      "path": "/actions/library/browser-use/get-account",
+      "result_str_template": "Retrieved the account.",
+      "returns": {
+        "properties": {
+          "active_browser_count": {
+            "description": "How many browsers are running now.",
+            "type": "integer"
+          },
+          "additional_credits_usd": {
+            "description": "Of which top-up credits.",
+            "type": "number"
+          },
+          "concurrent_browser_limit": {
+            "description": "How many browsers may run at once.",
+            "type": "integer"
+          },
+          "is_free_tier": {
+            "description": "Whether the account is on the free tier.",
+            "type": "boolean"
+          },
+          "monthly_credits_usd": {
+            "description": "Of which monthly plan credits.",
+            "type": "number"
+          },
+          "name": {
+            "description": "The account's name.",
+            "type": "string"
+          },
+          "plan_name": {
+            "description": "The plan's name, or null when there is none (pay as you go, or the free plan).",
+            "type": "string"
+          },
+          "project_id": {
+            "description": "The project the API key belongs to.",
+            "type": "string"
+          },
+          "subscription_status": {
+            "description": "The subscription's status, or null.",
+            "type": "string"
+          },
+          "total_credits_usd": {
+            "description": "Credits left, in US dollars.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_browser": {
+      "beta": true,
+      "description": "Fetch a cloud browser: whether it is running, its live view link, what it has cost, and once a recorded browser has stopped, its recording.",
+      "display_name": "Get browser",
+      "display_str_template": "Get Browser Use browser {browser_id}",
+      "handler": "actions.get_browser",
+      "id": "browser_use_get_browser",
+      "method": "POST",
+      "mock_response": {
+        "agent_session_id": null,
+        "browser_cost_usd": "0.02",
+        "cdp_url": "wss://cdp.browser-use.com/e2a8f0c4",
+        "finished_at": "2026-07-27T18:25:00.000Z",
+        "id": "e2a8f0c4-51d7-4b6e-8f19-7c3a9d0b2e65",
+        "is_active": false,
+        "live_url": null,
+        "proxy_cost_usd": "0",
+        "proxy_used_mb": "0",
+        "recording_available": true,
+        "recording_url": "https://recordings.browser-use.com/e2a8f0c4.mp4?signature=abc",
+        "started_at": "2026-07-27T18:10:00.000Z",
+        "status": "stopped",
+        "timeout_at": "2026-07-27T19:10:00.000Z"
+      },
+      "name": "get_browser",
+      "output_formatter": "actions.format_browser_output",
+      "parameters": [
+        {
+          "description": "The cloud browser's ID, from 'List browsers' (filter it by a run's session to find the browser that run used) or 'Start a browser'.",
+          "display_name": "Browser ID",
+          "name": "browser_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/get-browser",
+      "result_str_template": "Retrieved the browser.",
+      "returns": {
+        "properties": {
+          "agent_session_id": {
+            "description": "The agent session that started the browser, or null for one started with 'Start a browser'.",
+            "type": "string"
+          },
+          "browser_cost_usd": {
+            "description": "What the browser's running time cost, in US dollars.",
+            "type": "string"
+          },
+          "cdp_url": {
+            "description": "Chrome DevTools Protocol URL, for automation tools.",
+            "type": "string"
+          },
+          "finished_at": {
+            "description": "When the browser stopped (ISO 8601), or null.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The browser's ID.",
+            "type": "string"
+          },
+          "is_active": {
+            "description": "True while the browser is running (and billing).",
+            "type": "boolean"
+          },
+          "live_url": {
+            "description": "Link to watch and control the browser live. Treat it like a password: anyone with it can use the browser.",
+            "type": "string"
+          },
+          "proxy_cost_usd": {
+            "description": "What its proxy traffic cost, in US dollars.",
+            "type": "string"
+          },
+          "proxy_used_mb": {
+            "description": "Proxy traffic used, in megabytes.",
+            "type": "string"
+          },
+          "recording_available": {
+            "description": "False when no recording will ever appear (recording was off). Null in lists.",
+            "type": "boolean"
+          },
+          "recording_url": {
+            "description": "Download link for the recording, once a recorded browser has stopped and the video is processed. Only 'Get browser' fills it in.",
+            "type": "string"
+          },
+          "started_at": {
+            "description": "When the browser started (ISO 8601).",
+            "type": "string"
+          },
+          "status": {
+            "description": "Either 'active' or 'stopped'.",
+            "type": "string"
+          },
+          "timeout_at": {
+            "description": "When the browser stops on its own (ISO 8601).",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_follow_up": {
+      "beta": true,
+      "description": "Check on a follow-up message: whether it is still waiting, and once Browser Use starts it, the ID of the run it became. Poll this while 'is_waiting' is true, then follow 'run_id' with 'Get run status'.",
+      "display_name": "Get follow-up message",
+      "display_str_template": "Check follow-up message {message_id} on Browser Use session {session_id}",
+      "handler": "actions.get_follow_up",
+      "id": "browser_use_get_follow_up",
+      "method": "POST",
+      "mock_response": {
+        "created_at": "2026-07-27T18:07:02.118Z",
+        "is_waiting": false,
+        "message_id": 42,
+        "mode": "queue",
+        "run_id": "6d2b7e90-3c1a-4f58-b0e2-91a4c7d3f816",
+        "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
+        "status": "consumed",
+        "text": "Now open the top result and summarize it"
+      },
+      "name": "get_follow_up",
+      "output_formatter": "actions.format_get_follow_up_output",
+      "parameters": [
+        {
+          "description": "The session (conversation) to use: the 'session_id' returned by 'Start a browser task', 'Get run' or 'List sessions'.",
+          "display_name": "Session ID",
+          "name": "session_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The 'message_id' that 'Send follow-up message' returned.",
+          "display_name": "Message ID",
+          "minimum": 0,
+          "name": "message_id",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browser-use/get-follow-up",
+      "result_str_template": "Retrieved the follow-up message.",
+      "returns": {
+        "properties": {
+          "created_at": {
+            "description": "When the message was sent (ISO 8601).",
+            "type": "string"
+          },
+          "is_waiting": {
+            "description": "True while the message is still pending or dispatching; once false it has either started 'run_id' or never will.",
+            "type": "boolean"
+          },
+          "message_id": {
+            "description": "The message's ID. Pass it to 'Get follow-up message' to find the run it starts, or to 'Cancel follow-up message'.",
+            "type": "integer"
+          },
+          "mode": {
+            "description": "'queue' (runs after the current turn) or 'interrupt' (cancels the current turn).",
+            "type": "string"
+          },
+          "run_id": {
+            "description": "The run the message started, or null until Browser Use starts it. Pass it to 'Get run status' and 'Get run'.",
+            "type": "string"
+          },
+          "session_id": {
+            "description": "The session the message was sent to.",
+            "type": "string"
+          },
+          "status": {
+            "description": "One of pending, dispatching, consumed (it started its run), cancelled, superseded, or failed.",
+            "type": "string"
+          },
+          "text": {
+            "description": "The message itself.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_profile": {
+      "beta": true,
+      "description": "Fetch a browser profile, including the sites it holds cookies for, which shows which logins it has saved.",
+      "display_name": "Get profile",
+      "display_str_template": "Get Browser Use profile {profile_id}",
+      "handler": "actions.get_profile",
+      "id": "browser_use_get_profile",
+      "method": "POST",
+      "mock_response": {
+        "cookie_domains": [
+          "acme.example.com"
+        ],
+        "created_at": "2026-07-20T09:15:00.000Z",
+        "external_user_id": "customer-1042",
+        "id": "b7e4c1d2-8a90-4f3e-9c55-0d2f6a1e7b34",
+        "last_used_at": "2026-07-27T18:04:12.000Z",
+        "name": "Acme admin login",
+        "updated_at": "2026-07-27T18:06:49.000Z"
+      },
+      "name": "get_profile",
+      "output_formatter": "actions.format_profile_output",
+      "parameters": [
+        {
+          "description": "The browser profile's ID, from 'List profiles' or 'Create profile'.",
+          "display_name": "Profile ID",
+          "name": "profile_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/get-profile",
+      "result_str_template": "Retrieved the profile.",
+      "returns": {
+        "properties": {
+          "cookie_domains": {
+            "description": "Sites the profile holds cookies (logins) for.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "created_at": {
+            "description": "When the profile was created (ISO 8601).",
+            "type": "string"
+          },
+          "external_user_id": {
+            "description": "Your own user identifier for the profile, or null.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The profile's ID. Pass it as 'Browser profile ID' to start a browser that is already signed in.",
+            "type": "string"
+          },
+          "last_used_at": {
+            "description": "When a browser last used the profile (ISO 8601).",
+            "type": "string"
+          },
+          "name": {
+            "description": "The profile's name, or null.",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the profile was last updated (ISO 8601).",
             "type": "string"
           }
         },
@@ -137,7 +1087,7 @@
         "id": "3f1c8a52-6f47-4f1a-9d2f-27b0c5d9a1e4",
         "is_terminal": true,
         "judgement": null,
-        "model": "minimax-m3",
+        "model": "gpt-6-luna",
         "result": "The top 3 trending repositories today are browser-use/browser-use, openai/whisper, and vercel/next.js.",
         "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
         "status": "completed",
@@ -153,7 +1103,7 @@
       "output_formatter": "actions.format_get_run_output",
       "parameters": [
         {
-          "description": "The ID of the Browser Use run (the 'id' returned by 'Run a browser task' or 'List runs').",
+          "description": "The ID of the Browser Use run (the 'id' returned by 'Start a browser task' or 'List runs').",
           "display_name": "Run ID",
           "name": "run_id",
           "required": true,
@@ -221,7 +1171,7 @@
             "type": "string"
           },
           "total_cost_usd": {
-            "description": "What the run cost, in US dollars.",
+            "description": "What the run's model and web searches cost, in US dollars. Browser time is billed to the session: see 'Get session cost'.",
             "type": "string"
           },
           "total_input_tokens": {
@@ -237,7 +1187,7 @@
             "type": "string"
           },
           "workspace_id": {
-            "description": "ID of the workspace the run's files live in.",
+            "description": "ID of the workspace the run's files live in. Pass it to 'List workspace files' to see what the agent saved.",
             "type": "string"
           }
         },
@@ -245,7 +1195,7 @@
       }
     },
     "get_run_events": {
-      "description": "Read a run's event log: the agent's step-by-step trace of what it did in the browser. Useful for debugging a run that failed or went the wrong way.",
+      "description": "Read a run's event log: the agent's step-by-step trace of what it did in the browser. Useful for debugging a run that failed or went the wrong way, and the 'browser.ready' event carries the live view link a person can use to step in.",
       "display_name": "Get run events",
       "display_str_template": "Get the events for Browser Use run {run_id}",
       "handler": "actions.get_run_events",
@@ -255,18 +1205,17 @@
         "events": [
           {
             "data": {
-              "action": "go_to_url",
-              "url": "https://github.com"
+              "live_view_url": "https://live.browser-use.com/session/e2a8f0c4"
             },
             "id": 1,
             "run_id": "3f1c8a52-6f47-4f1a-9d2f-27b0c5d9a1e4",
             "timestamp": "2026-07-27T18:04:13.108Z",
-            "type": "step"
+            "type": "browser.ready"
           },
           {
             "data": {
-              "action": "extract",
-              "note": "Read trending list"
+              "action": "go_to_url",
+              "url": "https://github.com"
             },
             "id": 2,
             "run_id": "3f1c8a52-6f47-4f1a-9d2f-27b0c5d9a1e4",
@@ -281,7 +1230,7 @@
       "output_formatter": "actions.format_get_run_events_output",
       "parameters": [
         {
-          "description": "The ID of the Browser Use run (the 'id' returned by 'Run a browser task' or 'List runs').",
+          "description": "The ID of the Browser Use run (the 'id' returned by 'Start a browser task' or 'List runs').",
           "display_name": "Run ID",
           "name": "run_id",
           "required": true,
@@ -303,6 +1252,14 @@
           "name": "after",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": true,
+          "description": "Include what each of the agent's tools returned. Turn off for a much smaller trace of just the steps.",
+          "display_name": "Include tool output",
+          "name": "include_output",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         }
       ],
       "path": "/actions/library/browser-use/get-run-events",
@@ -330,7 +1287,7 @@
                   "type": "string"
                 },
                 "type": {
-                  "description": "Event type, such as a step the agent took.",
+                  "description": "Event type, such as 'browser.ready' or 'run.completed'.",
                   "type": "string"
                 }
               },
@@ -366,7 +1323,7 @@
       "output_formatter": "actions.format_get_run_status_output",
       "parameters": [
         {
-          "description": "The ID of the Browser Use run (the 'id' returned by 'Run a browser task' or 'List runs').",
+          "description": "The ID of the Browser Use run (the 'id' returned by 'Start a browser task' or 'List runs').",
           "display_name": "Run ID",
           "name": "run_id",
           "required": true,
@@ -388,6 +1345,425 @@
           "status": {
             "description": "One of queued, dispatching, running, completed, failed, or cancelled.",
             "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_session": {
+      "beta": true,
+      "description": "Fetch a session and its latest run's status. A cheap way to wait on a conversation: 'is_terminal' turns true once the latest run, a follow-up's included, has finished.",
+      "display_name": "Get session",
+      "display_str_template": "Get Browser Use session {session_id}",
+      "handler": "actions.get_session",
+      "id": "browser_use_get_session",
+      "method": "POST",
+      "mock_response": {
+        "created_at": "2026-07-27T18:04:11.512Z",
+        "is_terminal": true,
+        "latest_run_id": "3f1c8a52-6f47-4f1a-9d2f-27b0c5d9a1e4",
+        "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
+        "status": "completed",
+        "task": "Find the top 3 trending repos on GitHub today",
+        "title": "GitHub trending repos",
+        "updated_at": "2026-07-27T18:06:48.902Z",
+        "workspace_id": "51b0f8a3-9a3d-4f7c-bb2e-6e1d0c4a9f22"
+      },
+      "name": "get_session",
+      "output_formatter": "actions.format_session_output",
+      "parameters": [
+        {
+          "description": "The session (conversation) to use: the 'session_id' returned by 'Start a browser task', 'Get run' or 'List sessions'.",
+          "display_name": "Session ID",
+          "name": "session_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/get-session",
+      "result_str_template": "Retrieved the session.",
+      "returns": {
+        "properties": {
+          "created_at": {
+            "description": "When the latest run was created (ISO 8601).",
+            "type": "string"
+          },
+          "is_terminal": {
+            "description": "True once the latest run has finished, so the session is idle.",
+            "type": "boolean"
+          },
+          "latest_run_id": {
+            "description": "ID of the session's most recent run.",
+            "type": "string"
+          },
+          "session_id": {
+            "description": "The session's ID.",
+            "type": "string"
+          },
+          "status": {
+            "description": "The latest run's status: queued, dispatching, running, completed, failed, or cancelled.",
+            "type": "string"
+          },
+          "task": {
+            "description": "The instruction the latest run was given.",
+            "type": "string"
+          },
+          "title": {
+            "description": "The session's title, or null if it has none.",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the latest run was last updated (ISO 8601).",
+            "type": "string"
+          },
+          "workspace_id": {
+            "description": "ID of the workspace the session's files live in.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_session_cost": {
+      "beta": true,
+      "description": "Everything a session has cost so far, split into model, web search, browser time and proxy traffic. A run's own cost only covers the model and search, so this is the full figure.",
+      "display_name": "Get session cost",
+      "display_str_template": "Get the cost of Browser Use session {session_id}",
+      "handler": "actions.get_session_cost",
+      "id": "browser_use_get_session_cost",
+      "method": "POST",
+      "mock_response": {
+        "browser_cost_usd": "0.0011",
+        "llm_cost_usd": "0.0421",
+        "proxy_cost_usd": "0.0120",
+        "proxy_used_mb": "2.4",
+        "run_count": 2,
+        "search_cost_usd": "0.0000",
+        "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
+        "total_cost_usd": "0.0552"
+      },
+      "name": "get_session_cost",
+      "output_formatter": "actions.format_get_session_cost_output",
+      "parameters": [
+        {
+          "description": "The session (conversation) to use: the 'session_id' returned by 'Start a browser task', 'Get run' or 'List sessions'.",
+          "display_name": "Session ID",
+          "name": "session_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/get-session-cost",
+      "result_str_template": "Retrieved the session cost.",
+      "returns": {
+        "description": "Recorded usage in US dollars, before any credits.",
+        "properties": {
+          "browser_cost_usd": {
+            "description": "What the browser's running time cost.",
+            "type": "string"
+          },
+          "llm_cost_usd": {
+            "description": "What the model calls cost.",
+            "type": "string"
+          },
+          "proxy_cost_usd": {
+            "description": "What proxy traffic cost.",
+            "type": "string"
+          },
+          "proxy_used_mb": {
+            "description": "Proxy traffic used, in megabytes.",
+            "type": "string"
+          },
+          "run_count": {
+            "description": "How many runs the session has had.",
+            "type": "integer"
+          },
+          "search_cost_usd": {
+            "description": "What web searches cost.",
+            "type": "string"
+          },
+          "session_id": {
+            "description": "The session.",
+            "type": "string"
+          },
+          "total_cost_usd": {
+            "description": "All of the above together.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_browsers": {
+      "beta": true,
+      "description": "List your cloud browsers, newest first. Filter by a run's session to find the browser it used (a finished run leaves its browser running for follow-ups), or by status to find active ones still billing.",
+      "display_name": "List browsers",
+      "display_str_template": "List Browser Use browsers",
+      "handler": "actions.list_browsers",
+      "id": "browser_use_list_browsers",
+      "method": "POST",
+      "mock_response": {
+        "browsers": [
+          {
+            "agent_session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
+            "browser_cost_usd": "0.02",
+            "cdp_url": "wss://cdp.browser-use.com/e2a8f0c4",
+            "finished_at": null,
+            "id": "e2a8f0c4-51d7-4b6e-8f19-7c3a9d0b2e65",
+            "is_active": true,
+            "live_url": "https://live.browser-use.com/session/e2a8f0c4",
+            "proxy_cost_usd": "0",
+            "proxy_used_mb": "0",
+            "recording_available": null,
+            "recording_url": null,
+            "started_at": "2026-07-27T18:10:00.000Z",
+            "status": "active",
+            "timeout_at": "2026-07-27T19:10:00.000Z"
+          }
+        ],
+        "page_number": 1,
+        "page_size": 10,
+        "total": 1
+      },
+      "name": "list_browsers",
+      "output_formatter": "actions.format_list_browsers_output",
+      "parameters": [
+        {
+          "description": "Only browsers in this state. Leave blank for all.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Active",
+              "value": "active"
+            },
+            {
+              "label": "Stopped",
+              "value": "stopped"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only the browser of this agent session (a run's 'session_id'). Leave blank for all browsers.",
+          "display_name": "Session ID",
+          "name": "agent_session_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many to return per page (1-100, default 10).",
+          "display_name": "Page size",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "page_size",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Which page to return, starting at 1.",
+          "display_name": "Page number",
+          "minimum": 1,
+          "name": "page_number",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browser-use/list-browsers",
+      "result_str_template": "Retrieved the browsers.",
+      "returns": {
+        "properties": {
+          "browsers": {
+            "description": "The browsers on this page.",
+            "items": {
+              "properties": {
+                "agent_session_id": {
+                  "description": "The agent session that started the browser, or null for one started with 'Start a browser'.",
+                  "type": "string"
+                },
+                "browser_cost_usd": {
+                  "description": "What the browser's running time cost, in US dollars.",
+                  "type": "string"
+                },
+                "cdp_url": {
+                  "description": "Chrome DevTools Protocol URL, for automation tools.",
+                  "type": "string"
+                },
+                "finished_at": {
+                  "description": "When the browser stopped (ISO 8601), or null.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The browser's ID.",
+                  "type": "string"
+                },
+                "is_active": {
+                  "description": "True while the browser is running (and billing).",
+                  "type": "boolean"
+                },
+                "live_url": {
+                  "description": "Link to watch and control the browser live. Treat it like a password: anyone with it can use the browser.",
+                  "type": "string"
+                },
+                "proxy_cost_usd": {
+                  "description": "What its proxy traffic cost, in US dollars.",
+                  "type": "string"
+                },
+                "proxy_used_mb": {
+                  "description": "Proxy traffic used, in megabytes.",
+                  "type": "string"
+                },
+                "recording_available": {
+                  "description": "False when no recording will ever appear (recording was off). Null in lists.",
+                  "type": "boolean"
+                },
+                "recording_url": {
+                  "description": "Download link for the recording, once a recorded browser has stopped and the video is processed. Only 'Get browser' fills it in.",
+                  "type": "string"
+                },
+                "started_at": {
+                  "description": "When the browser started (ISO 8601).",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "Either 'active' or 'stopped'.",
+                  "type": "string"
+                },
+                "timeout_at": {
+                  "description": "When the browser stops on its own (ISO 8601).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "page_number": {
+            "description": "The page returned.",
+            "type": "integer"
+          },
+          "page_size": {
+            "description": "Browsers per page.",
+            "type": "integer"
+          },
+          "total": {
+            "description": "How many browsers match in all.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_profiles": {
+      "beta": true,
+      "description": "List your browser profiles: saved cookies and logins a run or browser can start with. Search by name or your user ID.",
+      "display_name": "List profiles",
+      "display_str_template": "List Browser Use profiles",
+      "handler": "actions.list_profiles",
+      "id": "browser_use_list_profiles",
+      "method": "POST",
+      "mock_response": {
+        "page_number": 1,
+        "page_size": 10,
+        "profiles": [
+          {
+            "cookie_domains": [
+              "acme.example.com"
+            ],
+            "created_at": "2026-07-20T09:15:00.000Z",
+            "external_user_id": "customer-1042",
+            "id": "b7e4c1d2-8a90-4f3e-9c55-0d2f6a1e7b34",
+            "last_used_at": "2026-07-27T18:04:12.000Z",
+            "name": "Acme admin login",
+            "updated_at": "2026-07-27T18:06:49.000Z"
+          }
+        ],
+        "total": 1
+      },
+      "name": "list_profiles",
+      "output_formatter": "actions.format_list_profiles_output",
+      "parameters": [
+        {
+          "description": "Only profiles whose name or user ID matches this. Leave blank for all.",
+          "display_name": "Search",
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many to return per page (1-100, default 10).",
+          "display_name": "Page size",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "page_size",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Which page to return, starting at 1.",
+          "display_name": "Page number",
+          "minimum": 1,
+          "name": "page_number",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browser-use/list-profiles",
+      "result_str_template": "Retrieved the profiles.",
+      "returns": {
+        "properties": {
+          "page_number": {
+            "description": "The page returned.",
+            "type": "integer"
+          },
+          "page_size": {
+            "description": "Profiles per page.",
+            "type": "integer"
+          },
+          "profiles": {
+            "description": "The profiles on this page.",
+            "items": {
+              "properties": {
+                "cookie_domains": {
+                  "description": "Sites the profile holds cookies (logins) for.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "created_at": {
+                  "description": "When the profile was created (ISO 8601).",
+                  "type": "string"
+                },
+                "external_user_id": {
+                  "description": "Your own user identifier for the profile, or null.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The profile's ID. Pass it as 'Browser profile ID' to start a browser that is already signed in.",
+                  "type": "string"
+                },
+                "last_used_at": {
+                  "description": "When a browser last used the profile (ISO 8601).",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The profile's name, or null.",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "When the profile was last updated (ISO 8601).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total": {
+            "description": "How many profiles match in all.",
+            "type": "integer"
           }
         },
         "type": "object"
@@ -415,7 +1791,7 @@
       "output_formatter": "actions.format_list_run_attachments_output",
       "parameters": [
         {
-          "description": "The ID of the Browser Use run (the 'id' returned by 'Run a browser task' or 'List runs').",
+          "description": "The ID of the Browser Use run (the 'id' returned by 'Start a browser task' or 'List runs').",
           "display_name": "Run ID",
           "name": "run_id",
           "required": true,
@@ -478,7 +1854,7 @@
             "id": "3f1c8a52-6f47-4f1a-9d2f-27b0c5d9a1e4",
             "is_terminal": true,
             "judgement": null,
-            "model": "minimax-m3",
+            "model": "gpt-6-luna",
             "result": "The top 3 trending repositories today are browser-use/browser-use, openai/whisper, and vercel/next.js.",
             "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
             "status": "completed",
@@ -591,7 +1967,7 @@
                   "type": "string"
                 },
                 "total_cost_usd": {
-                  "description": "What the run cost, in US dollars.",
+                  "description": "What the run's model and web searches cost, in US dollars. Browser time is billed to the session: see 'Get session cost'.",
                   "type": "string"
                 },
                 "total_input_tokens": {
@@ -607,7 +1983,7 @@
                   "type": "string"
                 },
                 "workspace_id": {
-                  "description": "ID of the workspace the run's files live in.",
+                  "description": "ID of the workspace the run's files live in. Pass it to 'List workspace files' to see what the agent saved.",
                   "type": "string"
                 }
               },
@@ -619,25 +1995,328 @@
         "type": "object"
       }
     },
+    "list_sessions": {
+      "beta": true,
+      "description": "List your Browser Use sessions (conversations), most recent first: one row per session, showing its latest run.",
+      "display_name": "List sessions",
+      "display_str_template": "List Browser Use sessions",
+      "handler": "actions.list_sessions",
+      "id": "browser_use_list_sessions",
+      "method": "POST",
+      "mock_response": {
+        "has_more": false,
+        "next_cursor": null,
+        "sessions": [
+          {
+            "created_at": "2026-07-27T18:04:11.512Z",
+            "is_terminal": true,
+            "latest_run_id": "3f1c8a52-6f47-4f1a-9d2f-27b0c5d9a1e4",
+            "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
+            "status": "completed",
+            "task": "Find the top 3 trending repos on GitHub today",
+            "title": "GitHub trending repos",
+            "updated_at": "2026-07-27T18:06:48.902Z",
+            "workspace_id": "51b0f8a3-9a3d-4f7c-bb2e-6e1d0c4a9f22"
+          }
+        ]
+      },
+      "name": "list_sessions",
+      "output_formatter": "actions.format_list_sessions_output",
+      "parameters": [
+        {
+          "default": 20,
+          "description": "How many sessions to return per page (1-100).",
+          "display_name": "Limit",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "For pagination: the 'next_cursor' from the previous page. Leave blank for the first page.",
+          "display_name": "Continue from cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/list-sessions",
+      "result_str_template": "Retrieved Browser Use sessions.",
+      "returns": {
+        "properties": {
+          "has_more": {
+            "description": "Whether another page is available.",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "description": "Cursor for the next page, or null when there are no more sessions.",
+            "type": "string"
+          },
+          "sessions": {
+            "description": "The sessions, most recent first.",
+            "items": {
+              "properties": {
+                "created_at": {
+                  "description": "When the latest run was created (ISO 8601).",
+                  "type": "string"
+                },
+                "is_terminal": {
+                  "description": "True once the latest run has finished, so the session is idle.",
+                  "type": "boolean"
+                },
+                "latest_run_id": {
+                  "description": "ID of the session's most recent run.",
+                  "type": "string"
+                },
+                "session_id": {
+                  "description": "The session's ID.",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "The latest run's status: queued, dispatching, running, completed, failed, or cancelled.",
+                  "type": "string"
+                },
+                "task": {
+                  "description": "The instruction the latest run was given.",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "The session's title, or null if it has none.",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "When the latest run was last updated (ISO 8601).",
+                  "type": "string"
+                },
+                "workspace_id": {
+                  "description": "ID of the workspace the session's files live in.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_workspace_files": {
+      "beta": true,
+      "description": "List the files in a workspace: those you uploaded (under 'uploads/') and those the agent saved. Wait for a run to finish before listing what it made.",
+      "display_name": "List workspace files",
+      "display_str_template": "List the files in Browser Use workspace {workspace_id}",
+      "handler": "actions.list_workspace_files",
+      "id": "browser_use_list_workspace_files",
+      "method": "POST",
+      "mock_response": {
+        "files": [
+          {
+            "last_modified": "2026-07-27T18:06:40.000Z",
+            "path": "desks.csv",
+            "size_bytes": 1832
+          },
+          {
+            "last_modified": "2026-07-27T17:59:12.000Z",
+            "path": "uploads/brief.pdf",
+            "size_bytes": 48211
+          }
+        ],
+        "has_more": false,
+        "next_cursor": null,
+        "workspace_id": "51b0f8a3-9a3d-4f7c-bb2e-6e1d0c4a9f22"
+      },
+      "name": "list_workspace_files",
+      "output_formatter": "actions.format_list_workspace_files_output",
+      "parameters": [
+        {
+          "description": "The workspace holding the files: the 'workspace_id' a run returns, or the 'id' from 'Create workspace'.",
+          "display_name": "Workspace ID",
+          "name": "workspace_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only list files whose path starts with this, such as 'uploads/' or 'reports/'. Leave blank for every file.",
+          "display_name": "Path starts with",
+          "name": "prefix",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 50,
+          "description": "How many files to return per page (1-100).",
+          "display_name": "Limit",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "For pagination: the 'next_cursor' from the previous page. Leave blank for the first page.",
+          "display_name": "Continue from cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/list-workspace-files",
+      "result_str_template": "Retrieved the workspace files.",
+      "returns": {
+        "properties": {
+          "files": {
+            "description": "The files.",
+            "items": {
+              "properties": {
+                "last_modified": {
+                  "description": "When it last changed (ISO 8601).",
+                  "type": "string"
+                },
+                "path": {
+                  "description": "Path within the workspace; pass it to 'Download workspace file'.",
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "description": "File size in bytes.",
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "has_more": {
+            "description": "Whether another page is available.",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "description": "Cursor for the next page, or null when there are no more files.",
+            "type": "string"
+          },
+          "workspace_id": {
+            "description": "The workspace that was listed.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "rename_session": {
+      "beta": true,
+      "description": "Give a session a title of your own.",
+      "display_name": "Rename session",
+      "display_str_template": "Rename Browser Use session {session_id} to {title}",
+      "handler": "actions.rename_session",
+      "id": "browser_use_rename_session",
+      "method": "POST",
+      "mock_response": {
+        "created_at": "2026-07-27T18:04:11.512Z",
+        "is_terminal": true,
+        "latest_run_id": "3f1c8a52-6f47-4f1a-9d2f-27b0c5d9a1e4",
+        "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
+        "status": "completed",
+        "task": "Find the top 3 trending repos on GitHub today",
+        "title": "Weekly GitHub trends",
+        "updated_at": "2026-07-27T18:06:48.902Z",
+        "workspace_id": "51b0f8a3-9a3d-4f7c-bb2e-6e1d0c4a9f22"
+      },
+      "name": "rename_session",
+      "output_formatter": "actions.format_session_output",
+      "parameters": [
+        {
+          "description": "The session (conversation) to use: the 'session_id' returned by 'Start a browser task', 'Get run' or 'List sessions'.",
+          "display_name": "Session ID",
+          "name": "session_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The session's new title (up to 255 characters).",
+          "display_name": "Title",
+          "name": "title",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/rename-session",
+      "result_str_template": "Renamed the session.",
+      "returns": {
+        "properties": {
+          "created_at": {
+            "description": "When the latest run was created (ISO 8601).",
+            "type": "string"
+          },
+          "is_terminal": {
+            "description": "True once the latest run has finished, so the session is idle.",
+            "type": "boolean"
+          },
+          "latest_run_id": {
+            "description": "ID of the session's most recent run.",
+            "type": "string"
+          },
+          "session_id": {
+            "description": "The session's ID.",
+            "type": "string"
+          },
+          "status": {
+            "description": "The latest run's status: queued, dispatching, running, completed, failed, or cancelled.",
+            "type": "string"
+          },
+          "task": {
+            "description": "The instruction the latest run was given.",
+            "type": "string"
+          },
+          "title": {
+            "description": "The session's title, or null if it has none.",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the latest run was last updated (ISO 8601).",
+            "type": "string"
+          },
+          "workspace_id": {
+            "description": "ID of the workspace the session's files live in.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "send_follow_up": {
-      "description": "Send another instruction to a session the agent is already working in; it runs as the next turn, keeping the same browser and conversation. Optionally interrupt the current run instead of queueing behind it.",
+      "description": "Send another instruction to a session the agent is already working in; it runs as the next turn, keeping the same browser and conversation. Optionally interrupt the current run instead of queueing behind it. This returns the queued message, not a run: poll 'Get follow-up message' with its 'message_id' until it names the run it started.",
       "display_name": "Send follow-up message",
       "display_str_template": "Send a follow-up to Browser Use session {session_id}",
       "handler": "actions.send_follow_up",
       "id": "browser_use_send_follow_up",
       "method": "POST",
       "mock_response": {
+        "created_at": "2026-07-27T18:07:02.118Z",
         "interrupt": false,
+        "is_waiting": true,
+        "message_id": 42,
+        "mode": "queue",
         "queued": true,
-        "response": {},
+        "response": {
+          "createdAt": "2026-07-27T18:07:02.118Z",
+          "id": 42,
+          "mode": "queue",
+          "runId": null,
+          "sessionId": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
+          "status": "pending",
+          "text": "Now open the top result and summarize it"
+        },
+        "run_id": null,
         "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
-        "text": "Now open the top result"
+        "status": "pending",
+        "text": "Now open the top result and summarize it"
       },
       "name": "send_follow_up",
       "output_formatter": "actions.format_send_follow_up_output",
       "parameters": [
         {
-          "description": "The session to message (the 'session_id' returned by 'Run a browser task').",
+          "description": "The session to message (the 'session_id' returned by 'Start a browser task').",
           "display_name": "Session ID",
           "name": "session_id",
           "required": true,
@@ -653,7 +2332,7 @@
         },
         {
           "default": false,
-          "description": "Run this message right away instead of waiting for the agent's current turn to finish.",
+          "description": "Run this message right away, cancelling the agent's current turn, instead of waiting for it to finish.",
           "display_name": "Interrupt the current run",
           "name": "interrupt",
           "required": false,
@@ -664,32 +2343,115 @@
       "result_str_template": "Sent the follow-up message.",
       "returns": {
         "properties": {
+          "created_at": {
+            "description": "When the message was sent (ISO 8601).",
+            "type": "string"
+          },
           "interrupt": {
             "description": "Whether the message interrupted the current turn.",
             "type": "boolean"
+          },
+          "is_waiting": {
+            "description": "True while the message is still pending or dispatching; once false it has either started 'run_id' or never will.",
+            "type": "boolean"
+          },
+          "message_id": {
+            "description": "The message's ID. Pass it to 'Get follow-up message' to find the run it starts, or to 'Cancel follow-up message'.",
+            "type": "integer"
+          },
+          "mode": {
+            "description": "'queue' (runs after the current turn) or 'interrupt' (cancels the current turn).",
+            "type": "string"
           },
           "queued": {
             "description": "Always true once the message is accepted.",
             "type": "boolean"
           },
           "response": {
-            "description": "Whatever Browser Use returned for the queued message, which may be empty.",
+            "description": "The queued message as Browser Use returned it.",
             "type": "object"
+          },
+          "run_id": {
+            "description": "The run the message started, or null until Browser Use starts it. Pass it to 'Get run status' and 'Get run'.",
+            "type": "string"
           },
           "session_id": {
             "description": "The session the message was sent to.",
             "type": "string"
           },
+          "status": {
+            "description": "One of pending, dispatching, consumed (it started its run), cancelled, superseded, or failed.",
+            "type": "string"
+          },
           "text": {
-            "description": "The message that was queued.",
+            "description": "The message itself.",
             "type": "string"
           }
         },
         "type": "object"
       }
     },
+    "share_session": {
+      "beta": true,
+      "description": "Turn on a public link to a session so anyone with it can watch what the agent did. Sharing a session again returns the same link.",
+      "display_name": "Share session",
+      "display_str_template": "Share Browser Use session {session_id}",
+      "handler": "actions.share_session",
+      "id": "browser_use_share_session",
+      "method": "POST",
+      "mock_response": {
+        "created_at": "2026-07-27T18:08:30.004Z",
+        "is_active": true,
+        "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
+        "share_token": "k3Zp9QvT",
+        "share_url": "https://cloud.browser-use.com/share/k3Zp9QvT",
+        "view_count": 0
+      },
+      "name": "share_session",
+      "output_formatter": "actions.format_share_session_output",
+      "parameters": [
+        {
+          "description": "The session (conversation) to use: the 'session_id' returned by 'Start a browser task', 'Get run' or 'List sessions'.",
+          "display_name": "Session ID",
+          "name": "session_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/share-session",
+      "result_str_template": "Shared the session.",
+      "returns": {
+        "properties": {
+          "created_at": {
+            "description": "When the session was first shared (ISO 8601).",
+            "type": "string"
+          },
+          "is_active": {
+            "description": "Whether the link currently works.",
+            "type": "boolean"
+          },
+          "session_id": {
+            "description": "The shared session's ID.",
+            "type": "string"
+          },
+          "share_token": {
+            "description": "The token at the end of the link.",
+            "type": "string"
+          },
+          "share_url": {
+            "description": "Public link anyone can open to view the session.",
+            "type": "string"
+          },
+          "view_count": {
+            "description": "How many times the link has been opened.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
     "start_task": {
-      "description": "Describe a task in plain English and a Browser Use cloud agent drives a real browser to do it: navigating, clicking, typing, and reading pages. The agent works in the background: this action returns a run ID straight away, so follow it with 'Get run status' until the run finishes, then 'Get run' to read what the agent found.",
+      "description": "Describe a task in plain English and a Browser Use cloud agent drives a real browser to do it: navigating, clicking, typing, and reading pages. The agent works in the background: this action returns a run ID straight away, so follow it with 'Get run status' until the run finishes, then 'Get run' to read what the agent found. Give it a workspace to hand it files and keep what it saves, a profile to start signed in, or secrets it can type into a login form without seeing them.",
       "display_name": "Start a browser task",
       "display_str_template": "Start browser task: {task}",
       "handler": "actions.start_task",
@@ -700,7 +2462,7 @@
         "id": "3f1c8a52-6f47-4f1a-9d2f-27b0c5d9a1e4",
         "is_terminal": false,
         "missing_file_ids": [],
-        "model": "minimax-m3",
+        "model": "gpt-6-luna",
         "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
         "status": "queued",
         "task": "Find the top 3 trending repos on GitHub today",
@@ -720,6 +2482,10 @@
             {
               "label": "Price check",
               "value": "Check the current price of the base 14-inch MacBook Pro on apple.com and report it."
+            },
+            {
+              "label": "Save a file",
+              "value": "Collect the name, price and rating of the first 10 results for 'standing desk' on amazon.com and save them as desks.csv in the workspace."
             }
           ],
           "multiline": true,
@@ -728,34 +2494,50 @@
           "type": "ParameterType.STRING"
         },
         {
-          "default": "minimax-m3",
-          "description": "Which model drives the agent. Defaults to MiniMax M3, Browser Use's balanced default.",
+          "default": "gpt-6-luna",
+          "description": "Which model drives the agent. Defaults to GPT-6 Luna, Browser Use's recommended model.",
           "display_name": "Model",
           "name": "model",
           "options": [
             {
-              "label": "MiniMax M3 (default)",
-              "value": "minimax-m3"
+              "label": "GPT-6 Luna (default)",
+              "value": "gpt-6-luna"
             },
             {
-              "label": "GLM 5.2",
-              "value": "glm-5.2"
+              "label": "GPT-6 Astra",
+              "value": "gpt-6-astra"
             },
             {
-              "label": "Grok 4.5",
-              "value": "grok-4.5"
+              "label": "GPT-6 Sol",
+              "value": "gpt-6-sol"
             },
             {
-              "label": "Kimi K3",
-              "value": "kimi-k3"
+              "label": "GPT-6.1 Sol",
+              "value": "gpt-6.1-sol"
             },
             {
-              "label": "Claude Opus 4.7",
-              "value": "claude-opus-4.7"
+              "label": "GPT-5.6 Luna",
+              "value": "gpt-5.6-luna"
             },
             {
-              "label": "Claude Opus 4.8",
-              "value": "claude-opus-4.8"
+              "label": "GPT-5.6 Sol",
+              "value": "gpt-5.6-sol"
+            },
+            {
+              "label": "GPT-5.6 Terra",
+              "value": "gpt-5.6-terra"
+            },
+            {
+              "label": "GPT-5.6",
+              "value": "gpt-5.6"
+            },
+            {
+              "label": "GPT-5.5",
+              "value": "gpt-5.5"
+            },
+            {
+              "label": "Claude Opus 5.5",
+              "value": "claude-opus-5-5"
             },
             {
               "label": "Claude Opus 5",
@@ -766,20 +2548,24 @@
               "value": "claude-fable-5"
             },
             {
+              "label": "Claude Sonnet 5.5",
+              "value": "claude-sonnet-5-5"
+            },
+            {
               "label": "Claude Sonnet 5",
               "value": "claude-sonnet-5"
             },
             {
-              "label": "GPT-5.5",
-              "value": "gpt-5.5"
+              "label": "Claude Opus 4.8",
+              "value": "claude-opus-4.8"
             },
             {
-              "label": "GPT-5.6",
-              "value": "gpt-5.6"
+              "label": "Claude Opus 4.7",
+              "value": "claude-opus-4.7"
             },
             {
-              "label": "Gemini 3 Flash",
-              "value": "gemini-3-flash"
+              "label": "Gemini 3.6 Flash",
+              "value": "gemini-3.6-flash"
             },
             {
               "label": "Gemini 3.5 Flash",
@@ -788,15 +2574,265 @@
             {
               "label": "Gemini 3.1 Pro",
               "value": "gemini-3.1-pro"
+            },
+            {
+              "label": "Gemini 3 Flash",
+              "value": "gemini-3-flash"
+            },
+            {
+              "label": "Grok 4.6",
+              "value": "grok-4.6"
+            },
+            {
+              "label": "Grok 4.5",
+              "value": "grok-4.5"
+            },
+            {
+              "label": "Kimi K3",
+              "value": "kimi-k3"
+            },
+            {
+              "label": "MiniMax M3",
+              "value": "minimax-m3"
+            },
+            {
+              "label": "GLM 5.3 Flash",
+              "value": "glm-5.3-flash"
+            },
+            {
+              "label": "GLM 5.2",
+              "value": "glm-5.2"
+            },
+            {
+              "label": "MiMo V2.6 Pro",
+              "value": "mimo-v2.6-pro"
+            },
+            {
+              "label": "MiMo V2.6 Flash",
+              "value": "mimo-v2.6-flash"
+            },
+            {
+              "label": "DeepSeek V4.1 Flash",
+              "value": "deepseek-v4.1-flash"
+            },
+            {
+              "label": "DeepSeek V4 Flash Vision (experimental)",
+              "value": "deepseek-v4-flash-vision"
+            },
+            {
+              "label": "BU Ultrafast (early access)",
+              "value": "bu-ultrafast"
+            },
+            {
+              "label": "BU Fast (early access)",
+              "value": "bu-fast"
             }
           ],
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
+          "description": "How hard the model thinks before each step: more is slower and costs more, less is faster. Leave blank for the model's own default (High for GPT-6 Luna). Only OpenAI, Claude and Gemini models have this setting.",
+          "display_name": "Reasoning effort",
+          "name": "reasoning_effort",
+          "options": [
+            {
+              "label": "None (thinking off)",
+              "value": "none",
+              "visible_when": {
+                "model": [
+                  "claude-opus-4.7",
+                  "claude-opus-4.8",
+                  "claude-opus-5",
+                  "claude-opus-5-5",
+                  "claude-sonnet-5",
+                  "claude-sonnet-5-5",
+                  "gpt-5.5",
+                  "gpt-5.6",
+                  "gpt-6-sol",
+                  "gpt-6.1-sol",
+                  "gpt-6-luna",
+                  "gpt-5.6-sol",
+                  "gpt-5.6-terra",
+                  "gpt-5.6-luna"
+                ]
+              }
+            },
+            {
+              "label": "Minimal",
+              "value": "minimal",
+              "visible_when": {
+                "model": [
+                  "gemini-3.6-flash",
+                  "gemini-3.5-flash",
+                  "gemini-3-flash"
+                ]
+              }
+            },
+            {
+              "label": "Low",
+              "value": "low",
+              "visible_when": {
+                "model": [
+                  "claude-opus-4.7",
+                  "claude-opus-4.8",
+                  "claude-opus-5",
+                  "claude-opus-5-5",
+                  "claude-sonnet-5",
+                  "claude-sonnet-5-5",
+                  "gpt-5.5",
+                  "gpt-5.6",
+                  "gpt-6-astra",
+                  "gpt-6-sol",
+                  "gpt-6.1-sol",
+                  "gpt-6-luna",
+                  "gpt-5.6-sol",
+                  "gpt-5.6-terra",
+                  "gpt-5.6-luna",
+                  "gemini-3.6-flash",
+                  "gemini-3.5-flash",
+                  "gemini-3.1-pro",
+                  "gemini-3-flash"
+                ]
+              }
+            },
+            {
+              "label": "Medium",
+              "value": "medium",
+              "visible_when": {
+                "model": [
+                  "claude-opus-4.7",
+                  "claude-opus-4.8",
+                  "claude-opus-5",
+                  "claude-opus-5-5",
+                  "claude-sonnet-5",
+                  "claude-sonnet-5-5",
+                  "gpt-5.5",
+                  "gpt-5.6",
+                  "gpt-6-astra",
+                  "gpt-6-sol",
+                  "gpt-6.1-sol",
+                  "gpt-6-luna",
+                  "gpt-5.6-sol",
+                  "gpt-5.6-terra",
+                  "gpt-5.6-luna",
+                  "gemini-3.6-flash",
+                  "gemini-3.5-flash",
+                  "gemini-3.1-pro",
+                  "gemini-3-flash"
+                ]
+              }
+            },
+            {
+              "label": "High",
+              "value": "high",
+              "visible_when": {
+                "model": [
+                  "claude-opus-4.7",
+                  "claude-opus-4.8",
+                  "claude-opus-5",
+                  "claude-opus-5-5",
+                  "claude-sonnet-5",
+                  "claude-sonnet-5-5",
+                  "gpt-5.5",
+                  "gpt-5.6",
+                  "gpt-6-astra",
+                  "gpt-6-sol",
+                  "gpt-6.1-sol",
+                  "gpt-6-luna",
+                  "gpt-5.6-sol",
+                  "gpt-5.6-terra",
+                  "gpt-5.6-luna",
+                  "gemini-3.6-flash",
+                  "gemini-3.5-flash",
+                  "gemini-3.1-pro",
+                  "gemini-3-flash"
+                ]
+              }
+            },
+            {
+              "label": "Extra high",
+              "value": "xhigh",
+              "visible_when": {
+                "model": [
+                  "claude-opus-4.7",
+                  "claude-opus-4.8",
+                  "claude-opus-5",
+                  "claude-opus-5-5",
+                  "claude-sonnet-5",
+                  "claude-sonnet-5-5",
+                  "gpt-5.5",
+                  "gpt-5.6",
+                  "gpt-6-astra",
+                  "gpt-6-sol",
+                  "gpt-6.1-sol",
+                  "gpt-6-luna",
+                  "gpt-5.6-sol",
+                  "gpt-5.6-terra",
+                  "gpt-5.6-luna"
+                ]
+              }
+            },
+            {
+              "label": "Maximum",
+              "value": "max",
+              "visible_when": {
+                "model": [
+                  "claude-opus-4.7",
+                  "claude-opus-4.8",
+                  "claude-opus-5",
+                  "claude-opus-5-5",
+                  "claude-sonnet-5",
+                  "claude-sonnet-5-5",
+                  "gpt-5.6",
+                  "gpt-6-astra",
+                  "gpt-6-sol",
+                  "gpt-6.1-sol",
+                  "gpt-6-luna",
+                  "gpt-5.6-sol",
+                  "gpt-5.6-terra",
+                  "gpt-5.6-luna"
+                ]
+              }
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "model": [
+              "claude-opus-4.7",
+              "claude-opus-4.8",
+              "claude-opus-5",
+              "claude-opus-5-5",
+              "claude-sonnet-5",
+              "claude-sonnet-5-5",
+              "gpt-5.5",
+              "gpt-5.6",
+              "gpt-6-astra",
+              "gpt-6-sol",
+              "gpt-6.1-sol",
+              "gpt-6-luna",
+              "gpt-5.6-sol",
+              "gpt-5.6-terra",
+              "gpt-5.6-luna",
+              "gemini-3.6-flash",
+              "gemini-3.5-flash",
+              "gemini-3.1-pro",
+              "gemini-3-flash"
+            ]
+          }
+        },
+        {
           "description": "Continue an existing session so the agent keeps the earlier conversation and browser state. Leave blank to start a fresh session.",
           "display_name": "Session ID",
           "name": "session_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A workspace from 'Create workspace' (or an earlier run's 'workspace_id'). The agent gets the files uploaded to it, and whatever it saves stays there for 'Download workspace file'. Leave blank for a new, empty workspace.",
+          "display_name": "Workspace ID",
+          "name": "workspace_id",
           "required": false,
           "type": "ParameterType.STRING"
         },
@@ -842,11 +2878,51 @@
         },
         {
           "default": false,
-          "description": "Record the browser session to a video, viewable in the Browser Use dashboard once the browser stops.",
+          "description": "Record the browser session to a video. It is ready once the browser stops: stop it with 'Stop browser', then 'Get browser' returns the recording link.",
           "display_name": "Record the session",
           "name": "record",
           "required": false,
           "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Give the agent its own temporary email address it can send, receive and read mail with, such as to sign up for a site or receive a verification code.",
+          "display_name": "Give the agent an email inbox",
+          "name": "agentmail",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Credentials the agent can have typed into a field without ever seeing them. Give each an alias, refer to the alias in the task (for example 'sign in with acme_password'), and list the sites it may be typed into. They apply to this run only; a follow-up run that needs them must be given them again.",
+          "display_name": "Secrets",
+          "name": "secret_bindings",
+          "required": false,
+          "schema": {
+            "items": {
+              "properties": {
+                "alias": {
+                  "description": "Name the task uses for it, e.g. 'acme_password' (lowercase letters, digits, - and _).",
+                  "type": "string"
+                },
+                "allowed_domains": {
+                  "description": "Comma-separated sites it may be typed into, e.g. 'acme.com' (covers its subdomains).",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "The secret itself. Save it under Secrets and Values and use it here as @secrets.YOUR_NAME rather than pasting it.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "alias",
+                "value",
+                "allowed_domains"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
         },
         {
           "default": false,
@@ -906,7 +2982,342 @@
             "type": "string"
           },
           "workspace_id": {
-            "description": "ID of the workspace the run's files live in.",
+            "description": "ID of the workspace the run's files live in. Pass it to 'List workspace files' to see what the agent saved.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "stop_browser": {
+      "beta": true,
+      "description": "Stop a cloud browser and get its unused time refunded. Use it once a run's browser is no longer needed for follow-ups, so it stops billing and frees a concurrency slot. It cannot be restarted.",
+      "display_name": "Stop browser",
+      "display_str_template": "Stop Browser Use browser {browser_id}",
+      "handler": "actions.stop_browser",
+      "id": "browser_use_stop_browser",
+      "method": "POST",
+      "mock_response": {
+        "agent_session_id": null,
+        "browser_cost_usd": "0.02",
+        "cdp_url": "wss://cdp.browser-use.com/e2a8f0c4",
+        "finished_at": "2026-07-27T18:25:00.000Z",
+        "id": "e2a8f0c4-51d7-4b6e-8f19-7c3a9d0b2e65",
+        "is_active": false,
+        "live_url": null,
+        "proxy_cost_usd": "0",
+        "proxy_used_mb": "0",
+        "recording_available": true,
+        "recording_url": null,
+        "started_at": "2026-07-27T18:10:00.000Z",
+        "status": "stopped",
+        "timeout_at": "2026-07-27T19:10:00.000Z"
+      },
+      "name": "stop_browser",
+      "output_formatter": "actions.format_browser_output",
+      "parameters": [
+        {
+          "description": "The cloud browser's ID, from 'List browsers' (filter it by a run's session to find the browser that run used) or 'Start a browser'.",
+          "display_name": "Browser ID",
+          "name": "browser_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/stop-browser",
+      "result_str_template": "Stopped the browser.",
+      "returns": {
+        "properties": {
+          "agent_session_id": {
+            "description": "The agent session that started the browser, or null for one started with 'Start a browser'.",
+            "type": "string"
+          },
+          "browser_cost_usd": {
+            "description": "What the browser's running time cost, in US dollars.",
+            "type": "string"
+          },
+          "cdp_url": {
+            "description": "Chrome DevTools Protocol URL, for automation tools.",
+            "type": "string"
+          },
+          "finished_at": {
+            "description": "When the browser stopped (ISO 8601), or null.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The browser's ID.",
+            "type": "string"
+          },
+          "is_active": {
+            "description": "True while the browser is running (and billing).",
+            "type": "boolean"
+          },
+          "live_url": {
+            "description": "Link to watch and control the browser live. Treat it like a password: anyone with it can use the browser.",
+            "type": "string"
+          },
+          "proxy_cost_usd": {
+            "description": "What its proxy traffic cost, in US dollars.",
+            "type": "string"
+          },
+          "proxy_used_mb": {
+            "description": "Proxy traffic used, in megabytes.",
+            "type": "string"
+          },
+          "recording_available": {
+            "description": "False when no recording will ever appear (recording was off). Null in lists.",
+            "type": "boolean"
+          },
+          "recording_url": {
+            "description": "Download link for the recording, once a recorded browser has stopped and the video is processed. Only 'Get browser' fills it in.",
+            "type": "string"
+          },
+          "started_at": {
+            "description": "When the browser started (ISO 8601).",
+            "type": "string"
+          },
+          "status": {
+            "description": "Either 'active' or 'stopped'.",
+            "type": "string"
+          },
+          "timeout_at": {
+            "description": "When the browser stops on its own (ISO 8601).",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "unshare_session": {
+      "beta": true,
+      "description": "Turn a session's public link off. Sharing the session again brings the same link back.",
+      "display_name": "Stop sharing session",
+      "display_str_template": "Stop sharing Browser Use session {session_id}",
+      "handler": "actions.unshare_session",
+      "id": "browser_use_unshare_session",
+      "method": "POST",
+      "mock_response": {
+        "created_at": "2026-07-27T18:08:30.004Z",
+        "is_active": false,
+        "session_id": "9c0d1f77-2b53-4a6e-9d09-1c7f2a8e5b31",
+        "share_token": "k3Zp9QvT",
+        "share_url": "https://cloud.browser-use.com/share/k3Zp9QvT",
+        "view_count": 0
+      },
+      "name": "unshare_session",
+      "output_formatter": "actions.format_share_session_output",
+      "parameters": [
+        {
+          "description": "The session (conversation) to use: the 'session_id' returned by 'Start a browser task', 'Get run' or 'List sessions'.",
+          "display_name": "Session ID",
+          "name": "session_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/unshare-session",
+      "result_str_template": "Stopped sharing the session.",
+      "returns": {
+        "properties": {
+          "created_at": {
+            "description": "When the session was first shared (ISO 8601).",
+            "type": "string"
+          },
+          "is_active": {
+            "description": "Whether the link currently works.",
+            "type": "boolean"
+          },
+          "session_id": {
+            "description": "The shared session's ID.",
+            "type": "string"
+          },
+          "share_token": {
+            "description": "The token at the end of the link.",
+            "type": "string"
+          },
+          "share_url": {
+            "description": "Public link anyone can open to view the session.",
+            "type": "string"
+          },
+          "view_count": {
+            "description": "How many times the link has been opened.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "update_profile": {
+      "beta": true,
+      "description": "Rename a browser profile or change the user ID it is filed under.",
+      "display_name": "Update profile",
+      "display_str_template": "Update Browser Use profile {profile_id}",
+      "handler": "actions.update_profile",
+      "id": "browser_use_update_profile",
+      "method": "POST",
+      "mock_response": {
+        "cookie_domains": [
+          "acme.example.com"
+        ],
+        "created_at": "2026-07-20T09:15:00.000Z",
+        "external_user_id": "customer-1042",
+        "id": "b7e4c1d2-8a90-4f3e-9c55-0d2f6a1e7b34",
+        "last_used_at": "2026-07-27T18:04:12.000Z",
+        "name": "Acme billing login",
+        "updated_at": "2026-07-27T18:06:49.000Z"
+      },
+      "name": "update_profile",
+      "output_formatter": "actions.format_profile_output",
+      "parameters": [
+        {
+          "description": "The browser profile's ID, from 'List profiles' or 'Create profile'.",
+          "display_name": "Profile ID",
+          "name": "profile_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The profile's new name. Leave blank to keep it.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The profile's new user identifier. Leave blank to keep it.",
+          "display_name": "Your user ID",
+          "name": "external_user_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browser-use/update-profile",
+      "result_str_template": "Updated the profile.",
+      "returns": {
+        "properties": {
+          "cookie_domains": {
+            "description": "Sites the profile holds cookies (logins) for.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "created_at": {
+            "description": "When the profile was created (ISO 8601).",
+            "type": "string"
+          },
+          "external_user_id": {
+            "description": "Your own user identifier for the profile, or null.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The profile's ID. Pass it as 'Browser profile ID' to start a browser that is already signed in.",
+            "type": "string"
+          },
+          "last_used_at": {
+            "description": "When a browser last used the profile (ISO 8601).",
+            "type": "string"
+          },
+          "name": {
+            "description": "The profile's name, or null.",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the profile was last updated (ISO 8601).",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "upload_workspace_file": {
+      "beta": true,
+      "description": "Put a file in a workspace, under 'uploads/', for the agent to work with: every run given the workspace gets the file at the start. Up to 50 MB per file.",
+      "display_name": "Upload workspace file",
+      "display_str_template": "Upload a file to Browser Use workspace {workspace_id}",
+      "handler": "actions.upload_workspace_file",
+      "id": "browser_use_upload_workspace_file",
+      "method": "POST",
+      "mock_response": {
+        "content_type": "application/pdf",
+        "id": "c41e9a07-6b25-4d8f-a3e0-2f7b51d9c684",
+        "name": "brief.pdf",
+        "path": "uploads/brief.pdf",
+        "replaced": false,
+        "size_bytes": 48211,
+        "stored_name": "brief.pdf",
+        "workspace_id": "51b0f8a3-9a3d-4f7c-bb2e-6e1d0c4a9f22"
+      },
+      "name": "upload_workspace_file",
+      "output_formatter": "actions.format_upload_workspace_file_output",
+      "parameters": [
+        {
+          "description": "The workspace holding the files: the 'workspace_id' a run returns, or the 'id' from 'Create workspace'.",
+          "display_name": "Workspace ID",
+          "name": "workspace_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "accepts_file_upload": true,
+          "accepts_variable_reference": true,
+          "autofill_name_param": "filename",
+          "description": "The file to upload: upload one, pick a file from an earlier step, or paste a public https:// link to it.",
+          "display_name": "File",
+          "name": "file",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The file's name in the workspace, such as 'leads.csv'. Leave blank to keep its own name. Browser Use stores it in lower case, with spaces and symbols as underscores, so use the 'path' this step returns.",
+          "display_name": "Save as",
+          "name": "filename",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Replace a file of the same name already in the workspace. Turn off to fail instead.",
+          "display_name": "Replace a file with the same name",
+          "name": "overwrite",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/browser-use/upload-workspace-file",
+      "result_str_template": "Uploaded the file.",
+      "returns": {
+        "properties": {
+          "content_type": {
+            "description": "The file's MIME type.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The upload's ID.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The file's name.",
+            "type": "string"
+          },
+          "path": {
+            "description": "Its path in the workspace, e.g. 'uploads/leads.csv'.",
+            "type": "string"
+          },
+          "replaced": {
+            "description": "Whether it replaced a file of the same name.",
+            "type": "boolean"
+          },
+          "size_bytes": {
+            "description": "The file's size in bytes.",
+            "type": "integer"
+          },
+          "stored_name": {
+            "description": "The name it is stored under, made safe.",
+            "type": "string"
+          },
+          "workspace_id": {
+            "description": "The workspace the file went to.",
             "type": "string"
           }
         },
@@ -917,7 +3328,7 @@
   "categories": [
     "AI Agents"
   ],
-  "description": "Hand a web task to a Browser Use cloud agent in plain English: it drives a real browser to research, fill in forms, pull data off pages, and report back. Follow up in the same session to keep the browser and context, and read the agent's step-by-step trace when you need to see how it got there.",
+  "description": "Hand a web task to a Browser Use cloud agent in plain English: it drives a real browser to research, fill in forms, pull data off pages, and report back. Give it files in a workspace and download what it saves, start it signed in with a browser profile, follow up in the same session to keep the browser and context, and read the agent's step-by-step trace when you need to see how it got there.",
   "display_name": "Browser Use",
   "id": "browser_use",
   "logo": "https://www.lodol.com/app-icons/browser-use-icon.svg",
