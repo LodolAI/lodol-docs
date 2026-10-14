@@ -27,26 +27,57 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The password or passcode the meeting needs, if it has one.",
+          "description": "The password or passcode the meeting needs, if it has one (up to 32 characters).",
           "display_name": "Meeting password",
           "name": "meeting_password",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "How many minutes the notetaker should stay in the meeting. Leave blank to let Fireflies decide.",
+          "description": "How many minutes the notetaker should stay, from 15 to 120. Leave blank for 60.",
           "display_name": "Minutes to stay",
-          "minimum": 1,
+          "maximum": 120,
+          "minimum": 15,
           "name": "duration",
           "required": false,
           "type": "ParameterType.NUMBER"
         },
         {
-          "description": "The language spoken in the meeting, as a code such as 'en' or 'es'. Leave blank to use your Fireflies default.",
+          "description": "The language spoken in the meeting, as a code such as 'en' or 'es'. Leave blank for English.",
           "display_name": "Meeting language",
           "name": "language",
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Who is taking part. Each attendee needs an email; name and phone_number are optional. Fireflies uses them to file notes in a connected CRM.",
+          "display_name": "Attendees",
+          "name": "attendees",
+          "required": false,
+          "schema": {
+            "items": {
+              "properties": {
+                "email": {
+                  "description": "Attendee email address",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Attendee display name",
+                  "type": "string"
+                },
+                "phone_number": {
+                  "description": "Attendee phone number",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "email"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
         }
       ],
       "path": "/actions/library/fireflies/add-to-live-meeting",
@@ -54,15 +85,1271 @@
       "returns": {
         "properties": {
           "success": {
-            "description": "Whether the notetaker was sent to the meeting.",
+            "description": "Whether Fireflies did it.",
             "type": "boolean"
           }
         },
         "type": "object"
       }
     },
+    "add_user_to_group": {
+      "beta": true,
+      "description": "Add a teammate to a user group by email. Needs a team admin's API key and a Fireflies Business plan or higher.",
+      "display_name": "Add member to user group",
+      "display_str_template": "Add {email} to a Fireflies user group.",
+      "handler": "actions.add_user_to_group",
+      "id": "fireflies_add_user_to_group",
+      "method": "POST",
+      "mock_response": {
+        "handle": "sales",
+        "id": "grp_sales",
+        "members": [
+          {
+            "email": "sarah@example.com",
+            "first_name": "Sarah",
+            "last_name": "Chen",
+            "name": "Sarah Chen",
+            "user_id": "01HXUSER000000000000000"
+          }
+        ],
+        "name": "Sales"
+      },
+      "name": "add_user_to_group",
+      "parameters": [
+        {
+          "description": "The user group. Pick one, or give its ID.",
+          "display_name": "User group",
+          "dynamic_source": "user_groups",
+          "dynamic_source_allows_custom": true,
+          "name": "group_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The email address of someone on your Fireflies team.",
+          "display_name": "Team member's email",
+          "name": "email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/add-user-to-group",
+      "result_str_template": "Added to the user group.",
+      "returns": {
+        "properties": {
+          "handle": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "properties": {
+                "email": {
+                  "type": "string"
+                },
+                "first_name": {
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "user_id": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "ask_fred": {
+      "beta": true,
+      "description": "Ask Fireflies' AI assistant a question about one meeting, or about every meeting that matches the filters (by default the last 30 days, and never more than a year back). Returns the answer and a thread ID for follow-up questions. Spends Fireflies AI credits.",
+      "display_name": "Ask Fred",
+      "display_str_template": "Ask Fred: {question}",
+      "handler": "actions.ask_fred",
+      "id": "fireflies_ask_fred",
+      "method": "POST",
+      "mock_response": {
+        "answer": "The release ships on 1 August, after the design review on Thursday.",
+        "cost": 1.0,
+        "created_at": "2026-07-15T10:30:00Z",
+        "message_id": "msg_001",
+        "query": "What did we decide about the release?",
+        "status": "completed",
+        "suggested_queries": [],
+        "thread_id": "thread_abc123"
+      },
+      "name": "ask_fred",
+      "parameters": [
+        {
+          "description": "What to ask, up to 2,000 characters, such as 'What objections did customers raise this week?'",
+          "display_name": "Question",
+          "multiline": true,
+          "name": "question",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Ask about this meeting only. Leave blank to ask across meetings, narrowed by the filters below.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only meetings on or after this date, up to a year back.",
+          "display_name": "From date",
+          "name": "start_date",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Only meetings on or before this date and time.",
+          "display_name": "To date",
+          "name": "end_date",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Only these meetings.",
+          "display_name": "Meeting IDs",
+          "name": "meeting_ids",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only meetings in these channels.",
+          "display_name": "Channel IDs",
+          "name": "channel_ids",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only meetings organized by these addresses.",
+          "display_name": "Organizer emails",
+          "name": "organizer_emails",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only meetings these addresses attended.",
+          "display_name": "Participant emails",
+          "name": "participant_emails",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Answer in this language, as a code such as 'en' or 'es'. Leave blank to answer in the question's language.",
+          "display_name": "Answer language",
+          "name": "language",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Markdown keeps headings and lists; plain text has none.",
+          "display_name": "Answer format",
+          "name": "answer_format",
+          "options": [
+            {
+              "label": "Markdown",
+              "value": "markdown"
+            },
+            {
+              "label": "Plain text",
+              "value": "plaintext"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Also suggest follow-up questions. The answer takes longer.",
+          "display_name": "Suggest follow-up questions",
+          "name": "suggest_follow_ups",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/fireflies/ask-fred",
+      "result_str_template": "Fred answered.",
+      "returns": {
+        "properties": {
+          "answer": {
+            "description": "AskFred's answer.",
+            "type": "string"
+          },
+          "cost": {
+            "description": "AI credits used.",
+            "type": "number"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          },
+          "query": {
+            "description": "The question that was asked.",
+            "type": "string"
+          },
+          "status": {
+            "description": "processing, completed or failed.",
+            "type": "string"
+          },
+          "suggested_queries": {
+            "description": "Follow-up questions, when they were asked for.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "thread_id": {
+            "description": "The conversation's ID, for follow-up questions.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "continue_ask_fred": {
+      "beta": true,
+      "description": "Ask a follow-up question in an Ask Fred conversation, which keeps the earlier questions and answers in mind. Spends Fireflies AI credits.",
+      "display_name": "Ask Fred a follow-up",
+      "display_str_template": "Ask Fred a follow-up: {question}",
+      "handler": "actions.continue_ask_fred",
+      "id": "fireflies_continue_ask_fred",
+      "method": "POST",
+      "mock_response": {
+        "answer": "James Lee owns the design review on Thursday.",
+        "cost": 1.0,
+        "created_at": "2026-07-15T10:31:00Z",
+        "message_id": "msg_002",
+        "query": "Who owns the design review?",
+        "status": "completed",
+        "suggested_queries": [],
+        "thread_id": "thread_abc123"
+      },
+      "name": "continue_ask_fred",
+      "parameters": [
+        {
+          "description": "The conversation's ID: the 'thread_id' of an Ask Fred result.",
+          "display_name": "Thread ID",
+          "name": "thread_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The follow-up question, up to 2,000 characters.",
+          "display_name": "Question",
+          "multiline": true,
+          "name": "question",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Answer in this language, as a code such as 'en' or 'es'. Leave blank to answer in the question's language.",
+          "display_name": "Answer language",
+          "name": "language",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Markdown keeps headings and lists; plain text has none.",
+          "display_name": "Answer format",
+          "name": "answer_format",
+          "options": [
+            {
+              "label": "Markdown",
+              "value": "markdown"
+            },
+            {
+              "label": "Plain text",
+              "value": "plaintext"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Also suggest follow-up questions. The answer takes longer.",
+          "display_name": "Suggest follow-up questions",
+          "name": "suggest_follow_ups",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/fireflies/continue-ask-fred",
+      "result_str_template": "Fred answered.",
+      "returns": {
+        "properties": {
+          "answer": {
+            "description": "AskFred's answer.",
+            "type": "string"
+          },
+          "cost": {
+            "description": "AI credits used.",
+            "type": "number"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "string"
+          },
+          "query": {
+            "description": "The question that was asked.",
+            "type": "string"
+          },
+          "status": {
+            "description": "processing, completed or failed.",
+            "type": "string"
+          },
+          "suggested_queries": {
+            "description": "Follow-up questions, when they were asked for.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "thread_id": {
+            "description": "The conversation's ID, for follow-up questions.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_live_action_item": {
+      "beta": true,
+      "description": "Add an action item to a meeting that is happening now, described in plain words for Fireflies' assistant to write up. Only the meeting's organizer or a team admin can do this, Fireflies allows 10 an hour, and each one spends AI credits.",
+      "display_name": "Add live action item",
+      "display_str_template": "Add a live action item to meeting {meeting_id}.",
+      "handler": "actions.create_live_action_item",
+      "id": "fireflies_create_live_action_item",
+      "method": "POST",
+      "mock_response": {
+        "success": true
+      },
+      "name": "create_live_action_item",
+      "parameters": [
+        {
+          "description": "The live meeting's ID: the 'id' of a List active meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What needs doing, in 5 to 255 characters, such as 'James sends the revised quote by Friday'.",
+          "display_name": "Action item",
+          "name": "prompt",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/create-live-action-item",
+      "result_str_template": "Action item added.",
+      "returns": {
+        "properties": {
+          "success": {
+            "description": "Whether Fireflies did it.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_live_soundbite": {
+      "beta": true,
+      "description": "Clip a soundbite from a meeting that is happening now, described in plain words, such as 'the pricing discussion'. Only the meeting's organizer or a team admin can do this, Fireflies allows 10 an hour, and each one spends AI credits.",
+      "display_name": "Clip live soundbite",
+      "display_str_template": "Clip a live soundbite in meeting {meeting_id}.",
+      "handler": "actions.create_live_soundbite",
+      "id": "fireflies_create_live_soundbite",
+      "method": "POST",
+      "mock_response": {
+        "success": true
+      },
+      "name": "create_live_soundbite",
+      "parameters": [
+        {
+          "description": "The live meeting's ID: the 'id' of a List active meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What the clip should capture, in 5 to 255 characters.",
+          "display_name": "What to clip",
+          "name": "prompt",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/create-live-soundbite",
+      "result_str_template": "Soundbite requested.",
+      "returns": {
+        "properties": {
+          "success": {
+            "description": "Whether Fireflies did it.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_soundbite": {
+      "beta": true,
+      "description": "Clip part of a meeting's recording as a soundbite to share. Fireflies makes the clip in the background: its status is 'ready' when it can be played.",
+      "display_name": "Create soundbite",
+      "display_str_template": "Create a soundbite from meeting {meeting_id}.",
+      "handler": "actions.create_soundbite",
+      "id": "fireflies_create_soundbite",
+      "method": "POST",
+      "mock_response": {
+        "captions": [
+          {
+            "end_time": 3.2,
+            "speaker_name": "Sarah Chen",
+            "start_time": 0.5,
+            "text": "Let's start with the release timeline."
+          }
+        ],
+        "created_at": "2026-07-15T10:00:00.000Z",
+        "created_by": {
+          "id": "01HXUSER000000000000000",
+          "name": "Sarah Chen"
+        },
+        "end_time": 6.1,
+        "id": "01HXBITE00000000000000000",
+        "media_type": "video",
+        "meeting_id": "01HXAMPLE0000000000000000",
+        "name": "Release timeline",
+        "preview": "https://cdn.fireflies.ai/bites/preview.mp4",
+        "privacies": [
+          "team"
+        ],
+        "sources": [
+          {
+            "type": "video/mp4",
+            "url": "https://cdn.fireflies.ai/bites/clip.mp4"
+          }
+        ],
+        "start_time": 0.5,
+        "status": "pending",
+        "summary": "Sarah sets the release timeline.",
+        "thumbnail": "https://cdn.fireflies.ai/bites/thumb.jpg"
+      },
+      "name": "create_soundbite",
+      "parameters": [
+        {
+          "description": "The meeting's ID: the 'id' of a List meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where the clip starts, in seconds from the start of the meeting. A transcript line's 'start_time' works.",
+          "display_name": "Start time",
+          "minimum": 0,
+          "name": "start_time",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Where the clip ends, in seconds from the start.",
+          "display_name": "End time",
+          "minimum": 0,
+          "name": "end_time",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The clip's title, up to 256 characters.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A description, up to 500 characters.",
+          "display_name": "Summary",
+          "multiline": true,
+          "name": "summary",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Video or audio only.",
+          "display_name": "Media",
+          "name": "media_type",
+          "options": [
+            {
+              "label": "Video",
+              "value": "video"
+            },
+            {
+              "label": "Audio",
+              "value": "audio"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Leave blank for Fireflies' default.",
+          "display_name": "Who can see it",
+          "multi_select": true,
+          "name": "privacies",
+          "options": [
+            {
+              "label": "Anyone with the link",
+              "value": "public"
+            },
+            {
+              "label": "Teammates",
+              "value": "team"
+            },
+            {
+              "label": "Meeting participants",
+              "value": "participants"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/fireflies/create-soundbite",
+      "result_str_template": "Soundbite created.",
+      "returns": {
+        "properties": {
+          "captions": {
+            "items": {
+              "properties": {
+                "end_time": {
+                  "type": "number"
+                },
+                "speaker_name": {
+                  "type": "string"
+                },
+                "start_time": {
+                  "type": "number"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "end_time": {
+            "description": "Seconds from the start of the meeting.",
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "media_type": {
+            "description": "video or audio.",
+            "type": "string"
+          },
+          "meeting_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "preview": {
+            "type": "string"
+          },
+          "privacies": {
+            "description": "Who can see it.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sources": {
+            "description": "Where to play the clip.",
+            "items": {
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "start_time": {
+            "description": "Seconds from the start of the meeting.",
+            "type": "number"
+          },
+          "status": {
+            "description": "pending, processing, ready or error.",
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "thumbnail": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_ask_fred_thread": {
+      "beta": true,
+      "description": "Permanently delete an Ask Fred conversation and its messages. The meetings it was about are not touched.",
+      "display_name": "Delete Ask Fred conversation",
+      "display_str_template": "Delete Ask Fred conversation {thread_id}.",
+      "handler": "actions.delete_ask_fred_thread",
+      "id": "fireflies_delete_ask_fred_thread",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "id": "thread_abc123",
+        "title": "What did we decide about the release?"
+      },
+      "name": "delete_ask_fred_thread",
+      "parameters": [
+        {
+          "description": "The conversation's ID: the 'thread_id' of an Ask Fred result.",
+          "display_name": "Thread ID",
+          "name": "thread_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/delete-ask-fred-thread",
+      "result_str_template": "Deleted the conversation.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_meeting": {
+      "beta": true,
+      "description": "Permanently delete a meeting with its recording, transcript and notes. This cannot be undone. You can delete your own meetings; deleting a teammate's needs a team admin. Fireflies allows 10 deletions a minute.",
+      "display_name": "Delete meeting",
+      "display_str_template": "Delete Fireflies meeting {meeting_id}.",
+      "handler": "actions.delete_meeting",
+      "id": "fireflies_delete_meeting",
+      "method": "POST",
+      "mock_response": {
+        "date": "2026-07-15T09:00:00Z",
+        "deleted": true,
+        "id": "01HXAMPLE0000000000000000",
+        "title": "Weekly Standup"
+      },
+      "name": "delete_meeting",
+      "parameters": [
+        {
+          "description": "The meeting's ID: the 'id' of a List meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/delete-meeting",
+      "result_str_template": "Deleted the meeting.",
+      "returns": {
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_ask_fred_thread": {
+      "beta": true,
+      "description": "Get an Ask Fred conversation with every question and answer in it.",
+      "display_name": "Get Ask Fred conversation",
+      "display_str_template": "Get Ask Fred conversation {thread_id}.",
+      "handler": "actions.get_ask_fred_thread",
+      "id": "fireflies_get_ask_fred_thread",
+      "method": "POST",
+      "mock_response": {
+        "created_at": "2026-07-15T10:30:00Z",
+        "id": "thread_abc123",
+        "meeting_id": "01HXAMPLE0000000000000000",
+        "messages": [
+          {
+            "answer": "The release ships on 1 August, after the design review on Thursday.",
+            "created_at": "2026-07-15T10:30:00Z",
+            "message_id": "msg_001",
+            "query": "What did we decide about the release?",
+            "status": "completed",
+            "suggested_queries": [],
+            "thread_id": "thread_abc123"
+          },
+          {
+            "answer": "James Lee owns the design review on Thursday.",
+            "created_at": "2026-07-15T10:31:00Z",
+            "message_id": "msg_002",
+            "query": "Who owns the design review?",
+            "status": "completed",
+            "suggested_queries": [],
+            "thread_id": "thread_abc123"
+          }
+        ],
+        "title": "What did we decide about the release?",
+        "user_id": "01HXUSER000000000000000"
+      },
+      "name": "get_ask_fred_thread",
+      "parameters": [
+        {
+          "description": "The conversation's ID: the 'thread_id' of an Ask Fred result.",
+          "display_name": "Thread ID",
+          "name": "thread_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/get-ask-fred-thread",
+      "result_str_template": "Retrieved the conversation.",
+      "returns": {
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "meeting_id": {
+            "description": "The meeting it is about, if just one.",
+            "type": "string"
+          },
+          "messages": {
+            "description": "The questions and answers, in order.",
+            "items": {
+              "properties": {
+                "answer": {
+                  "type": "string"
+                },
+                "created_at": {
+                  "type": "string"
+                },
+                "message_id": {
+                  "type": "string"
+                },
+                "query": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "suggested_queries": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "thread_id": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "title": {
+            "description": "Taken from the first question.",
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_channel": {
+      "beta": true,
+      "description": "Get one channel's name, privacy and members.",
+      "display_name": "Get channel",
+      "display_str_template": "Get Fireflies channel {channel_id}.",
+      "handler": "actions.get_channel",
+      "id": "fireflies_get_channel",
+      "method": "POST",
+      "mock_response": {
+        "created_at": "2026-06-01T09:00:00.000Z",
+        "created_by": "sarah@example.com",
+        "id": "01HXCHANNEL0000000000000",
+        "is_private": false,
+        "members": [
+          {
+            "email": "sarah@example.com",
+            "name": "Sarah Chen",
+            "user_id": "01HXUSER000000000000000"
+          }
+        ],
+        "title": "Customer calls",
+        "updated_at": "2026-07-01T09:00:00.000Z"
+      },
+      "name": "get_channel",
+      "parameters": [
+        {
+          "description": "The channel (folder). Pick one, or give a channel's ID.",
+          "display_name": "Channel",
+          "dynamic_source": "channels",
+          "dynamic_source_allows_custom": true,
+          "name": "channel_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/get-channel",
+      "result_str_template": "Retrieved the channel.",
+      "returns": {
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "description": "Email of whoever made the channel.",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "is_private": {
+            "type": "boolean"
+          },
+          "members": {
+            "items": {
+              "properties": {
+                "email": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "user_id": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_meeting": {
+      "beta": true,
+      "description": "Get one meeting's details: who organized and attended it, when each person joined and left, who spoke, who can see it, its channel and whether its notes are ready.",
+      "display_name": "Get meeting",
+      "display_str_template": "Get Fireflies meeting {meeting_id}.",
+      "handler": "actions.get_meeting",
+      "id": "fireflies_get_meeting",
+      "method": "POST",
+      "mock_response": {
+        "attendance": [
+          {
+            "join_time": "2026-07-15T09:00:00.000Z",
+            "leave_time": "2026-07-15T09:30:00.000Z",
+            "name": "Sarah Chen"
+          }
+        ],
+        "attendees": [
+          {
+            "email": "sarah@example.com",
+            "name": "Sarah Chen"
+          },
+          {
+            "email": "james@example.com",
+            "name": "James Lee"
+          }
+        ],
+        "calendar_id": "7f3c2b1a@google.com",
+        "calendar_type": "google",
+        "channel_ids": [
+          "01HXCHANNEL0000000000000"
+        ],
+        "date": "2026-07-15T09:00:00Z",
+        "duration": 30.0,
+        "fireflies_users": [
+          "sarah@example.com"
+        ],
+        "host_email": "sarah@example.com",
+        "id": "01HXAMPLE0000000000000000",
+        "is_live": false,
+        "meeting_link": "https://meet.google.com/abc-defg-hij",
+        "notetaker_joined": true,
+        "organizer_email": "sarah@example.com",
+        "owner": {
+          "email": "sarah@example.com",
+          "id": "01HXUSER000000000000000",
+          "name": "Sarah Chen"
+        },
+        "participants": [
+          "sarah@example.com",
+          "james@example.com"
+        ],
+        "privacy": "teammates",
+        "silent_meeting": false,
+        "speakers": [
+          "Sarah Chen",
+          "James Lee"
+        ],
+        "summary_status": "processed",
+        "title": "Weekly Standup",
+        "transcript_url": "https://app.fireflies.ai/view/01HXAMPLE0000000000000000"
+      },
+      "name": "get_meeting",
+      "parameters": [
+        {
+          "description": "The meeting's ID: the 'id' of a List meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/get-meeting",
+      "result_str_template": "Retrieved the meeting.",
+      "returns": {
+        "properties": {
+          "attendance": {
+            "description": "When each participant joined and left, as ISO 8601.",
+            "items": {
+              "properties": {
+                "join_time": {
+                  "type": "string"
+                },
+                "leave_time": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "attendees": {
+            "description": "The invited attendees.",
+            "items": {
+              "properties": {
+                "email": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "calendar_id": {
+            "description": "The calendar event's ID.",
+            "type": "string"
+          },
+          "calendar_type": {
+            "description": "The calendar provider.",
+            "type": "string"
+          },
+          "channel_ids": {
+            "description": "The channel the meeting is filed in.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "date": {
+            "description": "When the meeting took place, as ISO 8601 UTC.",
+            "type": "string"
+          },
+          "duration": {
+            "description": "How long the meeting lasted, in minutes.",
+            "type": "number"
+          },
+          "fireflies_users": {
+            "description": "Participants who have a Fireflies account.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "host_email": {
+            "description": "Email address of the organizer (the same as organizer_email).",
+            "type": "string"
+          },
+          "id": {
+            "description": "The meeting's unique ID. Use this with the other meeting actions.",
+            "type": "string"
+          },
+          "is_live": {
+            "description": "Whether the meeting is happening now.",
+            "type": "boolean"
+          },
+          "meeting_link": {
+            "description": "The Zoom, Google Meet or Teams link, when there was one.",
+            "type": "string"
+          },
+          "notetaker_joined": {
+            "description": "Whether the Fireflies notetaker joined.",
+            "type": "boolean"
+          },
+          "organizer_email": {
+            "description": "Email address of the organizer.",
+            "type": "string"
+          },
+          "owner": {
+            "description": "The Fireflies user the meeting was recorded for.",
+            "properties": {
+              "email": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "participants": {
+            "description": "Email addresses of everyone who took part.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "privacy": {
+            "description": "Who can see the meeting: link, owner, participants, teammatesandparticipants, teammates or participatingteammates.",
+            "type": "string"
+          },
+          "silent_meeting": {
+            "description": "Whether nothing was said.",
+            "type": "boolean"
+          },
+          "speakers": {
+            "description": "The names of everyone who spoke.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "summary_status": {
+            "description": "processing, processed, failed or skipped.",
+            "type": "string"
+          },
+          "title": {
+            "description": "The meeting's title.",
+            "type": "string"
+          },
+          "transcript_url": {
+            "description": "Link to the meeting in Fireflies.ai.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_meeting_analytics": {
+      "beta": true,
+      "description": "Get a meeting's conversation analytics: how positive or negative it was, how many questions, dates, metrics and tasks came up, and each speaker's talk time, word count, pace and filler words. Needs a Fireflies Pro plan or higher.",
+      "display_name": "Get meeting analytics",
+      "display_str_template": "Get analytics for meeting {meeting_id}.",
+      "handler": "actions.get_meeting_analytics",
+      "id": "fireflies_get_meeting_analytics",
+      "method": "POST",
+      "mock_response": {
+        "categories": {
+          "date_times": 3.0,
+          "metrics": 2.0,
+          "questions": 6.0,
+          "tasks": 4.0
+        },
+        "id": "01HXAMPLE0000000000000000",
+        "sentiments": {
+          "negative_pct": 4.0,
+          "neutral_pct": 61.0,
+          "positive_pct": 35.0
+        },
+        "speakers": [
+          {
+            "duration": 820.0,
+            "duration_pct": 55.0,
+            "filler_words": 12.0,
+            "longest_monologue": 95.0,
+            "monologues_count": 14.0,
+            "name": "Sarah Chen",
+            "questions": 4.0,
+            "speaker_id": "0",
+            "word_count": 2100.0,
+            "words_per_minute": 154.0
+          }
+        ],
+        "title": "Weekly Standup"
+      },
+      "name": "get_meeting_analytics",
+      "parameters": [
+        {
+          "description": "The meeting's ID: the 'id' of a List meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/get-meeting-analytics",
+      "result_str_template": "Retrieved the meeting analytics.",
+      "returns": {
+        "properties": {
+          "categories": {
+            "description": "How many questions, dates, metrics and tasks came up.",
+            "properties": {
+              "date_times": {
+                "type": "number"
+              },
+              "metrics": {
+                "type": "number"
+              },
+              "questions": {
+                "type": "number"
+              },
+              "tasks": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "sentiments": {
+            "description": "How positive, neutral and negative the conversation was, in percent.",
+            "properties": {
+              "negative_pct": {
+                "type": "number"
+              },
+              "neutral_pct": {
+                "type": "number"
+              },
+              "positive_pct": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "speakers": {
+            "description": "Talk-time figures per speaker.",
+            "items": {
+              "properties": {
+                "duration": {
+                  "description": "Seconds spent talking.",
+                  "type": "number"
+                },
+                "duration_pct": {
+                  "description": "Share of the talking time, as a percentage.",
+                  "type": "number"
+                },
+                "filler_words": {
+                  "type": "number"
+                },
+                "longest_monologue": {
+                  "description": "The longest stretch, in seconds.",
+                  "type": "number"
+                },
+                "monologues_count": {
+                  "type": "number"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "questions": {
+                  "type": "number"
+                },
+                "speaker_id": {
+                  "type": "string"
+                },
+                "word_count": {
+                  "type": "number"
+                },
+                "words_per_minute": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "get_meeting_summary": {
-      "description": "Get the AI-generated notes for one meeting, including a written overview, the action items, the key topics, and an outline. Use the List meetings action first to find the meeting's ID.",
+      "description": "Get the AI-generated notes for one meeting, including a written overview, the action items, the key topics, an outline, a one-line gist and the meeting type. Use the List meetings action first to find the meeting's ID.",
       "display_name": "Get meeting summary",
       "display_str_template": "Get summary for meeting '{0}'.",
       "handler": "actions.get_meeting_summary",
@@ -70,16 +1357,31 @@
       "method": "POST",
       "mock_response": {
         "action_items": "Sarah: Follow up with the design team.\nJames: Schedule the next review.",
+        "bullet_gist": "\ud83c\udfaf Q1 goals reviewed\n\ud83d\udcc5 Release timeline confirmed",
         "date": "2026-07-15T09:00:00Z",
+        "gist": "The team confirmed the release timeline.",
         "id": "01HXAMPLE0000000000000000",
         "keywords": [
           "Q1 goals",
           "release timeline",
           "design review"
         ],
+        "meeting_type": "Standup",
         "outline": "Q1 goals\nProject timelines\nNext steps",
+        "short_overview": "Q1 review and release planning.",
+        "short_summary": "The team reviewed Q1 goals and confirmed the timeline.",
+        "shorthand_bullet": "Q1 goals reviewed; timelines confirmed.",
         "summary": "The team reviewed Q1 goals and confirmed project timelines for the next release.",
-        "title": "Weekly Standup"
+        "summary_status": "processed",
+        "title": "Weekly Standup",
+        "topics_discussed": [
+          "Q1 goals",
+          "Release timeline"
+        ],
+        "transcript_chapters": [
+          "Q1 goals",
+          "Release timeline"
+        ]
       },
       "name": "get_meeting_summary",
       "parameters": [
@@ -99,32 +1401,510 @@
             "description": "The follow-up tasks identified in the meeting, one per line.",
             "type": "string"
           },
+          "bullet_gist": {
+            "description": "A few bullet points with emoji.",
+            "type": "string"
+          },
           "date": {
-            "description": "When the meeting took place, as an ISO 8601 UTC timestamp.",
+            "description": "When the meeting took place, as ISO 8601 UTC.",
+            "type": "string"
+          },
+          "gist": {
+            "description": "The meeting in one sentence.",
             "type": "string"
           },
           "id": {
-            "description": "The meeting's unique ID.",
             "type": "string"
           },
           "keywords": {
-            "description": "The main topics and terms from the meeting.",
+            "description": "The main topics and terms.",
             "items": {
               "type": "string"
             },
             "type": "array"
           },
+          "meeting_type": {
+            "description": "What kind of meeting it was.",
+            "type": "string"
+          },
           "outline": {
-            "description": "A section-by-section outline of the meeting.",
+            "description": "A section-by-section outline with timestamps.",
+            "type": "string"
+          },
+          "short_overview": {
+            "description": "A brief overview.",
+            "type": "string"
+          },
+          "short_summary": {
+            "description": "The meeting in one paragraph.",
+            "type": "string"
+          },
+          "shorthand_bullet": {
+            "description": "Shorthand bullet notes.",
             "type": "string"
           },
           "summary": {
             "description": "A written overview of what the meeting covered.",
             "type": "string"
           },
-          "title": {
-            "description": "The meeting's title.",
+          "summary_status": {
+            "description": "processing, processed, failed or skipped. The notes are empty until it is processed.",
             "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "topics_discussed": {
+            "description": "The topics discussed.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "transcript_chapters": {
+            "description": "Chapters of the condensed transcript.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_recording_links": {
+      "beta": true,
+      "description": "Get download links for a meeting's audio and, if video recording is on in Fireflies, its video. The links stop working after 24 hours, so use them in the same run. Needs a Fireflies Pro plan or higher.",
+      "display_name": "Get recording links",
+      "display_str_template": "Get recording links for meeting {meeting_id}.",
+      "handler": "actions.get_recording_links",
+      "id": "fireflies_get_recording_links",
+      "method": "POST",
+      "mock_response": {
+        "audio_url": "https://cdn.fireflies.ai/audio/standup.mp3?token=abc",
+        "id": "01HXAMPLE0000000000000000",
+        "title": "Weekly Standup",
+        "video_url": "https://cdn.fireflies.ai/video/standup.mp4?token=abc"
+      },
+      "name": "get_recording_links",
+      "parameters": [
+        {
+          "description": "The meeting's ID: the 'id' of a List meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/get-recording-links",
+      "result_str_template": "Retrieved the recording links.",
+      "returns": {
+        "properties": {
+          "audio_url": {
+            "description": "A download link for the audio. It stops working after 24 hours.",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "video_url": {
+            "description": "A download link for the video, if video recording is on. It stops working after 24 hours.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_soundbite": {
+      "beta": true,
+      "description": "Get one soundbite: its clip and thumbnail links, captions, summary and processing status.",
+      "display_name": "Get soundbite",
+      "display_str_template": "Get Fireflies soundbite {soundbite_id}.",
+      "handler": "actions.get_soundbite",
+      "id": "fireflies_get_soundbite",
+      "method": "POST",
+      "mock_response": {
+        "captions": [
+          {
+            "end_time": 3.2,
+            "speaker_name": "Sarah Chen",
+            "start_time": 0.5,
+            "text": "Let's start with the release timeline."
+          }
+        ],
+        "created_at": "2026-07-15T10:00:00.000Z",
+        "created_by": {
+          "id": "01HXUSER000000000000000",
+          "name": "Sarah Chen"
+        },
+        "end_time": 6.1,
+        "id": "01HXBITE00000000000000000",
+        "media_type": "video",
+        "meeting_id": "01HXAMPLE0000000000000000",
+        "name": "Release timeline",
+        "preview": "https://cdn.fireflies.ai/bites/preview.mp4",
+        "privacies": [
+          "team"
+        ],
+        "sources": [
+          {
+            "type": "video/mp4",
+            "url": "https://cdn.fireflies.ai/bites/clip.mp4"
+          }
+        ],
+        "start_time": 0.5,
+        "status": "ready",
+        "summary": "Sarah sets the release timeline.",
+        "thumbnail": "https://cdn.fireflies.ai/bites/thumb.jpg"
+      },
+      "name": "get_soundbite",
+      "parameters": [
+        {
+          "description": "The 'id' of a List soundbites or Create soundbite result.",
+          "display_name": "Soundbite ID",
+          "name": "soundbite_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/get-soundbite",
+      "result_str_template": "Retrieved the soundbite.",
+      "returns": {
+        "properties": {
+          "captions": {
+            "items": {
+              "properties": {
+                "end_time": {
+                  "type": "number"
+                },
+                "speaker_name": {
+                  "type": "string"
+                },
+                "start_time": {
+                  "type": "number"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "end_time": {
+            "description": "Seconds from the start of the meeting.",
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "media_type": {
+            "description": "video or audio.",
+            "type": "string"
+          },
+          "meeting_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "preview": {
+            "type": "string"
+          },
+          "privacies": {
+            "description": "Who can see it.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sources": {
+            "description": "Where to play the clip.",
+            "items": {
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "start_time": {
+            "description": "Seconds from the start of the meeting.",
+            "type": "number"
+          },
+          "status": {
+            "description": "pending, processing, ready or error.",
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "thumbnail": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_team_analytics": {
+      "beta": true,
+      "description": "Get the team's meeting and conversation figures for a period: meeting counts and time, talk-to-listen ratio, questions, filler words, sentiment, and the same per team member. Needs a team admin's API key and a Fireflies Business plan or higher.",
+      "display_name": "Get team analytics",
+      "display_str_template": "Get Fireflies team analytics.",
+      "handler": "actions.get_team_analytics",
+      "id": "fireflies_get_team_analytics",
+      "method": "POST",
+      "mock_response": {
+        "team": {
+          "conversation": {
+            "average_filler_words": 9.0,
+            "average_monologues_count": 11.0,
+            "average_questions": 5.0,
+            "average_sentiments": {
+              "negative_pct": 5.0,
+              "neutral_pct": 60.0,
+              "positive_pct": 35.0
+            },
+            "average_silence_duration": 40.0,
+            "average_talk_listen_ratio": 0.8,
+            "average_words_per_minute": 148.0,
+            "longest_monologue_duration_sec": 210.0,
+            "teammates_count": 4.0,
+            "total_filler_words": 270.0,
+            "total_meeting_notes_count": 30.0,
+            "total_meetings_count": 30.0,
+            "total_monologues_count": 330.0,
+            "total_questions": 150.0,
+            "total_silence_duration": 1200.0
+          },
+          "meeting": {
+            "average_count": 7.5,
+            "average_duration": 30.0,
+            "count": 30.0,
+            "duration": 900.0
+          }
+        },
+        "users": [
+          {
+            "conversation": {
+              "talk_listen_pct": 55.0,
+              "talk_listen_ratio": 1.2,
+              "total_silence_duration": 300.0,
+              "total_speak_duration": 8200.0,
+              "total_word_count": 21000.0,
+              "user_filler_words": 80.0,
+              "user_longest_monologue_sec": 210.0,
+              "user_monologues_count": 90.0,
+              "user_questions": 40.0,
+              "user_speak_duration": 8200.0,
+              "user_word_count": 21000.0,
+              "user_words_per_minute": 154.0
+            },
+            "email": "sarah@example.com",
+            "meeting": {
+              "count": 12.0,
+              "duration": 360.0
+            },
+            "name": "Sarah Chen",
+            "user_id": "01HXUSER000000000000000"
+          }
+        ]
+      },
+      "name": "get_team_analytics",
+      "parameters": [
+        {
+          "description": "The start of the period.",
+          "display_name": "From date",
+          "name": "start_date",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "The end of the period.",
+          "display_name": "To date",
+          "name": "end_date",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/fireflies/get-team-analytics",
+      "result_str_template": "Retrieved the team analytics.",
+      "returns": {
+        "properties": {
+          "team": {
+            "properties": {
+              "conversation": {
+                "properties": {
+                  "average_filler_words": {
+                    "type": "number"
+                  },
+                  "average_monologues_count": {
+                    "type": "number"
+                  },
+                  "average_questions": {
+                    "type": "number"
+                  },
+                  "average_sentiments": {
+                    "properties": {
+                      "negative_pct": {
+                        "type": "number"
+                      },
+                      "neutral_pct": {
+                        "type": "number"
+                      },
+                      "positive_pct": {
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "average_silence_duration": {
+                    "type": "number"
+                  },
+                  "average_talk_listen_ratio": {
+                    "type": "number"
+                  },
+                  "average_words_per_minute": {
+                    "type": "number"
+                  },
+                  "longest_monologue_duration_sec": {
+                    "type": "number"
+                  },
+                  "teammates_count": {
+                    "type": "number"
+                  },
+                  "total_filler_words": {
+                    "type": "number"
+                  },
+                  "total_meeting_notes_count": {
+                    "type": "number"
+                  },
+                  "total_meetings_count": {
+                    "type": "number"
+                  },
+                  "total_monologues_count": {
+                    "type": "number"
+                  },
+                  "total_questions": {
+                    "type": "number"
+                  },
+                  "total_silence_duration": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "meeting": {
+                "properties": {
+                  "average_count": {
+                    "type": "number"
+                  },
+                  "average_duration": {
+                    "type": "number"
+                  },
+                  "count": {
+                    "type": "number"
+                  },
+                  "duration": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "users": {
+            "description": "Figures per team member.",
+            "items": {
+              "properties": {
+                "conversation": {
+                  "properties": {
+                    "talk_listen_pct": {
+                      "type": "number"
+                    },
+                    "talk_listen_ratio": {
+                      "type": "number"
+                    },
+                    "total_silence_duration": {
+                      "type": "number"
+                    },
+                    "total_speak_duration": {
+                      "type": "number"
+                    },
+                    "total_word_count": {
+                      "type": "number"
+                    },
+                    "user_filler_words": {
+                      "type": "number"
+                    },
+                    "user_longest_monologue_sec": {
+                      "type": "number"
+                    },
+                    "user_monologues_count": {
+                      "type": "number"
+                    },
+                    "user_questions": {
+                      "type": "number"
+                    },
+                    "user_speak_duration": {
+                      "type": "number"
+                    },
+                    "user_word_count": {
+                      "type": "number"
+                    },
+                    "user_words_per_minute": {
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "meeting": {
+                  "properties": {
+                    "count": {
+                      "type": "number"
+                    },
+                    "duration": {
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "user_id": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -142,12 +1922,18 @@
           {
             "email": "sarah@example.com",
             "name": "Sarah Chen"
+          },
+          {
+            "email": "james@example.com",
+            "name": "James Lee"
           }
         ],
         "date": "2026-07-15T09:00:00Z",
-        "duration": 30,
+        "duration": 30.0,
         "host_email": "sarah@example.com",
         "id": "01HXAMPLE0000000000000000",
+        "meeting_link": "https://meet.google.com/abc-defg-hij",
+        "organizer_email": "sarah@example.com",
         "participants": [
           "sarah@example.com",
           "james@example.com"
@@ -205,7 +1991,7 @@
             "type": "array"
           },
           "date": {
-            "description": "When the meeting took place, as an ISO 8601 UTC timestamp.",
+            "description": "When the meeting took place, as ISO 8601 UTC.",
             "type": "string"
           },
           "duration": {
@@ -213,11 +1999,19 @@
             "type": "number"
           },
           "host_email": {
-            "description": "Email address of the meeting host.",
+            "description": "Email address of the organizer (the same as organizer_email).",
             "type": "string"
           },
           "id": {
-            "description": "The meeting's unique ID.",
+            "description": "The meeting's unique ID. Use this with the other meeting actions.",
+            "type": "string"
+          },
+          "meeting_link": {
+            "description": "The Zoom, Google Meet or Teams link, when there was one.",
+            "type": "string"
+          },
+          "organizer_email": {
+            "description": "Email address of the organizer.",
             "type": "string"
           },
           "participants": {
@@ -228,7 +2022,7 @@
             "type": "array"
           },
           "sentence_count": {
-            "description": "How many transcript lines the meeting has.",
+            "description": "How many transcript lines there are.",
             "type": "number"
           },
           "sentences": {
@@ -236,7 +2030,7 @@
             "items": {
               "properties": {
                 "end_time": {
-                  "description": "When the line ends, in seconds from the beginning of the meeting.",
+                  "description": "Seconds from the start of the meeting.",
                   "type": "number"
                 },
                 "speaker_name": {
@@ -244,7 +2038,7 @@
                   "type": "string"
                 },
                 "start_time": {
-                  "description": "When the line starts, in seconds from the beginning of the meeting.",
+                  "description": "Seconds from the start of the meeting.",
                   "type": "number"
                 },
                 "text": {
@@ -264,7 +2058,7 @@
             "type": "array"
           },
           "text": {
-            "description": "The whole transcript as text, one 'Speaker: what they said' line per sentence.",
+            "description": "The whole transcript, one 'Speaker: what they said' line per sentence.",
             "type": "string"
           },
           "title": {
@@ -279,8 +2073,547 @@
         "type": "object"
       }
     },
+    "get_user": {
+      "beta": true,
+      "description": "Get one team member's details and user groups. Leave the team member blank to get the API key's owner, which also shows whose account the connection uses.",
+      "display_name": "Get team member",
+      "display_str_template": "Get a Fireflies team member.",
+      "handler": "actions.get_user",
+      "id": "fireflies_get_user",
+      "method": "POST",
+      "mock_response": {
+        "email": "sarah@example.com",
+        "id": "01HXUSER000000000000000",
+        "integrations": [
+          "google_calendar",
+          "slack"
+        ],
+        "is_admin": true,
+        "minutes_consumed": 3400.0,
+        "name": "Sarah Chen",
+        "num_transcripts": 128.0,
+        "recent_meeting": "01HXAMPLE0000000000000000",
+        "recent_transcript": "01HXAMPLE0000000000000000",
+        "user_groups": [
+          {
+            "handle": "sales",
+            "id": "grp_sales",
+            "name": "Sales"
+          }
+        ]
+      },
+      "name": "get_user",
+      "parameters": [
+        {
+          "description": "Leave blank for the API key's owner.",
+          "display_name": "Team member",
+          "dynamic_source": "members",
+          "dynamic_source_allows_custom": true,
+          "name": "member_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/get-user",
+      "result_str_template": "Retrieved the team member.",
+      "returns": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "description": "The member's Fireflies user ID.",
+            "type": "string"
+          },
+          "integrations": {
+            "description": "Their connected integrations.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "is_admin": {
+            "description": "Whether they administer the team.",
+            "type": "boolean"
+          },
+          "minutes_consumed": {
+            "description": "Transcription minutes used.",
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "num_transcripts": {
+            "description": "How many meetings they have recorded.",
+            "type": "number"
+          },
+          "recent_meeting": {
+            "description": "Their most recent meeting.",
+            "type": "string"
+          },
+          "recent_transcript": {
+            "description": "Their most recent transcript.",
+            "type": "string"
+          },
+          "user_groups": {
+            "description": "The user groups they belong to.",
+            "items": {
+              "properties": {
+                "handle": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_active_meetings": {
+      "beta": true,
+      "description": "List the meetings the Fireflies notetaker is in right now, with their IDs for the live meeting actions. Without an email this lists the API key owner's; a team admin can ask for any teammate's.",
+      "display_name": "List active meetings",
+      "display_str_template": "List active Fireflies meetings.",
+      "handler": "actions.list_active_meetings",
+      "id": "fireflies_list_active_meetings",
+      "method": "POST",
+      "mock_response": {
+        "meetings": [
+          {
+            "end_time": "2026-07-15T15:00:00.000Z",
+            "id": "01HXLIVE00000000000000000",
+            "meeting_link": "https://zoom.us/j/123456789",
+            "organizer_email": "sarah@example.com",
+            "privacy": "teammates",
+            "start_time": "2026-07-15T14:00:00.000Z",
+            "state": "active",
+            "title": "Customer call: Acme Corp"
+          }
+        ]
+      },
+      "name": "list_active_meetings",
+      "parameters": [
+        {
+          "description": "Whose meetings to list. Leave blank for the API key's owner.",
+          "display_name": "Team member's email",
+          "name": "email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Leave blank for both recording and paused meetings.",
+          "display_name": "State",
+          "multi_select": true,
+          "name": "states",
+          "options": [
+            {
+              "label": "Recording",
+              "value": "active"
+            },
+            {
+              "label": "Paused",
+              "value": "paused"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/fireflies/list-active-meetings",
+      "result_str_template": "Retrieved {meetings,length} active meetings.",
+      "returns": {
+        "properties": {
+          "meetings": {
+            "description": "The meetings in progress.",
+            "items": {
+              "properties": {
+                "end_time": {
+                  "description": "When it is scheduled to end, as ISO 8601.",
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "meeting_link": {
+                  "type": "string"
+                },
+                "organizer_email": {
+                  "type": "string"
+                },
+                "privacy": {
+                  "type": "string"
+                },
+                "start_time": {
+                  "description": "When it started, as ISO 8601.",
+                  "type": "string"
+                },
+                "state": {
+                  "description": "active or paused.",
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_ai_app_outputs": {
+      "beta": true,
+      "description": "List what your Fireflies AI apps (custom prompts run on each meeting, such as 'Sales call scorecard') wrote, for one meeting, one app, or both. Returns up to 10 at a time.",
+      "display_name": "List AI app outputs",
+      "display_str_template": "List Fireflies AI app outputs.",
+      "handler": "actions.list_ai_app_outputs",
+      "id": "fireflies_list_ai_app_outputs",
+      "method": "POST",
+      "mock_response": {
+        "outputs": [
+          {
+            "app_id": "app_scorecard",
+            "created_at": "2026-07-15T09:33:20Z",
+            "meeting_id": "01HXAMPLE0000000000000000",
+            "prompt": "Score the call on discovery, demo and next steps.",
+            "response": "Discovery: 4/5. Demo: 3/5. Next steps: agreed.",
+            "title": "Sales call scorecard",
+            "user_id": "01HXUSER000000000000000"
+          }
+        ]
+      },
+      "name": "list_ai_app_outputs",
+      "parameters": [
+        {
+          "description": "Only outputs for this meeting: the 'id' of a List meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only outputs of this AI app: an 'app_id' from an earlier result.",
+          "display_name": "AI app ID",
+          "name": "app_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many to return, from 1 to 10.",
+          "display_name": "Maximum outputs",
+          "maximum": 10,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many results to skip, to read the next page.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "skip",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/fireflies/list-ai-app-outputs",
+      "result_str_template": "Retrieved {outputs,length} AI app outputs.",
+      "returns": {
+        "properties": {
+          "outputs": {
+            "description": "The AI app outputs.",
+            "items": {
+              "properties": {
+                "app_id": {
+                  "type": "string"
+                },
+                "created_at": {
+                  "description": "When it was written, as ISO 8601 UTC.",
+                  "type": "string"
+                },
+                "meeting_id": {
+                  "type": "string"
+                },
+                "prompt": {
+                  "type": "string"
+                },
+                "response": {
+                  "description": "What the AI app wrote for the meeting.",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "The AI app's name.",
+                  "type": "string"
+                },
+                "user_id": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_ask_fred_threads": {
+      "beta": true,
+      "description": "List the API key owner's Ask Fred conversations. Fireflies keeps conversations about one meeting out of the full list, so to find those, choose the meeting.",
+      "display_name": "List Ask Fred conversations",
+      "display_str_template": "List Ask Fred conversations.",
+      "handler": "actions.list_ask_fred_threads",
+      "id": "fireflies_list_ask_fred_threads",
+      "method": "POST",
+      "mock_response": {
+        "threads": [
+          {
+            "created_at": "2026-07-15T10:30:00Z",
+            "id": "thread_abc123",
+            "meeting_id": "01HXAMPLE0000000000000000",
+            "title": "What did we decide about the release?",
+            "user_id": "01HXUSER000000000000000"
+          }
+        ]
+      },
+      "name": "list_ask_fred_threads",
+      "parameters": [
+        {
+          "description": "List the conversations about this meeting. Leave blank for the ones asked across meetings.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/list-ask-fred-threads",
+      "result_str_template": "Retrieved {threads,length} conversations.",
+      "returns": {
+        "properties": {
+          "threads": {
+            "description": "The conversations.",
+            "items": {
+              "properties": {
+                "created_at": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "meeting_id": {
+                  "description": "The meeting it is about, if just one.",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "Taken from the first question.",
+                  "type": "string"
+                },
+                "user_id": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_channels": {
+      "beta": true,
+      "description": "List the channels (folders that meetings are filed in) the API key's owner can see: every public channel and the private ones they belong to.",
+      "display_name": "List channels",
+      "display_str_template": "List Fireflies channels.",
+      "handler": "actions.list_channels",
+      "id": "fireflies_list_channels",
+      "method": "POST",
+      "mock_response": {
+        "channels": [
+          {
+            "created_at": "2026-06-01T09:00:00.000Z",
+            "created_by": "sarah@example.com",
+            "id": "01HXCHANNEL0000000000000",
+            "is_private": false,
+            "members": [
+              {
+                "email": "sarah@example.com",
+                "name": "Sarah Chen",
+                "user_id": "01HXUSER000000000000000"
+              }
+            ],
+            "title": "Customer calls",
+            "updated_at": "2026-07-01T09:00:00.000Z"
+          }
+        ]
+      },
+      "name": "list_channels",
+      "parameters": [],
+      "path": "/actions/library/fireflies/list-channels",
+      "result_str_template": "Retrieved {channels,length} channels.",
+      "returns": {
+        "properties": {
+          "channels": {
+            "description": "The channels the key's owner can see.",
+            "items": {
+              "properties": {
+                "created_at": {
+                  "type": "string"
+                },
+                "created_by": {
+                  "description": "Email of whoever made the channel.",
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "is_private": {
+                  "type": "boolean"
+                },
+                "members": {
+                  "items": {
+                    "properties": {
+                      "email": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "user_id": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "updated_at": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_contacts": {
+      "beta": true,
+      "description": "List the people the API key's owner has met with, with the date of their last meeting together.",
+      "display_name": "List contacts",
+      "display_str_template": "List Fireflies contacts.",
+      "handler": "actions.list_contacts",
+      "id": "fireflies_list_contacts",
+      "method": "POST",
+      "mock_response": {
+        "contacts": [
+          {
+            "email": "client@example.com",
+            "last_meeting_date": "2026-07-15",
+            "name": "Alex Morgan",
+            "picture": ""
+          }
+        ]
+      },
+      "name": "list_contacts",
+      "parameters": [],
+      "path": "/actions/library/fireflies/list-contacts",
+      "result_str_template": "Retrieved {contacts,length} contacts.",
+      "returns": {
+        "properties": {
+          "contacts": {
+            "description": "People you have met with.",
+            "items": {
+              "properties": {
+                "email": {
+                  "type": "string"
+                },
+                "last_meeting_date": {
+                  "description": "The last meeting together (YYYY-MM-DD).",
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "picture": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_live_action_items": {
+      "beta": true,
+      "description": "List the action items so far in a meeting that is happening now, both those Fireflies noticed and those added with Add live action item. Only the meeting's organizer or a team admin can read them.",
+      "display_name": "List live action items",
+      "display_str_template": "List live action items in meeting {meeting_id}.",
+      "handler": "actions.list_live_action_items",
+      "id": "fireflies_list_live_action_items",
+      "method": "POST",
+      "mock_response": {
+        "action_items": [
+          {
+            "action_item": "Send the revised quote to Acme by Friday.",
+            "name": "James Lee"
+          }
+        ]
+      },
+      "name": "list_live_action_items",
+      "parameters": [
+        {
+          "description": "The live meeting's ID: the 'id' of a List active meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/list-live-action-items",
+      "result_str_template": "Retrieved {action_items,length} action items.",
+      "returns": {
+        "properties": {
+          "action_items": {
+            "description": "The action items so far.",
+            "items": {
+              "properties": {
+                "action_item": {
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Who the action item is for.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
     "list_meetings": {
-      "description": "List the meetings Fireflies.ai has recorded and transcribed, newest first. Optionally narrow the results to a date range, a host, or a participant. Use this to find a meeting's ID before getting its summary or transcript.",
+      "description": "List the meetings Fireflies.ai has recorded and transcribed, newest first. Search titles or what was said, and narrow the results to a date range, an organizer, a participant, a team member or a channel. Use this to find a meeting's ID before reading its notes or transcript.",
       "display_name": "List meetings",
       "display_str_template": "List Fireflies meetings.",
       "handler": "actions.list_meetings",
@@ -300,9 +2633,11 @@
               }
             ],
             "date": "2026-07-15T09:00:00Z",
-            "duration": 30,
+            "duration": 30.0,
             "host_email": "sarah@example.com",
             "id": "01HXAMPLE0000000000000000",
+            "meeting_link": "https://meet.google.com/abc-defg-hij",
+            "organizer_email": "sarah@example.com",
             "participants": [
               "sarah@example.com",
               "james@example.com"
@@ -314,6 +2649,34 @@
       },
       "name": "list_meetings",
       "parameters": [
+        {
+          "description": "Only meetings that mention this. Searches titles unless Search in says otherwise.",
+          "display_name": "Search for",
+          "name": "keyword",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where to look for the search words. Defaults to titles.",
+          "display_name": "Search in",
+          "name": "search_in",
+          "options": [
+            {
+              "label": "Meeting titles",
+              "value": "title"
+            },
+            {
+              "label": "What was said",
+              "value": "sentences"
+            },
+            {
+              "label": "Titles and what was said",
+              "value": "all"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
         {
           "description": "Only include meetings held on or after this date and time, for example 2026-07-15T09:00:00Z. Leave blank to include meetings from any start date.",
           "display_name": "From date",
@@ -338,6 +2701,14 @@
           "type": "ParameterType.NUMBER"
         },
         {
+          "description": "How many results to skip, to read the next page.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "skip",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
           "description": "Only include meetings hosted by this email address. Leave blank to include meetings from any host.",
           "display_name": "Host email",
           "name": "host_email",
@@ -345,9 +2716,41 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Only include meetings this email address attended. Leave blank to include meetings with any participant.",
+          "description": "Only meetings organized by one of these addresses. Separate several with commas.",
+          "display_name": "Organizer email",
+          "name": "organizer_email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only include meetings one of these email addresses attended. Separate several with commas. Leave blank to include meetings with any participant.",
           "display_name": "Participant email",
           "name": "participant_email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only meetings this team member organized or attended.",
+          "display_name": "Team member",
+          "dynamic_source": "members",
+          "dynamic_source_allows_custom": true,
+          "name": "member_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only meetings the API key's owner organized.",
+          "display_name": "Only my meetings",
+          "name": "mine",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Only meetings filed in this channel.",
+          "display_name": "Channel",
+          "dynamic_source": "channels",
+          "dynamic_source_allows_custom": true,
+          "name": "channel_id",
           "required": false,
           "type": "ParameterType.STRING"
         }
@@ -357,7 +2760,7 @@
       "returns": {
         "properties": {
           "meetings": {
-            "description": "The meetings that matched, newest first.",
+            "description": "The matching meetings, newest first.",
             "items": {
               "properties": {
                 "attendees": {
@@ -376,7 +2779,7 @@
                   "type": "array"
                 },
                 "date": {
-                  "description": "When the meeting took place, as an ISO 8601 UTC timestamp.",
+                  "description": "When the meeting took place, as ISO 8601 UTC.",
                   "type": "string"
                 },
                 "duration": {
@@ -384,11 +2787,19 @@
                   "type": "number"
                 },
                 "host_email": {
-                  "description": "Email address of the meeting host.",
+                  "description": "Email address of the organizer (the same as organizer_email).",
                   "type": "string"
                 },
                 "id": {
-                  "description": "The meeting's unique ID. Use this with the summary and transcript actions.",
+                  "description": "The meeting's unique ID. Use this with the other meeting actions.",
+                  "type": "string"
+                },
+                "meeting_link": {
+                  "description": "The Zoom, Google Meet or Teams link, when there was one.",
+                  "type": "string"
+                },
+                "organizer_email": {
+                  "description": "Email address of the organizer.",
                   "type": "string"
                 },
                 "participants": {
@@ -415,58 +2826,194 @@
         "type": "object"
       }
     },
-    "list_users": {
-      "description": "List the people in your Fireflies.ai workspace, with how many meetings each has recorded. Use this to find the email address to filter meetings by.",
-      "display_name": "List team members",
-      "display_str_template": "List Fireflies team members.",
-      "handler": "actions.list_users",
-      "id": "fireflies_list_users",
+    "list_soundbites": {
+      "beta": true,
+      "description": "List soundbites (short clips cut from meetings): yours, your team's, or one meeting's. With nothing chosen it lists yours.",
+      "display_name": "List soundbites",
+      "display_str_template": "List Fireflies soundbites.",
+      "handler": "actions.list_soundbites",
+      "id": "fireflies_list_soundbites",
       "method": "POST",
       "mock_response": {
-        "users": [
+        "soundbites": [
           {
-            "email": "sarah@example.com",
-            "id": "01HXUSER000000000000000",
-            "is_admin": true,
-            "minutes_consumed": 3400,
-            "name": "Sarah Chen",
-            "num_transcripts": 128
+            "captions": [
+              {
+                "end_time": 3.2,
+                "speaker_name": "Sarah Chen",
+                "start_time": 0.5,
+                "text": "Let's start with the release timeline."
+              }
+            ],
+            "created_at": "2026-07-15T10:00:00.000Z",
+            "created_by": {
+              "id": "01HXUSER000000000000000",
+              "name": "Sarah Chen"
+            },
+            "end_time": 6.1,
+            "id": "01HXBITE00000000000000000",
+            "media_type": "video",
+            "meeting_id": "01HXAMPLE0000000000000000",
+            "name": "Release timeline",
+            "preview": "https://cdn.fireflies.ai/bites/preview.mp4",
+            "privacies": [
+              "team"
+            ],
+            "sources": [
+              {
+                "type": "video/mp4",
+                "url": "https://cdn.fireflies.ai/bites/clip.mp4"
+              }
+            ],
+            "start_time": 0.5,
+            "status": "ready",
+            "summary": "Sarah sets the release timeline.",
+            "thumbnail": "https://cdn.fireflies.ai/bites/thumb.jpg"
           }
         ]
       },
-      "name": "list_users",
-      "parameters": [],
-      "path": "/actions/library/fireflies/list-users",
-      "result_str_template": "Retrieved {users,length} team members.",
+      "name": "list_soundbites",
+      "parameters": [
+        {
+          "description": "Only clips from this meeting: the 'id' of a List meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Yours or your whole team's.",
+          "display_name": "Whose soundbites",
+          "name": "owner",
+          "options": [
+            {
+              "label": "Mine",
+              "value": "mine"
+            },
+            {
+              "label": "My team's",
+              "value": "team"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many to return, from 1 to 50.",
+          "display_name": "Maximum soundbites",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many to skip, up to 5,000, to read the next page.",
+          "display_name": "Skip",
+          "maximum": 5000,
+          "minimum": 0,
+          "name": "skip",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/fireflies/list-soundbites",
+      "result_str_template": "Retrieved {soundbites,length} soundbites.",
       "returns": {
         "properties": {
-          "users": {
-            "description": "The people in the workspace.",
+          "soundbites": {
+            "description": "The soundbites.",
             "items": {
               "properties": {
-                "email": {
-                  "description": "The member's email address.",
+                "captions": {
+                  "items": {
+                    "properties": {
+                      "end_time": {
+                        "type": "number"
+                      },
+                      "speaker_name": {
+                        "type": "string"
+                      },
+                      "start_time": {
+                        "type": "number"
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "created_at": {
                   "type": "string"
+                },
+                "created_by": {
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "end_time": {
+                  "description": "Seconds from the start of the meeting.",
+                  "type": "number"
                 },
                 "id": {
-                  "description": "The member's Fireflies user ID.",
                   "type": "string"
                 },
-                "is_admin": {
-                  "description": "Whether the member administers the workspace.",
-                  "type": "boolean"
+                "media_type": {
+                  "description": "video or audio.",
+                  "type": "string"
                 },
-                "minutes_consumed": {
-                  "description": "How many transcription minutes the member has used.",
-                  "type": "number"
+                "meeting_id": {
+                  "type": "string"
                 },
                 "name": {
-                  "description": "The member's name.",
                   "type": "string"
                 },
-                "num_transcripts": {
-                  "description": "How many meetings the member has recorded.",
+                "preview": {
+                  "type": "string"
+                },
+                "privacies": {
+                  "description": "Who can see it.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "sources": {
+                  "description": "Where to play the clip.",
+                  "items": {
+                    "properties": {
+                      "type": {
+                        "type": "string"
+                      },
+                      "url": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "start_time": {
+                  "description": "Seconds from the start of the meeting.",
                   "type": "number"
+                },
+                "status": {
+                  "description": "pending, processing, ready or error.",
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "thumbnail": {
+                  "type": "string"
                 }
               },
               "type": "object"
@@ -477,22 +3024,719 @@
         "type": "object"
       }
     },
+    "list_user_groups": {
+      "beta": true,
+      "description": "List the team's user groups and their members.",
+      "display_name": "List user groups",
+      "display_str_template": "List Fireflies user groups.",
+      "handler": "actions.list_user_groups",
+      "id": "fireflies_list_user_groups",
+      "method": "POST",
+      "mock_response": {
+        "user_groups": [
+          {
+            "handle": "sales",
+            "id": "grp_sales",
+            "members": [
+              {
+                "email": "sarah@example.com",
+                "first_name": "Sarah",
+                "last_name": "Chen",
+                "name": "Sarah Chen",
+                "user_id": "01HXUSER000000000000000"
+              }
+            ],
+            "name": "Sales"
+          }
+        ]
+      },
+      "name": "list_user_groups",
+      "parameters": [
+        {
+          "description": "Only the groups the API key's owner belongs to.",
+          "display_name": "Only groups I'm in",
+          "name": "mine",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/fireflies/list-user-groups",
+      "result_str_template": "Retrieved {user_groups,length} user groups.",
+      "returns": {
+        "properties": {
+          "user_groups": {
+            "description": "The user groups.",
+            "items": {
+              "properties": {
+                "handle": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "members": {
+                  "items": {
+                    "properties": {
+                      "email": {
+                        "type": "string"
+                      },
+                      "first_name": {
+                        "type": "string"
+                      },
+                      "last_name": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "user_id": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_users": {
+      "description": "List the people in your Fireflies.ai workspace, with how many meetings each has recorded. Use this to find the email address or user ID to filter meetings by.",
+      "display_name": "List team members",
+      "display_str_template": "List Fireflies team members.",
+      "handler": "actions.list_users",
+      "id": "fireflies_list_users",
+      "method": "POST",
+      "mock_response": {
+        "users": [
+          {
+            "email": "sarah@example.com",
+            "id": "01HXUSER000000000000000",
+            "integrations": [
+              "google_calendar",
+              "slack"
+            ],
+            "is_admin": true,
+            "minutes_consumed": 3400.0,
+            "name": "Sarah Chen",
+            "num_transcripts": 128.0,
+            "recent_meeting": "01HXAMPLE0000000000000000"
+          }
+        ]
+      },
+      "name": "list_users",
+      "parameters": [],
+      "path": "/actions/library/fireflies/list-users",
+      "result_str_template": "Retrieved {users,length} team members.",
+      "returns": {
+        "properties": {
+          "users": {
+            "description": "The people on the team.",
+            "items": {
+              "properties": {
+                "email": {
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The member's Fireflies user ID.",
+                  "type": "string"
+                },
+                "integrations": {
+                  "description": "Their connected integrations.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "is_admin": {
+                  "description": "Whether they administer the team.",
+                  "type": "boolean"
+                },
+                "minutes_consumed": {
+                  "description": "Transcription minutes used.",
+                  "type": "number"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "num_transcripts": {
+                  "description": "How many meetings they have recorded.",
+                  "type": "number"
+                },
+                "recent_meeting": {
+                  "description": "Their most recent meeting.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "move_meetings_to_channel": {
+      "beta": true,
+      "description": "File up to 5 meetings in a channel (a Fireflies folder). A meeting is in one channel at a time, so this replaces its current one. If any meeting can't be moved, none are. Only the meetings' owner or a team admin can do this.",
+      "display_name": "Move meetings to a channel",
+      "display_str_template": "Move Fireflies meetings to a channel.",
+      "handler": "actions.move_meetings_to_channel",
+      "id": "fireflies_move_meetings_to_channel",
+      "method": "POST",
+      "mock_response": {
+        "channel_id": "01HXCHANNEL0000000000000",
+        "meetings": [
+          {
+            "channel_ids": [
+              "01HXCHANNEL0000000000000"
+            ],
+            "id": "01HXAMPLE0000000000000000",
+            "title": "Weekly Standup"
+          }
+        ]
+      },
+      "name": "move_meetings_to_channel",
+      "parameters": [
+        {
+          "description": "One to five meeting IDs.",
+          "display_name": "Meeting IDs",
+          "name": "meeting_ids",
+          "required": true,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "The channel (folder). Pick one, or give a channel's ID.",
+          "display_name": "Channel",
+          "dynamic_source": "channels",
+          "dynamic_source_allows_custom": true,
+          "name": "channel_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/move-meetings-to-channel",
+      "result_str_template": "Moved {meetings,length} meetings.",
+      "returns": {
+        "properties": {
+          "channel_id": {
+            "type": "string"
+          },
+          "meetings": {
+            "description": "The meetings that were moved.",
+            "items": {
+              "properties": {
+                "channel_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "remove_user_from_group": {
+      "beta": true,
+      "description": "Remove a teammate from a user group by email. Needs a team admin's API key and a Fireflies Business plan or higher.",
+      "display_name": "Remove member from user group",
+      "display_str_template": "Remove {email} from a Fireflies user group.",
+      "handler": "actions.remove_user_from_group",
+      "id": "fireflies_remove_user_from_group",
+      "method": "POST",
+      "mock_response": {
+        "handle": "sales",
+        "id": "grp_sales",
+        "members": [],
+        "name": "Sales"
+      },
+      "name": "remove_user_from_group",
+      "parameters": [
+        {
+          "description": "The user group. Pick one, or give its ID.",
+          "display_name": "User group",
+          "dynamic_source": "user_groups",
+          "dynamic_source_allows_custom": true,
+          "name": "group_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The email address of someone on your Fireflies team.",
+          "display_name": "Team member's email",
+          "name": "email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/remove-user-from-group",
+      "result_str_template": "Removed from the user group.",
+      "returns": {
+        "properties": {
+          "handle": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "properties": {
+                "email": {
+                  "type": "string"
+                },
+                "first_name": {
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "user_id": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "revoke_meeting_access": {
+      "beta": true,
+      "description": "Take back one person's access to a meeting that was shared with them. Only the meeting's owner or a team admin can do this.",
+      "display_name": "Stop sharing meeting",
+      "display_str_template": "Stop sharing Fireflies meeting {meeting_id} with {email}.",
+      "handler": "actions.revoke_meeting_access",
+      "id": "fireflies_revoke_meeting_access",
+      "method": "POST",
+      "mock_response": {
+        "email": "client@example.com",
+        "message": "Access revoked",
+        "success": true
+      },
+      "name": "revoke_meeting_access",
+      "parameters": [
+        {
+          "description": "The meeting's ID: the 'id' of a List meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The address the meeting was shared with.",
+          "display_name": "Email",
+          "name": "email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/revoke-meeting-access",
+      "result_str_template": "Access revoked.",
+      "returns": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "set_user_role": {
+      "beta": true,
+      "description": "Make a team member an admin or a regular member. Needs a team admin's API key, and the team must keep at least one admin.",
+      "display_name": "Set team member's role",
+      "display_str_template": "Set a Fireflies team member's role to {role}.",
+      "handler": "actions.set_user_role",
+      "id": "fireflies_set_user_role",
+      "method": "POST",
+      "mock_response": {
+        "id": "01HXUSER000000000000000",
+        "is_admin": true,
+        "name": "Sarah Chen",
+        "role": "admin"
+      },
+      "name": "set_user_role",
+      "parameters": [
+        {
+          "description": "The team member. Pick one, or give their Fireflies user ID.",
+          "display_name": "Team member",
+          "dynamic_source": "members",
+          "dynamic_source_allows_custom": true,
+          "name": "member_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Admin or member.",
+          "display_name": "Role",
+          "name": "role",
+          "options": [
+            {
+              "label": "Admin",
+              "value": "admin"
+            },
+            {
+              "label": "Member",
+              "value": "user"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/set-user-role",
+      "result_str_template": "Role updated.",
+      "returns": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "is_admin": {
+            "description": "Whether they are now a team admin.",
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "description": "admin or user.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "share_meeting": {
+      "beta": true,
+      "description": "Share a meeting with up to 50 people by email, even outside your team, for good or for 7, 14 or 30 days. Fireflies emails them a link. Only the meeting's owner or a team admin can share, up to 60 times an hour.",
+      "display_name": "Share meeting",
+      "display_str_template": "Share Fireflies meeting {meeting_id}.",
+      "handler": "actions.share_meeting",
+      "id": "fireflies_share_meeting",
+      "method": "POST",
+      "mock_response": {
+        "message": "Invite created successfully",
+        "share_link": "",
+        "shared_with": [
+          "client@example.com"
+        ],
+        "success": true
+      },
+      "name": "share_meeting",
+      "parameters": [
+        {
+          "description": "The meeting's ID: the 'id' of a List meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The email addresses to share with, up to 50.",
+          "display_name": "Share with",
+          "name": "emails",
+          "required": true,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Leave blank for access that never expires.",
+          "display_name": "Access expires after",
+          "name": "expiry_days",
+          "options": [
+            {
+              "label": "7 days",
+              "value": "7"
+            },
+            {
+              "label": "14 days",
+              "value": "14"
+            },
+            {
+              "label": "30 days",
+              "value": "30"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "An email invitation, or a password-protected link that works without a Fireflies account. Password links are in beta at Fireflies: ask their support to turn them on.",
+          "display_name": "Share as",
+          "name": "share_type",
+          "options": [
+            {
+              "label": "Invite by email",
+              "value": "EMAIL"
+            },
+            {
+              "label": "Password-protected link (beta)",
+              "value": "PASSWORD_LINK"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "8 to 128 characters. Fireflies does not email it, so send it to them separately.",
+          "display_name": "Link password",
+          "name": "password",
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "share_type": [
+              "PASSWORD_LINK"
+            ]
+          }
+        }
+      ],
+      "path": "/actions/library/fireflies/share-meeting",
+      "result_str_template": "Shared the meeting.",
+      "returns": {
+        "properties": {
+          "message": {
+            "description": "What Fireflies said, such as already invited.",
+            "type": "string"
+          },
+          "share_link": {
+            "description": "The password-protected link, when one was made.",
+            "type": "string"
+          },
+          "shared_with": {
+            "description": "The addresses it was shared with.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "success": {
+            "description": "Whether Fireflies shared the meeting.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "update_meeting_privacy": {
+      "beta": true,
+      "description": "Set who can open a meeting's notes and recording in Fireflies. Only the meeting's owner or a team admin can do this.",
+      "display_name": "Change who can see a meeting",
+      "display_str_template": "Change who can see Fireflies meeting {meeting_id}.",
+      "handler": "actions.update_meeting_privacy",
+      "id": "fireflies_update_meeting_privacy",
+      "method": "POST",
+      "mock_response": {
+        "id": "01HXAMPLE0000000000000000",
+        "privacy": "teammates",
+        "title": "Weekly Standup"
+      },
+      "name": "update_meeting_privacy",
+      "parameters": [
+        {
+          "description": "The meeting's ID: the 'id' of a List meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Who can open the meeting.",
+          "display_name": "Who can see it",
+          "name": "privacy",
+          "options": [
+            {
+              "label": "Anyone with the link",
+              "value": "link"
+            },
+            {
+              "label": "Only the owner",
+              "value": "owner"
+            },
+            {
+              "label": "Participants",
+              "value": "participants"
+            },
+            {
+              "label": "Teammates and participants",
+              "value": "teammatesandparticipants"
+            },
+            {
+              "label": "Teammates",
+              "value": "teammates"
+            },
+            {
+              "label": "Teammates who took part (beta)",
+              "value": "participatingteammates"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/update-meeting-privacy",
+      "result_str_template": "Updated the meeting's privacy.",
+      "returns": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "privacy": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "update_meeting_state": {
+      "beta": true,
+      "description": "Pause or resume the Fireflies notetaker's recording in a meeting that is happening now. Only the meeting's organizer or a team admin can, up to 10 times an hour.",
+      "display_name": "Pause or resume recording",
+      "display_str_template": "Pause or resume recording in meeting {meeting_id}.",
+      "handler": "actions.update_meeting_state",
+      "id": "fireflies_update_meeting_state",
+      "method": "POST",
+      "mock_response": {
+        "action": "pause_recording",
+        "success": true
+      },
+      "name": "update_meeting_state",
+      "parameters": [
+        {
+          "description": "The live meeting's ID: the 'id' of a List active meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Pause or resume.",
+          "display_name": "Recording",
+          "name": "recording",
+          "options": [
+            {
+              "label": "Pause recording",
+              "value": "pause_recording"
+            },
+            {
+              "label": "Resume recording",
+              "value": "resume_recording"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/update-meeting-state",
+      "result_str_template": "Recording updated.",
+      "returns": {
+        "properties": {
+          "action": {
+            "description": "pause_recording or resume_recording.",
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "update_meeting_title": {
+      "beta": true,
+      "description": "Change a meeting's title. Fireflies only lets team admins rename meetings, and the title must be 5 to 256 characters.",
+      "display_name": "Rename meeting",
+      "display_str_template": "Rename Fireflies meeting {meeting_id} to '{title}'.",
+      "handler": "actions.update_meeting_title",
+      "id": "fireflies_update_meeting_title",
+      "method": "POST",
+      "mock_response": {
+        "id": "01HXAMPLE0000000000000000",
+        "title": "Weekly Standup: Q3 planning"
+      },
+      "name": "update_meeting_title",
+      "parameters": [
+        {
+          "description": "The meeting's ID: the 'id' of a List meetings result.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The new title, 5 to 256 characters.",
+          "display_name": "New title",
+          "name": "title",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/fireflies/update-meeting-title",
+      "result_str_template": "Renamed the meeting.",
+      "returns": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "upload_audio": {
-      "description": "Send an audio or video recording to Fireflies.ai to be transcribed. The file is fetched from a public URL and transcribed in the background, so its notes appear in the List meetings action a few minutes later. Needs a paid Fireflies plan: on the free plan this action returns 'You need to be subscribed to a paid plan to perform this action', though the rest of the integration still works. Fireflies also rejects files smaller than 50KB.",
+      "description": "Send an audio or video recording to Fireflies.ai to be transcribed. The file is fetched from a URL and transcribed in the background, so its notes appear in the List meetings action a few minutes later. Needs a paid Fireflies plan: on the free plan this action returns 'You need to be subscribed to a paid plan to perform this action', though the rest of the integration still works. Fireflies rejects files smaller than 50KB unless told otherwise.",
       "display_name": "Transcribe a recording",
       "display_str_template": "Send a recording to Fireflies for transcription.",
       "handler": "actions.upload_audio",
       "id": "fireflies_upload_audio",
       "method": "POST",
       "mock_response": {
-        "message": "Uploaded successfully",
+        "message": "Uploaded audio has been queued for processing.",
         "success": true,
         "title": "Customer call: Acme Corp"
       },
       "name": "upload_audio",
       "parameters": [
         {
-          "description": "A publicly reachable https link to the audio or video file to transcribe, for example an mp3, mp4, or wav.",
+          "description": "An https link to the audio or video file to transcribe (mp3, mp4, wav, m4a or ogg). It must be the file itself, not a preview page, and public or pre-signed unless Download sign-in is set.",
           "display_name": "Recording URL",
           "name": "url",
           "required": true,
@@ -506,7 +3750,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Who took part in the recording. Each attendee needs an email; name and phone_number are optional.",
+          "description": "Who is taking part. Each attendee needs an email; name and phone_number are optional. Fireflies uses them to file notes in a connected CRM.",
           "display_name": "Attendees",
           "name": "attendees",
           "required": false,
@@ -534,6 +3778,105 @@
             "type": "array"
           },
           "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "When the meeting really took place, for importing old recordings. It can't be in the future. Leave blank to date it now.",
+          "display_name": "Meeting date",
+          "name": "meeting_date",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "The language spoken, as a code such as 'es' or 'de'. Leave blank for your Fireflies default.",
+          "display_name": "Language",
+          "name": "language",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Your own ID for this upload, up to 128 characters. Fireflies sends it back in its webhook.",
+          "display_name": "Reference ID",
+          "name": "client_reference_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A URL Fireflies calls when the transcript is ready.",
+          "display_name": "Webhook URL",
+          "name": "webhook_url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Keep the video, not just the audio, of a video file.",
+          "display_name": "Save video",
+          "name": "save_video",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Transcribe very short clips that Fireflies would otherwise reject as too small.",
+          "display_name": "Allow recordings under 50KB",
+          "name": "bypass_size_check",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "How Fireflies signs in to download a file that isn't public.",
+          "display_name": "Download sign-in",
+          "name": "download_auth",
+          "options": [
+            {
+              "label": "None (a public or pre-signed link)",
+              "value": "none"
+            },
+            {
+              "label": "Bearer token",
+              "value": "bearer_token"
+            },
+            {
+              "label": "Username and password",
+              "value": "basic_auth"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Sent as 'Authorization: Bearer <token>'.",
+          "display_name": "Download token",
+          "name": "download_token",
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "download_auth": [
+              "bearer_token"
+            ]
+          }
+        },
+        {
+          "description": "Optional.",
+          "display_name": "Download username",
+          "name": "download_username",
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "download_auth": [
+              "basic_auth"
+            ]
+          }
+        },
+        {
+          "description": "The password for the file's server.",
+          "display_name": "Download password",
+          "name": "download_password",
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "download_auth": [
+              "basic_auth"
+            ]
+          }
         }
       ],
       "path": "/actions/library/fireflies/upload-audio",
