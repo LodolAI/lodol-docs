@@ -1,5 +1,115 @@
 {
   "actions": {
+    "default_value": {
+      "description": "Use a value, or a fallback when it is empty, like a first name or \"there\" when a contact has none. Zero and false count as values.",
+      "display_name": "Use a fallback if empty",
+      "display_str_template": "Use {0}, or {1} if it is empty",
+      "handler": "default_value",
+      "id": "skipflow_text_default_value",
+      "method": "POST",
+      "name": "default_value",
+      "parameters": [
+        {
+          "description": "The value to use when it isn't empty.",
+          "display_name": "Value",
+          "name": "value",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What to use instead when the value is missing, blank, or an empty list.",
+          "display_name": "Fallback",
+          "name": "default",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "",
+      "result_str_template": "{default_value,result}",
+      "returns": {
+        "description": "The value, or the fallback when the value is empty.",
+        "examples": [
+          "there"
+        ],
+        "type": [
+          "string",
+          "number",
+          "boolean",
+          "array",
+          "object"
+        ]
+      }
+    },
+    "encode_text": {
+      "description": "Make text safe to put in a web address, HTML or JSON, encode or decode Base64, or remove accents and emoji.",
+      "display_name": "Encode or decode text",
+      "display_str_template": "Encode {0}",
+      "handler": "encode_text",
+      "id": "skipflow_text_encode_text",
+      "method": "POST",
+      "name": "encode_text",
+      "parameters": [
+        {
+          "description": "The text to encode or decode.",
+          "display_name": "Text",
+          "multiline": true,
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "url_encode",
+          "description": "How to change the text.",
+          "display_name": "Change it to",
+          "name": "encoding",
+          "options": [
+            {
+              "label": "Safe for a web address (a b \u2192 a%20b)",
+              "value": "url_encode"
+            },
+            {
+              "label": "Back from a web address (a%20b \u2192 a b)",
+              "value": "url_decode"
+            },
+            {
+              "label": "Base64",
+              "value": "base64_encode"
+            },
+            {
+              "label": "Back from Base64",
+              "value": "base64_decode"
+            },
+            {
+              "label": "Safe for HTML (< \u2192 &lt;)",
+              "value": "html_escape"
+            },
+            {
+              "label": "Back from HTML (&lt; \u2192 <)",
+              "value": "html_unescape"
+            },
+            {
+              "label": "Safe inside JSON text",
+              "value": "json_escape"
+            },
+            {
+              "label": "Plain letters, no accents or emoji",
+              "value": "plain_ascii"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "",
+      "result_str_template": "{encode_text,result}",
+      "returns": {
+        "description": "The text, encoded or decoded.",
+        "examples": [
+          "Hello%20world"
+        ],
+        "type": "string"
+      }
+    },
     "endswith": {
       "description": "Check whether text ends with specific words or characters.",
       "display_name": "Check end of text",
@@ -44,7 +154,7 @@
       }
     },
     "extract": {
-      "description": "Pull matches out of text: an email address, web address, number, or your own pattern.",
+      "description": "Pull matches out of text: an email address, web address, phone number, domain, number, or your own pattern.",
       "display_name": "Extract from text",
       "display_str_template": "Extract the {1} from {0}",
       "handler": "extract",
@@ -75,6 +185,18 @@
               "value": "url"
             },
             {
+              "label": "Phone number (+14155550123)",
+              "value": "phone"
+            },
+            {
+              "label": "Domain (example.com)",
+              "value": "domain"
+            },
+            {
+              "label": "Web address path (/blog/post)",
+              "value": "path"
+            },
+            {
               "label": "Number",
               "value": "number"
             },
@@ -91,7 +213,12 @@
           "display_name": "Custom pattern",
           "name": "pattern",
           "required": false,
-          "type": "ParameterType.STRING"
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "type": [
+              "pattern"
+            ]
+          }
         },
         {
           "default": false,
@@ -100,6 +227,33 @@
           "name": "all_matches",
           "required": false,
           "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": "US",
+          "description": "The country of phone numbers written without a country code. Defaults to the United States.",
+          "display_name": "Country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            },
+            {
+              "label": "United Kingdom",
+              "value": "GB"
+            },
+            {
+              "label": "Canada",
+              "value": "CA"
+            }
+          ],
+          "name": "region",
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "type": [
+              "phone"
+            ]
+          }
         }
       ],
       "path": "",
@@ -116,8 +270,79 @@
         ]
       }
     },
+    "format_phone": {
+      "description": "Write a phone number one standard way, however it was typed, like +1 415-555-0123 or +14155550123 for a texting app.",
+      "display_name": "Format phone number",
+      "display_str_template": "Format phone number {0}",
+      "handler": "format_phone",
+      "id": "skipflow_text_format_phone",
+      "method": "POST",
+      "name": "format_phone",
+      "parameters": [
+        {
+          "description": "The phone number, written any way.",
+          "display_name": "Phone number",
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "international",
+          "description": "How to write the number.",
+          "display_name": "Write it as",
+          "name": "style",
+          "options": [
+            {
+              "label": "International (+1 415-555-0123)",
+              "value": "international"
+            },
+            {
+              "label": "For apps (+14155550123)",
+              "value": "e164"
+            },
+            {
+              "label": "National ((415) 555-0123)",
+              "value": "national"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "US",
+          "description": "The country of numbers written without a country code. A number that starts with its own, like +44, is read in that country instead. Defaults to the United States.",
+          "display_name": "Country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            },
+            {
+              "label": "United Kingdom",
+              "value": "GB"
+            },
+            {
+              "label": "Canada",
+              "value": "CA"
+            }
+          ],
+          "name": "region",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "",
+      "result_str_template": "{format_phone,result}",
+      "returns": {
+        "description": "The phone number, written the chosen way.",
+        "examples": [
+          "+1 415-555-0123"
+        ],
+        "type": "string"
+      }
+    },
     "format_text": {
-      "description": "Change the letter case of text: make it uppercase, lowercase, capitalize the first letter, or use title case.",
+      "description": "Change the letter case of text: make it uppercase, lowercase, capitalize the first letter, use title or sentence case, or turn it into a slug for a web address.",
       "display_name": "Format text",
       "display_str_template": "Format {0}",
       "handler": "format_text",
@@ -154,6 +379,14 @@
             {
               "label": "Title case (Hello World)",
               "value": "title"
+            },
+            {
+              "label": "Sentence case (Hello world. Bye now.)",
+              "value": "sentence"
+            },
+            {
+              "label": "Web address slug (hello-world)",
+              "value": "slug"
             }
           ],
           "required": true,
@@ -208,6 +441,63 @@
           "red, green, blue"
         ],
         "type": "string"
+      }
+    },
+    "lookup": {
+      "description": "Turn one value into another with a small table you fill in, like US to United States or a status code to a label, instead of a chain of If steps.",
+      "display_name": "Look up a value in a table",
+      "display_str_template": "Look up {0} in a table",
+      "handler": "lookup",
+      "id": "skipflow_text_lookup",
+      "method": "POST",
+      "name": "lookup",
+      "parameters": [
+        {
+          "description": "The value to find in the table, like a country code.",
+          "display_name": "Value to look up",
+          "name": "value",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Each value to look for, and what to give back for it. Letter case and spaces around a value don't matter.",
+          "display_name": "Table",
+          "name": "table",
+          "object_key_name": "US",
+          "required": true,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "What to give back when the value isn't in the table. Leave empty to get a blank.",
+          "display_name": "If nothing matches",
+          "name": "fallback",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Match upper- and lower-case letters exactly. Off by default, so us, US and Us all match.",
+          "display_name": "Case sensitivity",
+          "name": "case_sensitive",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "",
+      "result_str_template": "{lookup,result}",
+      "returns": {
+        "description": "What the table gives for the value, the fallback when it isn't there, or a blank without one.",
+        "examples": [
+          "United States"
+        ],
+        "type": [
+          "string",
+          "number",
+          "boolean",
+          "array",
+          "object",
+          "null"
+        ]
       }
     },
     "match_keywords": {
@@ -334,6 +624,44 @@
         "type": "object"
       }
     },
+    "parse_json": {
+      "description": "Turn JSON written as text, like an AI step's answer or a webhook body, into data whose fields later steps can use.",
+      "display_name": "Read JSON text",
+      "display_str_template": "Read JSON from {0}",
+      "handler": "parse_json",
+      "id": "skipflow_text_parse_json",
+      "method": "POST",
+      "name": "parse_json",
+      "parameters": [
+        {
+          "description": "The text holding the JSON. It may be wrapped in a code block or a sentence.",
+          "display_name": "JSON text",
+          "multiline": true,
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "",
+      "result_str_template": "{parse_json,result}",
+      "returns": {
+        "description": "The data the JSON holds, usually a record or a list.",
+        "examples": [
+          {
+            "name": "Ana",
+            "plan": "pro"
+          }
+        ],
+        "type": [
+          "object",
+          "array",
+          "string",
+          "number",
+          "boolean",
+          "null"
+        ]
+      }
+    },
     "replace": {
       "description": "Find text and replace it with something else.",
       "display_name": "Replace text",
@@ -352,7 +680,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The exact text to find. Every occurrence is replaced.",
+          "description": "The text to find, or a pattern. Every occurrence is replaced.",
           "display_name": "Text to find",
           "name": "search",
           "required": true,
@@ -372,6 +700,24 @@
           "name": "case_sensitive",
           "required": false,
           "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": "text",
+          "description": "The exact text, or a pattern (a regular expression). With a pattern, $1 in the replacement puts back what its first group in brackets matched, $2 the second.",
+          "display_name": "Find",
+          "name": "search_type",
+          "options": [
+            {
+              "label": "The exact text",
+              "value": "text"
+            },
+            {
+              "label": "A pattern (regular expression)",
+              "value": "pattern"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "",
@@ -548,6 +894,111 @@
           13
         ],
         "type": "integer"
+      }
+    },
+    "text_part": {
+      "description": "Take a piece of text: what comes before or after a word or character, what sits between two, or a number of characters from a position. For example, the name before the @ in an email address.",
+      "display_name": "Get part of text",
+      "display_str_template": "Get part of {0}",
+      "handler": "text_part",
+      "id": "skipflow_text_text_part",
+      "method": "POST",
+      "name": "text_part",
+      "parameters": [
+        {
+          "description": "The text to take a part of.",
+          "display_name": "Text",
+          "multiline": true,
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "after",
+          "description": "Which part of the text to take.",
+          "display_name": "Take",
+          "name": "part",
+          "options": [
+            {
+              "label": "The text before",
+              "value": "before"
+            },
+            {
+              "label": "The text after",
+              "value": "after"
+            },
+            {
+              "label": "The text between",
+              "value": "between"
+            },
+            {
+              "label": "Characters by position",
+              "value": "characters"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The word or characters to look for, like @ or Order #. Letter case doesn't matter, and the first one found is used.",
+          "display_name": "Look for",
+          "name": "marker",
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "part": [
+              "before",
+              "after",
+              "between"
+            ]
+          }
+        },
+        {
+          "description": "Where the part ends: the next time this appears after the text looked for.",
+          "display_name": "Up to",
+          "name": "end_marker",
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "part": [
+              "between"
+            ]
+          }
+        },
+        {
+          "default": 1,
+          "description": "The first character to take: 1 is the first character, -1 the last, -4 the fourth from the end.",
+          "display_name": "From position",
+          "name": "start",
+          "required": false,
+          "type": "ParameterType.NUMBER",
+          "visible_when": {
+            "part": [
+              "characters"
+            ]
+          }
+        },
+        {
+          "description": "How many characters to take. Leave empty for the rest.",
+          "display_name": "Number of characters",
+          "name": "count",
+          "required": false,
+          "type": "ParameterType.NUMBER",
+          "visible_when": {
+            "part": [
+              "characters"
+            ]
+          }
+        }
+      ],
+      "path": "",
+      "result_str_template": "{text_part,result}",
+      "returns": {
+        "description": "The part of the text, without spaces around it. Blank text when what was looked for isn't there.",
+        "examples": [
+          "ana"
+        ],
+        "type": "string"
       }
     },
     "trim": {
