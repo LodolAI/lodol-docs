@@ -1,7 +1,7 @@
 {
   "actions": {
     "get_department": {
-      "description": "Fetch one department from a Greenhouse job board by its id, with the jobs posted under it.",
+      "description": "Fetch one department from a Greenhouse job board by its id, with the jobs posted under it, also as one flat 'jobs' list that includes its sub-departments' posts.",
       "display_name": "Get Greenhouse department",
       "display_str_template": "Get Greenhouse department {1} from {0}.",
       "handler": "actions.get_department",
@@ -16,6 +16,9 @@
           "jobs": [
             {
               "absolute_url": "https://job-boards.greenhouse.io/anthropic/jobs/127817",
+              "application_deadline": null,
+              "company_name": "Anthropic",
+              "first_published": "2026-01-02T15:00:00-05:00",
               "id": 127817,
               "internal_job_id": 144381,
               "language": "en",
@@ -34,6 +37,25 @@
         },
         "department_id": "33333",
         "job_count": 1,
+        "jobs": [
+          {
+            "absolute_url": "https://job-boards.greenhouse.io/anthropic/jobs/127817",
+            "application_deadline": null,
+            "company_name": "Anthropic",
+            "first_published": "2026-01-02T15:00:00-05:00",
+            "id": 127817,
+            "internal_job_id": 144381,
+            "language": "en",
+            "location": {
+              "name": "New York, NY"
+            },
+            "location_name": "New York, NY",
+            "metadata": null,
+            "requisition_id": "50",
+            "title": "Research Engineer",
+            "updated_at": "2026-01-14T10:55:28-05:00"
+          }
+        ],
         "name": "Engineering",
         "render_as": "list"
       },
@@ -121,6 +143,18 @@
                       "description": "Public URL of the job post.",
                       "type": "string"
                     },
+                    "application_deadline": {
+                      "description": "Last day to apply, when the post sets one. Usually null.",
+                      "type": "string"
+                    },
+                    "company_name": {
+                      "description": "The organization the post belongs to.",
+                      "type": "string"
+                    },
+                    "first_published": {
+                      "description": "When the post was first published (ISO 8601).",
+                      "type": "string"
+                    },
                     "id": {
                       "description": "Job post id, used to fetch the post.",
                       "type": "integer"
@@ -149,6 +183,20 @@
                     "metadata": {
                       "description": "Job custom fields the board exposes. May be null.",
                       "items": {
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "description": "The field's value; its type varies."
+                          },
+                          "value_type": {
+                            "type": "string"
+                          }
+                        },
                         "type": "object"
                       },
                       "type": "array"
@@ -186,6 +234,89 @@
           "job_count": {
             "type": "integer"
           },
+          "jobs": {
+            "description": "Every job post at or beneath this node in one flat list, each once, including posts nested under departments or children.",
+            "items": {
+              "properties": {
+                "absolute_url": {
+                  "description": "Public URL of the job post.",
+                  "type": "string"
+                },
+                "application_deadline": {
+                  "description": "Last day to apply, when the post sets one. Usually null.",
+                  "type": "string"
+                },
+                "company_name": {
+                  "description": "The organization the post belongs to.",
+                  "type": "string"
+                },
+                "first_published": {
+                  "description": "When the post was first published (ISO 8601).",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Job post id, used to fetch the post.",
+                  "type": "integer"
+                },
+                "internal_job_id": {
+                  "description": "Id of the underlying job. Null for prospect posts.",
+                  "type": "integer"
+                },
+                "language": {
+                  "description": "Post language code, e.g. 'en'.",
+                  "type": "string"
+                },
+                "location": {
+                  "description": "Location object, e.g. {'name': 'NYC'}.",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "location_name": {
+                  "description": "The location name, flattened out of 'location'.",
+                  "type": "string"
+                },
+                "metadata": {
+                  "description": "Job custom fields the board exposes. May be null.",
+                  "items": {
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "description": "The field's value; its type varies."
+                      },
+                      "value_type": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "requisition_id": {
+                  "description": "Requisition id, when the organization sets one.",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "Job title.",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "When the post was last updated (ISO 8601).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
           "name": {
             "type": "string"
           },
@@ -197,7 +328,7 @@
       }
     },
     "get_job": {
-      "description": "Fetch one job post from a Greenhouse job board by its id, including the full description as HTML and plain text. Optionally include the application form's questions and the post's published pay ranges.",
+      "description": "Fetch one job post from a Greenhouse job board by its id, including the full description as HTML and plain text and when it was first published. Optionally include the application form's questions (with the field names 'Submit Greenhouse application' answers them by) and the post's published pay ranges, in currency units as well as Greenhouse's cents.",
       "display_name": "Get Greenhouse job",
       "display_str_template": "Get Greenhouse job {1} from {0}.",
       "handler": "actions.get_job",
@@ -208,6 +339,7 @@
         "board_token": "anthropic",
         "job": {
           "absolute_url": "https://job-boards.greenhouse.io/anthropic/jobs/127817",
+          "application_deadline": null,
           "company_name": "Anthropic",
           "content": "&lt;p&gt;Train models that help people.&lt;/p&gt;",
           "content_html": "<p>Train models that help people.</p>",
@@ -218,7 +350,7 @@
               "name": "Engineering"
             }
           ],
-          "first_published": "2026-01-02T20:00:00Z",
+          "first_published": "2026-01-02T15:00:00-05:00",
           "id": 127817,
           "internal_job_id": 144381,
           "language": "en",
@@ -232,6 +364,18 @@
               "id": 8787,
               "location": "New York, NY",
               "name": "New York City"
+            }
+          ],
+          "pay_ranges": [
+            {
+              "blurb_text": "The annual base salary for this role.",
+              "currency": "USD",
+              "max": 405000,
+              "max_cents": 40500000,
+              "min": 300000,
+              "min_cents": 30000000,
+              "text": "USD 300,000 \u2013 405,000",
+              "title": "Annual Salary"
             }
           ],
           "requisition_id": "50",
@@ -288,7 +432,7 @@
         },
         {
           "default": false,
-          "description": "Include the pay ranges published on the post, when the organization publishes them.",
+          "description": "Include the pay ranges published on the post, when the organization publishes them. Each comes back in currency units ('min', 'max', and text such as 'USD 222,800 \u2013 290,000') as well as Greenhouse's cents.",
           "display_name": "Include pay ranges",
           "name": "pay_transparency",
           "required": false,
@@ -307,11 +451,25 @@
             "type": "string"
           },
           "job": {
-            "description": "The full post. Also carries 'questions', 'location_questions', 'compliance', 'demographic_questions', and 'pay_input_ranges' when those options are enabled.",
+            "description": "The full post. Also carries 'questions', 'location_questions', 'compliance', 'demographic_questions', 'pay_input_ranges', and 'pay_ranges' when those options are enabled.",
             "properties": {
               "absolute_url": {
                 "description": "Public URL of the job post.",
                 "type": "string"
+              },
+              "application_deadline": {
+                "description": "Last day to apply, when the post sets one. Usually null.",
+                "type": "string"
+              },
+              "company_name": {
+                "description": "The organization the post belongs to.",
+                "type": "string"
+              },
+              "compliance": {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
               },
               "content": {
                 "description": "Description exactly as Greenhouse returns it (HTML-escaped).",
@@ -325,12 +483,26 @@
                 "description": "Description as plain text (capped at ~20,000 characters).",
                 "type": "string"
               },
+              "data_compliance": {
+                "description": "GDPR consent the form asks for, when the organization uses it.",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "demographic_questions": {
+                "type": "object"
+              },
               "departments": {
                 "description": "Departments the job belongs to.",
                 "items": {
                   "type": "object"
                 },
                 "type": "array"
+              },
+              "first_published": {
+                "description": "When the post was first published (ISO 8601).",
+                "type": "string"
               },
               "id": {
                 "description": "Job post id, used to fetch the post.",
@@ -357,15 +529,88 @@
                 "description": "The location name, flattened out of 'location'.",
                 "type": "string"
               },
+              "location_questions": {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "metadata": {
                 "description": "Job custom fields the board exposes. May be null.",
                 "items": {
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "The field's value; its type varies."
+                    },
+                    "value_type": {
+                      "type": "string"
+                    }
+                  },
                   "type": "object"
                 },
                 "type": "array"
               },
               "offices": {
                 "description": "Offices the job belongs to.",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "pay_input_ranges": {
+                "description": "Only with 'Include pay ranges': exactly as Greenhouse sends them.",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "pay_ranges": {
+                "description": "Only with 'Include pay ranges': each range in currency units.",
+                "items": {
+                  "properties": {
+                    "blurb_text": {
+                      "description": "The note the post shows with the range, as plain text.",
+                      "type": "string"
+                    },
+                    "currency": {
+                      "description": "e.g. 'USD'.",
+                      "type": "string"
+                    },
+                    "max": {
+                      "description": "Top of the range, in currency units.",
+                      "type": "number"
+                    },
+                    "max_cents": {
+                      "type": "integer"
+                    },
+                    "min": {
+                      "description": "Bottom of the range, in currency units.",
+                      "type": "number"
+                    },
+                    "min_cents": {
+                      "type": "integer"
+                    },
+                    "text": {
+                      "description": "e.g. 'USD 222,800 \u2013 290,000'.",
+                      "type": "string"
+                    },
+                    "title": {
+                      "description": "e.g. 'Annual Salary'.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "questions": {
+                "description": "Only with 'Include application questions'. Each has 'label', 'required', 'description', and 'fields' ({name, type, values}); a field's 'name' is the key 'Submit Greenhouse application' answers it with.",
                 "items": {
                   "type": "object"
                 },
@@ -460,7 +705,7 @@
       }
     },
     "get_office": {
-      "description": "Fetch one office from a Greenhouse job board by its id, with the departments and jobs under it.",
+      "description": "Fetch one office from a Greenhouse job board by its id, with the departments and jobs under it. Every post in the office also comes back in one flat 'jobs' list, ready to loop over.",
       "display_name": "Get Greenhouse office",
       "display_str_template": "Get Greenhouse office {1} from {0}.",
       "handler": "actions.get_office",
@@ -469,6 +714,25 @@
       "mock_response": {
         "board_token": "anthropic",
         "job_count": 1,
+        "jobs": [
+          {
+            "absolute_url": "https://job-boards.greenhouse.io/anthropic/jobs/127817",
+            "application_deadline": null,
+            "company_name": "Anthropic",
+            "first_published": "2026-01-02T15:00:00-05:00",
+            "id": 127817,
+            "internal_job_id": 144381,
+            "language": "en",
+            "location": {
+              "name": "New York, NY"
+            },
+            "location_name": "New York, NY",
+            "metadata": null,
+            "requisition_id": "50",
+            "title": "Research Engineer",
+            "updated_at": "2026-01-14T10:55:28-05:00"
+          }
+        ],
         "name": "New York City",
         "office": {
           "child_ids": [],
@@ -479,6 +743,9 @@
               "jobs": [
                 {
                   "absolute_url": "https://job-boards.greenhouse.io/anthropic/jobs/127817",
+                  "application_deadline": null,
+                  "company_name": "Anthropic",
+                  "first_published": "2026-01-02T15:00:00-05:00",
                   "id": 127817,
                   "internal_job_id": 144381,
                   "language": "en",
@@ -561,6 +828,89 @@
           "job_count": {
             "type": "integer"
           },
+          "jobs": {
+            "description": "Every job post at or beneath this node in one flat list, each once, including posts nested under departments or children.",
+            "items": {
+              "properties": {
+                "absolute_url": {
+                  "description": "Public URL of the job post.",
+                  "type": "string"
+                },
+                "application_deadline": {
+                  "description": "Last day to apply, when the post sets one. Usually null.",
+                  "type": "string"
+                },
+                "company_name": {
+                  "description": "The organization the post belongs to.",
+                  "type": "string"
+                },
+                "first_published": {
+                  "description": "When the post was first published (ISO 8601).",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Job post id, used to fetch the post.",
+                  "type": "integer"
+                },
+                "internal_job_id": {
+                  "description": "Id of the underlying job. Null for prospect posts.",
+                  "type": "integer"
+                },
+                "language": {
+                  "description": "Post language code, e.g. 'en'.",
+                  "type": "string"
+                },
+                "location": {
+                  "description": "Location object, e.g. {'name': 'NYC'}.",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "location_name": {
+                  "description": "The location name, flattened out of 'location'.",
+                  "type": "string"
+                },
+                "metadata": {
+                  "description": "Job custom fields the board exposes. May be null.",
+                  "items": {
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "description": "The field's value; its type varies."
+                      },
+                      "value_type": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "requisition_id": {
+                  "description": "Requisition id, when the organization sets one.",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "Job title.",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "When the post was last updated (ISO 8601).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
           "name": {
             "type": "string"
           },
@@ -594,6 +944,18 @@
                       "description": "Public URL of the job post.",
                       "type": "string"
                     },
+                    "application_deadline": {
+                      "description": "Last day to apply, when the post sets one. Usually null.",
+                      "type": "string"
+                    },
+                    "company_name": {
+                      "description": "The organization the post belongs to.",
+                      "type": "string"
+                    },
+                    "first_published": {
+                      "description": "When the post was first published (ISO 8601).",
+                      "type": "string"
+                    },
                     "id": {
                       "description": "Job post id, used to fetch the post.",
                       "type": "integer"
@@ -622,6 +984,20 @@
                     "metadata": {
                       "description": "Job custom fields the board exposes. May be null.",
                       "items": {
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "description": "The field's value; its type varies."
+                          },
+                          "value_type": {
+                            "type": "string"
+                          }
+                        },
                         "type": "object"
                       },
                       "type": "array"
@@ -673,6 +1049,25 @@
       "mock_response": {
         "board_token": "anthropic",
         "job_count": 1,
+        "jobs": [
+          {
+            "absolute_url": "https://job-boards.greenhouse.io/anthropic/jobs/127817",
+            "application_deadline": null,
+            "company_name": "Anthropic",
+            "first_published": "2026-01-02T15:00:00-05:00",
+            "id": 888888,
+            "internal_job_id": null,
+            "language": "en",
+            "location": {
+              "name": "New York, NY"
+            },
+            "location_name": "New York, NY",
+            "metadata": null,
+            "requisition_id": "50",
+            "title": "General Application",
+            "updated_at": "2026-01-14T10:55:28-05:00"
+          }
+        ],
         "name": "Don't see a job you like?",
         "section": {
           "id": 14128,
@@ -680,6 +1075,9 @@
           "jobs": [
             {
               "absolute_url": "https://job-boards.greenhouse.io/anthropic/jobs/127817",
+              "application_deadline": null,
+              "company_name": "Anthropic",
+              "first_published": "2026-01-02T15:00:00-05:00",
               "id": 888888,
               "internal_job_id": null,
               "language": "en",
@@ -736,6 +1134,89 @@
           "job_count": {
             "type": "integer"
           },
+          "jobs": {
+            "description": "Every job post at or beneath this node in one flat list, each once, including posts nested under departments or children.",
+            "items": {
+              "properties": {
+                "absolute_url": {
+                  "description": "Public URL of the job post.",
+                  "type": "string"
+                },
+                "application_deadline": {
+                  "description": "Last day to apply, when the post sets one. Usually null.",
+                  "type": "string"
+                },
+                "company_name": {
+                  "description": "The organization the post belongs to.",
+                  "type": "string"
+                },
+                "first_published": {
+                  "description": "When the post was first published (ISO 8601).",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Job post id, used to fetch the post.",
+                  "type": "integer"
+                },
+                "internal_job_id": {
+                  "description": "Id of the underlying job. Null for prospect posts.",
+                  "type": "integer"
+                },
+                "language": {
+                  "description": "Post language code, e.g. 'en'.",
+                  "type": "string"
+                },
+                "location": {
+                  "description": "Location object, e.g. {'name': 'NYC'}.",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "location_name": {
+                  "description": "The location name, flattened out of 'location'.",
+                  "type": "string"
+                },
+                "metadata": {
+                  "description": "Job custom fields the board exposes. May be null.",
+                  "items": {
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "description": "The field's value; its type varies."
+                      },
+                      "value_type": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "requisition_id": {
+                  "description": "Requisition id, when the organization sets one.",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "Job title.",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "When the post was last updated (ISO 8601).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
           "name": {
             "type": "string"
           },
@@ -769,6 +1250,18 @@
                       "description": "Public URL of the job post.",
                       "type": "string"
                     },
+                    "application_deadline": {
+                      "description": "Last day to apply, when the post sets one. Usually null.",
+                      "type": "string"
+                    },
+                    "company_name": {
+                      "description": "The organization the post belongs to.",
+                      "type": "string"
+                    },
+                    "first_published": {
+                      "description": "When the post was first published (ISO 8601).",
+                      "type": "string"
+                    },
                     "id": {
                       "description": "Job post id, used to fetch the post.",
                       "type": "integer"
@@ -797,6 +1290,20 @@
                     "metadata": {
                       "description": "Job custom fields the board exposes. May be null.",
                       "items": {
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "description": "The field's value; its type varies."
+                          },
+                          "value_type": {
+                            "type": "string"
+                          }
+                        },
                         "type": "object"
                       },
                       "type": "array"
@@ -853,6 +1360,9 @@
             "jobs": [
               {
                 "absolute_url": "https://job-boards.greenhouse.io/anthropic/jobs/127817",
+                "application_deadline": null,
+                "company_name": "Anthropic",
+                "first_published": "2026-01-02T15:00:00-05:00",
                 "id": 127817,
                 "internal_job_id": 144381,
                 "language": "en",
@@ -953,6 +1463,18 @@
                         "description": "Public URL of the job post.",
                         "type": "string"
                       },
+                      "application_deadline": {
+                        "description": "Last day to apply, when the post sets one. Usually null.",
+                        "type": "string"
+                      },
+                      "company_name": {
+                        "description": "The organization the post belongs to.",
+                        "type": "string"
+                      },
+                      "first_published": {
+                        "description": "When the post was first published (ISO 8601).",
+                        "type": "string"
+                      },
                       "id": {
                         "description": "Job post id, used to fetch the post.",
                         "type": "integer"
@@ -981,6 +1503,20 @@
                       "metadata": {
                         "description": "Job custom fields the board exposes. May be null.",
                         "items": {
+                          "properties": {
+                            "id": {
+                              "type": "integer"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "value": {
+                              "description": "The field's value; its type varies."
+                            },
+                            "value_type": {
+                              "type": "string"
+                            }
+                          },
                           "type": "object"
                         },
                         "type": "array"
@@ -1151,7 +1687,7 @@
       }
     },
     "list_jobs": {
-      "description": "List the published job posts on a company's Greenhouse job board, with each post's title, location, public URL, and last update. Turn on 'Include full description' to also get each post's description, departments, and offices. Use this to pull a careers page into a workflow, for example to post new roles to Slack or summarize what a company is hiring for.",
+      "description": "List the published job posts on a company's Greenhouse job board, with each post's title, location, public URL, and when it was first published and last updated. Sort newest first, and keep only posts published or updated after a date, to catch new roles since the last run, e.g. to post them to Slack. Turn on 'Include full description' to also get each post's description, departments, and offices.",
       "display_name": "List Greenhouse jobs",
       "display_str_template": "List Greenhouse jobs for {0}.",
       "handler": "actions.list_jobs",
@@ -1163,6 +1699,9 @@
         "jobs": [
           {
             "absolute_url": "https://job-boards.greenhouse.io/anthropic/jobs/127817",
+            "application_deadline": null,
+            "company_name": "Anthropic",
+            "first_published": "2026-01-02T15:00:00-05:00",
             "id": 127817,
             "internal_job_id": 144381,
             "language": "en",
@@ -1176,6 +1715,8 @@
             "updated_at": "2026-01-14T10:55:28-05:00"
           }
         ],
+        "matched": 1,
+        "sort": "board",
         "total": 1,
         "truncated": false
       },
@@ -1215,12 +1756,48 @@
           "name": "limit",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "board",
+          "description": "The order jobs come back in, applied before the limit. 'newest' puts the most recently published posts first and 'recently_updated' the most recently changed; 'board' keeps Greenhouse's own order (by title).",
+          "display_name": "Sort by",
+          "name": "sort",
+          "options": [
+            {
+              "label": "Board order (by title)",
+              "value": "board"
+            },
+            {
+              "label": "Newest first",
+              "value": "newest"
+            },
+            {
+              "label": "Recently updated",
+              "value": "recently_updated"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only posts first published after this date and time, e.g. the last time the workflow ran, to get only new roles.",
+          "display_name": "Published after",
+          "name": "published_after",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Optional. Only posts changed after this date and time, including new ones.",
+          "display_name": "Updated after",
+          "name": "updated_after",
+          "required": false,
+          "type": "ParameterType.DATETIME"
         }
       ],
       "path": "/actions/library/greenhouse/list-jobs",
       "result_str_template": "Retrieved Greenhouse jobs.",
       "returns": {
-        "description": "Published job posts. 'total' is how many the board has; 'count' is how many were returned after the limit.",
+        "description": "Published job posts. 'total' is how many the board has, 'matched' how many passed the date filters, and 'count' how many were returned after the limit.",
         "properties": {
           "board_token": {
             "type": "string"
@@ -1233,6 +1810,14 @@
               "properties": {
                 "absolute_url": {
                   "description": "Public URL of the job post.",
+                  "type": "string"
+                },
+                "application_deadline": {
+                  "description": "Last day to apply, when the post sets one. Usually null.",
+                  "type": "string"
+                },
+                "company_name": {
+                  "description": "The organization the post belongs to.",
                   "type": "string"
                 },
                 "content": {
@@ -1253,6 +1838,10 @@
                     "type": "object"
                   },
                   "type": "array"
+                },
+                "first_published": {
+                  "description": "When the post was first published (ISO 8601).",
+                  "type": "string"
                 },
                 "id": {
                   "description": "Job post id, used to fetch the post.",
@@ -1282,6 +1871,20 @@
                 "metadata": {
                   "description": "Job custom fields the board exposes. May be null.",
                   "items": {
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "description": "The field's value; its type varies."
+                      },
+                      "value_type": {
+                        "type": "string"
+                      }
+                    },
                     "type": "object"
                   },
                   "type": "array"
@@ -1309,6 +1912,13 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "matched": {
+            "description": "Job posts that passed the date filters.",
+            "type": "integer"
+          },
+          "sort": {
+            "type": "string"
           },
           "total": {
             "description": "Total job posts on the board.",
@@ -1342,6 +1952,9 @@
                 "jobs": [
                   {
                     "absolute_url": "https://job-boards.greenhouse.io/anthropic/jobs/127817",
+                    "application_deadline": null,
+                    "company_name": "Anthropic",
+                    "first_published": "2026-01-02T15:00:00-05:00",
                     "id": 127817,
                     "internal_job_id": 144381,
                     "language": "en",
@@ -1448,6 +2061,18 @@
                         "description": "Public URL of the job post.",
                         "type": "string"
                       },
+                      "application_deadline": {
+                        "description": "Last day to apply, when the post sets one. Usually null.",
+                        "type": "string"
+                      },
+                      "company_name": {
+                        "description": "The organization the post belongs to.",
+                        "type": "string"
+                      },
+                      "first_published": {
+                        "description": "When the post was first published (ISO 8601).",
+                        "type": "string"
+                      },
                       "id": {
                         "description": "Job post id, used to fetch the post.",
                         "type": "integer"
@@ -1476,6 +2101,20 @@
                       "metadata": {
                         "description": "Job custom fields the board exposes. May be null.",
                         "items": {
+                          "properties": {
+                            "id": {
+                              "type": "integer"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "value": {
+                              "description": "The field's value; its type varies."
+                            },
+                            "value_type": {
+                              "type": "string"
+                            }
+                          },
                           "type": "object"
                         },
                         "type": "array"
@@ -1533,6 +2172,9 @@
             "jobs": [
               {
                 "absolute_url": "https://job-boards.greenhouse.io/anthropic/jobs/127817",
+                "application_deadline": null,
+                "company_name": "Anthropic",
+                "first_published": "2026-01-02T15:00:00-05:00",
                 "id": 888888,
                 "internal_job_id": null,
                 "language": "en",
@@ -1613,6 +2255,18 @@
                         "description": "Public URL of the job post.",
                         "type": "string"
                       },
+                      "application_deadline": {
+                        "description": "Last day to apply, when the post sets one. Usually null.",
+                        "type": "string"
+                      },
+                      "company_name": {
+                        "description": "The organization the post belongs to.",
+                        "type": "string"
+                      },
+                      "first_published": {
+                        "description": "When the post was first published (ISO 8601).",
+                        "type": "string"
+                      },
                       "id": {
                         "description": "Job post id, used to fetch the post.",
                         "type": "integer"
@@ -1641,6 +2295,20 @@
                       "metadata": {
                         "description": "Job custom fields the board exposes. May be null.",
                         "items": {
+                          "properties": {
+                            "id": {
+                              "type": "integer"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "value": {
+                              "description": "The field's value; its type varies."
+                            },
+                            "value_type": {
+                              "type": "string"
+                            }
+                          },
                           "type": "object"
                         },
                         "type": "array"
@@ -1691,6 +2359,9 @@
         "jobs": [
           {
             "absolute_url": "https://job-boards.greenhouse.io/anthropic/jobs/127817",
+            "application_deadline": null,
+            "company_name": "Anthropic",
+            "first_published": "2026-01-02T15:00:00-05:00",
             "id": 127817,
             "internal_job_id": 144381,
             "language": "en",
@@ -1780,6 +2451,18 @@
                   "description": "Public URL of the job post.",
                   "type": "string"
                 },
+                "application_deadline": {
+                  "description": "Last day to apply, when the post sets one. Usually null.",
+                  "type": "string"
+                },
+                "company_name": {
+                  "description": "The organization the post belongs to.",
+                  "type": "string"
+                },
+                "first_published": {
+                  "description": "When the post was first published (ISO 8601).",
+                  "type": "string"
+                },
                 "id": {
                   "description": "Job post id, used to fetch the post.",
                   "type": "integer"
@@ -1808,6 +2491,20 @@
                 "metadata": {
                   "description": "Job custom fields the board exposes. May be null.",
                   "items": {
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "description": "The field's value; its type varies."
+                      },
+                      "value_type": {
+                        "type": "string"
+                      }
+                    },
                     "type": "object"
                   },
                   "type": "array"
@@ -1842,12 +2539,211 @@
         },
         "type": "object"
       }
+    },
+    "submit_application": {
+      "beta": true,
+      "description": "Submit a candidate's application to a job post on your own organization's Greenhouse job board, as your careers site's form would: name, email, phone, a resume and cover letter (a link Greenhouse downloads, or pasted text), answers to the post's questions, education, and employment. Needs your Job Board API key on the Greenhouse connection. The post's form is checked first, and an application missing a required answer isn't sent, since Greenhouse would accept it without one. Get the field names to answer with 'Get Greenhouse job' and 'Include application questions'.",
+      "display_name": "Submit Greenhouse application",
+      "display_str_template": "Submit a Greenhouse application from {2} {3} to job {1} on {0}.",
+      "handler": "actions.submit_application",
+      "id": "greenhouse_submit_application",
+      "method": "POST",
+      "mock_response": {
+        "board_token": "anthropic",
+        "email": "jane@example.com",
+        "first_name": "Jane",
+        "job_id": "127817",
+        "last_name": "Doe",
+        "message": "Candidate saved successfully",
+        "response": {
+          "success": "Candidate saved successfully"
+        },
+        "submitted": true,
+        "title": "Research Engineer"
+      },
+      "name": "submit_application",
+      "output_formatter": "actions.format_submit_application_output",
+      "parameters": [
+        {
+          "description": "The company's Greenhouse job board token, the last path segment of its board URL (e.g. 'anthropic' in https://job-boards.greenhouse.io/anthropic). Pasting the board or job post URL works too.",
+          "display_name": "Job board token",
+          "examples": [
+            {
+              "label": "Board token",
+              "value": "anthropic"
+            },
+            {
+              "label": "Board URL",
+              "value": "https://job-boards.greenhouse.io/anthropic"
+            }
+          ],
+          "name": "board_token",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The job post to apply to: its numeric id (the 'id' field of a listed job) or its URL.",
+          "display_name": "Job post ID",
+          "name": "job_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The applicant's first name.",
+          "display_name": "First name",
+          "name": "first_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The applicant's last name.",
+          "display_name": "Last name",
+          "name": "last_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The applicant's email address.",
+          "display_name": "Email",
+          "name": "email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The applicant's phone number.",
+          "display_name": "Phone",
+          "name": "phone",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. A link Greenhouse can download the resume from (pdf, doc, docx, txt or rtf).",
+          "display_name": "Resume link",
+          "name": "resume_url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The resume's file name with its extension, e.g. 'jane-doe.pdf'. Needed only when the link doesn't end in one.",
+          "display_name": "Resume file name",
+          "name": "resume_filename",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The resume pasted as plain text.",
+          "display_name": "Resume text",
+          "name": "resume_text",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. A link Greenhouse can download the cover letter from (pdf, doc, docx, txt or rtf).",
+          "display_name": "Cover letter link",
+          "name": "cover_letter_url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The cover letter's file name with its extension. Needed only when the link doesn't end in one.",
+          "display_name": "Cover letter file name",
+          "name": "cover_letter_filename",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The cover letter pasted as plain text.",
+          "display_name": "Cover letter text",
+          "name": "cover_letter_text",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Answers to the post's questions, keyed by each field's 'name' from 'Get Greenhouse job' with 'Include application questions' on. Text questions take text, a single select its option's 'value', a multi select a list of values, and a yes/no question true or false. EEOC fields such as 'gender' and 'veteran_status', 'demographic_answers', and location fields go here too.",
+          "display_name": "Question answers",
+          "examples": [
+            {
+              "label": "Questions",
+              "value": "{\"question_8581812008\": \"https://linkedin.com/in/jane\", \"question_8590525008\": 1}"
+            }
+          ],
+          "name": "answers",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Optional. A list of schools, each with school_name_id, degree_id, and discipline_id (from 'List Greenhouse education options') and start_date and end_date as 'YYYY-MM' or {month, year}.",
+          "display_name": "Education",
+          "name": "educations",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. A list of jobs, each with company_name, title, start_date ('YYYY-MM' or {month, year}), current (true or false), and end_date when not current.",
+          "display_name": "Employment",
+          "name": "employments",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. The applicant's consent, when the form asks for it (see 'data_compliance' on the job): {'gdpr_consent_given': true}, or separate 'gdpr_processing_consent_given' and 'gdpr_retention_consent_given' values where the organization asks for each.",
+          "display_name": "GDPR consent",
+          "name": "data_compliance",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Optional. The 'gh_src' value from the link the applicant arrived by, which Greenhouse records as the application's source.",
+          "display_name": "Source token",
+          "name": "mapped_url_token",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/greenhouse/submit-application",
+      "result_str_template": "Submitted the Greenhouse application.",
+      "returns": {
+        "description": "The submitted application and Greenhouse's reply.",
+        "properties": {
+          "board_token": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "message": {
+            "description": "Greenhouse's confirmation, when it sends one.",
+            "type": "string"
+          },
+          "response": {
+            "description": "Greenhouse's reply exactly as sent.",
+            "type": "object"
+          },
+          "submitted": {
+            "type": "boolean"
+          },
+          "title": {
+            "description": "The job post's title.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     }
   },
   "categories": [
     "Jobs & Hiring"
   ],
-  "description": "Read any company's public Greenhouse job board: list and search its open roles, pull a job post's full description and application questions, and browse its departments, offices, and prospect sections. Read-only and keyless, so no Greenhouse account or API key is required.",
+  "description": "Read any company's public Greenhouse job board: list and search its open roles, newest first or since a date, pull a job post's full description, pay ranges and application questions, and browse its departments, offices, and prospect sections, with no API key. Add your organization's Job Board API key to also submit applications to your own job posts.",
   "display_name": "Greenhouse",
   "id": "greenhouse",
   "logo": "https://www.lodol.com/app-icons/greenhouse-icon.png",
