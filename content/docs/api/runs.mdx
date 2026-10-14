@@ -1,6 +1,6 @@
 ---
 title: Runs
-description: Start a workflow run with inputs, follow it to what it hands back, list past runs, and stop a run in progress.
+description: Start a workflow run with inputs, follow it to what it hands back, list past runs, stop a run in progress, and delete one.
 icon: Play
 ---
 
@@ -339,3 +339,44 @@ requests.post(
   "status": "stopped"
 }
 ```
+
+---
+
+## Delete a run
+
+<Endpoint method="DELETE" path="/api/v1/executions/:id" />
+
+Deletes a finished run from the history, as deleting it in Lodol does. This can't be undone. Requires the `executions:delete` scope, and the member who created the key must be allowed to delete runs (the **Delete runs** role permission); otherwise the request gets `403`.
+
+The runs it started go with it: the runs its trigger started, and the runs of the workflows it called. A run that hasn't finished, or that started one that hasn't, returns `409` with the code `run_not_finished`; [stop it](#stop-a-run) first, or wait for it to finish. Deleting a run doesn't give back the run it [counted as](/docs/concepts/runs#what-counts-as-a-run).
+
+```bash tab="cURL" tab-group="lang"
+curl -X DELETE https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f \
+  -H "Authorization: Bearer $LODOL_API_KEY"
+```
+
+```js tab="JavaScript"
+await fetch('https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f', {
+  method: 'DELETE',
+  headers: { Authorization: `Bearer ${process.env.LODOL_API_KEY}` },
+});
+```
+
+```python tab="Python"
+requests.delete(
+    "https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f",
+    headers={"Authorization": f"Bearer {os.environ['LODOL_API_KEY']}"},
+)
+```
+
+**Response `200`:**
+
+```json
+{
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "deleted": true,
+  "started_runs_deleted": 0
+}
+```
+
+`started_runs_deleted` says how many of the runs it started went with it. A run that doesn't exist, or is already deleted, returns `404`. Deleting takes no `Idempotency-Key`, so if a delete times out, check with [Get a run](#get-a-run) before sending it again: it may have gone through.
