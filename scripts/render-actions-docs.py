@@ -107,6 +107,7 @@ BUILT_IN_ICONS = {
     "skipflow_math": "Calculator",
     "skipflow_random": "Dices",
     "skipflow_review": "UserCheck",
+    "skipflow_rss": "Rss",
     "skipflow_schedule": "Clock",
     "skipflow_text": "Type",
     "skipflow_variables": "Database",
