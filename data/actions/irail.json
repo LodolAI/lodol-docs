@@ -1,0 +1,1428 @@
+{
+  "actions": {
+    "find_connections": {
+      "description": "Plan a train journey between two stations: departure and arrival times, live delays, platforms, how long it takes, how many changes, and every train to take, with any service alerts.",
+      "display_name": "Find train connections",
+      "display_str_template": "Find trains from {0} to {1}.",
+      "handler": "actions.find_connections",
+      "id": "irail_find_connections",
+      "method": "POST",
+      "mock_response": {
+        "connection_count": 1,
+        "connections": [
+          {
+            "alerts": [],
+            "arrival_delay_minutes": 2,
+            "arrival_platform": "1",
+            "arrival_platform_changed": false,
+            "cancelled": false,
+            "delayed": true,
+            "departure_delay_minutes": 0,
+            "departure_platform": "11",
+            "departure_platform_changed": false,
+            "duration_minutes": 36,
+            "expected_arrival_at": "2026-10-16T08:50:00+02:00",
+            "expected_arrival_time": "08:50",
+            "expected_departure_at": "2026-10-16T08:12:00+02:00",
+            "expected_departure_time": "08:12",
+            "from_station": "Ghent-Sint-Pieters",
+            "from_station_id": "BE.NMBS.008892007",
+            "legs": [
+              {
+                "arrival_delay_minutes": 2,
+                "arrival_platform": "1",
+                "arrival_platform_changed": false,
+                "cancelled": false,
+                "departure_delay_minutes": 0,
+                "departure_platform": "11",
+                "departure_platform_changed": false,
+                "direction": "Hasselt",
+                "expected_arrival_at": "2026-10-16T08:50:00+02:00",
+                "expected_arrival_time": "08:50",
+                "expected_departure_at": "2026-10-16T08:12:00+02:00",
+                "expected_departure_time": "08:12",
+                "from_station": "Ghent-Sint-Pieters",
+                "from_station_id": "BE.NMBS.008892007",
+                "intermediate_stop_count": 1,
+                "occupancy": "low",
+                "scheduled_arrival_at": "2026-10-16T08:48:00+02:00",
+                "scheduled_arrival_time": "08:48",
+                "scheduled_departure_at": "2026-10-16T08:12:00+02:00",
+                "scheduled_departure_time": "08:12",
+                "to_station": "Brussels-Central",
+                "to_station_id": "BE.NMBS.008813003",
+                "train": "IC 1519",
+                "train_id": "IC1519",
+                "train_number": "1519",
+                "train_type": "IC",
+                "walking": false
+              }
+            ],
+            "remarks": [],
+            "scheduled_arrival_at": "2026-10-16T08:48:00+02:00",
+            "scheduled_arrival_time": "08:48",
+            "scheduled_departure_at": "2026-10-16T08:12:00+02:00",
+            "scheduled_departure_time": "08:12",
+            "to_station": "Brussels-Central",
+            "to_station_id": "BE.NMBS.008813003",
+            "trains": [
+              "IC 1519"
+            ],
+            "transfers": 0
+          }
+        ],
+        "from_station": "Ghent-Sint-Pieters",
+        "from_station_id": "BE.NMBS.008892007",
+        "to_station": "Brussels-Central",
+        "to_station_id": "BE.NMBS.008813003"
+      },
+      "name": "find_connections",
+      "output_formatter": "actions.format_connections_output",
+      "parameters": [
+        {
+          "description": "Where the trip starts.",
+          "display_name": "From station",
+          "dynamic_source": "stations",
+          "name": "from_station",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where the trip ends.",
+          "display_name": "To station",
+          "dynamic_source": "stations",
+          "name": "to_station",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The day, in Belgian time. Leave empty for today.",
+          "display_name": "Date",
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "The time of day in Belgian time, for example 08:12. Leave empty for now.",
+          "display_name": "Time",
+          "name": "time",
+          "required": false,
+          "type": "ParameterType.TIME"
+        },
+        {
+          "default": "departure",
+          "description": "Whether the time is when you leave or when you must arrive.",
+          "display_name": "Time is",
+          "name": "time_is",
+          "options": [
+            {
+              "label": "Leave at this time",
+              "value": "departure"
+            },
+            {
+              "label": "Arrive by this time",
+              "value": "arrival"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "automatic",
+          "description": "Which kinds of trains the planner may use.",
+          "display_name": "Trains to include",
+          "name": "transport",
+          "options": [
+            {
+              "label": "Best for the trip (domestic trains within Belgium)",
+              "value": "automatic"
+            },
+            {
+              "label": "All trains, including international ones",
+              "value": "trains"
+            },
+            {
+              "label": "No international trains",
+              "value": "nointernationaltrains"
+            },
+            {
+              "label": "All transport types",
+              "value": "all"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 6,
+          "description": "How many connections to return, earliest first. Defaults to 6.",
+          "display_name": "Number of connections",
+          "maximum": 12,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "en",
+          "description": "The language for station names and messages.",
+          "display_name": "Language",
+          "name": "lang",
+          "options": [
+            {
+              "label": "English",
+              "value": "en"
+            },
+            {
+              "label": "Nederlands",
+              "value": "nl"
+            },
+            {
+              "label": "Fran\u00e7ais",
+              "value": "fr"
+            },
+            {
+              "label": "Deutsch",
+              "value": "de"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/irail/find-connections",
+      "result_str_template": "Connections found.",
+      "returns": {
+        "properties": {
+          "connection_count": {
+            "type": "number"
+          },
+          "connections": {
+            "items": {
+              "properties": {
+                "alerts": {
+                  "items": {
+                    "properties": {
+                      "description": {
+                        "type": "string"
+                      },
+                      "ends_at": {
+                        "type": "string"
+                      },
+                      "link": {
+                        "type": "string"
+                      },
+                      "starts_at": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "arrival_delay_minutes": {
+                  "type": "number"
+                },
+                "arrival_platform": {
+                  "type": "string"
+                },
+                "arrival_platform_changed": {
+                  "type": "boolean"
+                },
+                "cancelled": {
+                  "type": "boolean"
+                },
+                "delayed": {
+                  "type": "boolean"
+                },
+                "departure_delay_minutes": {
+                  "type": "number"
+                },
+                "departure_platform": {
+                  "type": "string"
+                },
+                "departure_platform_changed": {
+                  "type": "boolean"
+                },
+                "duration_minutes": {
+                  "type": "number"
+                },
+                "expected_arrival_at": {
+                  "type": "string"
+                },
+                "expected_arrival_time": {
+                  "type": "string"
+                },
+                "expected_departure_at": {
+                  "type": "string"
+                },
+                "expected_departure_time": {
+                  "type": "string"
+                },
+                "from_station": {
+                  "type": "string"
+                },
+                "from_station_id": {
+                  "type": "string"
+                },
+                "legs": {
+                  "items": {
+                    "properties": {
+                      "arrival_delay_minutes": {
+                        "type": "number"
+                      },
+                      "arrival_platform": {
+                        "type": "string"
+                      },
+                      "arrival_platform_changed": {
+                        "type": "boolean"
+                      },
+                      "cancelled": {
+                        "type": "boolean"
+                      },
+                      "departure_delay_minutes": {
+                        "type": "number"
+                      },
+                      "departure_platform": {
+                        "type": "string"
+                      },
+                      "departure_platform_changed": {
+                        "type": "boolean"
+                      },
+                      "direction": {
+                        "type": "string"
+                      },
+                      "expected_arrival_at": {
+                        "type": "string"
+                      },
+                      "expected_arrival_time": {
+                        "type": "string"
+                      },
+                      "expected_departure_at": {
+                        "type": "string"
+                      },
+                      "expected_departure_time": {
+                        "type": "string"
+                      },
+                      "from_station": {
+                        "type": "string"
+                      },
+                      "from_station_id": {
+                        "type": "string"
+                      },
+                      "intermediate_stop_count": {
+                        "type": "number"
+                      },
+                      "occupancy": {
+                        "type": "string"
+                      },
+                      "scheduled_arrival_at": {
+                        "type": "string"
+                      },
+                      "scheduled_arrival_time": {
+                        "type": "string"
+                      },
+                      "scheduled_departure_at": {
+                        "type": "string"
+                      },
+                      "scheduled_departure_time": {
+                        "type": "string"
+                      },
+                      "to_station": {
+                        "type": "string"
+                      },
+                      "to_station_id": {
+                        "type": "string"
+                      },
+                      "train": {
+                        "type": "string"
+                      },
+                      "train_id": {
+                        "type": "string"
+                      },
+                      "train_number": {
+                        "type": "string"
+                      },
+                      "train_type": {
+                        "type": "string"
+                      },
+                      "walking": {
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "remarks": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "scheduled_arrival_at": {
+                  "type": "string"
+                },
+                "scheduled_arrival_time": {
+                  "type": "string"
+                },
+                "scheduled_departure_at": {
+                  "type": "string"
+                },
+                "scheduled_departure_time": {
+                  "type": "string"
+                },
+                "to_station": {
+                  "type": "string"
+                },
+                "to_station_id": {
+                  "type": "string"
+                },
+                "trains": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "transfers": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "from_station": {
+            "type": "string"
+          },
+          "from_station_id": {
+            "type": "string"
+          },
+          "to_station": {
+            "type": "string"
+          },
+          "to_station_id": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_stations": {
+      "description": "Look up stations by name in any of their official spellings, with each one's id, local name and coordinates. Leave the name empty to list every station.",
+      "display_name": "Find stations",
+      "display_str_template": "Find stations.",
+      "handler": "actions.find_stations",
+      "id": "irail_find_stations",
+      "method": "POST",
+      "mock_response": {
+        "match_count": 1,
+        "query": "Gent",
+        "station_count": 1,
+        "stations": [
+          {
+            "latitude": 51.035896,
+            "link": "https://irail.be/stations/NMBS/008892007",
+            "local_name": "Gent-Sint-Pieters",
+            "longitude": 3.710675,
+            "name": "Ghent-Sint-Pieters",
+            "station_id": "BE.NMBS.008892007"
+          }
+        ]
+      },
+      "name": "find_stations",
+      "output_formatter": "actions.format_stations_output",
+      "parameters": [
+        {
+          "description": "All or part of the station's name, for example Gent, Bruxelles or Luik. Case and accents don't matter.",
+          "display_name": "Name",
+          "examples": [
+            {
+              "label": "Ghent",
+              "value": "Gent"
+            },
+            {
+              "label": "Brussels",
+              "value": "Brussel"
+            }
+          ],
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 25,
+          "description": "How many stations to return, best match first. Defaults to 25.",
+          "display_name": "Number of stations",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "en",
+          "description": "The language for station names and messages.",
+          "display_name": "Language",
+          "name": "lang",
+          "options": [
+            {
+              "label": "English",
+              "value": "en"
+            },
+            {
+              "label": "Nederlands",
+              "value": "nl"
+            },
+            {
+              "label": "Fran\u00e7ais",
+              "value": "fr"
+            },
+            {
+              "label": "Deutsch",
+              "value": "de"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/irail/find-stations",
+      "result_str_template": "Stations found.",
+      "returns": {
+        "properties": {
+          "match_count": {
+            "type": "number"
+          },
+          "query": {
+            "type": "string"
+          },
+          "station_count": {
+            "type": "number"
+          },
+          "stations": {
+            "items": {
+              "properties": {
+                "latitude": {
+                  "type": "number"
+                },
+                "link": {
+                  "type": "string"
+                },
+                "local_name": {
+                  "type": "string"
+                },
+                "longitude": {
+                  "type": "number"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "station_id": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_disruptions": {
+      "description": "List the current disruptions and planned works on the Belgian railways, newest first, with a link to each notice. Narrow it to unplanned disruptions or to notices mentioning a station or line.",
+      "display_name": "Get disruptions and planned works",
+      "display_str_template": "Get rail disruptions.",
+      "handler": "actions.get_disruptions",
+      "id": "irail_get_disruptions",
+      "method": "POST",
+      "mock_response": {
+        "disruption_count": 1,
+        "disruptions": [
+          {
+            "description": "Delays are possible.\nWe are awaiting information by a technical team.\n\nCause: failure of the signaling device in Tilly.",
+            "link": "http://www.belgianrail.be/jp/nmbs-realtime/help.exe/en?tpl=showmap_external&tplParamHimMsgInfoGroup=trouble&messageID=114299",
+            "published_at": "2026-10-15T19:26:52+02:00",
+            "title": "Ottignies - Charleroi-Central: Delays",
+            "type": "disruption"
+          }
+        ],
+        "match_count": 1,
+        "planned_count": 0,
+        "unplanned_count": 1
+      },
+      "name": "get_disruptions",
+      "output_formatter": "actions.format_disruptions_output",
+      "parameters": [
+        {
+          "default": "all",
+          "description": "Which notices to list.",
+          "display_name": "Show",
+          "name": "notice_type",
+          "options": [
+            {
+              "label": "Everything",
+              "value": "all"
+            },
+            {
+              "label": "Unplanned disruptions",
+              "value": "disruptions"
+            },
+            {
+              "label": "Planned works",
+              "value": "planned_works"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only list notices whose title or text mentions this, for example a station such as Leuven. Leave empty for all.",
+          "display_name": "Only those mentioning",
+          "name": "mentioning",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 50,
+          "description": "How many notices to return, newest first. Defaults to 50.",
+          "display_name": "Number of notices",
+          "maximum": 200,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "en",
+          "description": "The language for station names and messages.",
+          "display_name": "Language",
+          "name": "lang",
+          "options": [
+            {
+              "label": "English",
+              "value": "en"
+            },
+            {
+              "label": "Nederlands",
+              "value": "nl"
+            },
+            {
+              "label": "Fran\u00e7ais",
+              "value": "fr"
+            },
+            {
+              "label": "Deutsch",
+              "value": "de"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/irail/get-disruptions",
+      "result_str_template": "Disruptions loaded.",
+      "returns": {
+        "properties": {
+          "disruption_count": {
+            "type": "number"
+          },
+          "disruptions": {
+            "items": {
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "link": {
+                  "type": "string"
+                },
+                "published_at": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "match_count": {
+            "type": "number"
+          },
+          "planned_count": {
+            "type": "number"
+          },
+          "unplanned_count": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_station_board": {
+      "description": "Read a Belgian station's live departure or arrival board: each train's time, destination or origin, platform, delay in minutes and whether it is cancelled or its platform changed. Pick a date and time to look ahead.",
+      "display_name": "Get live departures or arrivals",
+      "display_str_template": "Get the {1} board at {0}.",
+      "handler": "actions.get_station_board",
+      "id": "irail_get_station_board",
+      "method": "POST",
+      "mock_response": {
+        "board": "departures",
+        "cancelled_count": 0,
+        "delayed_count": 1,
+        "station": "Ghent-Sint-Pieters",
+        "station_id": "BE.NMBS.008892007",
+        "train_count": 1,
+        "trains": [
+          {
+            "arrived": null,
+            "cancelled": false,
+            "delay_minutes": 3,
+            "delayed": true,
+            "departed": false,
+            "destination": "Antwerp-Central",
+            "destination_id": "BE.NMBS.008821006",
+            "expected_at": "2026-10-16T08:15:00+02:00",
+            "expected_time": "08:15",
+            "extra_train": false,
+            "occupancy": "medium",
+            "origin": null,
+            "origin_id": null,
+            "platform": "5",
+            "platform_changed": false,
+            "scheduled_at": "2026-10-16T08:12:00+02:00",
+            "scheduled_time": "08:12",
+            "train": "IC 3041",
+            "train_id": "IC3041",
+            "train_number": "3041",
+            "train_type": "IC"
+          }
+        ]
+      },
+      "name": "get_station_board",
+      "output_formatter": "actions.format_board_output",
+      "parameters": [
+        {
+          "description": "The station to read the board of.",
+          "display_name": "Station",
+          "dynamic_source": "stations",
+          "name": "station",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "departures",
+          "description": "Trains leaving the station, or trains arriving there.",
+          "display_name": "Show",
+          "name": "board",
+          "options": [
+            {
+              "label": "Departures",
+              "value": "departures"
+            },
+            {
+              "label": "Arrivals",
+              "value": "arrivals"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The day, in Belgian time. Leave empty for today.",
+          "display_name": "Date",
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "The time of day in Belgian time, for example 08:12. Leave empty for now.",
+          "display_name": "Time",
+          "name": "time",
+          "required": false,
+          "type": "ParameterType.TIME"
+        },
+        {
+          "default": 20,
+          "description": "How many trains to return, soonest first. Defaults to 20.",
+          "display_name": "Number of trains",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "en",
+          "description": "The language for station names and messages.",
+          "display_name": "Language",
+          "name": "lang",
+          "options": [
+            {
+              "label": "English",
+              "value": "en"
+            },
+            {
+              "label": "Nederlands",
+              "value": "nl"
+            },
+            {
+              "label": "Fran\u00e7ais",
+              "value": "fr"
+            },
+            {
+              "label": "Deutsch",
+              "value": "de"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/irail/get-station-board",
+      "result_str_template": "Board loaded.",
+      "returns": {
+        "properties": {
+          "board": {
+            "type": "string"
+          },
+          "cancelled_count": {
+            "type": "number"
+          },
+          "delayed_count": {
+            "type": "number"
+          },
+          "station": {
+            "type": "string"
+          },
+          "station_id": {
+            "type": "string"
+          },
+          "train_count": {
+            "type": "number"
+          },
+          "trains": {
+            "items": {
+              "properties": {
+                "arrived": {
+                  "type": "boolean"
+                },
+                "cancelled": {
+                  "type": "boolean"
+                },
+                "delay_minutes": {
+                  "type": "number"
+                },
+                "delayed": {
+                  "type": "boolean"
+                },
+                "departed": {
+                  "type": "boolean"
+                },
+                "destination": {
+                  "type": "string"
+                },
+                "destination_id": {
+                  "type": "string"
+                },
+                "expected_at": {
+                  "type": "string"
+                },
+                "expected_time": {
+                  "type": "string"
+                },
+                "extra_train": {
+                  "type": "boolean"
+                },
+                "occupancy": {
+                  "type": "string"
+                },
+                "origin": {
+                  "type": "string"
+                },
+                "origin_id": {
+                  "type": "string"
+                },
+                "platform": {
+                  "type": "string"
+                },
+                "platform_changed": {
+                  "type": "boolean"
+                },
+                "scheduled_at": {
+                  "type": "string"
+                },
+                "scheduled_time": {
+                  "type": "string"
+                },
+                "train": {
+                  "type": "string"
+                },
+                "train_id": {
+                  "type": "string"
+                },
+                "train_number": {
+                  "type": "string"
+                },
+                "train_type": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_train": {
+      "description": "Follow one train: its current delay, whether it is cancelled, where it is, and every stop with times, delays and platforms. Pick your station to get that stop on its own, for example to be told when your 8:12 is late.",
+      "display_name": "Get train status",
+      "display_str_template": "Get the status of train {0}.",
+      "handler": "actions.get_train",
+      "id": "irail_get_train",
+      "method": "POST",
+      "mock_response": {
+        "cancelled": false,
+        "date": "2026-10-16",
+        "delay_minutes": 3,
+        "destination": "Hasselt",
+        "finished": false,
+        "last_station": "Bruges",
+        "latitude": 51.197226,
+        "longitude": 3.216726,
+        "next_stop": "Ghent-Sint-Pieters",
+        "origin": "Blankenberge",
+        "partly_cancelled": false,
+        "stop": {
+          "arrival_cancelled": false,
+          "arrival_delay_minutes": 3,
+          "arrived": false,
+          "cancelled": false,
+          "departed": false,
+          "departure_cancelled": false,
+          "departure_delay_minutes": 3,
+          "expected_arrival_at": "2026-10-16T08:13:00+02:00",
+          "expected_arrival_time": "08:13",
+          "expected_departure_at": "2026-10-16T08:15:00+02:00",
+          "expected_departure_time": "08:15",
+          "extra_stop": false,
+          "occupancy": "low",
+          "platform": "11",
+          "platform_changed": false,
+          "scheduled_arrival_at": "2026-10-16T08:10:00+02:00",
+          "scheduled_arrival_time": "08:10",
+          "scheduled_departure_at": "2026-10-16T08:12:00+02:00",
+          "scheduled_departure_time": "08:12",
+          "station": "Ghent-Sint-Pieters",
+          "station_id": "BE.NMBS.008892007"
+        },
+        "stop_count": 1,
+        "stops": [
+          {
+            "arrival_cancelled": false,
+            "arrival_delay_minutes": 3,
+            "arrived": false,
+            "cancelled": false,
+            "departed": false,
+            "departure_cancelled": false,
+            "departure_delay_minutes": 3,
+            "expected_arrival_at": "2026-10-16T08:13:00+02:00",
+            "expected_arrival_time": "08:13",
+            "expected_departure_at": "2026-10-16T08:15:00+02:00",
+            "expected_departure_time": "08:15",
+            "extra_stop": false,
+            "occupancy": "low",
+            "platform": "11",
+            "platform_changed": false,
+            "scheduled_arrival_at": "2026-10-16T08:10:00+02:00",
+            "scheduled_arrival_time": "08:10",
+            "scheduled_departure_at": "2026-10-16T08:12:00+02:00",
+            "scheduled_departure_time": "08:12",
+            "station": "Ghent-Sint-Pieters",
+            "station_id": "BE.NMBS.008892007"
+          }
+        ],
+        "train": "IC 1519",
+        "train_id": "IC1519",
+        "train_number": "1519",
+        "train_type": "IC"
+      },
+      "name": "get_train",
+      "output_formatter": "actions.format_train_output",
+      "parameters": [
+        {
+          "description": "The train number as the departure board shows it, for example IC 1519. Spaces and lower case are fine, and the train_id from another iRail step works too.",
+          "display_name": "Train",
+          "examples": [
+            {
+              "label": "Intercity",
+              "value": "IC 1519"
+            },
+            {
+              "label": "Suburban (S) train",
+              "value": "S51 790"
+            }
+          ],
+          "name": "train",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The day the train runs, in Belgian time. Leave empty for today.",
+          "display_name": "Date",
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Optional. A station the train stops at; its stop is returned as 'stop'.",
+          "display_name": "Your station",
+          "dynamic_source": "stations",
+          "name": "station",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "en",
+          "description": "The language for station names and messages.",
+          "display_name": "Language",
+          "name": "lang",
+          "options": [
+            {
+              "label": "English",
+              "value": "en"
+            },
+            {
+              "label": "Nederlands",
+              "value": "nl"
+            },
+            {
+              "label": "Fran\u00e7ais",
+              "value": "fr"
+            },
+            {
+              "label": "Deutsch",
+              "value": "de"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/irail/get-train",
+      "result_str_template": "Train loaded.",
+      "returns": {
+        "properties": {
+          "cancelled": {
+            "type": "boolean"
+          },
+          "date": {
+            "type": "string"
+          },
+          "delay_minutes": {
+            "type": "number"
+          },
+          "destination": {
+            "type": "string"
+          },
+          "finished": {
+            "type": "boolean"
+          },
+          "last_station": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "next_stop": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "partly_cancelled": {
+            "type": "boolean"
+          },
+          "stop": {
+            "properties": {
+              "arrival_cancelled": {
+                "type": "boolean"
+              },
+              "arrival_delay_minutes": {
+                "type": "number"
+              },
+              "arrived": {
+                "type": "boolean"
+              },
+              "cancelled": {
+                "type": "boolean"
+              },
+              "departed": {
+                "type": "boolean"
+              },
+              "departure_cancelled": {
+                "type": "boolean"
+              },
+              "departure_delay_minutes": {
+                "type": "number"
+              },
+              "expected_arrival_at": {
+                "type": "string"
+              },
+              "expected_arrival_time": {
+                "type": "string"
+              },
+              "expected_departure_at": {
+                "type": "string"
+              },
+              "expected_departure_time": {
+                "type": "string"
+              },
+              "extra_stop": {
+                "type": "boolean"
+              },
+              "occupancy": {
+                "type": "string"
+              },
+              "platform": {
+                "type": "string"
+              },
+              "platform_changed": {
+                "type": "boolean"
+              },
+              "scheduled_arrival_at": {
+                "type": "string"
+              },
+              "scheduled_arrival_time": {
+                "type": "string"
+              },
+              "scheduled_departure_at": {
+                "type": "string"
+              },
+              "scheduled_departure_time": {
+                "type": "string"
+              },
+              "station": {
+                "type": "string"
+              },
+              "station_id": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "stop_count": {
+            "type": "number"
+          },
+          "stops": {
+            "items": {
+              "properties": {
+                "arrival_cancelled": {
+                  "type": "boolean"
+                },
+                "arrival_delay_minutes": {
+                  "type": "number"
+                },
+                "arrived": {
+                  "type": "boolean"
+                },
+                "cancelled": {
+                  "type": "boolean"
+                },
+                "departed": {
+                  "type": "boolean"
+                },
+                "departure_cancelled": {
+                  "type": "boolean"
+                },
+                "departure_delay_minutes": {
+                  "type": "number"
+                },
+                "expected_arrival_at": {
+                  "type": "string"
+                },
+                "expected_arrival_time": {
+                  "type": "string"
+                },
+                "expected_departure_at": {
+                  "type": "string"
+                },
+                "expected_departure_time": {
+                  "type": "string"
+                },
+                "extra_stop": {
+                  "type": "boolean"
+                },
+                "occupancy": {
+                  "type": "string"
+                },
+                "platform": {
+                  "type": "string"
+                },
+                "platform_changed": {
+                  "type": "boolean"
+                },
+                "scheduled_arrival_at": {
+                  "type": "string"
+                },
+                "scheduled_arrival_time": {
+                  "type": "string"
+                },
+                "scheduled_departure_at": {
+                  "type": "string"
+                },
+                "scheduled_departure_time": {
+                  "type": "string"
+                },
+                "station": {
+                  "type": "string"
+                },
+                "station_id": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "train": {
+            "type": "string"
+          },
+          "train_id": {
+            "type": "string"
+          },
+          "train_number": {
+            "type": "string"
+          },
+          "train_type": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_train_composition": {
+      "description": "See how today's run of a train is made up: how many carriages, first- and second-class seats, and which carriages have toilets, bike space or wheelchair space, for each part of its route.",
+      "display_name": "Get train composition",
+      "display_str_template": "Get the composition of train {0}.",
+      "handler": "actions.get_train_composition",
+      "id": "irail_get_train_composition",
+      "method": "POST",
+      "mock_response": {
+        "carriage_count": 1,
+        "first_class_seats": 0,
+        "has_bike_section": true,
+        "has_toilets": false,
+        "has_wheelchair_section": false,
+        "length_meters": 27.0,
+        "second_class_seats": 110,
+        "segment_count": 1,
+        "segments": [
+          {
+            "carriage_count": 1,
+            "carriages": [
+              {
+                "air_conditioning": true,
+                "bike_section": true,
+                "first_class_seats": 0,
+                "heating": true,
+                "length_meters": 27.0,
+                "model": "M7",
+                "number": "75077",
+                "position": 1,
+                "power_outlets": true,
+                "priority_seats": false,
+                "second_class_seats": 110,
+                "standing_places": 0,
+                "toilets": false,
+                "type": "M7BXH",
+                "wheelchair_section": false
+              }
+            ],
+            "first_class_seats": 0,
+            "from_station": "Blankenberge",
+            "from_station_id": "BE.NMBS.008891405",
+            "has_bike_section": true,
+            "has_toilets": false,
+            "has_wheelchair_section": false,
+            "length_meters": 27.0,
+            "second_class_seats": 110,
+            "to_station": "Hasselt",
+            "to_station_id": "BE.NMBS.008831005"
+          }
+        ],
+        "train_id": "IC1519"
+      },
+      "name": "get_train_composition",
+      "output_formatter": "actions.format_composition_output",
+      "parameters": [
+        {
+          "description": "The train number as the departure board shows it, for example IC 1519. Spaces and lower case are fine, and the train_id from another iRail step works too.",
+          "display_name": "Train",
+          "examples": [
+            {
+              "label": "Intercity",
+              "value": "IC 1519"
+            },
+            {
+              "label": "Suburban (S) train",
+              "value": "S51 790"
+            }
+          ],
+          "name": "train",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/irail/get-train-composition",
+      "result_str_template": "Composition loaded.",
+      "returns": {
+        "properties": {
+          "carriage_count": {
+            "type": "number"
+          },
+          "first_class_seats": {
+            "type": "number"
+          },
+          "has_bike_section": {
+            "type": "boolean"
+          },
+          "has_toilets": {
+            "type": "boolean"
+          },
+          "has_wheelchair_section": {
+            "type": "boolean"
+          },
+          "length_meters": {
+            "type": "number"
+          },
+          "second_class_seats": {
+            "type": "number"
+          },
+          "segment_count": {
+            "type": "number"
+          },
+          "segments": {
+            "items": {
+              "properties": {
+                "carriage_count": {
+                  "type": "number"
+                },
+                "carriages": {
+                  "items": {
+                    "properties": {
+                      "air_conditioning": {
+                        "type": "boolean"
+                      },
+                      "bike_section": {
+                        "type": "boolean"
+                      },
+                      "first_class_seats": {
+                        "type": "number"
+                      },
+                      "heating": {
+                        "type": "boolean"
+                      },
+                      "length_meters": {
+                        "type": "number"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "number": {
+                        "type": "string"
+                      },
+                      "position": {
+                        "type": "number"
+                      },
+                      "power_outlets": {
+                        "type": "boolean"
+                      },
+                      "priority_seats": {
+                        "type": "boolean"
+                      },
+                      "second_class_seats": {
+                        "type": "number"
+                      },
+                      "standing_places": {
+                        "type": "number"
+                      },
+                      "toilets": {
+                        "type": "boolean"
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "wheelchair_section": {
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "first_class_seats": {
+                  "type": "number"
+                },
+                "from_station": {
+                  "type": "string"
+                },
+                "from_station_id": {
+                  "type": "string"
+                },
+                "has_bike_section": {
+                  "type": "boolean"
+                },
+                "has_toilets": {
+                  "type": "boolean"
+                },
+                "has_wheelchair_section": {
+                  "type": "boolean"
+                },
+                "length_meters": {
+                  "type": "number"
+                },
+                "second_class_seats": {
+                  "type": "number"
+                },
+                "to_station": {
+                  "type": "string"
+                },
+                "to_station_id": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "train_id": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "categories": [
+    "Travel & Places"
+  ],
+  "description": "Get live Belgian railway (SNCB/NMBS) information from iRail: departure and arrival boards, journey planning between stations, a train's stops and delays, its carriages, and current disruptions. No account or API key is required.",
+  "display_name": "iRail",
+  "id": "irail",
+  "logo": "https://www.lodol.com/app-icons/irail-icon.svg",
+  "triggers": {}
+}
