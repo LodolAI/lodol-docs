@@ -109,6 +109,7 @@ BUILT_IN_ICONS = {
     "skipflow_review": "UserCheck",
     "skipflow_rss": "Rss",
     "skipflow_schedule": "Clock",
+    "skipflow_smtp": "Mail",
     "skipflow_text": "Type",
     "skipflow_variables": "Database",
     "skipflow_webhook": "Webhook",
