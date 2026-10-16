@@ -1,7 +1,81 @@
 {
   "actions": {
+    "cancel_agent_run": {
+      "description": "Stop an agent run that is still going (status becomes stopped), or delete a finished run and its result (status deleted).",
+      "display_name": "Cancel or delete agent run",
+      "display_str_template": "Cancel agent run '{0}'.",
+      "handler": "actions.cancel_agent_run",
+      "id": "browserless_cancel_agent_run",
+      "method": "POST",
+      "mock_response": {
+        "run_id": "run_abc123def456",
+        "status": "stopped"
+      },
+      "name": "cancel_agent_run",
+      "parameters": [
+        {
+          "description": "The agent run's ID, from 'Start an agent task' or 'List agent runs'.",
+          "display_name": "Run ID",
+          "name": "run_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browserless/cancel-agent-run",
+      "result_str_template": "Agent run cancelled.",
+      "returns": {
+        "properties": {
+          "run_id": {
+            "description": "The run's ID",
+            "type": "string"
+          },
+          "status": {
+            "description": "stopped or deleted",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "cancel_crawl": {
+      "description": "Stop a running crawl. Pages already scraped stay available to 'Get crawl'. Fails if the crawl has already finished.",
+      "display_name": "Cancel crawl",
+      "display_str_template": "Cancel crawl '{0}'.",
+      "handler": "actions.cancel_crawl",
+      "id": "browserless_cancel_crawl",
+      "method": "POST",
+      "mock_response": {
+        "crawl_id": "crawl_abc123def456",
+        "status": "cancelled"
+      },
+      "name": "cancel_crawl",
+      "parameters": [
+        {
+          "description": "The crawl's ID, from 'Crawl a site' or 'List crawls'.",
+          "display_name": "Crawl ID",
+          "name": "crawl_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browserless/cancel-crawl",
+      "result_str_template": "Crawl cancelled.",
+      "returns": {
+        "properties": {
+          "crawl_id": {
+            "description": "The crawl's ID",
+            "type": "string"
+          },
+          "status": {
+            "description": "cancelled",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "capture_screenshot": {
-      "description": "Render a web page in a real browser and capture the full page as a PNG. The image is saved to your workspace's file storage; the action returns a document reference and a download URL so a later step can send, upload, or attach it.",
+      "description": "Render a web page in a real browser and capture the full page as a PNG, getting past bot protection and captchas when needed. The image is saved to your workspace's file storage; the action returns a document reference and a download URL so a later step can send, upload, or attach it.",
       "display_name": "Screenshot a page",
       "display_str_template": "Screenshot '{0}'.",
       "handler": "actions.capture_screenshot",
@@ -20,9 +94,11 @@
             "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
           }
         ],
+        "filename": "news-ycombinator-com.png",
         "page_url": "https://news.ycombinator.com/",
         "status_code": 200,
         "strategy": "browser",
+        "title": "Hacker News",
         "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
       },
       "name": "capture_screenshot",
@@ -56,6 +132,85 @@
           ],
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country the proxy should exit from, such as US, GB or DE, if the site needs a proxy.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds to let the page fill itself in after it loads, up to 30. Any wait makes Browserless use a real browser.",
+          "display_name": "Wait after loading (seconds)",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Up to 20 steps to run in the page before it is read, such as closing a cookie banner or typing a search. Each has a type (wait, click, write, scroll, scrape or executeJavascript) and the fields it needs. Any step makes Browserless use a real browser.",
+          "display_name": "Do first",
+          "name": "browser_actions",
+          "required": false,
+          "schema": {
+            "items": {
+              "properties": {
+                "milliseconds": {
+                  "description": "How long a wait lasts, up to 30000",
+                  "type": "number"
+                },
+                "script": {
+                  "description": "JavaScript to run in the page, for executeJavascript. What it returns comes back in script_results.",
+                  "type": "string"
+                },
+                "selector": {
+                  "description": "CSS selector of the element to click, type into, scroll to or wait for",
+                  "type": "string"
+                },
+                "text": {
+                  "description": "What to type, for a write. End it with a new line to press Enter.",
+                  "type": "string"
+                },
+                "timeout": {
+                  "description": "Milliseconds the step may take, up to 30000",
+                  "type": "number"
+                },
+                "type": {
+                  "description": "What to do",
+                  "enum": [
+                    "wait",
+                    "click",
+                    "write",
+                    "scroll",
+                    "scrape",
+                    "executeJavascript"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/browserless/capture-screenshot",
@@ -67,11 +222,11 @@
             "type": "number"
           },
           "content_type": {
-            "description": "MIME type of the screenshot, always image/png",
+            "description": "MIME type of the screenshot",
             "type": "string"
           },
           "document_ref": {
-            "description": "ID of the stored screenshot, for use by a later step",
+            "description": "ID of the stored screenshot, for a later step that takes a file",
             "type": "string"
           },
           "documents": {
@@ -103,6 +258,10 @@
             },
             "type": "array"
           },
+          "filename": {
+            "description": "Name the screenshot was stored under",
+            "type": "string"
+          },
           "page_url": {
             "description": "The page that was captured",
             "type": "string"
@@ -112,7 +271,11 @@
             "type": "number"
           },
           "strategy": {
-            "description": "How Browserless fetched the page, for example 'browser' or 'browser-captcha'",
+            "description": "How Browserless fetched the page: http-fetch, http-proxy, browser or browser-captcha",
+            "type": "string"
+          },
+          "title": {
+            "description": "The page's title",
             "type": "string"
           },
           "url": {
@@ -123,8 +286,832 @@
         "type": "object"
       }
     },
+    "create_pdf": {
+      "description": "Turn HTML of your own (an invoice, a report, a certificate) or a web page into a PDF, with the paper size, orientation, margins, and a header and footer with page numbers. Text stays real, selectable text. The file is saved to your workspace's file storage.",
+      "display_name": "Convert HTML to PDF",
+      "display_str_template": "Convert HTML to a PDF.",
+      "handler": "actions.create_pdf",
+      "id": "browserless_create_pdf",
+      "method": "POST",
+      "mock_response": {
+        "byte_size": 31744,
+        "content_type": "application/pdf",
+        "document_ref": "doc_9f8e7d6c5b4a3210",
+        "documents": [
+          {
+            "content_type": "application/pdf",
+            "document_ref": "doc_9f8e7d6c5b4a3210",
+            "filename": "invoice-1042.pdf",
+            "size_bytes": 31744,
+            "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
+          }
+        ],
+        "filename": "invoice-1042.pdf",
+        "final_url": "",
+        "page_url": "",
+        "status_code": 0,
+        "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
+      },
+      "name": "create_pdf",
+      "parameters": [
+        {
+          "description": "The HTML to print, with any CSS in <style> tags. Fill in either this or the page URL.",
+          "display_name": "HTML",
+          "examples": [
+            {
+              "label": "A one-line invoice",
+              "value": "<h1>Invoice #1042</h1><p>Total: $120.00</p>"
+            }
+          ],
+          "multiline": true,
+          "name": "html",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A page to print instead, starting with http:// or https://. Leave empty when printing HTML.",
+          "display_name": "Page URL",
+          "name": "url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Letter unless chosen otherwise.",
+          "display_name": "Paper size",
+          "name": "paper_format",
+          "options": [
+            {
+              "label": "Letter (8.5 x 11 in)",
+              "value": "letter"
+            },
+            {
+              "label": "Legal (8.5 x 14 in)",
+              "value": "legal"
+            },
+            {
+              "label": "Tabloid (11 x 17 in)",
+              "value": "tabloid"
+            },
+            {
+              "label": "Ledger (17 x 11 in)",
+              "value": "ledger"
+            },
+            {
+              "label": "A0",
+              "value": "a0"
+            },
+            {
+              "label": "A1",
+              "value": "a1"
+            },
+            {
+              "label": "A2",
+              "value": "a2"
+            },
+            {
+              "label": "A3",
+              "value": "a3"
+            },
+            {
+              "label": "A4 (210 x 297 mm)",
+              "value": "a4"
+            },
+            {
+              "label": "A5",
+              "value": "a5"
+            },
+            {
+              "label": "A6",
+              "value": "a6"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Print sideways.",
+          "display_name": "Landscape",
+          "name": "landscape",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": true,
+          "description": "Print background colours and images, as the page shows them on screen.",
+          "display_name": "Print backgrounds",
+          "name": "print_background",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. One margin for all four sides, such as 1cm, 0.5in or 20px.",
+          "display_name": "Margins",
+          "examples": [
+            {
+              "label": "1 cm",
+              "value": "1cm"
+            }
+          ],
+          "name": "margin",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Zoom from 0.1 to 2; 1 is actual size.",
+          "display_name": "Scale",
+          "maximum": 2,
+          "minimum": 0.1,
+          "name": "scale",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Which pages to keep, such as 1-5, 8, 11-13.",
+          "display_name": "Pages",
+          "name": "page_ranges",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. HTML for the top of every page. Elements with the class pageNumber, totalPages, date, title or url are filled in. Set a font-size, as it starts tiny, and leave room for it with a margin.",
+          "display_name": "Header",
+          "multiline": true,
+          "name": "header_template",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. HTML for the bottom of every page, filled in the same way as the header.",
+          "display_name": "Footer",
+          "examples": [
+            {
+              "label": "Page numbers",
+              "value": "<div style=\"font-size:9px;width:100%;text-align:center\">Page <span class=\"pageNumber\"></span> of <span class=\"totalPages\"></span></div>"
+            }
+          ],
+          "multiline": true,
+          "name": "footer_template",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Use a size set by an @page rule in the HTML over the paper size.",
+          "display_name": "Use the page size in the CSS",
+          "name": "prefer_css_page_size",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Tag the PDF with the HTML's structure (headings, reading order) for screen readers and parsers.",
+          "display_name": "Accessible PDF",
+          "name": "tagged",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Add bookmarks built from the HTML's headings.",
+          "display_name": "Bookmarks",
+          "name": "outline",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Whether the page's print styles apply (the default) or its on-screen ones.",
+          "display_name": "Styles to use",
+          "name": "media_type",
+          "options": [
+            {
+              "label": "Print styles",
+              "value": "print"
+            },
+            {
+              "label": "Screen styles: as it looks in a browser",
+              "value": "screen"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Close cookie-consent banners and pop-ups before the capture.",
+          "display_name": "Hide cookie banners",
+          "name": "block_consent_modals",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. CSS selector of an element to wait for before reading the page, such as #results or .price. The step fails if it never appears, unless 'Carry on if waiting times out' is on.",
+          "display_name": "Wait for element",
+          "name": "wait_for_selector",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds to let the page fill itself in after it loads, up to 30.",
+          "display_name": "Wait after loading (seconds)",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. When navigation is done. Browserless's default is Load.",
+          "display_name": "Page counts as loaded when",
+          "name": "wait_until",
+          "options": [
+            {
+              "label": "Load: everything, images included, has loaded",
+              "value": "load"
+            },
+            {
+              "label": "The HTML is parsed (fastest)",
+              "value": "domcontentloaded"
+            },
+            {
+              "label": "No network requests for half a second",
+              "value": "networkidle0"
+            },
+            {
+              "label": "At most two network requests for half a second",
+              "value": "networkidle2"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Use the page as it is when a wait or the navigation times out, instead of failing the step.",
+          "display_name": "Carry on if waiting times out",
+          "name": "best_attempt",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Hide the signs of an automated browser from bot detection. Turn on for sites that block or challenge headless browsers.",
+          "display_name": "Stealth mode",
+          "name": "stealth",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Route the browser through Browserless's proxies, for sites that block cloud servers. Proxies spend extra units per MB. Leave empty to connect directly.",
+          "display_name": "Proxy network",
+          "name": "proxy",
+          "options": [
+            {
+              "label": "Residential: harder to block",
+              "value": "residential"
+            },
+            {
+              "label": "Datacenter: cheaper, blocked more often",
+              "value": "datacenter"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country to browse from, such as US, GB or DE, for sites that change by location. Uses the residential proxy unless another network is chosen.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Load the page with an ad blocker, so ads and trackers don't load.",
+          "display_name": "Block ads",
+          "name": "block_ads",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds Browserless may spend on the request before it stops. Your plan sets the default and the most allowed.",
+          "display_name": "Give up after (seconds)",
+          "maximum": 900,
+          "minimum": 1,
+          "name": "timeout_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Name to store the PDF under, such as invoice-1042.pdf. Leave empty to name it after the page.",
+          "display_name": "File name",
+          "name": "filename",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browserless/create-pdf",
+      "result_str_template": "PDF created.",
+      "returns": {
+        "properties": {
+          "byte_size": {
+            "description": "Size of the PDF in bytes",
+            "type": "number"
+          },
+          "content_type": {
+            "description": "MIME type of the PDF",
+            "type": "string"
+          },
+          "document_ref": {
+            "description": "ID of the stored PDF, for a later step that takes a file",
+            "type": "string"
+          },
+          "documents": {
+            "description": "The PDF, saved to your workspace's file storage",
+            "items": {
+              "properties": {
+                "content_type": {
+                  "description": "MIME type of the file",
+                  "type": "string"
+                },
+                "document_ref": {
+                  "description": "ID of the stored file",
+                  "type": "string"
+                },
+                "filename": {
+                  "description": "Name the file was stored under",
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "description": "Size of the file in bytes",
+                  "type": "number"
+                },
+                "url": {
+                  "description": "Link that serves the file",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "filename": {
+            "description": "Name the PDF was stored under",
+            "type": "string"
+          },
+          "final_url": {
+            "description": "Where the page ended up after any redirects",
+            "type": "string"
+          },
+          "page_url": {
+            "description": "The page that was loaded, or empty for rendered HTML",
+            "type": "string"
+          },
+          "status_code": {
+            "description": "HTTP status the site answered with, or 0 for rendered HTML",
+            "type": "number"
+          },
+          "url": {
+            "description": "Link that serves the PDF",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "download_file": {
+      "description": "Run Puppeteer code that makes the browser download a file (click an Export button, say) and save that file to your workspace's file storage. For a file you have a direct link to, 'Export a URL as a file' is simpler.",
+      "display_name": "Download a file with browser code",
+      "display_str_template": "Download a file with browser code.",
+      "handler": "actions.download_file",
+      "id": "browserless_download_file",
+      "method": "POST",
+      "mock_response": {
+        "byte_size": 8412,
+        "content_type": "text/csv",
+        "document_ref": "doc_9f8e7d6c5b4a3210",
+        "documents": [
+          {
+            "content_type": "text/csv",
+            "document_ref": "doc_9f8e7d6c5b4a3210",
+            "filename": "report.csv",
+            "size_bytes": 8412,
+            "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
+          }
+        ],
+        "filename": "report.csv",
+        "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
+      },
+      "name": "download_file",
+      "parameters": [
+        {
+          "description": "A JavaScript module whose default export is an async function. It gets { page, context }, where page is a Puppeteer page, and must wait for the download to finish.",
+          "display_name": "Code",
+          "examples": [
+            {
+              "label": "Click the first CSV link",
+              "value": "export default async ({ page, context }) => {\n  await page.goto(context.url, { waitUntil: \"networkidle2\" });\n  await page.click('a[href$=\".csv\"]');\n  await new Promise((r) => setTimeout(r, 5000));\n};"
+            }
+          ],
+          "multiline": true,
+          "name": "code",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Values to hand the code as context, such as a URL or a search term from an earlier step.",
+          "display_name": "Context",
+          "name": "context",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "default": false,
+          "description": "Hide the signs of an automated browser from bot detection. Turn on for sites that block or challenge headless browsers.",
+          "display_name": "Stealth mode",
+          "name": "stealth",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Route the browser through Browserless's proxies, for sites that block cloud servers. Proxies spend extra units per MB. Leave empty to connect directly.",
+          "display_name": "Proxy network",
+          "name": "proxy",
+          "options": [
+            {
+              "label": "Residential: harder to block",
+              "value": "residential"
+            },
+            {
+              "label": "Datacenter: cheaper, blocked more often",
+              "value": "datacenter"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country to browse from, such as US, GB or DE, for sites that change by location. Uses the residential proxy unless another network is chosen.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Load the page with an ad blocker, so ads and trackers don't load.",
+          "display_name": "Block ads",
+          "name": "block_ads",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds Browserless may spend on the request before it stops. Your plan sets the default and the most allowed.",
+          "display_name": "Give up after (seconds)",
+          "maximum": 900,
+          "minimum": 1,
+          "name": "timeout_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Name to store the file under. Browserless often doesn't pass on the name the site gave the file, and then it is stored as download plus its extension.",
+          "display_name": "File name",
+          "name": "filename",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browserless/download-file",
+      "result_str_template": "File downloaded.",
+      "returns": {
+        "properties": {
+          "byte_size": {
+            "description": "Size of the downloaded file in bytes",
+            "type": "number"
+          },
+          "content_type": {
+            "description": "MIME type of the downloaded file",
+            "type": "string"
+          },
+          "document_ref": {
+            "description": "ID of the stored downloaded file, for a later step that takes a file",
+            "type": "string"
+          },
+          "documents": {
+            "description": "The downloaded file, saved to your workspace's file storage",
+            "items": {
+              "properties": {
+                "content_type": {
+                  "description": "MIME type of the file",
+                  "type": "string"
+                },
+                "document_ref": {
+                  "description": "ID of the stored file",
+                  "type": "string"
+                },
+                "filename": {
+                  "description": "Name the file was stored under",
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "description": "Size of the file in bytes",
+                  "type": "number"
+                },
+                "url": {
+                  "description": "Link that serves the file",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "filename": {
+            "description": "Name the downloaded file was stored under",
+            "type": "string"
+          },
+          "url": {
+            "description": "Link that serves the downloaded file",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "export_page": {
+      "description": "Open a URL in a real browser and save what it serves as a file in your workspace's file storage: a PDF, an image or other download as is, or a page's HTML. Can also zip a page with all its images, styles and scripts for an offline copy.",
+      "display_name": "Export a URL as a file",
+      "display_str_template": "Export '{0}' as a file.",
+      "handler": "actions.export_page",
+      "id": "browserless_export_page",
+      "method": "POST",
+      "mock_response": {
+        "byte_size": 13264,
+        "content_type": "application/pdf",
+        "document_ref": "doc_9f8e7d6c5b4a3210",
+        "documents": [
+          {
+            "content_type": "application/pdf",
+            "document_ref": "doc_9f8e7d6c5b4a3210",
+            "filename": "dummy.pdf",
+            "size_bytes": 13264,
+            "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
+          }
+        ],
+        "filename": "dummy.pdf",
+        "final_url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        "page_url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        "status_code": 200,
+        "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
+      },
+      "name": "export_page",
+      "parameters": [
+        {
+          "description": "The page to load, starting with http:// or https://.",
+          "display_name": "Page URL",
+          "examples": [
+            {
+              "label": "Hacker News",
+              "value": "https://news.ycombinator.com/"
+            }
+          ],
+          "name": "url",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Save a zip of the page's HTML with every image, stylesheet and script it uses.",
+          "display_name": "Zip with images and styles",
+          "name": "include_resources",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. CSS selector of an element to wait for before reading the page, such as #results or .price. The step fails if it never appears, unless 'Carry on if waiting times out' is on.",
+          "display_name": "Wait for element",
+          "name": "wait_for_selector",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds to let the page fill itself in after it loads, up to 30.",
+          "display_name": "Wait after loading (seconds)",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. When navigation is done. Browserless's default is Load.",
+          "display_name": "Page counts as loaded when",
+          "name": "wait_until",
+          "options": [
+            {
+              "label": "Load: everything, images included, has loaded",
+              "value": "load"
+            },
+            {
+              "label": "The HTML is parsed (fastest)",
+              "value": "domcontentloaded"
+            },
+            {
+              "label": "No network requests for half a second",
+              "value": "networkidle0"
+            },
+            {
+              "label": "At most two network requests for half a second",
+              "value": "networkidle2"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Use the page as it is when a wait or the navigation times out, instead of failing the step.",
+          "display_name": "Carry on if waiting times out",
+          "name": "best_attempt",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Extra HTTP headers to send with every request the page makes, such as Accept-Language.",
+          "display_name": "Request headers",
+          "name": "headers",
+          "object_key_name": "Header name",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "default": false,
+          "description": "Hide the signs of an automated browser from bot detection. Turn on for sites that block or challenge headless browsers.",
+          "display_name": "Stealth mode",
+          "name": "stealth",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Route the browser through Browserless's proxies, for sites that block cloud servers. Proxies spend extra units per MB. Leave empty to connect directly.",
+          "display_name": "Proxy network",
+          "name": "proxy",
+          "options": [
+            {
+              "label": "Residential: harder to block",
+              "value": "residential"
+            },
+            {
+              "label": "Datacenter: cheaper, blocked more often",
+              "value": "datacenter"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country to browse from, such as US, GB or DE, for sites that change by location. Uses the residential proxy unless another network is chosen.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Load the page with an ad blocker, so ads and trackers don't load.",
+          "display_name": "Block ads",
+          "name": "block_ads",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds Browserless may spend on the request before it stops. Your plan sets the default and the most allowed.",
+          "display_name": "Give up after (seconds)",
+          "maximum": 900,
+          "minimum": 1,
+          "name": "timeout_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Name to store the file under. Leave empty to name it after the page.",
+          "display_name": "File name",
+          "name": "filename",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browserless/export-page",
+      "result_str_template": "File saved.",
+      "returns": {
+        "properties": {
+          "byte_size": {
+            "description": "Size of the file in bytes",
+            "type": "number"
+          },
+          "content_type": {
+            "description": "MIME type of the file",
+            "type": "string"
+          },
+          "document_ref": {
+            "description": "ID of the stored file, for a later step that takes a file",
+            "type": "string"
+          },
+          "documents": {
+            "description": "The file, saved to your workspace's file storage",
+            "items": {
+              "properties": {
+                "content_type": {
+                  "description": "MIME type of the file",
+                  "type": "string"
+                },
+                "document_ref": {
+                  "description": "ID of the stored file",
+                  "type": "string"
+                },
+                "filename": {
+                  "description": "Name the file was stored under",
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "description": "Size of the file in bytes",
+                  "type": "number"
+                },
+                "url": {
+                  "description": "Link that serves the file",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "filename": {
+            "description": "Name the file was stored under",
+            "type": "string"
+          },
+          "final_url": {
+            "description": "Where the URL ended up after any redirects",
+            "type": "string"
+          },
+          "page_url": {
+            "description": "The URL exported",
+            "type": "string"
+          },
+          "status_code": {
+            "description": "HTTP status the site answered with, or 0",
+            "type": "number"
+          },
+          "url": {
+            "description": "Link that serves the file",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "extract_links": {
-      "description": "Collect every link on a web page as an absolute http(s) URL. Useful for walking a site: feed the list into a loop and scrape each page in turn.",
+      "description": "Collect every link on a web page as an absolute http(s) URL. Useful for walking a site: feed the list into a loop and scrape each page in turn. Keep only some parts of the page to collect just their links.",
       "display_name": "Extract links from a page",
       "display_str_template": "Extract the links on '{0}'.",
       "handler": "actions.extract_links",
@@ -137,9 +1124,11 @@
         ],
         "status_code": 200,
         "strategy": "http-fetch",
+        "title": "Hacker News",
         "url": "https://news.ycombinator.com/"
       },
       "name": "extract_links",
+      "output_formatter": "actions.format_extract_links_output",
       "parameters": [
         {
           "description": "The page to load, starting with http:// or https://.",
@@ -170,6 +1159,119 @@
           ],
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country the proxy should exit from, such as US, GB or DE, if the site needs a proxy.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Leave out navigation, footers, sidebars, scripts and styles. Can't be combined with 'Only these parts'.",
+          "display_name": "Skip navigation and footers",
+          "name": "only_main_content",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. CSS selectors of the parts to keep, such as article or .price, up to 100. The whole page comes back if none match.",
+          "display_name": "Only these parts",
+          "name": "include_tags",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. CSS selectors of the parts to drop, such as nav or #cookie-banner, up to 100. Can't be combined with 'Only these parts'.",
+          "display_name": "Leave out these parts",
+          "name": "exclude_tags",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Seconds to let the page fill itself in after it loads, up to 30. Any wait makes Browserless use a real browser.",
+          "display_name": "Wait after loading (seconds)",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Up to 20 steps to run in the page before it is read, such as closing a cookie banner or typing a search. Each has a type (wait, click, write, scroll, scrape or executeJavascript) and the fields it needs. Any step makes Browserless use a real browser.",
+          "display_name": "Do first",
+          "name": "browser_actions",
+          "required": false,
+          "schema": {
+            "items": {
+              "properties": {
+                "milliseconds": {
+                  "description": "How long a wait lasts, up to 30000",
+                  "type": "number"
+                },
+                "script": {
+                  "description": "JavaScript to run in the page, for executeJavascript. What it returns comes back in script_results.",
+                  "type": "string"
+                },
+                "selector": {
+                  "description": "CSS selector of the element to click, type into, scroll to or wait for",
+                  "type": "string"
+                },
+                "text": {
+                  "description": "What to type, for a write. End it with a new line to press Enter.",
+                  "type": "string"
+                },
+                "timeout": {
+                  "description": "Milliseconds the step may take, up to 30000",
+                  "type": "number"
+                },
+                "type": {
+                  "description": "What to do",
+                  "enum": [
+                    "wait",
+                    "click",
+                    "write",
+                    "scroll",
+                    "scrape",
+                    "executeJavascript"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/browserless/extract-links",
@@ -188,7 +1290,11 @@
             "type": "number"
           },
           "strategy": {
-            "description": "How Browserless fetched the page",
+            "description": "How Browserless fetched the page: http-fetch, http-proxy, browser or browser-captcha",
+            "type": "string"
+          },
+          "title": {
+            "description": "The page's title",
             "type": "string"
           },
           "url": {
@@ -199,8 +1305,1922 @@
         "type": "object"
       }
     },
+    "get_agent_run": {
+      "description": "Check an agent run: its status, its answer once it finishes, the steps it has taken, and any page captures. While it waits for a person, this gives the live link to finish the step at. Results last 7 days.",
+      "display_name": "Get agent run",
+      "display_str_template": "Get agent run '{0}'.",
+      "handler": "actions.get_agent_run",
+      "id": "browserless_get_agent_run",
+      "method": "POST",
+      "mock_response": {
+        "answer": "Example Domain",
+        "capture_errors": {},
+        "completed_at": "2026-10-15T10:00:18.000Z",
+        "created_at": "2026-10-15T10:00:00.000Z",
+        "data": {
+          "answer": "Example Domain",
+          "final_url": "https://example.com",
+          "reason_code": "SUCCESS",
+          "success": true
+        },
+        "document_ref": "doc_9f8e7d6c5b4a3210",
+        "documents": [
+          {
+            "content_type": "image/png",
+            "document_ref": "doc_9f8e7d6c5b4a3210",
+            "filename": "agent-run.png",
+            "size_bytes": 40960,
+            "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
+          }
+        ],
+        "error": "",
+        "expires_at": "2026-10-22T10:00:18.000Z",
+        "html": "",
+        "human_request": {
+          "expires_at": "",
+          "instructions": "",
+          "live_url": "",
+          "outcome": "",
+          "reason": ""
+        },
+        "is_finished": true,
+        "links": [],
+        "markdown": "Example Domain\n==============",
+        "needs_human": false,
+        "replay_error": "",
+        "run_id": "run_abc123def456",
+        "screenshot_url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001",
+        "status": "succeeded",
+        "steps": [
+          "Reading the exact page title",
+          "Recording the successful title lookup"
+        ],
+        "units": 4
+      },
+      "name": "get_agent_run",
+      "output_formatter": "actions.format_get_agent_run_output",
+      "parameters": [
+        {
+          "description": "The agent run's ID, from 'Start an agent task' or 'List agent runs'.",
+          "display_name": "Run ID",
+          "name": "run_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browserless/get-agent-run",
+      "result_str_template": "Agent run fetched.",
+      "returns": {
+        "properties": {
+          "answer": {
+            "description": "The agent's answer, when no answer shape was given",
+            "type": "string"
+          },
+          "capture_errors": {
+            "description": "Why a capture asked for is missing, by capture",
+            "type": "object"
+          },
+          "completed_at": {
+            "description": "When it finished, or empty",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "When it started",
+            "type": "string"
+          },
+          "data": {
+            "description": "The full result, in the answer shape if given",
+            "type": "object"
+          },
+          "document_ref": {
+            "description": "ID of the stored screenshot, or empty when there is none",
+            "type": "string"
+          },
+          "documents": {
+            "description": "The screenshot, saved to your workspace's file storage. Empty when none was taken.",
+            "items": {
+              "properties": {
+                "content_type": {
+                  "description": "MIME type of the file",
+                  "type": "string"
+                },
+                "document_ref": {
+                  "description": "ID of the stored file",
+                  "type": "string"
+                },
+                "filename": {
+                  "description": "Name the file was stored under",
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "description": "Size of the file in bytes",
+                  "type": "number"
+                },
+                "url": {
+                  "description": "Link that serves the file",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "error": {
+            "description": "Why it failed, or empty",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "When the result is deleted, or empty",
+            "type": "string"
+          },
+          "html": {
+            "description": "The last page's HTML, if captured",
+            "type": "string"
+          },
+          "human_request": {
+            "description": "The hand-off to a person, if one was asked for",
+            "properties": {
+              "expires_at": {
+                "description": "When the link stops working",
+                "type": "string"
+              },
+              "instructions": {
+                "description": "What the person should do",
+                "type": "string"
+              },
+              "live_url": {
+                "description": "Where to do it, while paused",
+                "type": "string"
+              },
+              "outcome": {
+                "description": "How the hand-off ended, once it has",
+                "type": "string"
+              },
+              "reason": {
+                "description": "login_wall or step_up_mfa",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "is_finished": {
+            "description": "True once the run has ended, however it ended",
+            "type": "boolean"
+          },
+          "links": {
+            "description": "The last page's links, if captured",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "markdown": {
+            "description": "The last page as markdown, if captured",
+            "type": "string"
+          },
+          "needs_human": {
+            "description": "True while it waits for a person",
+            "type": "boolean"
+          },
+          "replay_error": {
+            "description": "Why no replay was recorded, or empty",
+            "type": "string"
+          },
+          "run_id": {
+            "description": "The run's ID",
+            "type": "string"
+          },
+          "screenshot_url": {
+            "description": "Link that serves the screenshot, or empty",
+            "type": "string"
+          },
+          "status": {
+            "description": "pending, running, needs_human, succeeded, failed, timed_out or stopped",
+            "type": "string"
+          },
+          "steps": {
+            "description": "What the agent did, step by step",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "units": {
+            "description": "Units the agent's model use came to",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_crawl": {
+      "description": "Check a crawl's progress and get its pages, ten at a time, with each page's markdown, HTML or text. Repeat with 'Skip' set to next_skip to get the rest. Results last 24 hours after the crawl finishes.",
+      "display_name": "Get crawl",
+      "display_str_template": "Get crawl '{0}'.",
+      "handler": "actions.get_crawl",
+      "id": "browserless_get_crawl",
+      "method": "POST",
+      "mock_response": {
+        "completed": 15,
+        "crawl_id": "crawl_abc123def456",
+        "expires_at": "2026-10-16T18:05:00.000Z",
+        "failed": 0,
+        "is_finished": true,
+        "next_skip": 10,
+        "pages": [
+          {
+            "content_error": "",
+            "content_url": "https://crawl-artifacts.s3.us-east-1.amazonaws.com/crawls/crawl_abc123def456/page_0a1b2c3d4e5f.json?X-Amz-Signature=...",
+            "description": "HTTP endpoints for common browser tasks.",
+            "error": "",
+            "html": "",
+            "language": "en",
+            "markdown": "# REST APIs\n\nBrowserless REST APIs provide HTTP endpoints...",
+            "raw_text": "",
+            "scraped_at": "2026-10-15T18:01:12.000Z",
+            "source_url": "https://docs.browserless.io/rest-apis/intro",
+            "status": "completed",
+            "status_code": 200,
+            "title": "REST APIs | Browserless.io"
+          }
+        ],
+        "status": "completed",
+        "total": 15
+      },
+      "name": "get_crawl",
+      "output_formatter": "actions.format_get_crawl_output",
+      "parameters": [
+        {
+          "description": "The crawl's ID, from 'Crawl a site' or 'List crawls'.",
+          "display_name": "Crawl ID",
+          "name": "crawl_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. How many pages to skip: the next_skip of the previous call.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "skip",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": true,
+          "description": "Read each finished page's markdown, HTML or text. Turn off to only check progress.",
+          "display_name": "Include page content",
+          "name": "include_content",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/browserless/get-crawl",
+      "result_str_template": "Crawl fetched.",
+      "returns": {
+        "properties": {
+          "completed": {
+            "description": "Pages scraped",
+            "type": "number"
+          },
+          "crawl_id": {
+            "description": "The crawl's ID",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "When the results are deleted, once finished",
+            "type": "string"
+          },
+          "failed": {
+            "description": "Pages that failed",
+            "type": "number"
+          },
+          "is_finished": {
+            "description": "True once the crawl is no longer running",
+            "type": "boolean"
+          },
+          "next_skip": {
+            "description": "The 'Skip' that gets the next pages, or null when these are the last",
+            "type": "number"
+          },
+          "pages": {
+            "description": "This batch of pages",
+            "items": {
+              "properties": {
+                "content_error": {
+                  "description": "Why the stored content couldn't be read, or empty",
+                  "type": "string"
+                },
+                "content_url": {
+                  "description": "Browserless's link to the stored page, valid for an hour",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "The page's meta description",
+                  "type": "string"
+                },
+                "error": {
+                  "description": "Why the page failed, or empty",
+                  "type": "string"
+                },
+                "html": {
+                  "description": "The page's HTML",
+                  "type": "string"
+                },
+                "language": {
+                  "description": "The page's language",
+                  "type": "string"
+                },
+                "markdown": {
+                  "description": "The page as markdown",
+                  "type": "string"
+                },
+                "raw_text": {
+                  "description": "The page's text",
+                  "type": "string"
+                },
+                "scraped_at": {
+                  "description": "When it was scraped (ISO 8601)",
+                  "type": "string"
+                },
+                "source_url": {
+                  "description": "The page's address",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "queued, in-progress, completed, failed or cancelled",
+                  "type": "string"
+                },
+                "status_code": {
+                  "description": "HTTP status the page answered with",
+                  "type": "number"
+                },
+                "title": {
+                  "description": "The page's title",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "in-progress, completed, failed or cancelled",
+            "type": "string"
+          },
+          "total": {
+            "description": "Pages found so far",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_profile": {
+      "beta": true,
+      "description": "Look up one saved sign-in profile by name, and whether each of its logins is still valid, about to expire or expired.",
+      "display_name": "Get profile",
+      "display_str_template": "Get Browserless profile '{0}'.",
+      "handler": "actions.get_profile",
+      "id": "browserless_get_profile",
+      "method": "POST",
+      "mock_response": {
+        "cookie_count": 38,
+        "created_at": "2026-09-01T10:00:00.000Z",
+        "last_used_at": "2026-10-14T16:20:00.000Z",
+        "logins": [
+          {
+            "domain": "app.acme.com",
+            "expires_at": "2026-11-30T09:00:00.000Z",
+            "status": "valid"
+          }
+        ],
+        "name": "acme-prod",
+        "origin_count": 3,
+        "profile_id": "prof_4f1c2a9e",
+        "updated_at": "2026-09-01T10:00:00.000Z"
+      },
+      "name": "get_profile",
+      "output_formatter": "actions.format_profile_output",
+      "parameters": [
+        {
+          "description": "The profile's name, as 'List profiles' shows it.",
+          "display_name": "Profile name",
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browserless/get-profile",
+      "result_str_template": "Profile fetched.",
+      "returns": {
+        "properties": {
+          "cookie_count": {
+            "description": "Cookies saved in it",
+            "type": "number"
+          },
+          "created_at": {
+            "description": "When it was created",
+            "type": "string"
+          },
+          "last_used_at": {
+            "description": "When it was last used, or empty",
+            "type": "string"
+          },
+          "logins": {
+            "description": "Each saved login and whether it is still valid",
+            "items": {
+              "properties": {
+                "domain": {
+                  "description": "The site",
+                  "type": "string"
+                },
+                "expires_at": {
+                  "description": "When the login expires (ISO 8601)",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "valid, expiring_soon, expired or unknown",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "The profile's name, which actions take as 'Sign-in profile'",
+            "type": "string"
+          },
+          "origin_count": {
+            "description": "Sites whose local storage or IndexedDB it holds",
+            "type": "number"
+          },
+          "profile_id": {
+            "description": "The profile's ID",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When it last changed",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_rendered_html": {
+      "description": "Load a page in a real browser, let its JavaScript run, and return the HTML it ends up with. Wait for an element to appear, skip images and fonts to save time, or render HTML of your own instead of a URL.",
+      "display_name": "Get a page's rendered HTML",
+      "display_str_template": "Get the rendered HTML of '{0}'.",
+      "handler": "actions.get_rendered_html",
+      "id": "browserless_get_rendered_html",
+      "method": "POST",
+      "mock_response": {
+        "final_url": "https://example.com/",
+        "html": "<!DOCTYPE html><html><head><title>Example Domain</title></head>...</html>",
+        "status_code": 200,
+        "url": "https://example.com/"
+      },
+      "name": "get_rendered_html",
+      "parameters": [
+        {
+          "description": "The page to load, starting with http:// or https://. Leave empty to render the HTML instead.",
+          "display_name": "Page URL",
+          "examples": [
+            {
+              "label": "Hacker News",
+              "value": "https://news.ycombinator.com/"
+            }
+          ],
+          "name": "url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "HTML to render instead of loading a page, with any CSS in <style> tags. Fill in either this or the page URL.",
+          "display_name": "HTML",
+          "multiline": true,
+          "name": "html",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. CSS selector of an element to wait for before reading the page, such as #results or .price. The step fails if it never appears, unless 'Carry on if waiting times out' is on.",
+          "display_name": "Wait for element",
+          "name": "wait_for_selector",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds to let the page fill itself in after it loads, up to 30.",
+          "display_name": "Wait after loading (seconds)",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. When navigation is done. Browserless's default is Load.",
+          "display_name": "Page counts as loaded when",
+          "name": "wait_until",
+          "options": [
+            {
+              "label": "Load: everything, images included, has loaded",
+              "value": "load"
+            },
+            {
+              "label": "The HTML is parsed (fastest)",
+              "value": "domcontentloaded"
+            },
+            {
+              "label": "No network requests for half a second",
+              "value": "networkidle0"
+            },
+            {
+              "label": "At most two network requests for half a second",
+              "value": "networkidle2"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Use the page as it is when a wait or the navigation times out, instead of failing the step.",
+          "display_name": "Carry on if waiting times out",
+          "name": "best_attempt",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Kinds of request to skip, which makes pages load faster. Skipping scripts can stop a page from filling itself in.",
+          "display_name": "Don't load",
+          "multi_select": true,
+          "name": "block_resources",
+          "options": [
+            {
+              "label": "Images",
+              "value": "image"
+            },
+            {
+              "label": "Video and audio",
+              "value": "media"
+            },
+            {
+              "label": "Fonts",
+              "value": "font"
+            },
+            {
+              "label": "Stylesheets",
+              "value": "stylesheet"
+            },
+            {
+              "label": "Scripts",
+              "value": "script"
+            },
+            {
+              "label": "XHR requests",
+              "value": "xhr"
+            },
+            {
+              "label": "Fetch requests",
+              "value": "fetch"
+            },
+            {
+              "label": "WebSockets",
+              "value": "websocket"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Extra HTTP headers to send with every request the page makes, such as Accept-Language.",
+          "display_name": "Request headers",
+          "name": "headers",
+          "object_key_name": "Header name",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "default": false,
+          "description": "Hide the signs of an automated browser from bot detection. Turn on for sites that block or challenge headless browsers.",
+          "display_name": "Stealth mode",
+          "name": "stealth",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Route the browser through Browserless's proxies, for sites that block cloud servers. Proxies spend extra units per MB. Leave empty to connect directly.",
+          "display_name": "Proxy network",
+          "name": "proxy",
+          "options": [
+            {
+              "label": "Residential: harder to block",
+              "value": "residential"
+            },
+            {
+              "label": "Datacenter: cheaper, blocked more often",
+              "value": "datacenter"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country to browse from, such as US, GB or DE, for sites that change by location. Uses the residential proxy unless another network is chosen.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Load the page with an ad blocker, so ads and trackers don't load.",
+          "display_name": "Block ads",
+          "name": "block_ads",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds Browserless may spend on the request before it stops. Your plan sets the default and the most allowed.",
+          "display_name": "Give up after (seconds)",
+          "maximum": 900,
+          "minimum": 1,
+          "name": "timeout_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browserless/get-rendered-html",
+      "result_str_template": "HTML fetched.",
+      "returns": {
+        "properties": {
+          "final_url": {
+            "description": "Where the page ended up after any redirects",
+            "type": "string"
+          },
+          "html": {
+            "description": "The page's HTML after its scripts ran",
+            "type": "string"
+          },
+          "status_code": {
+            "description": "HTTP status the site answered with, or 0",
+            "type": "number"
+          },
+          "url": {
+            "description": "The page that was loaded, or empty for HTML",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_agent_runs": {
+      "description": "List your account's agent runs, newest first.",
+      "display_name": "List agent runs",
+      "display_str_template": "List Browserless agent runs.",
+      "handler": "actions.list_agent_runs",
+      "id": "browserless_list_agent_runs",
+      "method": "POST",
+      "mock_response": {
+        "next_cursor": "",
+        "runs": [
+          {
+            "completed_at": "2026-10-15T10:00:18.000Z",
+            "created_at": "2026-10-15T10:00:00.000Z",
+            "expires_at": "2026-10-22T10:00:18.000Z",
+            "run_id": "run_abc123def456",
+            "status": "succeeded",
+            "task_preview": "Go to https://news.ycombinator.com and list the titles of the top 3 stories.",
+            "units": 2
+          }
+        ]
+      },
+      "name": "list_agent_runs",
+      "output_formatter": "actions.format_list_agent_runs_output",
+      "parameters": [
+        {
+          "description": "Optional. Only runs in this state.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Pending",
+              "value": "pending"
+            },
+            {
+              "label": "Running",
+              "value": "running"
+            },
+            {
+              "label": "Waiting for a person",
+              "value": "needs_human"
+            },
+            {
+              "label": "Succeeded",
+              "value": "succeeded"
+            },
+            {
+              "label": "Failed",
+              "value": "failed"
+            },
+            {
+              "label": "Timed out",
+              "value": "timed_out"
+            },
+            {
+              "label": "Stopped",
+              "value": "stopped"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. How many to return, from 1 to 100. Browserless returns 20.",
+          "display_name": "Results per page",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. The next_cursor from an earlier call, to get the next page.",
+          "display_name": "Next page cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browserless/list-agent-runs",
+      "result_str_template": "Agent runs listed.",
+      "returns": {
+        "properties": {
+          "next_cursor": {
+            "description": "Cursor for the next page, or empty when none",
+            "type": "string"
+          },
+          "runs": {
+            "description": "The runs on this page",
+            "items": {
+              "properties": {
+                "completed_at": {
+                  "description": "When it finished, or empty",
+                  "type": "string"
+                },
+                "created_at": {
+                  "description": "When it started",
+                  "type": "string"
+                },
+                "expires_at": {
+                  "description": "When its result is deleted, or empty",
+                  "type": "string"
+                },
+                "run_id": {
+                  "description": "The run's ID",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "Its status",
+                  "type": "string"
+                },
+                "task_preview": {
+                  "description": "The start of its task",
+                  "type": "string"
+                },
+                "units": {
+                  "description": "Units used",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_crawls": {
+      "description": "List your account's crawls, newest first, with their progress.",
+      "display_name": "List crawls",
+      "display_str_template": "List Browserless crawls.",
+      "handler": "actions.list_crawls",
+      "id": "browserless_list_crawls",
+      "method": "POST",
+      "mock_response": {
+        "crawls": [
+          {
+            "completed": 15,
+            "completed_at": "2026-10-15T18:05:00.000Z",
+            "crawl_id": "crawl_abc123def456",
+            "created_at": "2026-10-15T18:00:00.000Z",
+            "status": "completed",
+            "total": 15,
+            "url": "https://docs.browserless.io"
+          }
+        ],
+        "next_cursor": ""
+      },
+      "name": "list_crawls",
+      "output_formatter": "actions.format_list_crawls_output",
+      "parameters": [
+        {
+          "description": "Optional. Only crawls in this state.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "In progress",
+              "value": "in-progress"
+            },
+            {
+              "label": "Completed",
+              "value": "completed"
+            },
+            {
+              "label": "Failed",
+              "value": "failed"
+            },
+            {
+              "label": "Cancelled",
+              "value": "cancelled"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. How many to return, from 1 to 100. Browserless returns 20.",
+          "display_name": "Results per page",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. The next_cursor from an earlier call, to get the next page.",
+          "display_name": "Next page cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browserless/list-crawls",
+      "result_str_template": "Crawls listed.",
+      "returns": {
+        "properties": {
+          "crawls": {
+            "description": "The crawls on this page",
+            "items": {
+              "properties": {
+                "completed": {
+                  "description": "Pages scraped",
+                  "type": "number"
+                },
+                "completed_at": {
+                  "description": "When it finished, or empty",
+                  "type": "string"
+                },
+                "crawl_id": {
+                  "description": "The crawl's ID",
+                  "type": "string"
+                },
+                "created_at": {
+                  "description": "When it started",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "in-progress, completed, failed or cancelled",
+                  "type": "string"
+                },
+                "total": {
+                  "description": "Pages found",
+                  "type": "number"
+                },
+                "url": {
+                  "description": "Where it started",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "description": "Cursor for the next page, or empty when none",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_profiles": {
+      "description": "List the sign-in profiles saved in Browserless (uploaded with its CLI or API), with how many cookies each holds and whether its logins are still valid. Give a profile's name to other actions to browse signed in.",
+      "display_name": "List profiles",
+      "display_str_template": "List Browserless profiles.",
+      "handler": "actions.list_profiles",
+      "id": "browserless_list_profiles",
+      "method": "POST",
+      "mock_response": {
+        "profile_count": 1,
+        "profiles": [
+          {
+            "cookie_count": 38,
+            "created_at": "2026-09-01T10:00:00.000Z",
+            "last_used_at": "2026-10-14T16:20:00.000Z",
+            "logins": [
+              {
+                "domain": "app.acme.com",
+                "expires_at": "2026-11-30T09:00:00.000Z",
+                "status": "valid"
+              }
+            ],
+            "name": "acme-prod",
+            "origin_count": 3,
+            "profile_id": "prof_4f1c2a9e",
+            "updated_at": "2026-09-01T10:00:00.000Z"
+          }
+        ]
+      },
+      "name": "list_profiles",
+      "output_formatter": "actions.format_list_profiles_output",
+      "parameters": [
+        {
+          "description": "Optional. How many to return, up to 1000. Browserless returns 100.",
+          "display_name": "At most",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. How many to skip, to page through them.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browserless/list-profiles",
+      "result_str_template": "Profiles listed.",
+      "returns": {
+        "properties": {
+          "profile_count": {
+            "description": "How many came back",
+            "type": "number"
+          },
+          "profiles": {
+            "description": "The saved profiles",
+            "items": {
+              "properties": {
+                "cookie_count": {
+                  "description": "Cookies saved in it",
+                  "type": "number"
+                },
+                "created_at": {
+                  "description": "When it was created",
+                  "type": "string"
+                },
+                "last_used_at": {
+                  "description": "When it was last used, or empty",
+                  "type": "string"
+                },
+                "logins": {
+                  "description": "Each saved login and whether it is still valid",
+                  "items": {
+                    "properties": {
+                      "domain": {
+                        "description": "The site",
+                        "type": "string"
+                      },
+                      "expires_at": {
+                        "description": "When the login expires (ISO 8601)",
+                        "type": "string"
+                      },
+                      "status": {
+                        "description": "valid, expiring_soon, expired or unknown",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "description": "The profile's name, which actions take as 'Sign-in profile'",
+                  "type": "string"
+                },
+                "origin_count": {
+                  "description": "Sites whose local storage or IndexedDB it holds",
+                  "type": "number"
+                },
+                "profile_id": {
+                  "description": "The profile's ID",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "When it last changed",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_scrapers": {
+      "description": "List Browserless's ready-made scrapers (Zillow listings and property details today) and what each call costs. Free to call.",
+      "display_name": "List predefined scrapers",
+      "display_str_template": "List Browserless's predefined scrapers.",
+      "handler": "actions.list_scrapers",
+      "id": "browserless_list_scrapers",
+      "method": "POST",
+      "mock_response": {
+        "catalog_version": "1.2.0",
+        "scrapers": [
+          {
+            "api": "search",
+            "cache_seconds": 1800,
+            "hostnames": [
+              "zillow.com",
+              "www.zillow.com"
+            ],
+            "scraper": "zillow",
+            "units": 10
+          },
+          {
+            "api": "property",
+            "cache_seconds": 21600,
+            "hostnames": [
+              "zillow.com",
+              "www.zillow.com"
+            ],
+            "scraper": "zillow",
+            "units": 10
+          }
+        ]
+      },
+      "name": "list_scrapers",
+      "output_formatter": "actions.format_list_scrapers_output",
+      "parameters": [],
+      "path": "/actions/library/browserless/list-scrapers",
+      "result_str_template": "Scrapers listed.",
+      "returns": {
+        "properties": {
+          "catalog_version": {
+            "description": "Version of Browserless's scraper catalog",
+            "type": "string"
+          },
+          "scrapers": {
+            "description": "One row per scraper call",
+            "items": {
+              "properties": {
+                "api": {
+                  "description": "One of its calls, such as search",
+                  "type": "string"
+                },
+                "cache_seconds": {
+                  "description": "How long a result counts as fresh",
+                  "type": "number"
+                },
+                "hostnames": {
+                  "description": "The sites it works on",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "scraper": {
+                  "description": "The scraper, such as zillow",
+                  "type": "string"
+                },
+                "units": {
+                  "description": "Units each call costs",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "map_site": {
+      "description": "List the pages of a site from its sitemap and its links, with titles and descriptions where known. Give a search term to put the most relevant pages first. Cloud plans only.",
+      "display_name": "Map a site",
+      "display_str_template": "Map the pages of '{0}'.",
+      "handler": "actions.map_site",
+      "id": "browserless_map_site",
+      "method": "POST",
+      "mock_response": {
+        "link_count": 2,
+        "links": [
+          {
+            "description": "Simple, transparent pricing for headless browser automation.",
+            "title": "Pricing",
+            "url": "https://www.browserless.io/pricing"
+          },
+          {
+            "description": "Insights, tips, and updates on headless browser automation.",
+            "title": "Blog",
+            "url": "https://www.browserless.io/blog"
+          }
+        ],
+        "url": "https://www.browserless.io"
+      },
+      "name": "map_site",
+      "output_formatter": "actions.format_map_site_output",
+      "parameters": [
+        {
+          "description": "The site to start from, starting with http:// or https://.",
+          "display_name": "Site URL",
+          "examples": [
+            {
+              "label": "Browserless docs",
+              "value": "https://docs.browserless.io"
+            }
+          ],
+          "name": "url",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Order the pages by how well they match this, such as pricing.",
+          "display_name": "Most relevant to",
+          "name": "search",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The most pages to return, up to 5000.",
+          "display_name": "At most",
+          "maximum": 5000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. How to use the site's sitemap.",
+          "display_name": "Sitemap",
+          "name": "sitemap",
+          "options": [
+            {
+              "label": "Sitemap and links on the page (default)",
+              "value": "include"
+            },
+            {
+              "label": "Only the sitemap",
+              "value": "only"
+            },
+            {
+              "label": "Only links on the page",
+              "value": "skip"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Include pages on subdomains, such as blog.example.com.",
+          "display_name": "Include subdomains",
+          "name": "include_subdomains",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": true,
+          "description": "Drop the ?query part of addresses, so variants count once.",
+          "display_name": "Treat ?query variants as one page",
+          "name": "ignore_query_parameters",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Two-letter code of the country to look from, such as GB, for sites that differ by location.",
+          "display_name": "Browse from",
+          "name": "country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Route the browser through Browserless's proxies, for sites that block cloud servers. Proxies spend extra units per MB. Leave empty to connect directly.",
+          "display_name": "Proxy network",
+          "name": "proxy",
+          "options": [
+            {
+              "label": "Residential: harder to block",
+              "value": "residential"
+            },
+            {
+              "label": "Datacenter: cheaper, blocked more often",
+              "value": "datacenter"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds Browserless may spend on the request before it stops. Your plan sets the default and the most allowed.",
+          "display_name": "Give up after (seconds)",
+          "maximum": 900,
+          "minimum": 1,
+          "name": "timeout_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browserless/map-site",
+      "result_str_template": "Site mapped.",
+      "returns": {
+        "properties": {
+          "link_count": {
+            "description": "How many pages",
+            "type": "number"
+          },
+          "links": {
+            "description": "The pages found",
+            "items": {
+              "properties": {
+                "description": {
+                  "description": "Its description, or empty",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "Its title, or empty",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "The page",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "url": {
+            "description": "The site mapped",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "run_browserql": {
+      "description": "Run a BrowserQL query: a whole browser session written as GraphQL mutations (go to a page, click, type, solve a captcha, read text) and run in one request. Write and test it in the BrowserQL editor in your Browserless dashboard, then paste it here. Stealth mode suits protected sites.",
+      "display_name": "Run a BrowserQL query",
+      "display_str_template": "Run a BrowserQL query.",
+      "handler": "actions.run_browserql",
+      "id": "browserless_run_browserql",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "goto": {
+            "status": 200
+          },
+          "paragraph": {
+            "text": "This domain is for use in documentation examples without needing permission."
+          }
+        },
+        "errors": []
+      },
+      "name": "run_browserql",
+      "parameters": [
+        {
+          "description": "The BrowserQL (GraphQL) query to run.",
+          "display_name": "Query",
+          "examples": [
+            {
+              "label": "Read a paragraph",
+              "value": "mutation {\n  goto(url: \"https://example.com\", waitUntil: load) { status }\n  paragraph: text(selector: \"p\") { text }\n}"
+            }
+          ],
+          "multiline": true,
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Values for the query's $variables.",
+          "display_name": "Variables",
+          "name": "variables",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Optional. Which named operation to run, when the query has several.",
+          "display_name": "Operation name",
+          "name": "operation_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Run on Browserless's stealth browser, which hides that it is automated. Best for bot-protected sites.",
+          "display_name": "Stealth mode",
+          "name": "stealth",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Route the browser through Browserless's proxies, for sites that block cloud servers. Proxies spend extra units per MB. Leave empty to connect directly.",
+          "display_name": "Proxy network",
+          "name": "proxy",
+          "options": [
+            {
+              "label": "Residential: harder to block",
+              "value": "residential"
+            },
+            {
+              "label": "Datacenter: cheaper, blocked more often",
+              "value": "datacenter"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country to browse from, such as US, GB or DE, for sites that change by location. Uses the residential proxy unless another network is chosen.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Add human-like mouse movement and typing delays.",
+          "display_name": "Move like a person",
+          "name": "humanlike",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Close cookie-consent banners and pop-ups before the capture.",
+          "display_name": "Hide cookie banners",
+          "name": "block_consent_modals",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Load the page with an ad blocker, so ads and trackers don't load.",
+          "display_name": "Block ads",
+          "name": "block_ads",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds Browserless may spend on the request before it stops. Your plan sets the default and the most allowed.",
+          "display_name": "Give up after (seconds)",
+          "maximum": 900,
+          "minimum": 1,
+          "name": "timeout_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browserless/run-browserql",
+      "result_str_template": "Query finished.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "What each mutation returned, by its name or alias",
+            "type": "object"
+          },
+          "errors": {
+            "description": "Errors from mutations that failed, if any",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "run_function": {
+      "description": "Run your own Puppeteer code in a Browserless browser, for steps the other actions don't cover: sign in, click through a flow, then return what you found. JSON or text it returns comes back as the result; a file it returns (page.pdf(), a screenshot) is saved to your workspace's file storage.",
+      "display_name": "Run browser code",
+      "display_str_template": "Run browser code in Browserless.",
+      "handler": "actions.run_function",
+      "id": "browserless_run_function",
+      "method": "POST",
+      "mock_response": {
+        "byte_size": 26,
+        "content_type": "application/json",
+        "document_ref": "",
+        "documents": [],
+        "filename": "",
+        "result": {
+          "title": "Example Domain"
+        },
+        "url": ""
+      },
+      "name": "run_function",
+      "parameters": [
+        {
+          "description": "A JavaScript module whose default export is an async function. It gets { page, context }, where page is a Puppeteer page, and returns { data, type } or a value.",
+          "display_name": "Code",
+          "examples": [
+            {
+              "label": "Return a page's title",
+              "value": "export default async ({ page, context }) => {\n  await page.goto(context.url);\n  return { data: { title: await page.title() }, type: \"application/json\" };\n};"
+            }
+          ],
+          "multiline": true,
+          "name": "code",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Values to hand the code as context, such as a URL or a search term from an earlier step.",
+          "display_name": "Context",
+          "name": "context",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "default": false,
+          "description": "Hide the signs of an automated browser from bot detection. Turn on for sites that block or challenge headless browsers.",
+          "display_name": "Stealth mode",
+          "name": "stealth",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Route the browser through Browserless's proxies, for sites that block cloud servers. Proxies spend extra units per MB. Leave empty to connect directly.",
+          "display_name": "Proxy network",
+          "name": "proxy",
+          "options": [
+            {
+              "label": "Residential: harder to block",
+              "value": "residential"
+            },
+            {
+              "label": "Datacenter: cheaper, blocked more often",
+              "value": "datacenter"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country to browse from, such as US, GB or DE, for sites that change by location. Uses the residential proxy unless another network is chosen.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Load the page with an ad blocker, so ads and trackers don't load.",
+          "display_name": "Block ads",
+          "name": "block_ads",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds Browserless may spend on the request before it stops. Your plan sets the default and the most allowed.",
+          "display_name": "Give up after (seconds)",
+          "maximum": 900,
+          "minimum": 1,
+          "name": "timeout_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browserless/run-function",
+      "result_str_template": "Code finished.",
+      "returns": {
+        "properties": {
+          "byte_size": {
+            "description": "Size of the file the code returned, if any, in bytes",
+            "type": "number"
+          },
+          "content_type": {
+            "description": "MIME type of the file the code returned, if any,",
+            "type": "string"
+          },
+          "document_ref": {
+            "description": "ID of the stored file the code returned, if any,, for a later step that takes a file",
+            "type": "string"
+          },
+          "documents": {
+            "description": "The file the code returned, if any,, saved to your workspace's file storage",
+            "items": {
+              "properties": {
+                "content_type": {
+                  "description": "MIME type of the file",
+                  "type": "string"
+                },
+                "document_ref": {
+                  "description": "ID of the stored file",
+                  "type": "string"
+                },
+                "filename": {
+                  "description": "Name the file was stored under",
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "description": "Size of the file in bytes",
+                  "type": "number"
+                },
+                "url": {
+                  "description": "Link that serves the file",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "filename": {
+            "description": "Name the file the code returned, if any, was stored under",
+            "type": "string"
+          },
+          "result": {
+            "description": "What the code returned, when it is JSON or text; null when it returned a file"
+          },
+          "url": {
+            "description": "Link that serves the file the code returned, if any,",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "run_lighthouse_audit": {
+      "description": "Run Google Lighthouse on a page and get its performance, accessibility, best-practices and SEO scores out of 100, its speed metrics (Largest Contentful Paint and others), and the audits it failed with Lighthouse's advice. Takes from several seconds to a few minutes.",
+      "display_name": "Run a Lighthouse audit",
+      "display_str_template": "Run Lighthouse on '{0}'.",
+      "handler": "actions.run_lighthouse_audit",
+      "id": "browserless_run_lighthouse_audit",
+      "method": "POST",
+      "mock_response": {
+        "accessibility_score": 88,
+        "best_practices_score": 100,
+        "failed_audits": [
+          {
+            "description": "Low-contrast text is difficult or impossible for many users to read.",
+            "display_value": "",
+            "id": "color-contrast",
+            "score": 0,
+            "title": "Background and foreground colors do not have a sufficient contrast ratio."
+          }
+        ],
+        "fetched_at": "2026-10-15T18:02:11.000Z",
+        "final_url": "https://example.com/",
+        "lighthouse_version": "13.0.3",
+        "metrics": [
+          {
+            "display_value": "1.9 s",
+            "id": "largest-contentful-paint",
+            "score": 91,
+            "title": "Largest Contentful Paint",
+            "unit": "millisecond",
+            "value": 1912.4
+          }
+        ],
+        "performance_score": 92,
+        "seo_score": 90,
+        "url": "https://example.com/",
+        "warnings": []
+      },
+      "name": "run_lighthouse_audit",
+      "output_formatter": "actions.format_lighthouse_output",
+      "parameters": [
+        {
+          "description": "The page to load, starting with http:// or https://.",
+          "display_name": "Page URL",
+          "examples": [
+            {
+              "label": "Hacker News",
+              "value": "https://news.ycombinator.com/"
+            }
+          ],
+          "name": "url",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Which scores to work out. All four if none.",
+          "display_name": "Categories",
+          "multi_select": true,
+          "name": "categories",
+          "options": [
+            {
+              "label": "Performance",
+              "value": "performance"
+            },
+            {
+              "label": "Accessibility",
+              "value": "accessibility"
+            },
+            {
+              "label": "Best practices",
+              "value": "best-practices"
+            },
+            {
+              "label": "SEO",
+              "value": "seo"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Lighthouse audit IDs to run on their own, such as unminified-css or color-contrast. Leave empty to run the categories' audits.",
+          "display_name": "Only these audits",
+          "name": "audits",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Seconds Browserless may spend on the request before it stops. Your plan sets the default and the most allowed.",
+          "display_name": "Give up after (seconds)",
+          "maximum": 900,
+          "minimum": 1,
+          "name": "timeout_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browserless/run-lighthouse-audit",
+      "result_str_template": "Audit finished.",
+      "returns": {
+        "properties": {
+          "accessibility_score": {
+            "description": "Out of 100, or null if not audited",
+            "type": "number"
+          },
+          "best_practices_score": {
+            "description": "Out of 100, or null if not audited",
+            "type": "number"
+          },
+          "failed_audits": {
+            "description": "Audits scoring under 90, worst first",
+            "items": {
+              "properties": {
+                "description": {
+                  "description": "Lighthouse's advice, in markdown",
+                  "type": "string"
+                },
+                "display_value": {
+                  "description": "What it found, such as 'Potential savings of 40 KiB'",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Lighthouse's ID",
+                  "type": "string"
+                },
+                "score": {
+                  "description": "Out of 100",
+                  "type": "number"
+                },
+                "title": {
+                  "description": "What it checks",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "fetched_at": {
+            "description": "When the audit ran (ISO 8601)",
+            "type": "string"
+          },
+          "final_url": {
+            "description": "Where the page ended up after redirects",
+            "type": "string"
+          },
+          "lighthouse_version": {
+            "description": "The Lighthouse version that ran",
+            "type": "string"
+          },
+          "metrics": {
+            "description": "The speed metrics, when performance was audited",
+            "items": {
+              "properties": {
+                "display_value": {
+                  "description": "As Lighthouse shows it, such as 1.2 s",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Lighthouse's ID",
+                  "type": "string"
+                },
+                "score": {
+                  "description": "Out of 100",
+                  "type": "number"
+                },
+                "title": {
+                  "description": "Its name",
+                  "type": "string"
+                },
+                "unit": {
+                  "description": "millisecond or unitless",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Measured value",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "performance_score": {
+            "description": "Out of 100, or null if not audited",
+            "type": "number"
+          },
+          "seo_score": {
+            "description": "Out of 100, or null if not audited",
+            "type": "number"
+          },
+          "url": {
+            "description": "The page audited",
+            "type": "string"
+          },
+          "warnings": {
+            "description": "Problems Lighthouse ran into while auditing",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "run_scraper": {
+      "description": "Get structured data from a supported site with one of Browserless's ready-made scrapers, at a fixed price per call: search Zillow for homes for sale or rent, or look up a Zillow property. Cloud plans only; in beta at Browserless.",
+      "display_name": "Run a predefined scraper",
+      "display_str_template": "Run the '{0}' '{1}' scraper.",
+      "handler": "actions.run_scraper",
+      "id": "browserless_run_scraper",
+      "method": "POST",
+      "mock_response": {
+        "api": "search",
+        "data": {
+          "page": 1,
+          "query": {
+            "label": "Austin, TX",
+            "tenure": "sale",
+            "text": "Austin, TX"
+          },
+          "results": [
+            {
+              "baths": 2,
+              "beds": 3,
+              "price": {
+                "amount": 475000,
+                "currency": "USD",
+                "text": "$475,000"
+              },
+              "url": "https://www.zillow.com/homedetails/29365471_zpid/",
+              "zpid": "29365471"
+            }
+          ],
+          "totalUnits": 5575
+        },
+        "scraper": "zillow"
+      },
+      "name": "run_scraper",
+      "parameters": [
+        {
+          "description": "The scraper, as 'List predefined scrapers' names it.",
+          "display_name": "Scraper",
+          "examples": [
+            {
+              "label": "Zillow",
+              "value": "zillow"
+            }
+          ],
+          "name": "scraper",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which of its calls to make, such as search or property.",
+          "display_name": "Call",
+          "examples": [
+            {
+              "label": "Search listings",
+              "value": "search"
+            }
+          ],
+          "name": "api",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The call's inputs. For Zillow search: query (such as Austin, TX), tenure (sale or rent), page, sort, priceMin, priceMax, bedsMin and more.",
+          "display_name": "Inputs",
+          "name": "scraper_params",
+          "object_key_name": "Input",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Optional. A page on the site instead of inputs, such as a Zillow listing for the property call.",
+          "display_name": "Page URL",
+          "name": "url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds Browserless may spend on the request before it stops. Your plan sets the default and the most allowed.",
+          "display_name": "Give up after (seconds)",
+          "maximum": 900,
+          "minimum": 1,
+          "name": "timeout_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browserless/run-scraper",
+      "result_str_template": "Scraper finished.",
+      "returns": {
+        "properties": {
+          "api": {
+            "description": "The call made",
+            "type": "string"
+          },
+          "data": {
+            "description": "What it found, in the shape 'List predefined scrapers' describes",
+            "type": "object"
+          },
+          "scraper": {
+            "description": "The scraper",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "save_page_as_pdf": {
-      "description": "Render a web page in a real browser and print it to PDF. The file is saved to your workspace's file storage; the action returns a document reference and a download URL so a later step can send, upload, or attach it.",
+      "description": "Render a web page in a real browser and print it to PDF, getting past bot protection and captchas when needed. The file is saved to your workspace's file storage; the action returns a document reference and a download URL so a later step can send, upload, or attach it. To set the paper, margins or a header, use 'Convert HTML to PDF'.",
       "display_name": "Save a page as PDF",
       "display_str_template": "Save '{0}' as a PDF.",
       "handler": "actions.save_page_as_pdf",
@@ -219,9 +3239,11 @@
             "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
           }
         ],
+        "filename": "news-ycombinator-com.pdf",
         "page_url": "https://news.ycombinator.com/",
         "status_code": 200,
         "strategy": "browser",
+        "title": "Hacker News",
         "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
       },
       "name": "save_page_as_pdf",
@@ -255,6 +3277,85 @@
           ],
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country the proxy should exit from, such as US, GB or DE, if the site needs a proxy.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds to let the page fill itself in after it loads, up to 30. Any wait makes Browserless use a real browser.",
+          "display_name": "Wait after loading (seconds)",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Up to 20 steps to run in the page before it is read, such as closing a cookie banner or typing a search. Each has a type (wait, click, write, scroll, scrape or executeJavascript) and the fields it needs. Any step makes Browserless use a real browser.",
+          "display_name": "Do first",
+          "name": "browser_actions",
+          "required": false,
+          "schema": {
+            "items": {
+              "properties": {
+                "milliseconds": {
+                  "description": "How long a wait lasts, up to 30000",
+                  "type": "number"
+                },
+                "script": {
+                  "description": "JavaScript to run in the page, for executeJavascript. What it returns comes back in script_results.",
+                  "type": "string"
+                },
+                "selector": {
+                  "description": "CSS selector of the element to click, type into, scroll to or wait for",
+                  "type": "string"
+                },
+                "text": {
+                  "description": "What to type, for a write. End it with a new line to press Enter.",
+                  "type": "string"
+                },
+                "timeout": {
+                  "description": "Milliseconds the step may take, up to 30000",
+                  "type": "number"
+                },
+                "type": {
+                  "description": "What to do",
+                  "enum": [
+                    "wait",
+                    "click",
+                    "write",
+                    "scroll",
+                    "scrape",
+                    "executeJavascript"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/browserless/save-page-as-pdf",
@@ -266,11 +3367,11 @@
             "type": "number"
           },
           "content_type": {
-            "description": "MIME type of the file, always application/pdf",
+            "description": "MIME type of the PDF",
             "type": "string"
           },
           "document_ref": {
-            "description": "ID of the stored PDF, for use by a later step",
+            "description": "ID of the stored PDF, for a later step that takes a file",
             "type": "string"
           },
           "documents": {
@@ -302,6 +3403,10 @@
             },
             "type": "array"
           },
+          "filename": {
+            "description": "Name the PDF was stored under",
+            "type": "string"
+          },
           "page_url": {
             "description": "The page that was captured",
             "type": "string"
@@ -311,7 +3416,11 @@
             "type": "number"
           },
           "strategy": {
-            "description": "How Browserless fetched the page, for example 'browser' or 'browser-captcha'",
+            "description": "How Browserless fetched the page: http-fetch, http-proxy, browser or browser-captcha",
+            "type": "string"
+          },
+          "title": {
+            "description": "The page's title",
             "type": "string"
           },
           "url": {
@@ -322,22 +3431,367 @@
         "type": "object"
       }
     },
+    "scrape_elements": {
+      "description": "Load a page in a real browser and pull out the elements matching each CSS selector you give: their text, HTML, attributes and position. Good for prices, headlines, table cells and other values a page shows in a predictable place.",
+      "display_name": "Scrape elements by CSS selector",
+      "display_str_template": "Scrape elements from '{0}'.",
+      "handler": "actions.scrape_elements",
+      "id": "browserless_scrape_elements",
+      "method": "POST",
+      "mock_response": {
+        "results": [
+          {
+            "match_count": 2,
+            "matches": [
+              {
+                "attributes": {
+                  "href": "https://grapheneos.social/..."
+                },
+                "height": 14,
+                "html": "Motorola GrapheneOS devices will be bootloader unlockable",
+                "left": 40,
+                "text": "Motorola GrapheneOS devices will be bootloader unlockable",
+                "top": 72,
+                "width": 412
+              },
+              {
+                "attributes": {
+                  "href": "https://github.com/..."
+                },
+                "height": 14,
+                "html": "Show HN: A tiny SQLite browser",
+                "left": 40,
+                "text": "Show HN: A tiny SQLite browser",
+                "top": 112,
+                "width": 228
+              }
+            ],
+            "selector": ".titleline > a",
+            "text": "Motorola GrapheneOS devices will be bootloader unlockable",
+            "texts": [
+              "Motorola GrapheneOS devices will be bootloader unlockable",
+              "Show HN: A tiny SQLite browser"
+            ]
+          }
+        ],
+        "url": "https://news.ycombinator.com/"
+      },
+      "name": "scrape_elements",
+      "output_formatter": "actions.format_scrape_elements_output",
+      "parameters": [
+        {
+          "description": "The page to load, starting with http:// or https://. Leave empty to render the HTML instead.",
+          "display_name": "Page URL",
+          "examples": [
+            {
+              "label": "Hacker News",
+              "value": "https://news.ycombinator.com/"
+            }
+          ],
+          "name": "url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "One or more CSS selectors, such as h1, .price or table tr td:first-child. Every match of each comes back.",
+          "display_name": "CSS selectors",
+          "examples": [
+            {
+              "label": "Hacker News story titles",
+              "value": ".titleline > a"
+            }
+          ],
+          "name": "selectors",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "HTML to render instead of loading a page, with any CSS in <style> tags. Fill in either this or the page URL.",
+          "display_name": "HTML",
+          "multiline": true,
+          "name": "html",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. CSS selector of an element to wait for before reading the page, such as #results or .price. The step fails if it never appears, unless 'Carry on if waiting times out' is on.",
+          "display_name": "Wait for element",
+          "name": "wait_for_selector",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds to let the page fill itself in after it loads, up to 30.",
+          "display_name": "Wait after loading (seconds)",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. When navigation is done. Browserless's default is Load.",
+          "display_name": "Page counts as loaded when",
+          "name": "wait_until",
+          "options": [
+            {
+              "label": "Load: everything, images included, has loaded",
+              "value": "load"
+            },
+            {
+              "label": "The HTML is parsed (fastest)",
+              "value": "domcontentloaded"
+            },
+            {
+              "label": "No network requests for half a second",
+              "value": "networkidle0"
+            },
+            {
+              "label": "At most two network requests for half a second",
+              "value": "networkidle2"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Use the page as it is when a wait or the navigation times out, instead of failing the step.",
+          "display_name": "Carry on if waiting times out",
+          "name": "best_attempt",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Kinds of request to skip, which makes pages load faster. Skipping scripts can stop a page from filling itself in.",
+          "display_name": "Don't load",
+          "multi_select": true,
+          "name": "block_resources",
+          "options": [
+            {
+              "label": "Images",
+              "value": "image"
+            },
+            {
+              "label": "Video and audio",
+              "value": "media"
+            },
+            {
+              "label": "Fonts",
+              "value": "font"
+            },
+            {
+              "label": "Stylesheets",
+              "value": "stylesheet"
+            },
+            {
+              "label": "Scripts",
+              "value": "script"
+            },
+            {
+              "label": "XHR requests",
+              "value": "xhr"
+            },
+            {
+              "label": "Fetch requests",
+              "value": "fetch"
+            },
+            {
+              "label": "WebSockets",
+              "value": "websocket"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Extra HTTP headers to send with every request the page makes, such as Accept-Language.",
+          "display_name": "Request headers",
+          "name": "headers",
+          "object_key_name": "Header name",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "default": false,
+          "description": "Hide the signs of an automated browser from bot detection. Turn on for sites that block or challenge headless browsers.",
+          "display_name": "Stealth mode",
+          "name": "stealth",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Route the browser through Browserless's proxies, for sites that block cloud servers. Proxies spend extra units per MB. Leave empty to connect directly.",
+          "display_name": "Proxy network",
+          "name": "proxy",
+          "options": [
+            {
+              "label": "Residential: harder to block",
+              "value": "residential"
+            },
+            {
+              "label": "Datacenter: cheaper, blocked more often",
+              "value": "datacenter"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country to browse from, such as US, GB or DE, for sites that change by location. Uses the residential proxy unless another network is chosen.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Load the page with an ad blocker, so ads and trackers don't load.",
+          "display_name": "Block ads",
+          "name": "block_ads",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds Browserless may spend on the request before it stops. Your plan sets the default and the most allowed.",
+          "display_name": "Give up after (seconds)",
+          "maximum": 900,
+          "minimum": 1,
+          "name": "timeout_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browserless/scrape-elements",
+      "result_str_template": "Elements scraped.",
+      "returns": {
+        "properties": {
+          "results": {
+            "description": "One entry per selector, in the order given",
+            "items": {
+              "properties": {
+                "match_count": {
+                  "description": "How many elements matched",
+                  "type": "number"
+                },
+                "matches": {
+                  "description": "Every match: text, inner HTML, attributes, and position and size in pixels",
+                  "items": {
+                    "properties": {
+                      "attributes": {
+                        "description": "Attribute name to value",
+                        "type": "object"
+                      },
+                      "height": {
+                        "type": "number"
+                      },
+                      "html": {
+                        "type": "string"
+                      },
+                      "left": {
+                        "type": "number"
+                      },
+                      "text": {
+                        "type": "string"
+                      },
+                      "top": {
+                        "type": "number"
+                      },
+                      "width": {
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "selector": {
+                  "description": "The selector",
+                  "type": "string"
+                },
+                "text": {
+                  "description": "The first match's text, or empty",
+                  "type": "string"
+                },
+                "texts": {
+                  "description": "Every match's text, in page order",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "url": {
+            "description": "The page that was loaded, or empty for HTML",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "scrape_page": {
-      "description": "Fetch a web page and return both its HTML and a clean markdown version. Browserless starts with a fast HTTP fetch and escalates to a proxy, a headless browser, or a captcha solve only if the site needs it, so JavaScript-rendered and bot-protected pages work too.",
+      "description": "Fetch a web page and return its HTML, a clean markdown version, its text and its title. Browserless starts with a fast HTTP fetch and escalates to a proxy, a headless browser, or a captcha solve only if the site needs it, so JavaScript-rendered and bot-protected pages work too. Optionally click, type or scroll first, or keep only the parts you need.",
       "display_name": "Scrape a page",
       "display_str_template": "Scrape '{0}' with Browserless.",
       "handler": "actions.scrape_page",
       "id": "browserless_scrape_page",
       "method": "POST",
       "mock_response": {
+        "attempted": [
+          "http-fetch",
+          "browser"
+        ],
         "content": "<html lang=\"en\" op=\"news\"><head>...</head></html>",
         "content_type": "text/html; charset=utf-8",
+        "description": "",
+        "language": "en",
         "markdown": "# Hacker News\n\n1. [Motorola GrapheneOS devices...](...)",
+        "raw_text": "Hacker News new | past | comments | ask | show | jobs",
+        "response_headers": {
+          "content-type": "text/html; charset=utf-8"
+        },
+        "script_results": [
+          {
+            "type": "number",
+            "value": 30
+          }
+        ],
+        "snapshots": [
+          {
+            "html": "<html>...</html>",
+            "url": "https://news.ycombinator.com/news?p=2"
+          }
+        ],
         "status_code": 200,
-        "strategy": "http-fetch",
+        "strategy": "browser",
+        "title": "Hacker News",
         "url": "https://news.ycombinator.com/"
       },
       "name": "scrape_page",
+      "output_formatter": "actions.format_scrape_page_output",
       "parameters": [
         {
           "description": "The page to load, starting with http:// or https://.",
@@ -368,34 +3822,1609 @@
           ],
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country the proxy should exit from, such as US, GB or DE, if the site needs a proxy.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Leave out navigation, footers, sidebars, scripts and styles. Can't be combined with 'Only these parts'.",
+          "display_name": "Skip navigation and footers",
+          "name": "only_main_content",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. CSS selectors of the parts to keep, such as article or .price, up to 100. The whole page comes back if none match.",
+          "display_name": "Only these parts",
+          "name": "include_tags",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. CSS selectors of the parts to drop, such as nav or #cookie-banner, up to 100. Can't be combined with 'Only these parts'.",
+          "display_name": "Leave out these parts",
+          "name": "exclude_tags",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Seconds to let the page fill itself in after it loads, up to 30. Any wait makes Browserless use a real browser.",
+          "display_name": "Wait after loading (seconds)",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Extra HTTP headers to send to the site, such as Accept-Language. Browserless drops cookie, authorization and forwarding headers.",
+          "display_name": "Request headers",
+          "name": "headers",
+          "object_key_name": "Header name",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Optional. Up to 20 steps to run in the page before it is read, such as closing a cookie banner or typing a search. Each has a type (wait, click, write, scroll, scrape or executeJavascript) and the fields it needs. Any step makes Browserless use a real browser.",
+          "display_name": "Do first",
+          "name": "browser_actions",
+          "required": false,
+          "schema": {
+            "items": {
+              "properties": {
+                "milliseconds": {
+                  "description": "How long a wait lasts, up to 30000",
+                  "type": "number"
+                },
+                "script": {
+                  "description": "JavaScript to run in the page, for executeJavascript. What it returns comes back in script_results.",
+                  "type": "string"
+                },
+                "selector": {
+                  "description": "CSS selector of the element to click, type into, scroll to or wait for",
+                  "type": "string"
+                },
+                "text": {
+                  "description": "What to type, for a write. End it with a new line to press Enter.",
+                  "type": "string"
+                },
+                "timeout": {
+                  "description": "Milliseconds the step may take, up to 30000",
+                  "type": "number"
+                },
+                "type": {
+                  "description": "What to do",
+                  "enum": [
+                    "wait",
+                    "click",
+                    "write",
+                    "scroll",
+                    "scrape",
+                    "executeJavascript"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/browserless/scrape-page",
       "result_str_template": "Page scraped.",
       "returns": {
         "properties": {
+          "attempted": {
+            "description": "Every strategy tried, in order",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "content": {
-            "description": "The page's HTML. If the URL answers with JSON instead, this is that JSON as a string.",
+            "description": "The page's HTML. If the URL answers with JSON instead, this is that JSON as a string; for a PDF, its text.",
             "type": "string"
           },
           "content_type": {
             "description": "Content type the page was served with",
             "type": "string"
           },
+          "description": {
+            "description": "The page's meta description",
+            "type": "string"
+          },
+          "language": {
+            "description": "The page's language, such as en",
+            "type": "string"
+          },
           "markdown": {
             "description": "The page as markdown, with scripts, styles, and hidden elements stripped",
             "type": "string"
+          },
+          "raw_text": {
+            "description": "The page's text, whitespace collapsed",
+            "type": "string"
+          },
+          "response_headers": {
+            "description": "HTTP headers the site answered with",
+            "type": "object"
+          },
+          "script_results": {
+            "description": "What each 'executeJavascript' browser action returned",
+            "items": {
+              "properties": {
+                "type": {
+                  "description": "The value's type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "What the script returned"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "snapshots": {
+            "description": "What each 'scrape' browser action saw",
+            "items": {
+              "properties": {
+                "html": {
+                  "description": "Its HTML at that moment",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "The page at that moment",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
           },
           "status_code": {
             "description": "HTTP status the page responded with",
             "type": "number"
           },
           "strategy": {
-            "description": "How Browserless fetched the page, for example 'http-fetch' or 'browser'",
+            "description": "How Browserless fetched the page: http-fetch, http-proxy, browser or browser-captcha",
+            "type": "string"
+          },
+          "title": {
+            "description": "The page's title",
             "type": "string"
           },
           "url": {
             "description": "The page that was scraped",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_web": {
+      "description": "Search the web, news or images, filtered by language, country, date or kind of site, and optionally read each result page as markdown or HTML in the same step. Your plan caps the results (3 on the free plan). Cloud plans only; in beta at Browserless.",
+      "display_name": "Search the web",
+      "display_str_template": "Search the web for '{0}'.",
+      "handler": "actions.search_web",
+      "id": "browserless_search_web",
+      "method": "POST",
+      "mock_response": {
+        "images": [],
+        "news": [],
+        "query": "headless browser automation",
+        "total_results": 1,
+        "web": [
+          {
+            "date": "",
+            "description": "Headless browser automation, without the hosting headaches.",
+            "html": "",
+            "image_url": "",
+            "links": [],
+            "markdown": "",
+            "position": 1,
+            "scrape_error": "",
+            "title": "Browserless - Headless Browser Automation",
+            "url": "https://www.browserless.io/"
+          }
+        ]
+      },
+      "name": "search_web",
+      "output_formatter": "actions.format_search_web_output",
+      "parameters": [
+        {
+          "description": "What to search for.",
+          "display_name": "Search for",
+          "examples": [
+            {
+              "label": "A question",
+              "value": "headless browser automation"
+            }
+          ],
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Results per source, up to your plan's cap (Free 3, Prototyping 5, Starter 10, Scale 20).",
+          "display_name": "Results",
+          "maximum": 20,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. The web unless chosen otherwise.",
+          "display_name": "Search in",
+          "multi_select": true,
+          "name": "sources",
+          "options": [
+            {
+              "label": "Web",
+              "value": "web"
+            },
+            {
+              "label": "News",
+              "value": "news"
+            },
+            {
+              "label": "Images",
+              "value": "images"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Language code of the results, such as en or de.",
+          "display_name": "Language",
+          "name": "lang",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter country code, such as US or GB.",
+          "display_name": "Search from",
+          "name": "country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. A place for local results, such as San Francisco.",
+          "display_name": "Search near",
+          "name": "location",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Only results from this recent period.",
+          "display_name": "From the past",
+          "name": "time_range",
+          "options": [
+            {
+              "label": "Day",
+              "value": "day"
+            },
+            {
+              "label": "Week",
+              "value": "week"
+            },
+            {
+              "label": "Month",
+              "value": "month"
+            },
+            {
+              "label": "Year",
+              "value": "year"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Narrow web results to these.",
+          "display_name": "Only these kinds of site",
+          "multi_select": true,
+          "name": "categories",
+          "options": [
+            {
+              "label": "GitHub repositories",
+              "value": "github"
+            },
+            {
+              "label": "Research papers",
+              "value": "research"
+            },
+            {
+              "label": "PDF documents",
+              "value": "pdf"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Read every result page in the same step and return it in these forms. Costs more units.",
+          "display_name": "Also read each result as",
+          "multi_select": true,
+          "name": "scrape_formats",
+          "options": [
+            {
+              "label": "Markdown",
+              "value": "markdown"
+            },
+            {
+              "label": "HTML",
+              "value": "html"
+            },
+            {
+              "label": "Links",
+              "value": "links"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": false,
+          "description": "When reading result pages, keep only each page's main article.",
+          "display_name": "Only the article",
+          "name": "only_main_content",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Route the browser through Browserless's proxies, for sites that block cloud servers. Proxies spend extra units per MB. Leave empty to connect directly.",
+          "display_name": "Proxy network",
+          "name": "proxy",
+          "options": [
+            {
+              "label": "Residential: harder to block",
+              "value": "residential"
+            },
+            {
+              "label": "Datacenter: cheaper, blocked more often",
+              "value": "datacenter"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds Browserless may spend on the request before it stops. Your plan sets the default and the most allowed.",
+          "display_name": "Give up after (seconds)",
+          "maximum": 900,
+          "minimum": 1,
+          "name": "timeout_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browserless/search-web",
+      "result_str_template": "Search finished.",
+      "returns": {
+        "properties": {
+          "images": {
+            "description": "Image results, when images were searched",
+            "items": {
+              "properties": {
+                "image_height": {
+                  "description": "Height in pixels",
+                  "type": "number"
+                },
+                "image_url": {
+                  "description": "The image",
+                  "type": "string"
+                },
+                "image_width": {
+                  "description": "Width in pixels",
+                  "type": "number"
+                },
+                "position": {
+                  "description": "Its rank, from 1",
+                  "type": "number"
+                },
+                "title": {
+                  "description": "The image's title",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "The page it is on",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "news": {
+            "description": "News results, when news was searched",
+            "items": {
+              "properties": {
+                "date": {
+                  "description": "When it was published, for news",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "The snippet shown for it",
+                  "type": "string"
+                },
+                "html": {
+                  "description": "The page's HTML, when results are read",
+                  "type": "string"
+                },
+                "image_url": {
+                  "description": "Its thumbnail, for news",
+                  "type": "string"
+                },
+                "links": {
+                  "description": "The page's links, when results are read",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "markdown": {
+                  "description": "The page as markdown, when results are read",
+                  "type": "string"
+                },
+                "position": {
+                  "description": "Its rank, from 1",
+                  "type": "number"
+                },
+                "scrape_error": {
+                  "description": "Why the page couldn't be read, or empty",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "The result's title",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "The result's address",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "query": {
+            "description": "What was searched for",
+            "type": "string"
+          },
+          "total_results": {
+            "description": "How many results came back in all",
+            "type": "number"
+          },
+          "web": {
+            "description": "Web results",
+            "items": {
+              "properties": {
+                "date": {
+                  "description": "When it was published, for news",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "The snippet shown for it",
+                  "type": "string"
+                },
+                "html": {
+                  "description": "The page's HTML, when results are read",
+                  "type": "string"
+                },
+                "image_url": {
+                  "description": "Its thumbnail, for news",
+                  "type": "string"
+                },
+                "links": {
+                  "description": "The page's links, when results are read",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "markdown": {
+                  "description": "The page as markdown, when results are read",
+                  "type": "string"
+                },
+                "position": {
+                  "description": "Its rank, from 1",
+                  "type": "number"
+                },
+                "scrape_error": {
+                  "description": "Why the page couldn't be read, or empty",
+                  "type": "string"
+                },
+                "title": {
+                  "description": "The result's title",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "The result's address",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "start_agent_run": {
+      "description": "Describe a task in plain English and Browserless's managed AI agent does it in a real browser: navigating, clicking, typing and reading. It works in the background; follow it with 'Get agent run' until it finishes. Ask for a JSON shape to get structured data back. Cloud plans only; in beta at Browserless.",
+      "display_name": "Start an agent task",
+      "display_str_template": "Start a Browserless agent task.",
+      "handler": "actions.start_agent_run",
+      "id": "browserless_start_agent_run",
+      "method": "POST",
+      "mock_response": {
+        "run_id": "run_abc123def456",
+        "status": "pending"
+      },
+      "name": "start_agent_run",
+      "parameters": [
+        {
+          "description": "What the agent should do, at least 10 characters, such as 'Find the price of the Pro plan on browserless.io'.",
+          "display_name": "Task",
+          "examples": [
+            {
+              "label": "Read a page's title",
+              "value": "Go to https://example.com and tell me the page's title, exactly."
+            }
+          ],
+          "multiline": true,
+          "name": "task",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The page the agent opens first.",
+          "display_name": "Start at",
+          "name": "start_url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Domains the agent may visit, such as browserless.io.",
+          "display_name": "Only these sites",
+          "name": "allowed_domains",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. A soft cap on how many browser actions the agent may take. Browserless sets the default and limit.",
+          "display_name": "Most browser steps",
+          "maximum": 90,
+          "minimum": 1,
+          "name": "max_steps",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Up to 15, which is the default.",
+          "display_name": "Give up after (minutes)",
+          "maximum": 15,
+          "minimum": 0.5,
+          "name": "timeout_minutes",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. A JSON Schema for the answer, so 'data' comes back in that shape. Best effort, so check the result.",
+          "display_name": "Answer shape",
+          "name": "response_schema",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Optional. Save the agent's final page in these forms. The screenshot is of the visible window.",
+          "display_name": "Capture the last page as",
+          "multi_select": true,
+          "name": "page_captures",
+          "options": [
+            {
+              "label": "Markdown",
+              "value": "markdown"
+            },
+            {
+              "label": "HTML",
+              "value": "html"
+            },
+            {
+              "label": "Links",
+              "value": "links"
+            },
+            {
+              "label": "Screenshot",
+              "value": "screenshot"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Route the browser through Browserless's proxies, for sites that block cloud servers. Proxies spend extra units per MB. Leave empty to connect directly.",
+          "display_name": "Proxy network",
+          "name": "proxy",
+          "options": [
+            {
+              "label": "Residential: harder to block",
+              "value": "residential"
+            },
+            {
+              "label": "Datacenter: cheaper, blocked more often",
+              "value": "datacenter"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country to browse from, such as US, GB or DE, for sites that change by location. Uses the residential proxy unless another network is chosen.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Hide the signs of an automated browser from bot detection. Turn on for sites that block or challenge headless browsers.",
+          "display_name": "Stealth mode",
+          "name": "stealth",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Let the agent solve captchas it meets.",
+          "display_name": "Solve captchas",
+          "name": "solve_captchas",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "At a login wall or two-step check, pause and give a live link for a person to finish it, instead of failing. The time limit keeps running.",
+          "display_name": "Pause for a person at sign-ins",
+          "name": "pause_for_human",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Record the session for Session Replay in your Browserless dashboard.",
+          "display_name": "Record a replay",
+          "name": "record_replay",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. An https:// address Browserless calls when the job finishes, such as a Lodol webhook trigger.",
+          "display_name": "Webhook URL",
+          "name": "webhook_url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Which events to send. Success and failure if none.",
+          "display_name": "Call the webhook when",
+          "multi_select": true,
+          "name": "webhook_events",
+          "options": [
+            {
+              "label": "The run succeeds",
+              "value": "succeeded"
+            },
+            {
+              "label": "The run fails, times out or is stopped",
+              "value": "failed"
+            },
+            {
+              "label": "The run pauses for a person",
+              "value": "needs_human"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/browserless/start-agent-run",
+      "result_str_template": "Agent task started.",
+      "returns": {
+        "properties": {
+          "run_id": {
+            "description": "The run's ID, for 'Get agent run'",
+            "type": "string"
+          },
+          "status": {
+            "description": "pending",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "start_crawl": {
+      "description": "Start crawling a site: Browserless follows its links (and sitemap) and scrapes every page as markdown, HTML or text. The crawl runs in the background; follow it with 'Get crawl', which returns the pages. Cloud plans only; in beta at Browserless.",
+      "display_name": "Crawl a site",
+      "display_str_template": "Crawl '{0}'.",
+      "handler": "actions.start_crawl",
+      "id": "browserless_start_crawl",
+      "method": "POST",
+      "mock_response": {
+        "crawl_id": "crawl_abc123def456",
+        "url": "https://docs.browserless.io"
+      },
+      "name": "start_crawl",
+      "parameters": [
+        {
+          "description": "The site to start from, starting with http:// or https://.",
+          "display_name": "Site URL",
+          "examples": [
+            {
+              "label": "Browserless docs",
+              "value": "https://docs.browserless.io"
+            }
+          ],
+          "name": "url",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The most pages to crawl. Browserless crawls 100, and your plan sets the most.",
+          "display_name": "At most",
+          "maximum": 10000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. How many links away from the start page to go, 0 to 20. Browserless goes 5.",
+          "display_name": "Links deep",
+          "maximum": 20,
+          "minimum": 0,
+          "name": "max_depth",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Also crawl subdomains, such as blog.example.com.",
+          "display_name": "Follow links to subdomains",
+          "name": "allow_subdomains",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Also crawl pages on other domains the site links to.",
+          "display_name": "Follow links to other sites",
+          "name": "allow_external_links",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. How to use the site's sitemap.",
+          "display_name": "Sitemap",
+          "name": "sitemap",
+          "options": [
+            {
+              "label": "Use it if there is one (default)",
+              "value": "auto"
+            },
+            {
+              "label": "Only pages in the sitemap",
+              "value": "force"
+            },
+            {
+              "label": "Ignore it and follow links",
+              "value": "skip"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Regular expressions a page's path must match, such as ^/blog.",
+          "display_name": "Only paths matching",
+          "name": "include_paths",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Regular expressions of paths to skip, such as ^/blog/tag.",
+          "display_name": "Skip paths matching",
+          "name": "exclude_paths",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. What each page comes back as; markdown if none.",
+          "display_name": "Bring back",
+          "multi_select": true,
+          "name": "formats",
+          "options": [
+            {
+              "label": "Markdown",
+              "value": "markdown"
+            },
+            {
+              "label": "HTML",
+              "value": "html"
+            },
+            {
+              "label": "Text",
+              "value": "rawText"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": true,
+          "description": "Keep only each page's main content. On unless turned off.",
+          "display_name": "Skip navigation and footers",
+          "name": "only_main_content",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Seconds to let the page fill itself in after it loads, up to 30.",
+          "display_name": "Wait after loading (seconds)",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Route the browser through Browserless's proxies, for sites that block cloud servers. Proxies spend extra units per MB. Leave empty to connect directly.",
+          "display_name": "Proxy network",
+          "name": "proxy",
+          "options": [
+            {
+              "label": "Residential: harder to block",
+              "value": "residential"
+            },
+            {
+              "label": "Datacenter: cheaper, blocked more often",
+              "value": "datacenter"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. An https:// address Browserless calls when the job finishes, such as a Lodol webhook trigger.",
+          "display_name": "Webhook URL",
+          "name": "webhook_url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Which events to send. Completion only if none.",
+          "display_name": "Call the webhook when",
+          "multi_select": true,
+          "name": "webhook_events",
+          "options": [
+            {
+              "label": "Each page is scraped",
+              "value": "page"
+            },
+            {
+              "label": "The crawl completes",
+              "value": "completed"
+            },
+            {
+              "label": "The crawl fails",
+              "value": "failed"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browserless/start-crawl",
+      "result_str_template": "Crawl started.",
+      "returns": {
+        "properties": {
+          "crawl_id": {
+            "description": "The crawl's ID, for 'Get crawl'",
+            "type": "string"
+          },
+          "url": {
+            "description": "Where the crawl starts",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "take_screenshot": {
+      "description": "Screenshot a page, or HTML of your own, with the details chosen: PNG, JPEG or WebP, the window size, the whole page or just what fits, or one element on it. The image is saved to your workspace's file storage. Unlike 'Screenshot a page', it doesn't fall back to a captcha solve, so turn on stealth or a proxy for protected sites.",
+      "display_name": "Take a custom screenshot",
+      "display_str_template": "Take a screenshot of '{0}'.",
+      "handler": "actions.take_screenshot",
+      "id": "browserless_take_screenshot",
+      "method": "POST",
+      "mock_response": {
+        "byte_size": 48211,
+        "content_type": "image/webp",
+        "document_ref": "doc_9f8e7d6c5b4a3210",
+        "documents": [
+          {
+            "content_type": "image/webp",
+            "document_ref": "doc_9f8e7d6c5b4a3210",
+            "filename": "example-com.webp",
+            "size_bytes": 48211,
+            "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
+          }
+        ],
+        "filename": "example-com.webp",
+        "final_url": "https://example.com/",
+        "page_url": "https://example.com/",
+        "status_code": 200,
+        "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
+      },
+      "name": "take_screenshot",
+      "parameters": [
+        {
+          "description": "The page to load, starting with http:// or https://. Leave empty to render the HTML instead.",
+          "display_name": "Page URL",
+          "examples": [
+            {
+              "label": "Hacker News",
+              "value": "https://news.ycombinator.com/"
+            }
+          ],
+          "name": "url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "HTML to render instead of loading a page, with any CSS in <style> tags. Fill in either this or the page URL.",
+          "display_name": "HTML",
+          "multiline": true,
+          "name": "html",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. PNG unless chosen otherwise.",
+          "display_name": "Image format",
+          "name": "image_format",
+          "options": [
+            {
+              "label": "PNG: sharp, larger files",
+              "value": "png"
+            },
+            {
+              "label": "JPEG: smaller files, no transparency",
+              "value": "jpeg"
+            },
+            {
+              "label": "WebP: smallest files",
+              "value": "webp"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Image quality from 0 to 100.",
+          "display_name": "Quality",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "quality",
+          "required": false,
+          "type": "ParameterType.NUMBER",
+          "visible_when": {
+            "image_format": [
+              "jpeg",
+              "webp"
+            ]
+          }
+        },
+        {
+          "default": true,
+          "description": "Capture the whole page, scrolled top to bottom. Turn off for just the visible window.",
+          "display_name": "Whole page",
+          "name": "full_page",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. CSS selector of one element to capture, cropped to its edges, such as #chart.",
+          "display_name": "Only this element",
+          "name": "selector",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Browser window width; give the height too.",
+          "display_name": "Window width (px)",
+          "maximum": 8000,
+          "minimum": 1,
+          "name": "viewport_width",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Browser window height; give the width too.",
+          "display_name": "Window height (px)",
+          "maximum": 8000,
+          "minimum": 1,
+          "name": "viewport_height",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. 2 for a sharp, retina-style image. Needs a window width and height.",
+          "display_name": "Pixel density",
+          "maximum": 4,
+          "minimum": 0.1,
+          "name": "device_scale_factor",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Leave out the page's default white background, for a PNG or WebP with transparency.",
+          "display_name": "Transparent background",
+          "name": "omit_background",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Scroll down the page before capturing, so images that load as you scroll are in the shot.",
+          "display_name": "Scroll through first",
+          "name": "scroll_page",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Close cookie-consent banners and pop-ups before the capture.",
+          "display_name": "Hide cookie banners",
+          "name": "block_consent_modals",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. CSS selector of an element to wait for before reading the page, such as #results or .price. The step fails if it never appears, unless 'Carry on if waiting times out' is on.",
+          "display_name": "Wait for element",
+          "name": "wait_for_selector",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds to let the page fill itself in after it loads, up to 30.",
+          "display_name": "Wait after loading (seconds)",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. When navigation is done. Browserless's default is Load.",
+          "display_name": "Page counts as loaded when",
+          "name": "wait_until",
+          "options": [
+            {
+              "label": "Load: everything, images included, has loaded",
+              "value": "load"
+            },
+            {
+              "label": "The HTML is parsed (fastest)",
+              "value": "domcontentloaded"
+            },
+            {
+              "label": "No network requests for half a second",
+              "value": "networkidle0"
+            },
+            {
+              "label": "At most two network requests for half a second",
+              "value": "networkidle2"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Use the page as it is when a wait or the navigation times out, instead of failing the step.",
+          "display_name": "Carry on if waiting times out",
+          "name": "best_attempt",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Hide the signs of an automated browser from bot detection. Turn on for sites that block or challenge headless browsers.",
+          "display_name": "Stealth mode",
+          "name": "stealth",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Route the browser through Browserless's proxies, for sites that block cloud servers. Proxies spend extra units per MB. Leave empty to connect directly.",
+          "display_name": "Proxy network",
+          "name": "proxy",
+          "options": [
+            {
+              "label": "Residential: harder to block",
+              "value": "residential"
+            },
+            {
+              "label": "Datacenter: cheaper, blocked more often",
+              "value": "datacenter"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country to browse from, such as US, GB or DE, for sites that change by location. Uses the residential proxy unless another network is chosen.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Load the page with an ad blocker, so ads and trackers don't load.",
+          "display_name": "Block ads",
+          "name": "block_ads",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Name of a profile saved in Browserless, so the browser starts signed in with its cookies and storage. 'List profiles' shows the names.",
+          "display_name": "Sign-in profile",
+          "name": "profile",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds Browserless may spend on the request before it stops. Your plan sets the default and the most allowed.",
+          "display_name": "Give up after (seconds)",
+          "maximum": 900,
+          "minimum": 1,
+          "name": "timeout_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Name to store the file under. Leave empty to name it after the page.",
+          "display_name": "File name",
+          "name": "filename",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/browserless/take-screenshot",
+      "result_str_template": "Screenshot captured.",
+      "returns": {
+        "properties": {
+          "byte_size": {
+            "description": "Size of the screenshot in bytes",
+            "type": "number"
+          },
+          "content_type": {
+            "description": "MIME type of the screenshot",
+            "type": "string"
+          },
+          "document_ref": {
+            "description": "ID of the stored screenshot, for a later step that takes a file",
+            "type": "string"
+          },
+          "documents": {
+            "description": "The screenshot, saved to your workspace's file storage",
+            "items": {
+              "properties": {
+                "content_type": {
+                  "description": "MIME type of the file",
+                  "type": "string"
+                },
+                "document_ref": {
+                  "description": "ID of the stored file",
+                  "type": "string"
+                },
+                "filename": {
+                  "description": "Name the file was stored under",
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "description": "Size of the file in bytes",
+                  "type": "number"
+                },
+                "url": {
+                  "description": "Link that serves the file",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "filename": {
+            "description": "Name the screenshot was stored under",
+            "type": "string"
+          },
+          "final_url": {
+            "description": "Where the page ended up after any redirects",
+            "type": "string"
+          },
+          "page_url": {
+            "description": "The page that was loaded, or empty for rendered HTML",
+            "type": "string"
+          },
+          "status_code": {
+            "description": "HTTP status the site answered with, or 0 for rendered HTML",
+            "type": "number"
+          },
+          "url": {
+            "description": "Link that serves the screenshot",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "unblock_page": {
+      "description": "Get past a site's bot detection (Cloudflare, DataDome and passive captchas) and return the page's HTML, the cookies it set, a screenshot, or all three. Pass the cookies to later requests to keep the session the site trusts.",
+      "display_name": "Unblock a page",
+      "display_str_template": "Unblock '{0}'.",
+      "handler": "actions.unblock_page",
+      "id": "browserless_unblock_page",
+      "method": "POST",
+      "mock_response": {
+        "challenge_solved": true,
+        "cookies": [
+          {
+            "domain": "www.example-shop.com",
+            "expires": 1792000000,
+            "http_only": true,
+            "name": "session_id",
+            "path": "/",
+            "same_site": "Lax",
+            "secure": true,
+            "value": "XYZ123"
+          }
+        ],
+        "document_ref": "doc_9f8e7d6c5b4a3210",
+        "documents": [
+          {
+            "content_type": "image/jpeg",
+            "document_ref": "doc_9f8e7d6c5b4a3210",
+            "filename": "www-example-shop-com.jpg",
+            "size_bytes": 61210,
+            "url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001"
+          }
+        ],
+        "html": "<!DOCTYPE html><html>...</html>",
+        "screenshot_url": "/actions/core/serve-document/doc_9f8e7d6c5b4a3210?teamId=6512a1b2c3d4e5f600000001",
+        "url": "https://www.example-shop.com/"
+      },
+      "name": "unblock_page",
+      "parameters": [
+        {
+          "description": "The page to load, starting with http:// or https://.",
+          "display_name": "Page URL",
+          "examples": [
+            {
+              "label": "Hacker News",
+              "value": "https://news.ycombinator.com/"
+            }
+          ],
+          "name": "url",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Return the page's HTML once it is unblocked.",
+          "display_name": "Return the HTML",
+          "name": "return_html",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": true,
+          "description": "Return the cookies the site set.",
+          "display_name": "Return the cookies",
+          "name": "return_cookies",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Also save a full-page JPEG of the unblocked page.",
+          "display_name": "Take a screenshot",
+          "name": "return_screenshot",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": "residential",
+          "description": "Optional. Unblocking works best through the residential proxy, which is used unless you choose otherwise. Proxies spend extra units per MB.",
+          "display_name": "Proxy network",
+          "name": "proxy",
+          "options": [
+            {
+              "label": "Residential: hardest to block",
+              "value": "residential"
+            },
+            {
+              "label": "Datacenter: cheaper, blocked more often",
+              "value": "datacenter"
+            },
+            {
+              "label": "No proxy",
+              "value": "none"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Two-letter code of the country to browse from, such as US, GB or DE, for sites that change by location. Uses the residential proxy unless another network is chosen.",
+          "display_name": "Proxy country",
+          "examples": [
+            {
+              "label": "United States",
+              "value": "US"
+            }
+          ],
+          "name": "proxy_country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Solve a captcha that stands in the way. Each solve spends extra units.",
+          "display_name": "Solve captchas",
+          "name": "solve_captchas",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. CSS selector of an element to wait for before reading the page, such as #results or .price. The step fails if it never appears, unless 'Carry on if waiting times out' is on.",
+          "display_name": "Wait for element",
+          "name": "wait_for_selector",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Seconds to let the page fill itself in after it loads, up to 30.",
+          "display_name": "Wait after loading (seconds)",
+          "maximum": 30,
+          "minimum": 0,
+          "name": "wait_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. When navigation is done. Browserless's default is Load.",
+          "display_name": "Page counts as loaded when",
+          "name": "wait_until",
+          "options": [
+            {
+              "label": "Load: everything, images included, has loaded",
+              "value": "load"
+            },
+            {
+              "label": "The HTML is parsed (fastest)",
+              "value": "domcontentloaded"
+            },
+            {
+              "label": "No network requests for half a second",
+              "value": "networkidle0"
+            },
+            {
+              "label": "At most two network requests for half a second",
+              "value": "networkidle2"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Use the page as it is when a wait or the navigation times out, instead of failing the step.",
+          "display_name": "Carry on if waiting times out",
+          "name": "best_attempt",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Optional. Seconds Browserless may spend on the request before it stops. Your plan sets the default and the most allowed.",
+          "display_name": "Give up after (seconds)",
+          "maximum": 900,
+          "minimum": 1,
+          "name": "timeout_seconds",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/browserless/unblock-page",
+      "result_str_template": "Page unblocked.",
+      "returns": {
+        "properties": {
+          "challenge_solved": {
+            "description": "True when Browserless found a bot challenge and solved it",
+            "type": "boolean"
+          },
+          "cookies": {
+            "description": "The cookies the site set, if asked for",
+            "items": {
+              "properties": {
+                "domain": {
+                  "description": "Domain the cookie belongs to",
+                  "type": "string"
+                },
+                "expires": {
+                  "description": "When it expires, in seconds since 1970; -1 for a session cookie",
+                  "type": "number"
+                },
+                "http_only": {
+                  "description": "Hidden from page scripts",
+                  "type": "boolean"
+                },
+                "name": {
+                  "description": "Cookie name",
+                  "type": "string"
+                },
+                "path": {
+                  "description": "Path the cookie applies to",
+                  "type": "string"
+                },
+                "same_site": {
+                  "description": "Strict, Lax or None",
+                  "type": "string"
+                },
+                "secure": {
+                  "description": "Only sent over https",
+                  "type": "boolean"
+                },
+                "value": {
+                  "description": "Cookie value",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "document_ref": {
+            "description": "ID of the stored screenshot, or empty when there is none",
+            "type": "string"
+          },
+          "documents": {
+            "description": "The screenshot, saved to your workspace's file storage. Empty when none was taken.",
+            "items": {
+              "properties": {
+                "content_type": {
+                  "description": "MIME type of the file",
+                  "type": "string"
+                },
+                "document_ref": {
+                  "description": "ID of the stored file",
+                  "type": "string"
+                },
+                "filename": {
+                  "description": "Name the file was stored under",
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "description": "Size of the file in bytes",
+                  "type": "number"
+                },
+                "url": {
+                  "description": "Link that serves the file",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "html": {
+            "description": "The page's HTML, or empty if not asked for",
+            "type": "string"
+          },
+          "screenshot_url": {
+            "description": "Link that serves the screenshot, or empty",
+            "type": "string"
+          },
+          "url": {
+            "description": "The page that was unblocked",
             "type": "string"
           }
         },
@@ -406,7 +5435,7 @@
   "categories": [
     "AI Agents"
   ],
-  "description": "Scrape any web page to HTML or markdown, pull its links, and capture it as a screenshot or PDF, with proxies and captcha solving handled for you.",
+  "description": "Scrape, search, map and crawl the web; capture pages as screenshots or PDFs and turn your own HTML into PDFs; get past bot detection; run Lighthouse audits, Puppeteer code or BrowserQL; and hand tasks to a managed browser agent, all on Browserless's hosted browsers.",
   "display_name": "Browserless",
   "id": "browserless",
   "logo": "https://www.lodol.com/app-icons/browserless-icon.svg",
