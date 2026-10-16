@@ -101,6 +101,7 @@ BUILT_IN_ICONS = {
     "skipflow_delay": "Hourglass",
     "skipflow_display": "Eye",
     "skipflow_files": "Files",
+    "skipflow_git": "GitBranch",
     "skipflow_http": "Globe",
     "skipflow_lists": "List",
     "skipflow_loops": "Repeat",
