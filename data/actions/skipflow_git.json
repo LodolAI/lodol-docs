@@ -1,0 +1,538 @@
+{
+  "actions": {
+    "clone": {
+      "description": "Fetch a Git repository from GitHub, GitLab, Bitbucket, Azure DevOps or your own server, so the steps after this one can commit to it, push it and pull it. The repository is kept for this run; pass this step's result to those steps. A private repository needs a token (https) or an SSH key (ssh), stored as a workspace secret.",
+      "display_name": "Clone a repository",
+      "display_str_template": "Clone {url}",
+      "handler": "_handled_by_executor",
+      "id": "skipflow_git_clone",
+      "method": "POST",
+      "mock_response": {
+        "branch": "main",
+        "commit": "9fceb02d0ae598e95dc970b74767f19372d61af8",
+        "file_count": 3,
+        "files": [
+          "README.md",
+          "prices/autumn.csv",
+          "src/index.html"
+        ],
+        "message": "Update the autumn price list",
+        "repository": "3f2a9c1e5b7d4e8fa0c6b2d1e9f73a54",
+        "url": "https://github.com/acme/website.git"
+      },
+      "name": "clone",
+      "output_formatter": "format_clone_output",
+      "parameters": [
+        {
+          "description": "The repository's address, as its host shows it under Clone: https://github.com/acme/website.git, or for ssh git@github.com:acme/website.git.",
+          "display_name": "Repository address",
+          "name": "url",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The branch to start on. Leave empty for the repository's default branch.",
+          "display_name": "Branch",
+          "name": "branch",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many commits of history to fetch. Leave empty for all of it; 1 is fastest when the workflow only needs the latest files, and still lets it commit and push.",
+          "display_name": "History depth",
+          "minimum": 1,
+          "name": "depth",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "For an https address with a token: the name to send with it. GitHub, GitLab and Azure DevOps take any name, so it can be left empty; Bitbucket needs your username with an app password, or x-token-auth with an access token.",
+          "display_name": "Username",
+          "name": "username",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For an https address: the token or password that may read it, such as a GitHub personal access token. Store it as a workspace secret and put @secrets.GITHUB_TOKEN here, so it is never kept in the workflow. A public repository needs none to clone or pull.",
+          "display_name": "Password or token",
+          "name": "password",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For an ssh address (git@github.com:acme/website.git): the private key whose public half is added to the repository or the account. Store the whole key, from BEGIN to END, as a workspace secret and reference it here.",
+          "display_name": "SSH private key",
+          "multiline": true,
+          "name": "ssh_private_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/core/git/clone",
+      "returns": {
+        "description": "The cloned repository: 'repository' is what the Commit, Push and Pull steps take, with the branch it is on, its latest commit and message, and its files.",
+        "examples": [
+          {
+            "branch": "main",
+            "commit": "9fceb02d0ae598e95dc970b74767f19372d61af8",
+            "file_count": 3,
+            "files": [
+              "README.md",
+              "prices/autumn.csv",
+              "src/index.html"
+            ],
+            "message": "Update the autumn price list",
+            "repository": "3f2a9c1e5b7d4e8fa0c6b2d1e9f73a54",
+            "url": "https://github.com/acme/website.git"
+          }
+        ],
+        "properties": {
+          "branch": {
+            "description": "The branch it is on, or null when it was cloned at a tag.",
+            "nullable": true,
+            "type": "string"
+          },
+          "commit": {
+            "description": "The latest commit's id, or null for an empty repository.",
+            "nullable": true,
+            "type": "string"
+          },
+          "file_count": {
+            "description": "How many files the repository has on this branch.",
+            "type": "integer"
+          },
+          "files": {
+            "description": "The paths of the repository's files on this branch, up to the first thousand.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "message": {
+            "description": "The latest commit's message.",
+            "type": "string"
+          },
+          "repository": {
+            "description": "The repository, for the Commit, Push and Pull steps' Repository field.",
+            "type": "string"
+          },
+          "url": {
+            "description": "The address it was cloned from.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "commit": {
+      "description": "Write files into a cloned repository and record the changes as a commit with a message. A file's content can be text, data from earlier steps (saved as JSON), or a file an earlier step made or downloaded. Nothing reaches the host until a Push changes step.",
+      "display_name": "Commit changes",
+      "display_str_template": "Commit {message}",
+      "handler": "_handled_by_executor",
+      "id": "skipflow_git_commit",
+      "method": "POST",
+      "mock_response": {
+        "branch": "main",
+        "commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+        "committed": true,
+        "files_changed": [
+          "prices/winter.csv"
+        ],
+        "message": "Update the winter price list",
+        "repository": "3f2a9c1e5b7d4e8fa0c6b2d1e9f73a54",
+        "short_commit": "a1b2c3d"
+      },
+      "name": "commit",
+      "output_formatter": "format_commit_output",
+      "parameters": [
+        {
+          "description": "The repository from a Clone a repository step earlier in this workflow: pick that step's result, such as @cloned.",
+          "display_name": "Repository",
+          "name": "repository",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What the commit changes, such as 'Update the autumn price list'.",
+          "display_name": "Message",
+          "multiline": true,
+          "name": "message",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Each file's path in the repository and what to put in it: text as it is, a list or record as JSON, or a file from an earlier step (its doc_ id). A file that isn't there yet is created, folders and all.",
+          "display_name": "Files to write",
+          "multiline": true,
+          "name": "files",
+          "object_key_name": "Path",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Paths of files or folders to remove from the repository.",
+          "display_name": "Files to delete",
+          "name": "delete",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Leave empty to commit every change in the repository. Otherwise, only changes under these paths are committed.",
+          "display_name": "Changes to include",
+          "name": "paths",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "The branch to commit on. Leave empty for the branch the repository is on; a branch that doesn't exist yet is created, which is how a workflow prepares a pull request.",
+          "display_name": "Branch",
+          "name": "branch",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Who the commit is by. Lodol when left empty.",
+          "display_name": "Author name",
+          "name": "author_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The author's email address, which hosts use to link the commit to an account.",
+          "display_name": "Author email",
+          "name": "author_email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/core/git/commit",
+      "returns": {
+        "description": "The commit made: its id and the files it changed. When the files were already as written, 'committed' is false and there is no commit.",
+        "examples": [
+          {
+            "branch": "main",
+            "commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+            "committed": true,
+            "files_changed": [
+              "prices/winter.csv"
+            ],
+            "message": "Update the winter price list",
+            "repository": "3f2a9c1e5b7d4e8fa0c6b2d1e9f73a54",
+            "short_commit": "a1b2c3d"
+          },
+          {
+            "branch": "main",
+            "commit": null,
+            "committed": false,
+            "files_changed": [],
+            "message": "Update the winter price list",
+            "repository": "3f2a9c1e5b7d4e8fa0c6b2d1e9f73a54",
+            "short_commit": null
+          }
+        ],
+        "properties": {
+          "branch": {
+            "description": "The branch the commit is on.",
+            "nullable": true,
+            "type": "string"
+          },
+          "commit": {
+            "description": "The new commit's id.",
+            "nullable": true,
+            "type": "string"
+          },
+          "committed": {
+            "description": "Whether there was anything to commit.",
+            "type": "boolean"
+          },
+          "files_changed": {
+            "description": "The paths the commit changed.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "message": {
+            "description": "The message.",
+            "type": "string"
+          },
+          "repository": {
+            "description": "The repository, for the steps after this one.",
+            "type": "string"
+          },
+          "short_commit": {
+            "description": "The first seven characters of the id.",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "pull": {
+      "description": "Bring the latest commits from the repository's host into the cloned repository, so the workflow works from, and commits on top of, what is there now.",
+      "display_name": "Pull changes",
+      "display_str_template": "Pull changes",
+      "handler": "_handled_by_executor",
+      "id": "skipflow_git_pull",
+      "method": "POST",
+      "mock_response": {
+        "branch": "main",
+        "commit": "c0ffee1234567890abcdef1234567890abcdef12",
+        "file_count": 4,
+        "files": [
+          "README.md",
+          "prices/autumn.csv",
+          "src/index.html",
+          "src/spring.html"
+        ],
+        "files_changed": [
+          "src/index.html",
+          "src/spring.html"
+        ],
+        "message": "Add the spring collection",
+        "previous_commit": "9fceb02d0ae598e95dc970b74767f19372d61af8",
+        "repository": "3f2a9c1e5b7d4e8fa0c6b2d1e9f73a54",
+        "updated": true
+      },
+      "name": "pull",
+      "output_formatter": "format_pull_output",
+      "parameters": [
+        {
+          "description": "The repository from a Clone a repository step earlier in this workflow: pick that step's result, such as @cloned.",
+          "display_name": "Repository",
+          "name": "repository",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The branch to pull. Leave empty for the branch the repository is on.",
+          "display_name": "Branch",
+          "name": "branch",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For an https address with a token: the name to send with it. GitHub, GitLab and Azure DevOps take any name, so it can be left empty; Bitbucket needs your username with an app password, or x-token-auth with an access token.",
+          "display_name": "Username",
+          "name": "username",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For an https address: the token or password that may read it, such as a GitHub personal access token. Store it as a workspace secret and put @secrets.GITHUB_TOKEN here, so it is never kept in the workflow. A public repository needs none to clone or pull.",
+          "display_name": "Password or token",
+          "name": "password",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For an ssh address (git@github.com:acme/website.git): the private key whose public half is added to the repository or the account. Store the whole key, from BEGIN to END, as a workspace secret and reference it here.",
+          "display_name": "SSH private key",
+          "multiline": true,
+          "name": "ssh_private_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/core/git/pull",
+      "returns": {
+        "description": "The branch after the pull: its latest commit, whether anything came in ('updated'), which files changed, and the repository's files now.",
+        "examples": [
+          {
+            "branch": "main",
+            "commit": "c0ffee1234567890abcdef1234567890abcdef12",
+            "file_count": 4,
+            "files": [
+              "README.md",
+              "prices/autumn.csv",
+              "src/index.html",
+              "src/spring.html"
+            ],
+            "files_changed": [
+              "src/index.html",
+              "src/spring.html"
+            ],
+            "message": "Add the spring collection",
+            "previous_commit": "9fceb02d0ae598e95dc970b74767f19372d61af8",
+            "repository": "3f2a9c1e5b7d4e8fa0c6b2d1e9f73a54",
+            "updated": true
+          }
+        ],
+        "properties": {
+          "branch": {
+            "description": "The branch pulled.",
+            "type": "string"
+          },
+          "commit": {
+            "description": "The latest commit's id after the pull.",
+            "nullable": true,
+            "type": "string"
+          },
+          "file_count": {
+            "description": "How many files the repository has on this branch.",
+            "type": "integer"
+          },
+          "files": {
+            "description": "The paths of the repository's files on this branch, up to the first thousand.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "files_changed": {
+            "description": "The paths the pull changed.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "message": {
+            "description": "The latest commit's message.",
+            "type": "string"
+          },
+          "previous_commit": {
+            "description": "The latest commit's id before it.",
+            "nullable": true,
+            "type": "string"
+          },
+          "repository": {
+            "description": "The repository, for the steps after this one.",
+            "type": "string"
+          },
+          "updated": {
+            "description": "Whether new commits came in.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "push": {
+      "description": "Send the commits made in this workflow to the repository's host, so they show up on GitHub, GitLab or wherever it lives. Pushing needs a token or key with write access.",
+      "display_name": "Push changes",
+      "display_str_template": "Push changes",
+      "handler": "_handled_by_executor",
+      "id": "skipflow_git_push",
+      "method": "POST",
+      "mock_response": {
+        "branch": "main",
+        "commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+        "pushed": true,
+        "remote": "https://github.com/acme/website.git",
+        "repository": "3f2a9c1e5b7d4e8fa0c6b2d1e9f73a54",
+        "summary": "9fceb02..a1b2c3d",
+        "up_to_date": false
+      },
+      "name": "push",
+      "output_formatter": "format_push_output",
+      "parameters": [
+        {
+          "description": "The repository from a Clone a repository step earlier in this workflow: pick that step's result, such as @cloned.",
+          "display_name": "Repository",
+          "name": "repository",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The branch to push. Leave empty for the branch the repository is on.",
+          "display_name": "Branch",
+          "name": "branch",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Leave empty to push back to where the repository was cloned from, or give another repository's address to push there instead.",
+          "display_name": "Push to",
+          "name": "remote",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Replace the branch on the host even when it has commits this copy doesn't. Off, a push behind the host is refused, which is the safe default.",
+          "display_name": "Force push",
+          "name": "force",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "For an https address with a token: the name to send with it. GitHub, GitLab and Azure DevOps take any name, so it can be left empty; Bitbucket needs your username with an app password, or x-token-auth with an access token.",
+          "display_name": "Username",
+          "name": "username",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For an https address: the token or password that may push to it, such as a GitHub personal access token. Store it as a workspace secret and put @secrets.GITHUB_TOKEN here, so it is never kept in the workflow. A public repository needs none to clone or pull.",
+          "display_name": "Password or token",
+          "name": "password",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For an ssh address (git@github.com:acme/website.git): the private key whose public half is added to the repository or the account. Store the whole key, from BEGIN to END, as a workspace secret and reference it here.",
+          "display_name": "SSH private key",
+          "multiline": true,
+          "name": "ssh_private_key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/core/git/push",
+      "returns": {
+        "description": "What was pushed: the branch, the commit it is now at on the host, and whether anything moved ('pushed'), or the host already had it all ('up_to_date').",
+        "examples": [
+          {
+            "branch": "main",
+            "commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+            "pushed": true,
+            "remote": "https://github.com/acme/website.git",
+            "repository": "3f2a9c1e5b7d4e8fa0c6b2d1e9f73a54",
+            "summary": "9fceb02..a1b2c3d",
+            "up_to_date": false
+          }
+        ],
+        "properties": {
+          "branch": {
+            "description": "The branch pushed.",
+            "type": "string"
+          },
+          "commit": {
+            "description": "The commit the branch is now at.",
+            "type": "string"
+          },
+          "pushed": {
+            "description": "Whether the host received new commits.",
+            "type": "boolean"
+          },
+          "remote": {
+            "description": "The address pushed to.",
+            "type": "string"
+          },
+          "repository": {
+            "description": "The repository, for the steps after this one.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "Git's own summary of the push, such as 9fceb02..a1b2c3d or [new branch].",
+            "type": "string"
+          },
+          "up_to_date": {
+            "description": "Whether the host already had them all.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "categories": [
+    "Lodol"
+  ],
+  "description": "Clone a repository, commit changes to it, and push to or pull from GitHub, GitLab, Bitbucket or any Git server.",
+  "display_name": "Git",
+  "id": "skipflow_git",
+  "logo": "https://www.lodol.com/app-icons/git-by-lodol-icon.svg",
+  "triggers": {}
+}
