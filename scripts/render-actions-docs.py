@@ -102,6 +102,7 @@ BUILT_IN_ICONS = {
     "skipflow_display": "Eye",
     "skipflow_files": "Files",
     "skipflow_git": "GitBranch",
+    "skipflow_html": "FileCode",
     "skipflow_http": "Globe",
     "skipflow_lists": "List",
     "skipflow_loops": "Repeat",
