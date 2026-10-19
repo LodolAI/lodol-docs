@@ -97,6 +97,7 @@ BUILT_IN_ICONS = {
     "skipflow_agent": "Sparkles",
     "skipflow_code": "CodeXml",
     "skipflow_conditions": "Split",
+    "skipflow_crypto": "Lock",
     "skipflow_datetime": "CalendarClock",
     "skipflow_delay": "Hourglass",
     "skipflow_display": "Eye",
