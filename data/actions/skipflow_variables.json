@@ -1,7 +1,7 @@
 {
   "actions": {
     "delete": {
-      "description": "Remove a stored value, or, with a dotted name, just one field of it. Deleting something that was never set does nothing and is not an error, so it's safe to run every time. The value must be one workflows are allowed to edit (turn on \"Let workflows edit this value\" when you create it); a value the workflow creates itself is editable automatically.",
+      "description": "Remove a stored value (a whole stored table included), or, with a dotted name, just one field of it. Deleting something that was never set does nothing and is not an error, so it's safe to run every time. The value must be one workflows are allowed to edit (turn on \"Let workflows edit this value\" when you create it); a value the workflow creates itself is editable automatically.",
       "display_name": "Delete a stored value",
       "display_str_template": "Delete the stored value {name}",
       "handler": "_variable_action",
@@ -58,8 +58,310 @@
         "type": "object"
       }
     },
+    "delete_rows": {
+      "description": "Remove the rows of a table stored in Lodol whose column holds a value, for example every row whose Status is done. To remove the whole table, use Delete a stored value. Deleting from a table that doesn't exist, or where nothing matches, does nothing and is not an error. Text matches ignoring capitals and spaces at either end, and a number matches the same number written as text (42 and \"42\"). The value must be one workflows are allowed to edit (turn on \"Let workflows edit this value\" when you create it); a value the workflow creates itself is editable automatically.",
+      "display_name": "Delete rows from a stored table",
+      "display_str_template": "Delete rows from the stored table {name}",
+      "handler": "_variable_action",
+      "id": "skipflow_variables_delete_rows",
+      "method": "POST",
+      "mock_response": {
+        "deleted": 2,
+        "name": "customers",
+        "row_count": 11,
+        "scope": "workspace",
+        "where": {
+          "column": "Plan",
+          "value": "Free"
+        }
+      },
+      "name": "delete_rows",
+      "output_formatter": "format_delete_rows_output",
+      "parameters": [
+        {
+          "description": "The stored table's name, for example customers. Letters, digits, and underscores only; it can't start with a digit.",
+          "display_name": "Table",
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The column to look in, for example Status.",
+          "display_name": "Column",
+          "name": "column",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Rows whose column holds this are deleted. Leave empty to delete the rows where the column is empty.",
+          "display_name": "Value",
+          "name": "value",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "workspace",
+          "description": "Where this value lives: the whole workspace (shared by every workflow), or just this workflow.",
+          "display_name": "Scope",
+          "name": "scope",
+          "options": [
+            {
+              "label": "Whole workspace",
+              "value": "workspace"
+            },
+            {
+              "label": "This workflow",
+              "value": "workflow"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/core/variables/delete-rows",
+      "result_str_template": "{delete_rows,deleted} row(s) deleted.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "How many rows were deleted.",
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "row_count": {
+            "description": "How many rows the table holds now.",
+            "type": "number"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "where": {
+            "description": "The column and value the rows matched.",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_rows": {
+      "description": "Look up rows in a table stored in Lodol: the rows whose column matches a value (for example the row whose Email is ana@example.com, or the orders whose Total is more than 100), or every row when no column is chosen. The rows can be sorted by a column, and At most keeps only the first of them, for example the 10 newest orders. Returns the rows, the first of them as row, and how many there are; a table that doesn't exist yet has no rows. For rows that must meet more than one condition, follow this step with Filter list. Text matches ignoring capitals and spaces at either end, and a number matches the same number written as text (42 and \"42\"). Reading is always allowed.",
+      "display_name": "Find rows in a stored table",
+      "display_str_template": "Find rows in the stored table {name}",
+      "handler": "_variable_action",
+      "id": "skipflow_variables_find_rows",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "found": true,
+        "headers": [
+          "Name",
+          "Email",
+          "Plan"
+        ],
+        "name": "customers",
+        "row": {
+          "Email": "ana@example.com",
+          "Name": "Ana Souza",
+          "Plan": "Pro"
+        },
+        "rows": [
+          {
+            "Email": "ana@example.com",
+            "Name": "Ana Souza",
+            "Plan": "Pro"
+          },
+          {
+            "Email": "ben@example.com",
+            "Name": "Ben Okafor",
+            "Plan": "Pro"
+          }
+        ],
+        "scope": "workspace",
+        "where": {
+          "column": "Plan",
+          "value": "Pro"
+        }
+      },
+      "name": "find_rows",
+      "output_formatter": "format_find_rows_output",
+      "parameters": [
+        {
+          "description": "The stored table's name, for example customers. Letters, digits, and underscores only; it can't start with a digit.",
+          "display_name": "Table",
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The column to look in, for example Email. Leave empty to get every row.",
+          "display_name": "Column",
+          "name": "column",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "is",
+          "description": "How the column compares with the value. Numbers compare as numbers and dates as dates, so 9 is less than 10.",
+          "display_name": "Comparison",
+          "name": "match",
+          "options": [
+            {
+              "label": "is",
+              "value": "is"
+            },
+            {
+              "label": "is not",
+              "value": "is_not"
+            },
+            {
+              "label": "contains",
+              "value": "contains"
+            },
+            {
+              "label": "is more than",
+              "value": "more_than"
+            },
+            {
+              "label": "is less than",
+              "value": "less_than"
+            },
+            {
+              "label": "is empty",
+              "value": "is_empty"
+            },
+            {
+              "label": "is not empty",
+              "value": "is_not_empty"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What to compare the column with, for example Pro. Left empty with is, it finds the rows where the column is empty.",
+          "display_name": "Value",
+          "name": "value",
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "match": [
+              "is",
+              "is_not",
+              "contains",
+              "more_than",
+              "less_than"
+            ]
+          }
+        },
+        {
+          "default": "table",
+          "description": "The order the rows come back in.",
+          "display_name": "Order",
+          "name": "sort_order",
+          "options": [
+            {
+              "label": "In the table's order",
+              "value": "table"
+            },
+            {
+              "label": "Smallest, earliest or A first",
+              "value": "ascending"
+            },
+            {
+              "label": "Largest, latest or Z first",
+              "value": "descending"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The column to sort the rows by, for example Date.",
+          "display_name": "Sort by",
+          "name": "sort_by",
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "sort_order": [
+              "ascending",
+              "descending"
+            ]
+          }
+        },
+        {
+          "description": "Keep only this many rows, the first after sorting. Leave empty to get every row found.",
+          "display_name": "At most",
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "workspace",
+          "description": "Where this value lives: the whole workspace (shared by every workflow), or just this workflow.",
+          "display_name": "Scope",
+          "name": "scope",
+          "options": [
+            {
+              "label": "Whole workspace",
+              "value": "workspace"
+            },
+            {
+              "label": "This workflow",
+              "value": "workflow"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/core/variables/find-rows",
+      "result_str_template": "{find_rows,count} row(s) found.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many rows were found (no more than At most).",
+            "type": "number"
+          },
+          "found": {
+            "description": "Whether the table exists yet.",
+            "type": "boolean"
+          },
+          "headers": {
+            "description": "The table's columns.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "row": {
+            "description": "The first row found, or empty when none was.",
+            "type": "object"
+          },
+          "rows": {
+            "description": "The rows found, in the table's order or the order asked for.",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "where": {
+            "description": "The column, comparison and value looked for, or empty when every row was asked for.",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
     "get": {
-      "description": "Read a stored value so the workflow can pick up where it left off, for example the last record it processed. Returns the default you provide when nothing has been stored under this name yet. Reading is always allowed.",
+      "description": "Read a stored value so the workflow can pick up where it left off, for example the last record it processed. Returns the default you provide when nothing has been stored under this name yet. A stored table comes back as its list of rows. Reading is always allowed.",
       "display_name": "Get a stored value",
       "display_str_template": "Get the stored value {name}",
       "handler": "_variable_action",
@@ -72,6 +374,7 @@
         "value": "42"
       },
       "name": "get",
+      "output_formatter": "format_get_output",
       "parameters": [
         {
           "description": "The name this value is stored under, for example cursor. To work with a single field inside a stored object, add a dotted path such as user.email. Letters, digits, and underscores only; each part can't start with a digit.",
@@ -194,8 +497,95 @@
         "type": "object"
       }
     },
+    "save_row": {
+      "description": "Keep a row in a table stored in Lodol, for example a customer, an order already handled, or a line in a log, with no spreadsheet to set up. With \"Update the row with the same\" set to a column, the row that already has the same value there (say, the same Email) is updated instead, so each customer appears once; its other columns are kept. The table is created the first time. Safe to run from many workflow runs at once. A stored table holds up to 5,000 rows. Text matches ignoring capitals and spaces at either end, and a number matches the same number written as text (42 and \"42\"). The value must be one workflows are allowed to edit (turn on \"Let workflows edit this value\" when you create it); a value the workflow creates itself is editable automatically.",
+      "display_name": "Save a row to a stored table",
+      "display_str_template": "Save a row to the stored table {name}",
+      "handler": "_variable_action",
+      "id": "skipflow_variables_save_row",
+      "method": "POST",
+      "mock_response": {
+        "added": true,
+        "name": "customers",
+        "row": {
+          "Email": "ana@example.com",
+          "Name": "Ana Souza",
+          "Plan": "Pro"
+        },
+        "row_count": 13,
+        "scope": "workspace"
+      },
+      "name": "save_row",
+      "output_formatter": "format_save_row_output",
+      "parameters": [
+        {
+          "description": "The stored table's name, for example customers. Letters, digits, and underscores only; it can't start with a digit.",
+          "display_name": "Table",
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The row's columns and values, for example Name: Ana and Email: ana@example.com.",
+          "display_name": "Row",
+          "name": "row",
+          "required": true,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "A column of the row, for example Email. When the table already has a row with the same value in it, that row is updated instead of a new one being added. Leave empty to always add a row.",
+          "display_name": "Update the row with the same",
+          "name": "match_on",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "workspace",
+          "description": "Where this value lives: the whole workspace (shared by every workflow), or just this workflow.",
+          "display_name": "Scope",
+          "name": "scope",
+          "options": [
+            {
+              "label": "Whole workspace",
+              "value": "workspace"
+            },
+            {
+              "label": "This workflow",
+              "value": "workflow"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/core/variables/save-row",
+      "result_str_template": "The table now has {save_row,row_count} row(s).",
+      "returns": {
+        "properties": {
+          "added": {
+            "description": "True when a new row was added, false when an existing row was updated.",
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "row": {
+            "description": "The row as it is now stored.",
+            "type": "object"
+          },
+          "row_count": {
+            "description": "How many rows the table holds now.",
+            "type": "number"
+          },
+          "scope": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "set": {
-      "description": "Save a value under a name so a later step or a future run can read it back, for example a cursor marking how far the workflow has gotten. Overwrites whatever was stored there before; setting a dotted path fills in any missing objects along the way. The value must be one workflows are allowed to edit (turn on \"Let workflows edit this value\" when you create it); a value the workflow creates itself is editable automatically.",
+      "description": "Save a value under a name so a later step or a future run can read it back, for example a cursor marking how far the workflow has gotten. Overwrites whatever was stored there before; setting a dotted path fills in any missing objects along the way. A list of rows (for example the rows Read a file returns) fills a stored table in one go; a table holds up to 5,000 rows. The value must be one workflows are allowed to edit (turn on \"Let workflows edit this value\" when you create it); a value the workflow creates itself is editable automatically.",
       "display_name": "Set a stored value",
       "display_str_template": "Set the stored value {name} to {value}",
       "handler": "_variable_action",
@@ -207,6 +597,7 @@
         "value": "42"
       },
       "name": "set",
+      "output_formatter": "format_set_output",
       "parameters": [
         {
           "description": "The name this value is stored under, for example cursor. To work with a single field inside a stored object, add a dotted path such as user.email. Letters, digits, and underscores only; each part can't start with a digit.",
@@ -263,7 +654,7 @@
   "categories": [
     "Lodol"
   ],
-  "description": "Save and reuse values across steps and runs: read, write, delete, and count with stored values.",
+  "description": "Save and reuse values across steps and runs: single values, counters, and tables of rows.",
   "display_name": "Stored Data Values",
   "id": "skipflow_variables",
   "logo": "https://www.lodol.com/app-icons/stored-data-values-icon.svg",
