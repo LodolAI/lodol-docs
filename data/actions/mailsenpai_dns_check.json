@@ -1,0 +1,350 @@
+{
+  "actions": {
+    "check_domain": {
+      "description": "Check whether a domain is set up to send and receive email reliably. Reads its SPF, DKIM, DMARC and MX records, says for each whether it is OK, needs fixing or is missing, and gives the steps to fix them with the exact values to publish. A domain that can't be checked (not registered, or a public service such as gmail.com) comes back with a status saying so rather than failing the step. No API key required.",
+      "display_name": "Check a domain's email DNS",
+      "display_str_template": "Check the email DNS records of {0}.",
+      "handler": "actions.check_domain",
+      "id": "mailsenpai_dns_check_check_domain",
+      "method": "POST",
+      "mock_response": {
+        "all_in_order": true,
+        "cached": false,
+        "checked_at": "2026-10-19T22:36:13Z",
+        "checks": {
+          "dkim": {
+            "label": "OK",
+            "note": "DKIM signature found on selectors google, s1, s2 (2048-bit key).",
+            "result": "ok"
+          },
+          "dmarc": {
+            "label": "OK",
+            "note": "It exists, with p=reject: email using your domain without permission is rejected. Reports are sent to dmarc@skipflow.com.",
+            "result": "ok"
+          },
+          "mx": {
+            "label": "OK",
+            "note": "Mail for lodol.com is received by Google Workspace (1 server).",
+            "result": "ok"
+          },
+          "spf": {
+            "label": "OK",
+            "note": "There is a single SPF record ending with ~all (flags email from servers not listed), using 3 of the 10 allowed DNS lookups. Record: v=spf1 include:sendgrid.net include:_spf.google.com ~all.",
+            "result": "ok"
+          }
+        },
+        "domain": "lodol.com",
+        "message": "In short: the four records we check are in order. Below you'll find the details and two tips to keep them that way.",
+        "records": {
+          "dkim_selectors": [
+            "google",
+            "s1",
+            "s2"
+          ],
+          "dmarc": [
+            "v=DMARC1; p=reject; rua=mailto:dmarc@skipflow.com; pct=100; adkim=s; aspf=s"
+          ],
+          "mx": [
+            {
+              "host": "smtp.google.com",
+              "priority": 1
+            }
+          ],
+          "spf": [
+            "v=spf1 include:sendgrid.net include:_spf.google.com ~all"
+          ]
+        },
+        "report_page": null,
+        "status": "checked",
+        "summary": "all in order",
+        "tips": [
+          "When you add a service that sends email on behalf of lodol.com (website, CRM, newsletter tool), add its include to the SPF record and turn on DKIM signing there too.",
+          "Check the DMARC reports sent to dmarc@skipflow.com every now and then: they show who is sending email on behalf of your domain."
+        ],
+        "to_check": 0,
+        "to_fix": 0
+      },
+      "name": "check_domain",
+      "output_formatter": "actions.report_formatter",
+      "parameters": [
+        {
+          "description": "The domain that sends your email, such as yourcompany.com. A website or email address works too: the domain is taken from it.",
+          "display_name": "Domain",
+          "examples": [
+            {
+              "label": "A domain",
+              "value": "lodol.com"
+            },
+            {
+              "label": "An email address",
+              "value": "hello@lodol.com"
+            }
+          ],
+          "name": "domain",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The name your sending service gives its DKIM key, the part before ._domainkey (for example google or s1). Leave empty to try the common ones. Fill it in when the DKIM check can't find a key.",
+          "display_name": "DKIM selector",
+          "name": "selector",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "en",
+          "description": "The language of the results, notes and steps to fix.",
+          "display_name": "Language",
+          "name": "language",
+          "options": [
+            {
+              "label": "English",
+              "value": "en"
+            },
+            {
+              "label": "Italian",
+              "value": "it"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mailsenpai-dns-check/check-domain",
+      "result_str_template": "{mailsenpai_dns_check_check_domain,domain}: {mailsenpai_dns_check_check_domain,summary}.",
+      "returns": {
+        "properties": {
+          "all_in_order": {
+            "description": "True when the domain was checked and all four records are OK. Handy for a condition that alerts when something breaks.",
+            "type": "boolean"
+          },
+          "cached": {
+            "description": "True when this is the answer from a check of the same domain in the last 15 minutes.",
+            "type": "boolean"
+          },
+          "checked_at": {
+            "description": "When the records were read (UTC, ISO 8601).",
+            "type": "string"
+          },
+          "checks": {
+            "description": "The result for each of the four records.",
+            "properties": {
+              "dkim": {
+                "description": "The DKIM (the key that signs the domain's email) check. Empty when the domain wasn't checked (see 'status').",
+                "properties": {
+                  "label": {
+                    "description": "The result in words, e.g. 'OK' or 'Needs fixing'.",
+                    "type": "string"
+                  },
+                  "note": {
+                    "description": "What was found and why it matters.",
+                    "type": "string"
+                  },
+                  "result": {
+                    "description": "'ok': in order. 'fix': published but wrong. 'missing': not published. 'check': couldn't be confirmed (for DKIM, no key on the common selectors: give the DKIM selector).",
+                    "enum": [
+                      "ok",
+                      "fix",
+                      "missing",
+                      "check"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "dmarc": {
+                "description": "The DMARC (what receivers do with email that fails SPF and DKIM) check. Empty when the domain wasn't checked (see 'status').",
+                "properties": {
+                  "label": {
+                    "description": "The result in words, e.g. 'OK' or 'Needs fixing'.",
+                    "type": "string"
+                  },
+                  "note": {
+                    "description": "What was found and why it matters.",
+                    "type": "string"
+                  },
+                  "result": {
+                    "description": "'ok': in order. 'fix': published but wrong. 'missing': not published. 'check': couldn't be confirmed (for DKIM, no key on the common selectors: give the DKIM selector).",
+                    "enum": [
+                      "ok",
+                      "fix",
+                      "missing",
+                      "check"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "mx": {
+                "description": "The MX (which servers receive the domain's email) check. Empty when the domain wasn't checked (see 'status').",
+                "properties": {
+                  "label": {
+                    "description": "The result in words, e.g. 'OK' or 'Needs fixing'.",
+                    "type": "string"
+                  },
+                  "note": {
+                    "description": "What was found and why it matters.",
+                    "type": "string"
+                  },
+                  "result": {
+                    "description": "'ok': in order. 'fix': published but wrong. 'missing': not published. 'check': couldn't be confirmed (for DKIM, no key on the common selectors: give the DKIM selector).",
+                    "enum": [
+                      "ok",
+                      "fix",
+                      "missing",
+                      "check"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "spf": {
+                "description": "The SPF (which servers may send for the domain) check. Empty when the domain wasn't checked (see 'status').",
+                "properties": {
+                  "label": {
+                    "description": "The result in words, e.g. 'OK' or 'Needs fixing'.",
+                    "type": "string"
+                  },
+                  "note": {
+                    "description": "What was found and why it matters.",
+                    "type": "string"
+                  },
+                  "result": {
+                    "description": "'ok': in order. 'fix': published but wrong. 'missing': not published. 'check': couldn't be confirmed (for DKIM, no key on the common selectors: give the DKIM selector).",
+                    "enum": [
+                      "ok",
+                      "fix",
+                      "missing",
+                      "check"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            },
+            "type": "object"
+          },
+          "domain": {
+            "description": "The domain that was checked, taken from what was entered.",
+            "type": "string"
+          },
+          "message": {
+            "description": "A sentence or two explaining the summary.",
+            "type": "string"
+          },
+          "records": {
+            "description": "The records found in DNS, as published.",
+            "properties": {
+              "dkim_selectors": {
+                "description": "The DKIM selectors a key was found on.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "dmarc": {
+                "description": "The DMARC records, e.g. 'v=DMARC1; p=reject'.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "mx": {
+                "description": "The mail servers, each with its priority.",
+                "items": {
+                  "properties": {
+                    "host": {
+                      "description": "The server's name.",
+                      "type": "string"
+                    },
+                    "priority": {
+                      "description": "Lower numbers are tried first.",
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "spf": {
+                "description": "The SPF records, e.g. 'v=spf1 ... ~all'.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "report_page": {
+            "description": "MailSenpai's web page for the same check, when it has one in the chosen language.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "description": "'checked': the records were read. 'public_mailbox': a public email service such as gmail.com, whose records belong to the provider. 'not_found': the domain isn't registered. 'invalid': not a domain name. 'dns_unreachable': DNS didn't answer, try again later.",
+            "enum": [
+              "checked",
+              "public_mailbox",
+              "not_found",
+              "invalid",
+              "dns_unreachable"
+            ],
+            "type": "string"
+          },
+          "summary": {
+            "description": "One line, e.g. '3 things to fix' or 'all in order'.",
+            "type": "string"
+          },
+          "tips": {
+            "description": "What to do, most important first, with the values to publish.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "to_check": {
+            "description": "How many of the four records couldn't be confirmed.",
+            "type": "integer"
+          },
+          "to_fix": {
+            "description": "How many of the four records need fixing.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "categories": [
+    "Email",
+    "Email Marketing",
+    "Security"
+  ],
+  "description": "Check whether a domain's email is set up right: its SPF, DKIM, DMARC and MX records, what to fix, and the exact values to publish. Useful before a campaign, when onboarding a client's domain, or on a schedule to catch a broken record. No account or API key required.",
+  "display_name": "MailSenpai DNS Check",
+  "id": "mailsenpai_dns_check",
+  "logo": "https://www.lodol.com/app-icons/mailsenpai-dns-check-icon.png",
+  "triggers": {}
+}
