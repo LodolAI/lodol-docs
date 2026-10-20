@@ -661,7 +661,7 @@
       }
     },
     "period_edge": {
-      "description": "Get the first or last day of the week, month, quarter or year a date falls in, like the 1st of this month or the end of the quarter.",
+      "description": "Get the first or last day of the week, month, quarter or year a date falls in, like the 1st of this month or the end of the quarter, or round a time down to the hour or minute.",
       "display_name": "Start or end of a period",
       "display_str_template": "Get the {1} of the {2} for {0}",
       "handler": "period_edge",
@@ -701,6 +701,14 @@
           "name": "period",
           "options": [
             {
+              "label": "Minute",
+              "value": "minute"
+            },
+            {
+              "label": "Hour",
+              "value": "hour"
+            },
+            {
               "label": "Day",
               "value": "day"
             },
@@ -731,6 +739,147 @@
         "description": "The first or last day of the period (2026-07-01) when you started from a date, otherwise its first or last moment as an ISO 8601 timestamp in your time zone.",
         "examples": [
           "2026-07-01"
+        ],
+        "type": "string"
+      }
+    },
+    "read_date": {
+      "description": "Read a date written in a particular way, like 15-10-26 14h30, or a time in another time zone, like 9:00 New York time, so other steps can use it.",
+      "display_name": "Read a date",
+      "display_str_template": "Read {0} as a date",
+      "handler": "read_written_date",
+      "id": "skipflow_datetime_read_date",
+      "method": "POST",
+      "name": "read_date",
+      "parameters": [
+        {
+          "description": "The date or time as written, like 15-10-26 14h30.",
+          "display_name": "Date",
+          "name": "value",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How it is written, in the codes \u201cMake date readable\u201d uses: DD-MM-YY HH[h]mm reads 15-10-26 14h30, DD/MM/YYYY reads 03/04/2026 as 3 April, and X reads a Unix timestamp. Text in [brackets] is matched as it is. Leave empty to read any usual way of writing a date.",
+          "display_name": "Written as",
+          "examples": [
+            {
+              "label": "15/10/2026",
+              "value": "DD/MM/YYYY"
+            },
+            {
+              "label": "10/15/2026 2:30 PM",
+              "value": "MM/DD/YYYY h:mm A"
+            },
+            {
+              "label": "20261015",
+              "value": "YYYYMMDD"
+            },
+            {
+              "label": "Unix timestamp",
+              "value": "X"
+            }
+          ],
+          "name": "pattern",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The time zone a time written without one is in, like America/New_York. Without one, it is your own time zone from Settings.",
+          "display_name": "Time zone",
+          "examples": [
+            {
+              "label": "New York",
+              "value": "America/New_York"
+            },
+            {
+              "label": "London",
+              "value": "Europe/London"
+            }
+          ],
+          "name": "timezone",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "",
+      "result_str_template": "{read_date,result}",
+      "returns": {
+        "description": "The date (2026-10-15), or the moment as an ISO 8601 timestamp with its time zone's offset, ready for any date step.",
+        "examples": [
+          "2026-10-15T14:30:00.000-04:00"
+        ],
+        "type": "string"
+      }
+    },
+    "set_date_part": {
+      "description": "Change one part of a date and keep the rest, like 9:00 on the due date or the 15th of this month.",
+      "display_name": "Set part of a date",
+      "display_str_template": "Set the {1} of {0} to {2}",
+      "handler": "set_date_part",
+      "id": "skipflow_datetime_set_date_part",
+      "method": "POST",
+      "name": "set_date_part",
+      "parameters": [
+        {
+          "description": "The date to change, like the due date or today.",
+          "display_name": "Date",
+          "name": "date",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "time",
+          "description": "Which part of the date to set.",
+          "display_name": "Set the",
+          "name": "part",
+          "options": [
+            {
+              "label": "Time of day",
+              "value": "time"
+            },
+            {
+              "label": "Hour",
+              "value": "hour"
+            },
+            {
+              "label": "Minute",
+              "value": "minute"
+            },
+            {
+              "label": "Second",
+              "value": "second"
+            },
+            {
+              "label": "Day of the month",
+              "value": "day_of_month"
+            },
+            {
+              "label": "Month",
+              "value": "month"
+            },
+            {
+              "label": "Year",
+              "value": "year"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What to set it to: a time like 9:00 or 5:30 PM, a number like 15, or a month like March. A day past the end of the month is its last day.",
+          "display_name": "To",
+          "name": "value",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "",
+      "result_str_template": "{set_date_part,result}",
+      "returns": {
+        "description": "The changed date (2026-10-15), or, once it has a time, an ISO 8601 timestamp in your time zone.",
+        "examples": [
+          "2026-10-15T09:00:00.000-04:00"
         ],
         "type": "string"
       }
@@ -837,18 +986,44 @@
       }
     },
     "unix_timestamp": {
-      "description": "Get the current time as a Unix timestamp: the number of seconds since January 1, 1970.",
-      "display_name": "Current Unix timestamp",
-      "display_str_template": "Get the current Unix timestamp",
+      "description": "Get a date, or the current time, as a Unix timestamp: the number of seconds (or milliseconds) since January 1, 1970, the way many apps write dates.",
+      "display_name": "Unix timestamp",
+      "display_str_template": "Get the Unix timestamp of {0}",
       "handler": "unix_timestamp",
       "id": "skipflow_datetime_unix_timestamp",
       "method": "POST",
       "name": "unix_timestamp",
-      "parameters": [],
+      "parameters": [
+        {
+          "description": "The date and time to turn into a timestamp. Leave empty for now.",
+          "display_name": "Date",
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "seconds",
+          "description": "Seconds, the usual choice, or milliseconds, which JavaScript and some apps use.",
+          "display_name": "In",
+          "name": "unit",
+          "options": [
+            {
+              "label": "Seconds",
+              "value": "seconds"
+            },
+            {
+              "label": "Milliseconds",
+              "value": "milliseconds"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
       "path": "",
       "result_str_template": "{unix_timestamp,result}",
       "returns": {
-        "description": "The current time as whole seconds since January 1, 1970 (UTC).",
+        "description": "The moment as whole seconds (or milliseconds) since January 1, 1970 (UTC). A date without a time is the start of that day in your time zone.",
         "examples": [
           1790908277
         ],
