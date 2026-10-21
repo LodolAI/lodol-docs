@@ -49,8 +49,28 @@ describe('HomePage', () => {
   it('leads with what Lodol does', () => {
     render(<HomePage />);
     const heading = screen.getByRole('heading', { level: 1 });
-    expect(heading).toHaveTextContent('Build it once.');
-    expect(heading).toHaveTextContent('Lodol runs it every time.');
+    expect(heading).toHaveTextContent('Your AI builds it.');
+    expect(heading).toHaveTextContent('Lodol runs it.');
+  });
+
+  it('connects an AI tool right from the home page', () => {
+    render(<HomePage />);
+    const card = screen.getByRole('heading', { name: 'Connect your AI tool' }).closest('section')!;
+    expect(within(card).getByText('https://mcp.lodol.com/mcp')).toBeInTheDocument();
+    expect(
+      within(card).getByText('claude mcp add --transport http lodol https://mcp.lodol.com/mcp'),
+    ).toBeInTheDocument();
+    expect(within(card).getAllByRole('button', { name: /^Copy / })).toHaveLength(2);
+  });
+
+  it('opens Claude and Cursor with Lodol filled in, in a new tab', () => {
+    render(<HomePage />);
+    const claude = screen.getByRole('link', { name: /Add to Claude/ });
+    expect(claude.getAttribute('href')).toContain('connectorUrl=https%3A%2F%2Fmcp.lodol.com%2Fmcp');
+    expect(claude).toHaveAttribute('target', '_blank');
+    expect(screen.getByRole('link', { name: /Add to Cursor/ }).getAttribute('href')).toContain(
+      'cursor.com/install-mcp?name=lodol',
+    );
   });
 
   it('offers a search of the docs', () => {
