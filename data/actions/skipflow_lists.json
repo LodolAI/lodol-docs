@@ -85,6 +85,65 @@
         "type": "array"
       }
     },
+    "combine_by_position": {
+      "description": "Pair up two lists item by item, the first with the first and the second with the second, like names with their email addresses. Records are merged; other items are put under a name of your choosing.",
+      "display_name": "Combine two lists by position",
+      "display_str_template": "Combine {0} and {1} by position",
+      "handler": "combine_by_position",
+      "id": "skipflow_lists_combine_by_position",
+      "method": "POST",
+      "name": "combine_by_position",
+      "parameters": [
+        {
+          "description": "The list whose items come first in each pair.",
+          "display_name": "First list",
+          "name": "first",
+          "required": true,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "The list to pair with it. Where one list is longer, its extra items are kept on their own.",
+          "display_name": "Second list",
+          "name": "second",
+          "required": true,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": "first",
+          "description": "The field to put an item of the first list under when it isn't a record, like Name. Leave empty for first.",
+          "display_name": "Name for first items",
+          "name": "first_field",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "second",
+          "description": "The field to put an item of the second list under when it isn't a record, like Email. Leave empty for second.",
+          "display_name": "Name for second items",
+          "name": "second_field",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "",
+      "result_str_template": "{combine_by_position,result}",
+      "returns": {
+        "description": "One record for each position, holding both lists' items there.",
+        "examples": [
+          [
+            {
+              "first": "Ana",
+              "second": "ana@example.com"
+            },
+            {
+              "first": "Ben",
+              "second": "ben@example.com"
+            }
+          ]
+        ],
+        "type": "array"
+      }
+    },
     "compare_lists": {
       "description": "Find what two lists have in common and where they differ: what is only in the first, only in the second, in both, and, for records matched by a field, which ones changed. Handy for keeping two apps in sync.",
       "display_name": "Compare two lists",
@@ -238,7 +297,7 @@
       }
     },
     "edit_record": {
-      "description": "Keep only some fields of a record, remove fields, rename them, or merge in another record. Given a list of records, like spreadsheet rows, it edits each one.",
+      "description": "Add or change fields, keep or remove some, rename them, or merge in another record. Given a list, like spreadsheet rows, it edits every row: Full name can be each row's first and last name together.",
       "display_name": "Edit a record",
       "display_str_template": "Edit {0}",
       "handler": "edit_record",
@@ -254,11 +313,15 @@
           "type": "ParameterType.STRING"
         },
         {
-          "default": "keep",
+          "default": "set",
           "description": "How to change the record.",
           "display_name": "What to do",
           "name": "edit",
           "options": [
+            {
+              "label": "Add or change fields",
+              "value": "set"
+            },
             {
               "label": "Keep only some fields",
               "value": "keep"
@@ -266,6 +329,10 @@
             {
               "label": "Remove fields",
               "value": "remove"
+            },
+            {
+              "label": "Remove empty fields",
+              "value": "remove_empty"
             },
             {
               "label": "Rename fields",
@@ -314,6 +381,19 @@
           "visible_when": {
             "edit": [
               "merge"
+            ]
+          }
+        },
+        {
+          "description": "Each field's name and its value, worked out for each record in turn. Refer to the record as \u201citem\u201d: Full name can be item.first and item.last joined by a space.",
+          "display_name": "Fields to set",
+          "name": "values",
+          "object_key_name": "Field",
+          "required": false,
+          "type": "ParameterType.OBJECT",
+          "visible_when": {
+            "edit": [
+              "set"
             ]
           }
         }
@@ -407,7 +487,7 @@
       }
     },
     "group_by": {
-      "description": "Sort a list of records into groups that share the same value in one field, such as each owner's tasks. Each group has a key (the shared value), its items, and a count. Text matches ignoring case and spaces; records with a blank value are kept together in a group with a blank key.",
+      "description": "Sort a list of records into groups that share the same value in one field, or several, such as each owner's tasks. Each group has a key (the shared value), its items, a count, and any figures you ask for, like each rep's total sales. Text matches ignoring case and spaces; records with a blank value are kept together in a group with a blank key.",
       "display_name": "Group items by a field",
       "display_str_template": "Group {0} by {1}",
       "handler": "group_by",
@@ -473,6 +553,21 @@
               "max"
             ]
           }
+        },
+        {
+          "description": "More fields that must also match for records to share a group, like Region and then Product. The group's key joins their values, and its keys field lists each one.",
+          "display_name": "Then by",
+          "name": "then_by",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Figures of your own for each group, each with a name and what it is, like Revenue: total of amount, Customers: count unique of email, or Reps: join of rep. A figure is the total, average, min, max, count unique, list or join of a field.",
+          "display_name": "More figures",
+          "name": "summaries",
+          "object_key_name": "Name",
+          "required": false,
+          "type": "ParameterType.OBJECT"
         }
       ],
       "path": "",
@@ -519,6 +614,10 @@
             },
             "key": {
               "description": "The value this group's records share, or empty text for records with no value."
+            },
+            "keys": {
+              "description": "Grouping by more than one field, each field's value, in order.",
+              "type": "array"
             },
             "total": {
               "description": "With The total chosen, the field's total for the group (likewise average, min or max).",
@@ -772,6 +871,52 @@
         "type": "boolean"
       }
     },
+    "make_record": {
+      "description": "Turn a list of name and value pairs, like form answers or custom fields, into one record with a field for each name.",
+      "display_name": "Make a record from a list",
+      "display_str_template": "Make a record from {0}",
+      "handler": "make_record",
+      "id": "skipflow_lists_make_record",
+      "method": "POST",
+      "name": "make_record",
+      "parameters": [
+        {
+          "description": "Records that each hold a field's name and its value, like those \u201cList a record's fields\u201d makes.",
+          "display_name": "List of pairs",
+          "name": "items",
+          "required": true,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": "name",
+          "description": "The field of each pair holding the name. Leave empty for name.",
+          "display_name": "Name is in",
+          "name": "name_field",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "value",
+          "description": "The field of each pair holding the value. Leave empty for value.",
+          "display_name": "Value is in",
+          "name": "value_field",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "",
+      "result_str_template": "{make_record,result}",
+      "returns": {
+        "description": "A record with a field for each pair. Where a name repeats, the last value is kept.",
+        "examples": [
+          {
+            "plan": "pro",
+            "seats": 5
+          }
+        ],
+        "type": "object"
+      }
+    },
     "merge": {
       "description": "Merge two lists into one, keeping the items of the first list followed by the items of the second. Leave the second list out to merge the lists inside one list into a single list (flatten).",
       "display_name": "Combine two lists",
@@ -844,6 +989,64 @@
             "12.50",
             "100",
             null
+          ]
+        ],
+        "type": "array"
+      }
+    },
+    "record_fields": {
+      "description": "Turn a record into a list: its field names, its values, or a name and value pair for each field, to loop over or show. \u201cMake a record from a list\u201d turns pairs back into a record.",
+      "display_name": "List a record's fields",
+      "display_str_template": "List the fields of {0}",
+      "handler": "record_fields",
+      "id": "skipflow_lists_record_fields",
+      "method": "POST",
+      "name": "record_fields",
+      "parameters": [
+        {
+          "description": "The record whose fields to list.",
+          "display_name": "Record",
+          "name": "record",
+          "required": true,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "default": "pairs",
+          "description": "What to list for each field.",
+          "display_name": "List",
+          "name": "part",
+          "options": [
+            {
+              "label": "Names and values",
+              "value": "pairs"
+            },
+            {
+              "label": "Names",
+              "value": "names"
+            },
+            {
+              "label": "Values",
+              "value": "values"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "",
+      "result_str_template": "{record_fields,result}",
+      "returns": {
+        "description": "One item for each field, in the record's order: the name, the value, or a record of name and value.",
+        "examples": [
+          [
+            {
+              "name": "plan",
+              "value": "pro"
+            },
+            {
+              "name": "seats",
+              "value": 5
+            }
           ]
         ],
         "type": "array"
@@ -1077,7 +1280,7 @@
       }
     },
     "sort": {
-      "description": "Sort a list in ascending (first/smallest to last/largest) or descending (last/largest to first/smallest) order.",
+      "description": "Sort a list in ascending (first/smallest to last/largest) or descending (last/largest to first/smallest) order. Records can be sorted by one field, then by more, like by Last name and then First name.",
       "display_name": "Sort list",
       "display_str_template": "Sort {0}",
       "handler": "sort_list",
@@ -1116,6 +1319,14 @@
           "name": "field",
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "More fields to sort records by when the first is the same, in order, each ascending or descending: for Last name first, First name ascending.",
+          "display_name": "Then by",
+          "name": "then_by",
+          "object_key_name": "Field",
+          "required": false,
+          "type": "ParameterType.OBJECT"
         }
       ],
       "path": "",
