@@ -239,12 +239,8 @@ export default function HomePage() {
 
   return (
     <main className="flex flex-1 flex-col">
-      <section className="relative overflow-hidden border-b border-fd-border">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-32 left-0 h-[24rem] w-[40rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--color-brand)_12%,transparent),transparent)] dark:bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--color-brand)_24%,transparent),transparent)]"
-        />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-6 py-12 md:grid-cols-[1.15fr_1fr] md:py-16">
+      <section className="border-b border-fd-border">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-12 md:grid-cols-[1.15fr_1fr] md:py-16">
           {/* min-w-0 on both: the command below doesn't wrap, and without it the
               column grows to fit it on a phone and the section clips the rest. */}
           <div className="min-w-0">
@@ -266,7 +262,7 @@ export default function HomePage() {
 
           <section
             aria-labelledby="connect-title"
-            className="min-w-0 rounded-xl border border-fd-border bg-fd-card p-5 shadow-[0_12px_32px_-16px_color-mix(in_oklab,var(--color-brand)_28%,transparent)] sm:p-6"
+            className="min-w-0 rounded-xl border border-fd-border bg-fd-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] sm:p-6"
           >
             <h2 id="connect-title" className="text-base font-semibold text-fd-foreground">
               Connect your AI tool
