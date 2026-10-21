@@ -1,54 +1,108 @@
 {
   "actions": {
-    "import_people": {
-      "description": "Add people to your Luma calendar's audience by email so you can invite them to events and send them newsletters. You can optionally apply existing tags to keep them organized.",
-      "display_name": "Import people to your calendar",
-      "display_str_template": "Import people into Luma calendar.",
-      "handler": "actions.import_people",
-      "id": "luma_import_people",
+    "add_guests": {
+      "description": "Register people for an event, each with one ticket, as going unless you choose pending approval or the waitlist. People who unsubscribed from or were blocked on the calendar are skipped.",
+      "display_name": "Add guests",
+      "display_str_template": "Add guests in Luma.",
+      "handler": "actions.add_guests",
+      "id": "luma_add_guests",
       "method": "POST",
       "mock_response": {
-        "count": 1,
-        "emails": [
-          "alex@example.com"
+        "added": [
+          "sam@example.com"
         ],
-        "tag_names": null
+        "count": 1,
+        "event_id": "evt-01HXAMPLE",
+        "skipped": []
       },
-      "name": "import_people",
+      "name": "add_guests",
       "parameters": [
         {
-          "description": "The email addresses of the people to add, separated by commas. For example: alex@example.com, sam@example.com",
+          "description": "The event. Pick one, or give its ID (it starts with evt-) or its luma.com link.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "One or more email addresses, separated by commas or new lines. Add a name like this: Jo Bloggs <jo@example.com>.",
           "display_name": "Email addresses",
+          "examples": [
+            {
+              "label": "Two people",
+              "value": "jo@example.com, sam@example.com"
+            }
+          ],
           "multiline": true,
           "name": "emails",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Optional. The names of tags to apply to these people, separated by commas, for example: Newsletter, VIP. Each tag must already exist in your Luma calendar; new tags are not created automatically.",
-          "display_name": "Tags",
-          "name": "tag_names",
+          "description": "The ticket to give them. Empty for the event's default ticket.",
+          "display_name": "Ticket type",
+          "dynamic_source": "ticket_types",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "event_id"
+          ],
+          "name": "ticket_type_id",
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Add them as going, pending your approval, or on the waitlist.",
+          "display_name": "Status",
+          "name": "approval_status",
+          "options": [
+            {
+              "label": "Going (default)",
+              "value": "approved"
+            },
+            {
+              "label": "Pending approval",
+              "value": "pending_approval"
+            },
+            {
+              "label": "Waitlist",
+              "value": "waitlist"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Let Luma email them about it. Turn off if you contact them yourself.",
+          "display_name": "Email the guests",
+          "name": "send_email",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         }
       ],
-      "path": "/actions/library/luma/import-people",
-      "result_str_template": "Imported {luma_import_people,count} people into Luma calendar.",
+      "path": "/actions/library/luma/add-guests",
+      "result_str_template": "Guests added.",
       "returns": {
         "properties": {
-          "count": {
-            "description": "How many people were imported.",
-            "type": "integer"
-          },
-          "emails": {
-            "description": "The email addresses that were imported.",
+          "added": {
+            "description": "The email addresses added",
             "items": {
               "type": "string"
             },
             "type": "array"
           },
-          "tag_names": {
-            "description": "The tags applied to the imported people.",
+          "count": {
+            "description": "How many were added",
+            "type": "number"
+          },
+          "event_id": {
+            "description": "The event's ID",
+            "type": "string"
+          },
+          "skipped": {
+            "description": "The email addresses Luma skipped",
             "items": {
               "type": "string"
             },
@@ -57,14 +111,4421 @@
         },
         "type": "object"
       }
+    },
+    "apply_contact_tag": {
+      "description": "Give a tag to contacts. People who are not contacts yet are skipped; add them with 'Import contacts'.",
+      "display_name": "Tag contacts",
+      "display_str_template": "Tag contacts in Luma.",
+      "handler": "actions.apply_contact_tag",
+      "id": "luma_apply_contact_tag",
+      "method": "POST",
+      "mock_response": {
+        "applied_count": 2,
+        "skipped_count": 0
+      },
+      "name": "apply_contact_tag",
+      "parameters": [
+        {
+          "description": "The contact tag. Pick one, or type its name or ID.",
+          "display_name": "Tag",
+          "dynamic_source": "contact_tags",
+          "dynamic_source_allows_custom": true,
+          "name": "tag",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Their email addresses (or contact IDs from 'List contacts'), separated by commas or new lines.",
+          "display_name": "Contacts",
+          "multiline": true,
+          "name": "contacts",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/apply-contact-tag",
+      "result_str_template": "Tagged {luma_apply_contact_tag,applied_count} contacts.",
+      "returns": {
+        "properties": {
+          "applied_count": {
+            "description": "How many were tagged",
+            "type": "number"
+          },
+          "skipped_count": {
+            "description": "How many were skipped as not contacts",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "cancel_event": {
+      "description": "Cancel an event for good. Luma tells its guests and removes the event; this cannot be undone.",
+      "display_name": "Cancel event",
+      "display_str_template": "Cancel event in Luma.",
+      "handler": "actions.cancel_event",
+      "id": "luma_cancel_event",
+      "method": "POST",
+      "mock_response": {
+        "canceled": true,
+        "event_id": "evt-01HXAMPLE",
+        "guest_count": 12,
+        "had_paid_guests": false,
+        "refunded": false
+      },
+      "name": "cancel_event",
+      "parameters": [
+        {
+          "description": "The event. Pick one, or give its ID (it starts with evt-) or its luma.com link.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Give guests who paid their money back.",
+          "display_name": "Refund paid guests",
+          "name": "refund_guests",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/luma/cancel-event",
+      "result_str_template": "Event canceled.",
+      "returns": {
+        "properties": {
+          "canceled": {
+            "description": "Always true once canceled",
+            "type": "boolean"
+          },
+          "event_id": {
+            "description": "The event's ID",
+            "type": "string"
+          },
+          "guest_count": {
+            "description": "How many guests were going",
+            "type": "number"
+          },
+          "had_paid_guests": {
+            "description": "Whether anyone had paid",
+            "type": "boolean"
+          },
+          "refunded": {
+            "description": "Whether paid guests were refunded",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_contact_tag": {
+      "description": "Create a tag to group contacts, such as VIP or Speakers.",
+      "display_name": "Create contact tag",
+      "display_str_template": "Create contact tag in Luma.",
+      "handler": "actions.create_contact_tag",
+      "id": "luma_create_contact_tag",
+      "method": "POST",
+      "mock_response": {
+        "tag": {
+          "color": "purple",
+          "id": "tag-01HXVIP",
+          "name": "VIP"
+        }
+      },
+      "name": "create_contact_tag",
+      "parameters": [
+        {
+          "description": "The tag's name.",
+          "display_name": "Name",
+          "examples": [
+            {
+              "label": "A tag",
+              "value": "Speakers"
+            }
+          ],
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The tag's color in Luma.",
+          "display_name": "Color",
+          "name": "color",
+          "options": [
+            {
+              "label": "Blue",
+              "value": "blue"
+            },
+            {
+              "label": "Green",
+              "value": "green"
+            },
+            {
+              "label": "Red",
+              "value": "red"
+            },
+            {
+              "label": "Orange",
+              "value": "orange"
+            },
+            {
+              "label": "Yellow",
+              "value": "yellow"
+            },
+            {
+              "label": "Purple",
+              "value": "purple"
+            },
+            {
+              "label": "Cranberry",
+              "value": "cranberry"
+            },
+            {
+              "label": "Barney",
+              "value": "barney"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/create-contact-tag",
+      "result_str_template": "Contact tag created.",
+      "returns": {
+        "properties": {
+          "tag": {
+            "description": "The new tag",
+            "properties": {
+              "color": {
+                "description": "The tag's color",
+                "type": "string"
+              },
+              "id": {
+                "description": "The tag's ID (starts with tag-)",
+                "type": "string"
+              },
+              "name": {
+                "description": "The tag's name",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_coupon": {
+      "description": "Create a coupon code for an event, a percentage or an amount off, optionally limited in uses, dates or to one ticket type. Luma cannot change a coupon's discount afterwards.",
+      "display_name": "Create coupon",
+      "display_str_template": "Create coupon in Luma.",
+      "handler": "actions.create_coupon",
+      "id": "luma_create_coupon",
+      "method": "POST",
+      "mock_response": {
+        "coupon": {
+          "cents_off": 0,
+          "code": "EARLYBIRD",
+          "currency": "usd",
+          "event_ticket_type_id": "ttype-01HXAMPLE",
+          "id": "cpn-01HXAMPLE",
+          "percent_off": 20,
+          "remaining_count": 100,
+          "valid_end_at": "2026-11-01T00:00:00.000Z",
+          "valid_start_at": "2026-10-15T09:00:00.000Z"
+        }
+      },
+      "name": "create_coupon",
+      "parameters": [
+        {
+          "description": "The event. Pick one, or give its ID (it starts with evt-) or its luma.com link.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What guests type when they register, up to 20 characters.",
+          "display_name": "Code",
+          "examples": [
+            {
+              "label": "A code",
+              "value": "EARLYBIRD"
+            }
+          ],
+          "name": "code",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The discount as a percentage, 0 to 100. Use this or an amount off.",
+          "display_name": "Percent off",
+          "maximum": 100,
+          "minimum": 0,
+          "name": "percent_off",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The discount as an amount in the currency's main unit, such as 5 for $5.00. Use this or a percentage.",
+          "display_name": "Amount off",
+          "minimum": 0,
+          "name": "amount_off",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The currency of the amount off. Needed with an amount.",
+          "display_name": "Currency",
+          "name": "currency",
+          "options": [
+            {
+              "label": "US dollar (USD)",
+              "value": "usd"
+            },
+            {
+              "label": "Euro (EUR)",
+              "value": "eur"
+            },
+            {
+              "label": "British pound (GBP)",
+              "value": "gbp"
+            },
+            {
+              "label": "Canadian dollar (CAD)",
+              "value": "cad"
+            },
+            {
+              "label": "Australian dollar (AUD)",
+              "value": "aud"
+            },
+            {
+              "label": "New Zealand dollar (NZD)",
+              "value": "nzd"
+            },
+            {
+              "label": "Swiss franc (CHF)",
+              "value": "chf"
+            },
+            {
+              "label": "Swedish krona (SEK)",
+              "value": "sek"
+            },
+            {
+              "label": "Norwegian krone (NOK)",
+              "value": "nok"
+            },
+            {
+              "label": "Danish krone (DKK)",
+              "value": "dkk"
+            },
+            {
+              "label": "Polish zloty (PLN)",
+              "value": "pln"
+            },
+            {
+              "label": "Indian rupee (INR)",
+              "value": "inr"
+            },
+            {
+              "label": "Singapore dollar (SGD)",
+              "value": "sgd"
+            },
+            {
+              "label": "Hong Kong dollar (HKD)",
+              "value": "hkd"
+            },
+            {
+              "label": "Japanese yen (JPY)",
+              "value": "jpy"
+            },
+            {
+              "label": "South Korean won (KRW)",
+              "value": "krw"
+            },
+            {
+              "label": "Brazilian real (BRL)",
+              "value": "brl"
+            },
+            {
+              "label": "Mexican peso (MXN)",
+              "value": "mxn"
+            },
+            {
+              "label": "South African rand (ZAR)",
+              "value": "zar"
+            },
+            {
+              "label": "UAE dirham (AED)",
+              "value": "aed"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many times the code can be used. Empty for no limit.",
+          "display_name": "How many uses",
+          "minimum": 1,
+          "name": "uses",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "When the code starts working. Empty for right away.",
+          "display_name": "Valid from",
+          "name": "valid_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "When the code stops working. Empty for no end.",
+          "display_name": "Valid until",
+          "name": "valid_until",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Limit the code to one ticket type. If that ticket is hidden, the code unlocks it.",
+          "display_name": "Only for ticket type",
+          "dynamic_source": "ticket_types",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "event_id"
+          ],
+          "name": "ticket_type_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/create-coupon",
+      "result_str_template": "Coupon created.",
+      "returns": {
+        "properties": {
+          "coupon": {
+            "description": "The coupon",
+            "properties": {
+              "cents_off": {
+                "description": "The amount off in cents, for an amount discount",
+                "type": "number"
+              },
+              "code": {
+                "description": "The code guests type",
+                "type": "string"
+              },
+              "currency": {
+                "description": "The currency of the amount off",
+                "type": "string"
+              },
+              "event_ticket_type_id": {
+                "description": "The only ticket type it works for, if any",
+                "type": "string"
+              },
+              "id": {
+                "description": "The coupon's ID",
+                "type": "string"
+              },
+              "percent_off": {
+                "description": "The percentage off, for a percentage discount",
+                "type": "number"
+              },
+              "remaining_count": {
+                "description": "How many uses are left",
+                "type": "number"
+              },
+              "valid_end_at": {
+                "description": "When the code stops working",
+                "type": "string"
+              },
+              "valid_start_at": {
+                "description": "When the code starts working",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_event": {
+      "description": "Create an event on the calendar with a free ticket, in person at an address or online with a meeting link. Returns the event with its luma.com link.",
+      "display_name": "Create event",
+      "display_str_template": "Create event in Luma.",
+      "handler": "actions.create_event",
+      "id": "luma_create_event",
+      "method": "POST",
+      "mock_response": {
+        "event": {
+          "access": "manage",
+          "calendar_id": "cal-01HXAMPLE",
+          "coordinate": {
+            "latitude": 37.7955,
+            "longitude": -122.3937
+          },
+          "cover_url": "https://images.lumacdn.com/event-covers/default.png",
+          "created_at": "2026-10-15T09:00:00.000Z",
+          "description": "Coffee and introductions.",
+          "description_md": "Coffee and introductions.",
+          "duration_interval": "PT2H",
+          "end_at": "2026-11-20T18:00:00.000Z",
+          "geo_address_json": {
+            "address": "1 Ferry Building",
+            "city": "San Francisco",
+            "city_state": "San Francisco, California",
+            "country": "United States",
+            "description": "Upstairs",
+            "full_address": "1 Ferry Building, San Francisco, CA 94111, USA",
+            "google_maps_place_id": "ChIJwbvXZGSAhYARrvC8tTGBNIk",
+            "region": "California"
+          },
+          "guest_counts": {
+            "approved": {
+              "guests": 1,
+              "tickets": 1
+            },
+            "checked_in": {
+              "guests": 0,
+              "tickets": 0
+            },
+            "declined": {
+              "guests": 0,
+              "tickets": 0
+            },
+            "invited": {
+              "guests": 0,
+              "tickets": 0
+            },
+            "pending_approval": {
+              "guests": 0,
+              "tickets": 0
+            },
+            "waitlist": {
+              "guests": 0,
+              "tickets": 0
+            }
+          },
+          "hosts": [
+            {
+              "avatar_url": "https://images.lumacdn.com/avatars/jo.png",
+              "email": "jo@example.com",
+              "first_name": "Jo",
+              "id": "usr-01HXHOST",
+              "last_name": "Bloggs",
+              "name": "Jo Bloggs"
+            }
+          ],
+          "id": "evt-01HXAMPLE",
+          "location_type": "offline",
+          "location_visibility": "public",
+          "max_capacity": 50,
+          "meeting_url": "",
+          "name": "Founders breakfast",
+          "platform": "luma",
+          "registration_open": true,
+          "require_approval": false,
+          "spots_remaining": 49,
+          "start_at": "2026-11-20T16:00:00.000Z",
+          "tags": [
+            {
+              "id": "tag-01HXEVT",
+              "name": "Breakfasts"
+            }
+          ],
+          "timezone": "America/New_York",
+          "url": "https://luma.com/founders-breakfast",
+          "user_id": "usr-01HXHOST",
+          "visibility": "public",
+          "waitlist_status": "disabled"
+        }
+      },
+      "name": "create_event",
+      "parameters": [
+        {
+          "description": "The event's name.",
+          "display_name": "Name",
+          "examples": [
+            {
+              "label": "A name",
+              "value": "Founders breakfast"
+            }
+          ],
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "When the event starts.",
+          "display_name": "Starts",
+          "name": "start_at",
+          "required": true,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "When the event ends. Defaults to an hour after it starts.",
+          "display_name": "Ends",
+          "name": "end_at",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "The time zone the event page shows times in, such as America/New_York.",
+          "display_name": "Time zone",
+          "dynamic_source": "time_zones",
+          "dynamic_source_allows_custom": true,
+          "name": "timezone",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What the event is about. You can format it with Markdown.",
+          "display_name": "Description",
+          "multiline": true,
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where it happens, for an in-person event: an address or a place name, looked up on Google Maps.",
+          "display_name": "Address",
+          "examples": [
+            {
+              "label": "A place",
+              "value": "Ferry Building, San Francisco"
+            }
+          ],
+          "name": "address",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The Zoom, Google Meet or other link, for an online event. Use either this or an address.",
+          "display_name": "Online meeting link",
+          "name": "meeting_url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Who can find the event. Defaults to your calendar's setting.",
+          "display_name": "Visibility",
+          "name": "visibility",
+          "options": [
+            {
+              "label": "Public: listed on your calendar",
+              "value": "public"
+            },
+            {
+              "label": "Private: only people with the link",
+              "value": "private"
+            },
+            {
+              "label": "Members only",
+              "value": "members-only"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The most people who can be going. Registration closes (or the waitlist opens) once it is reached. Empty for no limit.",
+          "display_name": "Capacity",
+          "minimum": 1,
+          "name": "max_capacity",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/luma/create-event",
+      "result_str_template": "Event created.",
+      "returns": {
+        "properties": {
+          "event": {
+            "description": "The event",
+            "properties": {
+              "access": {
+                "description": "manage for events the calendar runs, view for others",
+                "type": "string"
+              },
+              "calendar_id": {
+                "description": "The ID of the calendar that manages it",
+                "type": "string"
+              },
+              "coordinate": {
+                "description": "The place on a map",
+                "properties": {
+                  "latitude": {
+                    "description": "Latitude",
+                    "type": "number"
+                  },
+                  "longitude": {
+                    "description": "Longitude",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "cover_url": {
+                "description": "Link to the cover image",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created (UTC)",
+                "type": "string"
+              },
+              "description": {
+                "description": "The description as plain text (single event only)",
+                "type": "string"
+              },
+              "description_md": {
+                "description": "The description in Markdown (single event only)",
+                "type": "string"
+              },
+              "duration_interval": {
+                "description": "How long it lasts, such as PT2H",
+                "type": "string"
+              },
+              "end_at": {
+                "description": "When it ends (UTC)",
+                "type": "string"
+              },
+              "geo_address_json": {
+                "description": "Where it happens, for an in-person event",
+                "properties": {
+                  "address": {
+                    "description": "The street address",
+                    "type": "string"
+                  },
+                  "city": {
+                    "description": "The city",
+                    "type": "string"
+                  },
+                  "city_state": {
+                    "description": "The city and state together",
+                    "type": "string"
+                  },
+                  "country": {
+                    "description": "The country",
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Extra directions, such as a suite number",
+                    "type": "string"
+                  },
+                  "full_address": {
+                    "description": "The whole address on one line",
+                    "type": "string"
+                  },
+                  "google_maps_place_id": {
+                    "description": "The place's Google Maps ID",
+                    "type": "string"
+                  },
+                  "region": {
+                    "description": "The state or region",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "guest_counts": {
+                "description": "How many guests have each status (single event only)",
+                "properties": {
+                  "approved": {
+                    "description": "Guests going",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are going",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "checked_in": {
+                    "description": "Guests checked in",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are checked in",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "declined": {
+                    "description": "Guests declined",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are declined",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "invited": {
+                    "description": "Guests invited",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are invited",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "pending_approval": {
+                    "description": "Guests pending approval",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are pending approval",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "waitlist": {
+                    "description": "Guests on the waitlist",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are on the waitlist",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
+              "hosts": {
+                "description": "The hosts (single event only)",
+                "items": {
+                  "properties": {
+                    "avatar_url": {
+                      "description": "Link to the host's picture",
+                      "type": "string"
+                    },
+                    "email": {
+                      "description": "The host's email address",
+                      "type": "string"
+                    },
+                    "first_name": {
+                      "description": "The host's first name",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "The host's user ID",
+                      "type": "string"
+                    },
+                    "last_name": {
+                      "description": "The host's last name",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The host's full name",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "id": {
+                "description": "The event's ID (starts with evt-)",
+                "type": "string"
+              },
+              "location_type": {
+                "description": "offline for in person, or the meeting platform",
+                "type": "string"
+              },
+              "location_visibility": {
+                "description": "public, or guests-only to hide the address",
+                "type": "string"
+              },
+              "max_capacity": {
+                "description": "The most people who can be going; empty for no limit",
+                "type": "number"
+              },
+              "meeting_url": {
+                "description": "The online meeting link, for an online event",
+                "type": "string"
+              },
+              "name": {
+                "description": "The event's name",
+                "type": "string"
+              },
+              "platform": {
+                "description": "Where the event lives: luma",
+                "type": "string"
+              },
+              "registration_open": {
+                "description": "Whether people can register",
+                "type": "boolean"
+              },
+              "require_approval": {
+                "description": "Whether registrations need approval",
+                "type": "boolean"
+              },
+              "spots_remaining": {
+                "description": "Spots left; empty for no limit",
+                "type": "number"
+              },
+              "start_at": {
+                "description": "When it starts (UTC)",
+                "type": "string"
+              },
+              "tags": {
+                "description": "The event's tags (lists only)",
+                "items": {
+                  "properties": {
+                    "id": {
+                      "description": "The tag's ID",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The tag's name",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "timezone": {
+                "description": "The time zone the event page shows times in",
+                "type": "string"
+              },
+              "url": {
+                "description": "The event page on luma.com",
+                "type": "string"
+              },
+              "user_id": {
+                "description": "The ID of the person who created it",
+                "type": "string"
+              },
+              "visibility": {
+                "description": "public, private or members-only",
+                "type": "string"
+              },
+              "waitlist_status": {
+                "description": "enabled when there is a waitlist",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_ticket_type": {
+      "description": "Add a ticket type to an event, free or paid, with an optional limit, approval and sale dates. Paid tickets need Stripe connected in Luma.",
+      "display_name": "Create ticket type",
+      "display_str_template": "Create ticket type in Luma.",
+      "handler": "actions.create_ticket_type",
+      "id": "luma_create_ticket_type",
+      "method": "POST",
+      "mock_response": {
+        "ticket_type": {
+          "cents": 0,
+          "currency": "usd",
+          "description": "Entry and breakfast.",
+          "id": "ttype-01HXAMPLE",
+          "is_flexible": false,
+          "is_hidden": false,
+          "max_capacity": 50,
+          "min_cents": 0,
+          "name": "General admission",
+          "require_approval": false,
+          "type": "free",
+          "valid_end_at": "2026-11-20T16:00:00.000Z",
+          "valid_start_at": "2026-10-15T09:00:00.000Z"
+        }
+      },
+      "name": "create_ticket_type",
+      "parameters": [
+        {
+          "description": "The event. Pick one, or give its ID (it starts with evt-) or its luma.com link.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The ticket's name, such as General admission or VIP.",
+          "display_name": "Name",
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The price in the currency's main unit, such as 25 for $25.00. Leave empty for a free ticket. Paid tickets need Stripe connected in Luma.",
+          "display_name": "Price",
+          "minimum": 0,
+          "name": "price",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The currency of the price. Needed for a paid ticket.",
+          "display_name": "Currency",
+          "name": "currency",
+          "options": [
+            {
+              "label": "US dollar (USD)",
+              "value": "usd"
+            },
+            {
+              "label": "Euro (EUR)",
+              "value": "eur"
+            },
+            {
+              "label": "British pound (GBP)",
+              "value": "gbp"
+            },
+            {
+              "label": "Canadian dollar (CAD)",
+              "value": "cad"
+            },
+            {
+              "label": "Australian dollar (AUD)",
+              "value": "aud"
+            },
+            {
+              "label": "New Zealand dollar (NZD)",
+              "value": "nzd"
+            },
+            {
+              "label": "Swiss franc (CHF)",
+              "value": "chf"
+            },
+            {
+              "label": "Swedish krona (SEK)",
+              "value": "sek"
+            },
+            {
+              "label": "Norwegian krone (NOK)",
+              "value": "nok"
+            },
+            {
+              "label": "Danish krone (DKK)",
+              "value": "dkk"
+            },
+            {
+              "label": "Polish zloty (PLN)",
+              "value": "pln"
+            },
+            {
+              "label": "Indian rupee (INR)",
+              "value": "inr"
+            },
+            {
+              "label": "Singapore dollar (SGD)",
+              "value": "sgd"
+            },
+            {
+              "label": "Hong Kong dollar (HKD)",
+              "value": "hkd"
+            },
+            {
+              "label": "Japanese yen (JPY)",
+              "value": "jpy"
+            },
+            {
+              "label": "South Korean won (KRW)",
+              "value": "krw"
+            },
+            {
+              "label": "Brazilian real (BRL)",
+              "value": "brl"
+            },
+            {
+              "label": "Mexican peso (MXN)",
+              "value": "mxn"
+            },
+            {
+              "label": "South African rand (ZAR)",
+              "value": "zar"
+            },
+            {
+              "label": "UAE dirham (AED)",
+              "value": "aed"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What the ticket includes, shown when people register.",
+          "display_name": "Description",
+          "multiline": true,
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The most tickets of this type that can be taken. Empty for no limit.",
+          "display_name": "How many available",
+          "minimum": 1,
+          "name": "max_capacity",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Hold registrations with this ticket until you approve them.",
+          "display_name": "Require approval",
+          "name": "require_approval",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Hide the ticket from the event page. Guests reach it through an unlock code (see 'Create coupon').",
+          "display_name": "Hidden",
+          "name": "hidden",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "When people can start taking this ticket. Empty for right away.",
+          "display_name": "On sale from",
+          "name": "sales_start",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "When this ticket stops being offered. Empty for until the event.",
+          "display_name": "On sale until",
+          "name": "sales_end",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/luma/create-ticket-type",
+      "result_str_template": "Ticket type created.",
+      "returns": {
+        "properties": {
+          "ticket_type": {
+            "description": "The ticket type",
+            "properties": {
+              "cents": {
+                "description": "The price in cents",
+                "type": "number"
+              },
+              "currency": {
+                "description": "The currency, such as usd",
+                "type": "string"
+              },
+              "description": {
+                "description": "What the ticket includes",
+                "type": "string"
+              },
+              "id": {
+                "description": "The ticket type's ID (starts with ttype-)",
+                "type": "string"
+              },
+              "is_flexible": {
+                "description": "Whether guests choose what to pay",
+                "type": "boolean"
+              },
+              "is_hidden": {
+                "description": "Whether it is hidden from the event page",
+                "type": "boolean"
+              },
+              "max_capacity": {
+                "description": "How many can be taken; empty for no limit",
+                "type": "number"
+              },
+              "min_cents": {
+                "description": "The least a guest can pay, when they choose",
+                "type": "number"
+              },
+              "name": {
+                "description": "The ticket type's name",
+                "type": "string"
+              },
+              "require_approval": {
+                "description": "Whether registrations need approval",
+                "type": "boolean"
+              },
+              "type": {
+                "description": "free or paid",
+                "type": "string"
+              },
+              "valid_end_at": {
+                "description": "When it stops being offered",
+                "type": "string"
+              },
+              "valid_start_at": {
+                "description": "When it goes on sale",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_contact_tag": {
+      "description": "Delete a contact tag. The contacts who had it stay.",
+      "display_name": "Delete contact tag",
+      "display_str_template": "Delete contact tag in Luma.",
+      "handler": "actions.delete_contact_tag",
+      "id": "luma_delete_contact_tag",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "tag_id": "tag-01HXVIP"
+      },
+      "name": "delete_contact_tag",
+      "parameters": [
+        {
+          "description": "The tag to delete. Pick one, or type its name or ID.",
+          "display_name": "Tag",
+          "dynamic_source": "contact_tags",
+          "dynamic_source_allows_custom": true,
+          "name": "tag_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/delete-contact-tag",
+      "result_str_template": "Contact tag deleted.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Always true once deleted",
+            "type": "boolean"
+          },
+          "tag_id": {
+            "description": "The tag deleted",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_ticket_type": {
+      "description": "Stop offering a ticket type. Guests who already hold one keep it, and an event's last visible ticket cannot be deleted.",
+      "display_name": "Delete ticket type",
+      "display_str_template": "Delete ticket type in Luma.",
+      "handler": "actions.delete_ticket_type",
+      "id": "luma_delete_ticket_type",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "ticket_type_id": "ttype-01HXAMPLE"
+      },
+      "name": "delete_ticket_type",
+      "parameters": [
+        {
+          "description": "The event the ticket type is on, to pick the ticket type from a list.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The ticket type. Pick one, or give its ID (it starts with ttype-).",
+          "display_name": "Ticket type",
+          "dynamic_source": "ticket_types",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "event_id"
+          ],
+          "name": "ticket_type_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/delete-ticket-type",
+      "result_str_template": "Ticket type deleted.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Always true once deleted",
+            "type": "boolean"
+          },
+          "ticket_type_id": {
+            "description": "The ticket type deleted",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_calendar": {
+      "description": "Get the Luma calendar the connection belongs to: its name, link, city and time zone, and the settings new events start with.",
+      "display_name": "Get calendar",
+      "display_str_template": "Get calendar in Luma.",
+      "handler": "actions.get_calendar",
+      "id": "luma_get_calendar",
+      "method": "POST",
+      "mock_response": {
+        "calendar": {
+          "avatar_url": "https://images.lumacdn.com/avatars/founders.png",
+          "cover_image_url": "https://images.lumacdn.com/covers/founders.png",
+          "description": "Monthly meetups for founders.",
+          "event_defaults": {
+            "show_guest_list": true,
+            "visibility": "public"
+          },
+          "id": "cal-01HXAMPLE",
+          "is_personal": false,
+          "launch_status": "launched",
+          "location": {
+            "city": "San Francisco",
+            "country": "United States",
+            "country_code": "US",
+            "region": "California",
+            "timezone": "America/Los_Angeles"
+          },
+          "name": "Founders Club",
+          "slug": "founders",
+          "tint_color": "#bb2dc7",
+          "url": "https://luma.com/founders",
+          "website": "https://example.com"
+        }
+      },
+      "name": "get_calendar",
+      "parameters": [],
+      "path": "/actions/library/luma/get-calendar",
+      "result_str_template": "Calendar retrieved.",
+      "returns": {
+        "properties": {
+          "calendar": {
+            "description": "The calendar",
+            "properties": {
+              "avatar_url": {
+                "description": "Link to the calendar's picture",
+                "type": "string"
+              },
+              "cover_image_url": {
+                "description": "Link to the calendar's cover image",
+                "type": "string"
+              },
+              "description": {
+                "description": "The calendar's description",
+                "type": "string"
+              },
+              "event_defaults": {
+                "description": "Settings new events start with",
+                "properties": {
+                  "show_guest_list": {
+                    "description": "Whether new events show who is going",
+                    "type": "boolean"
+                  },
+                  "visibility": {
+                    "description": "Visibility new events start with",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "id": {
+                "description": "The calendar's ID (starts with cal-)",
+                "type": "string"
+              },
+              "is_personal": {
+                "description": "Whether it is a person's own calendar",
+                "type": "boolean"
+              },
+              "launch_status": {
+                "description": "launched, coming-soon or archived",
+                "type": "string"
+              },
+              "location": {
+                "description": "The city the calendar is based in, if any",
+                "properties": {
+                  "city": {
+                    "description": "The city",
+                    "type": "string"
+                  },
+                  "country": {
+                    "description": "The country",
+                    "type": "string"
+                  },
+                  "country_code": {
+                    "description": "The two-letter country code",
+                    "type": "string"
+                  },
+                  "region": {
+                    "description": "The state or region",
+                    "type": "string"
+                  },
+                  "timezone": {
+                    "description": "The city's time zone",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "name": {
+                "description": "The calendar's name",
+                "type": "string"
+              },
+              "slug": {
+                "description": "The calendar's short name in its link",
+                "type": "string"
+              },
+              "tint_color": {
+                "description": "The calendar's accent color",
+                "type": "string"
+              },
+              "url": {
+                "description": "The calendar page on luma.com",
+                "type": "string"
+              },
+              "website": {
+                "description": "The calendar's website",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_event": {
+      "description": "Get one event with its time, place, link, hosts, registration settings and how many guests are going, waiting or invited.",
+      "display_name": "Get event",
+      "display_str_template": "Get event in Luma.",
+      "handler": "actions.get_event",
+      "id": "luma_get_event",
+      "method": "POST",
+      "mock_response": {
+        "event": {
+          "access": "manage",
+          "calendar_id": "cal-01HXAMPLE",
+          "coordinate": {
+            "latitude": 37.7955,
+            "longitude": -122.3937
+          },
+          "cover_url": "https://images.lumacdn.com/event-covers/default.png",
+          "created_at": "2026-10-15T09:00:00.000Z",
+          "description": "Coffee and introductions.",
+          "description_md": "Coffee and introductions.",
+          "duration_interval": "PT2H",
+          "end_at": "2026-11-20T18:00:00.000Z",
+          "geo_address_json": {
+            "address": "1 Ferry Building",
+            "city": "San Francisco",
+            "city_state": "San Francisco, California",
+            "country": "United States",
+            "description": "Upstairs",
+            "full_address": "1 Ferry Building, San Francisco, CA 94111, USA",
+            "google_maps_place_id": "ChIJwbvXZGSAhYARrvC8tTGBNIk",
+            "region": "California"
+          },
+          "guest_counts": {
+            "approved": {
+              "guests": 1,
+              "tickets": 1
+            },
+            "checked_in": {
+              "guests": 0,
+              "tickets": 0
+            },
+            "declined": {
+              "guests": 0,
+              "tickets": 0
+            },
+            "invited": {
+              "guests": 0,
+              "tickets": 0
+            },
+            "pending_approval": {
+              "guests": 0,
+              "tickets": 0
+            },
+            "waitlist": {
+              "guests": 0,
+              "tickets": 0
+            }
+          },
+          "hosts": [
+            {
+              "avatar_url": "https://images.lumacdn.com/avatars/jo.png",
+              "email": "jo@example.com",
+              "first_name": "Jo",
+              "id": "usr-01HXHOST",
+              "last_name": "Bloggs",
+              "name": "Jo Bloggs"
+            }
+          ],
+          "id": "evt-01HXAMPLE",
+          "location_type": "offline",
+          "location_visibility": "public",
+          "max_capacity": 50,
+          "meeting_url": "",
+          "name": "Founders breakfast",
+          "platform": "luma",
+          "registration_open": true,
+          "require_approval": false,
+          "spots_remaining": 49,
+          "start_at": "2026-11-20T16:00:00.000Z",
+          "tags": [
+            {
+              "id": "tag-01HXEVT",
+              "name": "Breakfasts"
+            }
+          ],
+          "timezone": "America/New_York",
+          "url": "https://luma.com/founders-breakfast",
+          "user_id": "usr-01HXHOST",
+          "visibility": "public",
+          "waitlist_status": "disabled"
+        }
+      },
+      "name": "get_event",
+      "parameters": [
+        {
+          "description": "The event. Pick one, or give its ID (it starts with evt-) or its luma.com link.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/get-event",
+      "result_str_template": "Event retrieved.",
+      "returns": {
+        "properties": {
+          "event": {
+            "description": "The event",
+            "properties": {
+              "access": {
+                "description": "manage for events the calendar runs, view for others",
+                "type": "string"
+              },
+              "calendar_id": {
+                "description": "The ID of the calendar that manages it",
+                "type": "string"
+              },
+              "coordinate": {
+                "description": "The place on a map",
+                "properties": {
+                  "latitude": {
+                    "description": "Latitude",
+                    "type": "number"
+                  },
+                  "longitude": {
+                    "description": "Longitude",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "cover_url": {
+                "description": "Link to the cover image",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created (UTC)",
+                "type": "string"
+              },
+              "description": {
+                "description": "The description as plain text (single event only)",
+                "type": "string"
+              },
+              "description_md": {
+                "description": "The description in Markdown (single event only)",
+                "type": "string"
+              },
+              "duration_interval": {
+                "description": "How long it lasts, such as PT2H",
+                "type": "string"
+              },
+              "end_at": {
+                "description": "When it ends (UTC)",
+                "type": "string"
+              },
+              "geo_address_json": {
+                "description": "Where it happens, for an in-person event",
+                "properties": {
+                  "address": {
+                    "description": "The street address",
+                    "type": "string"
+                  },
+                  "city": {
+                    "description": "The city",
+                    "type": "string"
+                  },
+                  "city_state": {
+                    "description": "The city and state together",
+                    "type": "string"
+                  },
+                  "country": {
+                    "description": "The country",
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Extra directions, such as a suite number",
+                    "type": "string"
+                  },
+                  "full_address": {
+                    "description": "The whole address on one line",
+                    "type": "string"
+                  },
+                  "google_maps_place_id": {
+                    "description": "The place's Google Maps ID",
+                    "type": "string"
+                  },
+                  "region": {
+                    "description": "The state or region",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "guest_counts": {
+                "description": "How many guests have each status (single event only)",
+                "properties": {
+                  "approved": {
+                    "description": "Guests going",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are going",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "checked_in": {
+                    "description": "Guests checked in",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are checked in",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "declined": {
+                    "description": "Guests declined",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are declined",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "invited": {
+                    "description": "Guests invited",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are invited",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "pending_approval": {
+                    "description": "Guests pending approval",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are pending approval",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "waitlist": {
+                    "description": "Guests on the waitlist",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are on the waitlist",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
+              "hosts": {
+                "description": "The hosts (single event only)",
+                "items": {
+                  "properties": {
+                    "avatar_url": {
+                      "description": "Link to the host's picture",
+                      "type": "string"
+                    },
+                    "email": {
+                      "description": "The host's email address",
+                      "type": "string"
+                    },
+                    "first_name": {
+                      "description": "The host's first name",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "The host's user ID",
+                      "type": "string"
+                    },
+                    "last_name": {
+                      "description": "The host's last name",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The host's full name",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "id": {
+                "description": "The event's ID (starts with evt-)",
+                "type": "string"
+              },
+              "location_type": {
+                "description": "offline for in person, or the meeting platform",
+                "type": "string"
+              },
+              "location_visibility": {
+                "description": "public, or guests-only to hide the address",
+                "type": "string"
+              },
+              "max_capacity": {
+                "description": "The most people who can be going; empty for no limit",
+                "type": "number"
+              },
+              "meeting_url": {
+                "description": "The online meeting link, for an online event",
+                "type": "string"
+              },
+              "name": {
+                "description": "The event's name",
+                "type": "string"
+              },
+              "platform": {
+                "description": "Where the event lives: luma",
+                "type": "string"
+              },
+              "registration_open": {
+                "description": "Whether people can register",
+                "type": "boolean"
+              },
+              "require_approval": {
+                "description": "Whether registrations need approval",
+                "type": "boolean"
+              },
+              "spots_remaining": {
+                "description": "Spots left; empty for no limit",
+                "type": "number"
+              },
+              "start_at": {
+                "description": "When it starts (UTC)",
+                "type": "string"
+              },
+              "tags": {
+                "description": "The event's tags (lists only)",
+                "items": {
+                  "properties": {
+                    "id": {
+                      "description": "The tag's ID",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The tag's name",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "timezone": {
+                "description": "The time zone the event page shows times in",
+                "type": "string"
+              },
+              "url": {
+                "description": "The event page on luma.com",
+                "type": "string"
+              },
+              "user_id": {
+                "description": "The ID of the person who created it",
+                "type": "string"
+              },
+              "visibility": {
+                "description": "public, private or members-only",
+                "type": "string"
+              },
+              "waitlist_status": {
+                "description": "enabled when there is a waitlist",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_guest": {
+      "description": "Get one guest of an event by email or guest ID: their status, tickets, orders, answers and check-in code.",
+      "display_name": "Get guest",
+      "display_str_template": "Get guest in Luma.",
+      "handler": "actions.get_guest",
+      "id": "luma_get_guest",
+      "method": "POST",
+      "mock_response": {
+        "guest": {
+          "approval_status": "approved",
+          "attribution_params": {
+            "utm_source": "newsletter"
+          },
+          "check_in_qr_code": "https://luma.com/check-in/evt-01HXAMPLE?pk=g-abc",
+          "event_ticket_orders": [
+            {
+              "amount": 0,
+              "id": "ord-01HX"
+            }
+          ],
+          "event_tickets": [
+            {
+              "amount": 0,
+              "amount_discount": 0,
+              "amount_tax": 0,
+              "checked_in_at": "",
+              "currency": "usd",
+              "event_ticket_type_id": "ttype-01HXAMPLE",
+              "id": "tkt-01HXAMPLE",
+              "is_captured": true,
+              "name": "General admission"
+            }
+          ],
+          "id": "gst-01HXAMPLE",
+          "invited_at": "",
+          "joined_at": "",
+          "phone_number": "+15555550123",
+          "registered_at": "2026-10-16T10:30:00.000Z",
+          "registration_answers": [
+            {
+              "label": "Company",
+              "question_id": "q-01HX",
+              "question_type": "text",
+              "value": "Acme"
+            }
+          ],
+          "user_email": "sam@example.com",
+          "user_first_name": "Sam",
+          "user_id": "usr-01HXGUEST",
+          "user_last_name": "Lee",
+          "user_name": "Sam Lee"
+        }
+      },
+      "name": "get_guest",
+      "parameters": [
+        {
+          "description": "The event. Pick one, or give its ID (it starts with evt-) or its luma.com link.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The guest's email address, or their guest ID (it starts with gst-).",
+          "display_name": "Guest",
+          "name": "guest_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/get-guest",
+      "result_str_template": "Guest retrieved.",
+      "returns": {
+        "properties": {
+          "guest": {
+            "description": "The guest",
+            "properties": {
+              "approval_status": {
+                "description": "approved (going), pending_approval, waitlist, invited or declined",
+                "type": "string"
+              },
+              "attribution_params": {
+                "description": "Where they came from, such as utm_source",
+                "type": "object"
+              },
+              "check_in_qr_code": {
+                "description": "The link in their check-in QR code",
+                "type": "string"
+              },
+              "event_ticket_orders": {
+                "description": "Their orders, with any coupon used",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "event_tickets": {
+                "description": "Their tickets",
+                "items": {
+                  "properties": {
+                    "amount": {
+                      "description": "What was paid, in cents",
+                      "type": "number"
+                    },
+                    "amount_discount": {
+                      "description": "The discount, in cents",
+                      "type": "number"
+                    },
+                    "amount_tax": {
+                      "description": "The tax, in cents",
+                      "type": "number"
+                    },
+                    "checked_in_at": {
+                      "description": "When the ticket was checked in, if it was",
+                      "type": "string"
+                    },
+                    "currency": {
+                      "description": "The currency, such as usd",
+                      "type": "string"
+                    },
+                    "event_ticket_type_id": {
+                      "description": "The ticket type's ID",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "The ticket's ID",
+                      "type": "string"
+                    },
+                    "is_captured": {
+                      "description": "Whether the payment went through",
+                      "type": "boolean"
+                    },
+                    "name": {
+                      "description": "The ticket type's name",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "id": {
+                "description": "The guest's ID (starts with gst-)",
+                "type": "string"
+              },
+              "invited_at": {
+                "description": "When they were invited, if they were",
+                "type": "string"
+              },
+              "joined_at": {
+                "description": "When they first opened the online meeting link",
+                "type": "string"
+              },
+              "phone_number": {
+                "description": "The guest's phone number",
+                "type": "string"
+              },
+              "registered_at": {
+                "description": "When they registered (UTC)",
+                "type": "string"
+              },
+              "registration_answers": {
+                "description": "Their answers to your questions",
+                "items": {
+                  "properties": {
+                    "label": {
+                      "description": "The question",
+                      "type": "string"
+                    },
+                    "question_id": {
+                      "description": "The question's ID",
+                      "type": "string"
+                    },
+                    "question_type": {
+                      "description": "The kind of question, such as text or select",
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "The answer",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "user_email": {
+                "description": "The guest's email address",
+                "type": "string"
+              },
+              "user_first_name": {
+                "description": "The guest's first name",
+                "type": "string"
+              },
+              "user_id": {
+                "description": "The person's Luma user ID",
+                "type": "string"
+              },
+              "user_last_name": {
+                "description": "The guest's last name",
+                "type": "string"
+              },
+              "user_name": {
+                "description": "The guest's full name",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "import_people": {
+      "description": "Add people to the calendar's contacts by email so you can invite them to events and send them newsletters, optionally tagging them.",
+      "display_name": "Import contacts",
+      "display_str_template": "Import contacts in Luma.",
+      "handler": "actions.import_people",
+      "id": "luma_import_people",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "emails": [
+          "sam@example.com"
+        ],
+        "tag_names": [
+          "VIP"
+        ]
+      },
+      "name": "import_people",
+      "parameters": [
+        {
+          "description": "One or more email addresses, separated by commas or new lines. Add a name like this: Jo Bloggs <jo@example.com>.",
+          "display_name": "Email addresses",
+          "examples": [
+            {
+              "label": "Two people",
+              "value": "jo@example.com, sam@example.com"
+            }
+          ],
+          "multiline": true,
+          "name": "emails",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Tags to give them, separated by commas, such as Newsletter, VIP. Use tags you have in Luma (or create one with 'Create contact tag').",
+          "display_name": "Tags",
+          "name": "tag_names",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/import-people",
+      "result_str_template": "Imported {luma_import_people,count} contacts.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many were imported",
+            "type": "integer"
+          },
+          "emails": {
+            "description": "The email addresses imported",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tag_names": {
+            "description": "The tags given to them",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_contact_tags": {
+      "description": "List the tags the calendar groups its contacts with.",
+      "display_name": "List contact tags",
+      "display_str_template": "List contact tags in Luma.",
+      "handler": "actions.list_contact_tags",
+      "id": "luma_list_contact_tags",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "tags": [
+          {
+            "color": "purple",
+            "id": "tag-01HXVIP",
+            "name": "VIP"
+          }
+        ]
+      },
+      "name": "list_contact_tags",
+      "parameters": [],
+      "path": "/actions/library/luma/list-contact-tags",
+      "result_str_template": "Contact tags retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many",
+            "type": "number"
+          },
+          "tags": {
+            "description": "The tags",
+            "items": {
+              "properties": {
+                "color": {
+                  "description": "The tag's color",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The tag's ID (starts with tag-)",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The tag's name",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_contacts": {
+      "description": "List the calendar's contacts, newest first, with their tags and how many events they went to; search by name or email, or by tag. Returns one page; pass 'next_cursor' back for more.",
+      "display_name": "List contacts",
+      "display_str_template": "List contacts in Luma.",
+      "handler": "actions.list_contacts",
+      "id": "luma_list_contacts",
+      "method": "POST",
+      "mock_response": {
+        "contacts": [
+          {
+            "avatar_url": "https://images.lumacdn.com/avatars/sam.png",
+            "created_at": "2026-10-01T12:00:00.000Z",
+            "email": "sam@example.com",
+            "event_approved_count": 3,
+            "event_checked_in_count": 2,
+            "first_name": "Sam",
+            "id": "usr-01HXGUEST",
+            "last_name": "Lee",
+            "name": "Sam Lee",
+            "revenue_usd_cents": 5000,
+            "tags": [
+              {
+                "id": "tag-01HXVIP",
+                "name": "VIP"
+              }
+            ],
+            "user_id": "usr-01HXGUEST"
+          }
+        ],
+        "count": 1,
+        "has_more": false,
+        "next_cursor": ""
+      },
+      "name": "list_contacts",
+      "parameters": [
+        {
+          "description": "Only contacts whose name or email contains this.",
+          "display_name": "Search",
+          "name": "search",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only contacts with this tag.",
+          "display_name": "Tag",
+          "dynamic_source": "contact_tags",
+          "dynamic_source_allows_custom": true,
+          "name": "tag",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many to return, 1 to 100.",
+          "display_name": "Page size",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The 'next_cursor' from an earlier page, to get the page after it.",
+          "display_name": "Next page cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/list-contacts",
+      "result_str_template": "Contacts retrieved.",
+      "returns": {
+        "properties": {
+          "contacts": {
+            "description": "The contacts",
+            "items": {
+              "properties": {
+                "avatar_url": {
+                  "description": "Link to the contact's picture",
+                  "type": "string"
+                },
+                "created_at": {
+                  "description": "When they became a contact (UTC)",
+                  "type": "string"
+                },
+                "email": {
+                  "description": "The contact's email address",
+                  "type": "string"
+                },
+                "event_approved_count": {
+                  "description": "How many of your events they went to",
+                  "type": "number"
+                },
+                "event_checked_in_count": {
+                  "description": "How many times they checked in",
+                  "type": "number"
+                },
+                "first_name": {
+                  "description": "The contact's first name",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The contact's ID (starts with usr-)",
+                  "type": "string"
+                },
+                "last_name": {
+                  "description": "The contact's last name",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The contact's full name",
+                  "type": "string"
+                },
+                "revenue_usd_cents": {
+                  "description": "What they have paid you, in US cents",
+                  "type": "number"
+                },
+                "tags": {
+                  "description": "The contact's tags",
+                  "items": {
+                    "properties": {
+                      "id": {
+                        "description": "The tag's ID",
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "The tag's name",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "user_id": {
+                  "description": "The person's Luma user ID",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many on this page",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "Whether there are more after this page",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "description": "Pass as 'Next page cursor' for the next page; empty on the last",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_coupons": {
+      "description": "List an event's coupon codes with their discount, uses left and dates. Returns one page; pass 'next_cursor' back for more.",
+      "display_name": "List coupons",
+      "display_str_template": "List coupons in Luma.",
+      "handler": "actions.list_coupons",
+      "id": "luma_list_coupons",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "coupons": [
+          {
+            "cents_off": 0,
+            "code": "EARLYBIRD",
+            "currency": "usd",
+            "event_ticket_type_id": "ttype-01HXAMPLE",
+            "id": "cpn-01HXAMPLE",
+            "percent_off": 20,
+            "remaining_count": 100,
+            "valid_end_at": "2026-11-01T00:00:00.000Z",
+            "valid_start_at": "2026-10-15T09:00:00.000Z"
+          }
+        ],
+        "has_more": false,
+        "next_cursor": ""
+      },
+      "name": "list_coupons",
+      "parameters": [
+        {
+          "description": "The event. Pick one, or give its ID (it starts with evt-) or its luma.com link.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many to return, 1 to 100.",
+          "display_name": "Page size",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The 'next_cursor' from an earlier page, to get the page after it.",
+          "display_name": "Next page cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/list-coupons",
+      "result_str_template": "Coupons retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many on this page",
+            "type": "number"
+          },
+          "coupons": {
+            "description": "The coupons",
+            "items": {
+              "properties": {
+                "cents_off": {
+                  "description": "The amount off in cents, for an amount discount",
+                  "type": "number"
+                },
+                "code": {
+                  "description": "The code guests type",
+                  "type": "string"
+                },
+                "currency": {
+                  "description": "The currency of the amount off",
+                  "type": "string"
+                },
+                "event_ticket_type_id": {
+                  "description": "The only ticket type it works for, if any",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The coupon's ID",
+                  "type": "string"
+                },
+                "percent_off": {
+                  "description": "The percentage off, for a percentage discount",
+                  "type": "number"
+                },
+                "remaining_count": {
+                  "description": "How many uses are left",
+                  "type": "number"
+                },
+                "valid_end_at": {
+                  "description": "When the code stops working",
+                  "type": "string"
+                },
+                "valid_start_at": {
+                  "description": "When the code starts working",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "has_more": {
+            "description": "Whether there are more after this page",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "description": "Pass as 'Next page cursor' for the next page; empty on the last",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_events": {
+      "description": "List the calendar's events by start time, optionally between two dates. Returns one page; pass 'next_cursor' back for more.",
+      "display_name": "List events",
+      "display_str_template": "List events in Luma.",
+      "handler": "actions.list_events",
+      "id": "luma_list_events",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "events": [
+          {
+            "access": "manage",
+            "calendar_id": "cal-01HXAMPLE",
+            "coordinate": {
+              "latitude": 37.7955,
+              "longitude": -122.3937
+            },
+            "cover_url": "https://images.lumacdn.com/event-covers/default.png",
+            "created_at": "2026-10-15T09:00:00.000Z",
+            "description": "Coffee and introductions.",
+            "description_md": "Coffee and introductions.",
+            "duration_interval": "PT2H",
+            "end_at": "2026-11-20T18:00:00.000Z",
+            "geo_address_json": {
+              "address": "1 Ferry Building",
+              "city": "San Francisco",
+              "city_state": "San Francisco, California",
+              "country": "United States",
+              "description": "Upstairs",
+              "full_address": "1 Ferry Building, San Francisco, CA 94111, USA",
+              "google_maps_place_id": "ChIJwbvXZGSAhYARrvC8tTGBNIk",
+              "region": "California"
+            },
+            "guest_counts": {
+              "approved": {
+                "guests": 1,
+                "tickets": 1
+              },
+              "checked_in": {
+                "guests": 0,
+                "tickets": 0
+              },
+              "declined": {
+                "guests": 0,
+                "tickets": 0
+              },
+              "invited": {
+                "guests": 0,
+                "tickets": 0
+              },
+              "pending_approval": {
+                "guests": 0,
+                "tickets": 0
+              },
+              "waitlist": {
+                "guests": 0,
+                "tickets": 0
+              }
+            },
+            "hosts": [
+              {
+                "avatar_url": "https://images.lumacdn.com/avatars/jo.png",
+                "email": "jo@example.com",
+                "first_name": "Jo",
+                "id": "usr-01HXHOST",
+                "last_name": "Bloggs",
+                "name": "Jo Bloggs"
+              }
+            ],
+            "id": "evt-01HXAMPLE",
+            "location_type": "offline",
+            "location_visibility": "public",
+            "max_capacity": 50,
+            "meeting_url": "",
+            "name": "Founders breakfast",
+            "platform": "luma",
+            "registration_open": true,
+            "require_approval": false,
+            "spots_remaining": 49,
+            "start_at": "2026-11-20T16:00:00.000Z",
+            "tags": [
+              {
+                "id": "tag-01HXEVT",
+                "name": "Breakfasts"
+              }
+            ],
+            "timezone": "America/New_York",
+            "url": "https://luma.com/founders-breakfast",
+            "user_id": "usr-01HXHOST",
+            "visibility": "public",
+            "waitlist_status": "disabled"
+          }
+        ],
+        "has_more": false,
+        "next_cursor": ""
+      },
+      "name": "list_events",
+      "parameters": [
+        {
+          "description": "Only events that start after this time.",
+          "display_name": "Starting after",
+          "name": "starts_after",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Only events that start before this time.",
+          "display_name": "Starting before",
+          "name": "starts_before",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Events on your calendar, or ones people submitted that wait for your approval.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "On your calendar (default)",
+              "value": "approved"
+            },
+            {
+              "label": "Waiting for your approval",
+              "value": "pending"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Sort by start time.",
+          "display_name": "Order",
+          "name": "order",
+          "options": [
+            {
+              "label": "Soonest first (default)",
+              "value": "asc"
+            },
+            {
+              "label": "Latest first",
+              "value": "desc"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many to return, 1 to 100.",
+          "display_name": "Page size",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The 'next_cursor' from an earlier page, to get the page after it.",
+          "display_name": "Next page cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/list-events",
+      "result_str_template": "Events retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many on this page",
+            "type": "number"
+          },
+          "events": {
+            "description": "The events",
+            "items": {
+              "properties": {
+                "access": {
+                  "description": "manage for events the calendar runs, view for others",
+                  "type": "string"
+                },
+                "calendar_id": {
+                  "description": "The ID of the calendar that manages it",
+                  "type": "string"
+                },
+                "coordinate": {
+                  "description": "The place on a map",
+                  "properties": {
+                    "latitude": {
+                      "description": "Latitude",
+                      "type": "number"
+                    },
+                    "longitude": {
+                      "description": "Longitude",
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "cover_url": {
+                  "description": "Link to the cover image",
+                  "type": "string"
+                },
+                "created_at": {
+                  "description": "When it was created (UTC)",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "The description as plain text (single event only)",
+                  "type": "string"
+                },
+                "description_md": {
+                  "description": "The description in Markdown (single event only)",
+                  "type": "string"
+                },
+                "duration_interval": {
+                  "description": "How long it lasts, such as PT2H",
+                  "type": "string"
+                },
+                "end_at": {
+                  "description": "When it ends (UTC)",
+                  "type": "string"
+                },
+                "geo_address_json": {
+                  "description": "Where it happens, for an in-person event",
+                  "properties": {
+                    "address": {
+                      "description": "The street address",
+                      "type": "string"
+                    },
+                    "city": {
+                      "description": "The city",
+                      "type": "string"
+                    },
+                    "city_state": {
+                      "description": "The city and state together",
+                      "type": "string"
+                    },
+                    "country": {
+                      "description": "The country",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "Extra directions, such as a suite number",
+                      "type": "string"
+                    },
+                    "full_address": {
+                      "description": "The whole address on one line",
+                      "type": "string"
+                    },
+                    "google_maps_place_id": {
+                      "description": "The place's Google Maps ID",
+                      "type": "string"
+                    },
+                    "region": {
+                      "description": "The state or region",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "guest_counts": {
+                  "description": "How many guests have each status (single event only)",
+                  "properties": {
+                    "approved": {
+                      "description": "Guests going",
+                      "properties": {
+                        "guests": {
+                          "description": "How many guests are going",
+                          "type": "number"
+                        },
+                        "tickets": {
+                          "description": "How many tickets they hold",
+                          "type": "number"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "checked_in": {
+                      "description": "Guests checked in",
+                      "properties": {
+                        "guests": {
+                          "description": "How many guests are checked in",
+                          "type": "number"
+                        },
+                        "tickets": {
+                          "description": "How many tickets they hold",
+                          "type": "number"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "declined": {
+                      "description": "Guests declined",
+                      "properties": {
+                        "guests": {
+                          "description": "How many guests are declined",
+                          "type": "number"
+                        },
+                        "tickets": {
+                          "description": "How many tickets they hold",
+                          "type": "number"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "invited": {
+                      "description": "Guests invited",
+                      "properties": {
+                        "guests": {
+                          "description": "How many guests are invited",
+                          "type": "number"
+                        },
+                        "tickets": {
+                          "description": "How many tickets they hold",
+                          "type": "number"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "pending_approval": {
+                      "description": "Guests pending approval",
+                      "properties": {
+                        "guests": {
+                          "description": "How many guests are pending approval",
+                          "type": "number"
+                        },
+                        "tickets": {
+                          "description": "How many tickets they hold",
+                          "type": "number"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "waitlist": {
+                      "description": "Guests on the waitlist",
+                      "properties": {
+                        "guests": {
+                          "description": "How many guests are on the waitlist",
+                          "type": "number"
+                        },
+                        "tickets": {
+                          "description": "How many tickets they hold",
+                          "type": "number"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "hosts": {
+                  "description": "The hosts (single event only)",
+                  "items": {
+                    "properties": {
+                      "avatar_url": {
+                        "description": "Link to the host's picture",
+                        "type": "string"
+                      },
+                      "email": {
+                        "description": "The host's email address",
+                        "type": "string"
+                      },
+                      "first_name": {
+                        "description": "The host's first name",
+                        "type": "string"
+                      },
+                      "id": {
+                        "description": "The host's user ID",
+                        "type": "string"
+                      },
+                      "last_name": {
+                        "description": "The host's last name",
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "The host's full name",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "description": "The event's ID (starts with evt-)",
+                  "type": "string"
+                },
+                "location_type": {
+                  "description": "offline for in person, or the meeting platform",
+                  "type": "string"
+                },
+                "location_visibility": {
+                  "description": "public, or guests-only to hide the address",
+                  "type": "string"
+                },
+                "max_capacity": {
+                  "description": "The most people who can be going; empty for no limit",
+                  "type": "number"
+                },
+                "meeting_url": {
+                  "description": "The online meeting link, for an online event",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The event's name",
+                  "type": "string"
+                },
+                "platform": {
+                  "description": "Where the event lives: luma",
+                  "type": "string"
+                },
+                "registration_open": {
+                  "description": "Whether people can register",
+                  "type": "boolean"
+                },
+                "require_approval": {
+                  "description": "Whether registrations need approval",
+                  "type": "boolean"
+                },
+                "spots_remaining": {
+                  "description": "Spots left; empty for no limit",
+                  "type": "number"
+                },
+                "start_at": {
+                  "description": "When it starts (UTC)",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "The event's tags (lists only)",
+                  "items": {
+                    "properties": {
+                      "id": {
+                        "description": "The tag's ID",
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "The tag's name",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "timezone": {
+                  "description": "The time zone the event page shows times in",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "The event page on luma.com",
+                  "type": "string"
+                },
+                "user_id": {
+                  "description": "The ID of the person who created it",
+                  "type": "string"
+                },
+                "visibility": {
+                  "description": "public, private or members-only",
+                  "type": "string"
+                },
+                "waitlist_status": {
+                  "description": "enabled when there is a waitlist",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "has_more": {
+            "description": "Whether there are more after this page",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "description": "Pass as 'Next page cursor' for the next page; empty on the last",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_guests": {
+      "description": "List an event's guests with their status, tickets and answers, optionally only those going, waiting or invited. Returns one page; pass 'next_cursor' back for more.",
+      "display_name": "List guests",
+      "display_str_template": "List guests in Luma.",
+      "handler": "actions.list_guests",
+      "id": "luma_list_guests",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "guests": [
+          {
+            "approval_status": "approved",
+            "attribution_params": {
+              "utm_source": "newsletter"
+            },
+            "check_in_qr_code": "https://luma.com/check-in/evt-01HXAMPLE?pk=g-abc",
+            "event_tickets": [
+              {
+                "amount": 0,
+                "amount_discount": 0,
+                "amount_tax": 0,
+                "checked_in_at": "",
+                "currency": "usd",
+                "event_ticket_type_id": "ttype-01HXAMPLE",
+                "id": "tkt-01HXAMPLE",
+                "is_captured": true,
+                "name": "General admission"
+              }
+            ],
+            "id": "gst-01HXAMPLE",
+            "invited_at": "",
+            "joined_at": "",
+            "phone_number": "+15555550123",
+            "registered_at": "2026-10-16T10:30:00.000Z",
+            "registration_answers": [
+              {
+                "label": "Company",
+                "question_id": "q-01HX",
+                "question_type": "text",
+                "value": "Acme"
+              }
+            ],
+            "user_email": "sam@example.com",
+            "user_first_name": "Sam",
+            "user_id": "usr-01HXGUEST",
+            "user_last_name": "Lee",
+            "user_name": "Sam Lee"
+          }
+        ],
+        "has_more": false,
+        "next_cursor": ""
+      },
+      "name": "list_guests",
+      "parameters": [
+        {
+          "description": "The event. Pick one, or give its ID (it starts with evt-) or its luma.com link.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only guests with this status. Empty for everyone.",
+          "display_name": "Status",
+          "name": "approval_status",
+          "options": [
+            {
+              "label": "Going",
+              "value": "approved"
+            },
+            {
+              "label": "Pending approval",
+              "value": "pending_approval"
+            },
+            {
+              "label": "Waitlist",
+              "value": "waitlist"
+            },
+            {
+              "label": "Invited",
+              "value": "invited"
+            },
+            {
+              "label": "Declined",
+              "value": "declined"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How to sort the guests.",
+          "display_name": "Order",
+          "name": "order",
+          "options": [
+            {
+              "label": "Newest registrations first (default)",
+              "value": "newest"
+            },
+            {
+              "label": "Oldest registrations first",
+              "value": "oldest"
+            },
+            {
+              "label": "By name",
+              "value": "name"
+            },
+            {
+              "label": "By email",
+              "value": "email"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many to return, 1 to 100.",
+          "display_name": "Page size",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The 'next_cursor' from an earlier page, to get the page after it.",
+          "display_name": "Next page cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/list-guests",
+      "result_str_template": "Guests retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many on this page",
+            "type": "number"
+          },
+          "guests": {
+            "description": "The guests",
+            "items": {
+              "properties": {
+                "approval_status": {
+                  "description": "approved (going), pending_approval, waitlist, invited or declined",
+                  "type": "string"
+                },
+                "attribution_params": {
+                  "description": "Where they came from, such as utm_source",
+                  "type": "object"
+                },
+                "check_in_qr_code": {
+                  "description": "The link in their check-in QR code",
+                  "type": "string"
+                },
+                "event_tickets": {
+                  "description": "Their tickets",
+                  "items": {
+                    "properties": {
+                      "amount": {
+                        "description": "What was paid, in cents",
+                        "type": "number"
+                      },
+                      "amount_discount": {
+                        "description": "The discount, in cents",
+                        "type": "number"
+                      },
+                      "amount_tax": {
+                        "description": "The tax, in cents",
+                        "type": "number"
+                      },
+                      "checked_in_at": {
+                        "description": "When the ticket was checked in, if it was",
+                        "type": "string"
+                      },
+                      "currency": {
+                        "description": "The currency, such as usd",
+                        "type": "string"
+                      },
+                      "event_ticket_type_id": {
+                        "description": "The ticket type's ID",
+                        "type": "string"
+                      },
+                      "id": {
+                        "description": "The ticket's ID",
+                        "type": "string"
+                      },
+                      "is_captured": {
+                        "description": "Whether the payment went through",
+                        "type": "boolean"
+                      },
+                      "name": {
+                        "description": "The ticket type's name",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "description": "The guest's ID (starts with gst-)",
+                  "type": "string"
+                },
+                "invited_at": {
+                  "description": "When they were invited, if they were",
+                  "type": "string"
+                },
+                "joined_at": {
+                  "description": "When they first opened the online meeting link",
+                  "type": "string"
+                },
+                "phone_number": {
+                  "description": "The guest's phone number",
+                  "type": "string"
+                },
+                "registered_at": {
+                  "description": "When they registered (UTC)",
+                  "type": "string"
+                },
+                "registration_answers": {
+                  "description": "Their answers to your questions",
+                  "items": {
+                    "properties": {
+                      "label": {
+                        "description": "The question",
+                        "type": "string"
+                      },
+                      "question_id": {
+                        "description": "The question's ID",
+                        "type": "string"
+                      },
+                      "question_type": {
+                        "description": "The kind of question, such as text or select",
+                        "type": "string"
+                      },
+                      "value": {
+                        "description": "The answer",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "user_email": {
+                  "description": "The guest's email address",
+                  "type": "string"
+                },
+                "user_first_name": {
+                  "description": "The guest's first name",
+                  "type": "string"
+                },
+                "user_id": {
+                  "description": "The person's Luma user ID",
+                  "type": "string"
+                },
+                "user_last_name": {
+                  "description": "The guest's last name",
+                  "type": "string"
+                },
+                "user_name": {
+                  "description": "The guest's full name",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "has_more": {
+            "description": "Whether there are more after this page",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "description": "Pass as 'Next page cursor' for the next page; empty on the last",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_ticket_types": {
+      "description": "List an event's ticket types with their prices and limits.",
+      "display_name": "List ticket types",
+      "display_str_template": "List ticket types in Luma.",
+      "handler": "actions.list_ticket_types",
+      "id": "luma_list_ticket_types",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "ticket_types": [
+          {
+            "cents": 0,
+            "currency": "usd",
+            "description": "Entry and breakfast.",
+            "id": "ttype-01HXAMPLE",
+            "is_flexible": false,
+            "is_hidden": false,
+            "max_capacity": 50,
+            "min_cents": 0,
+            "name": "General admission",
+            "require_approval": false,
+            "type": "free",
+            "valid_end_at": "2026-11-20T16:00:00.000Z",
+            "valid_start_at": "2026-10-15T09:00:00.000Z"
+          }
+        ]
+      },
+      "name": "list_ticket_types",
+      "parameters": [
+        {
+          "description": "The event. Pick one, or give its ID (it starts with evt-) or its luma.com link.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Also list tickets hidden from the event page.",
+          "display_name": "Include hidden tickets",
+          "name": "include_hidden",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/luma/list-ticket-types",
+      "result_str_template": "Ticket types retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many",
+            "type": "number"
+          },
+          "ticket_types": {
+            "description": "The ticket types",
+            "items": {
+              "properties": {
+                "cents": {
+                  "description": "The price in cents",
+                  "type": "number"
+                },
+                "currency": {
+                  "description": "The currency, such as usd",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "What the ticket includes",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The ticket type's ID (starts with ttype-)",
+                  "type": "string"
+                },
+                "is_flexible": {
+                  "description": "Whether guests choose what to pay",
+                  "type": "boolean"
+                },
+                "is_hidden": {
+                  "description": "Whether it is hidden from the event page",
+                  "type": "boolean"
+                },
+                "max_capacity": {
+                  "description": "How many can be taken; empty for no limit",
+                  "type": "number"
+                },
+                "min_cents": {
+                  "description": "The least a guest can pay, when they choose",
+                  "type": "number"
+                },
+                "name": {
+                  "description": "The ticket type's name",
+                  "type": "string"
+                },
+                "require_approval": {
+                  "description": "Whether registrations need approval",
+                  "type": "boolean"
+                },
+                "type": {
+                  "description": "free or paid",
+                  "type": "string"
+                },
+                "valid_end_at": {
+                  "description": "When it stops being offered",
+                  "type": "string"
+                },
+                "valid_start_at": {
+                  "description": "When it goes on sale",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "remove_contact": {
+      "description": "Remove someone from the calendar's contacts so they stop getting your invites and newsletters. They can follow the calendar again.",
+      "display_name": "Remove contact",
+      "display_str_template": "Remove contact in Luma.",
+      "handler": "actions.remove_contact",
+      "id": "luma_remove_contact",
+      "method": "POST",
+      "mock_response": {
+        "contact": "sam@example.com",
+        "removed": true
+      },
+      "name": "remove_contact",
+      "parameters": [
+        {
+          "description": "Their email address, or their contact ID from 'List contacts'.",
+          "display_name": "Contact",
+          "name": "contact",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/remove-contact",
+      "result_str_template": "Contact removed.",
+      "returns": {
+        "properties": {
+          "contact": {
+            "description": "The contact, as given",
+            "type": "string"
+          },
+          "removed": {
+            "description": "Always true once removed",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "remove_contact_tag": {
+      "description": "Take a tag off contacts. The tag itself stays.",
+      "display_name": "Untag contacts",
+      "display_str_template": "Untag contacts in Luma.",
+      "handler": "actions.remove_contact_tag",
+      "id": "luma_remove_contact_tag",
+      "method": "POST",
+      "mock_response": {
+        "removed_count": 2,
+        "skipped_count": 0
+      },
+      "name": "remove_contact_tag",
+      "parameters": [
+        {
+          "description": "The contact tag. Pick one, or type its name or ID.",
+          "display_name": "Tag",
+          "dynamic_source": "contact_tags",
+          "dynamic_source_allows_custom": true,
+          "name": "tag",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Their email addresses (or contact IDs from 'List contacts'), separated by commas or new lines.",
+          "display_name": "Contacts",
+          "multiline": true,
+          "name": "contacts",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/remove-contact-tag",
+      "result_str_template": "Untagged {luma_remove_contact_tag,removed_count} contacts.",
+      "returns": {
+        "properties": {
+          "removed_count": {
+            "description": "How many lost the tag",
+            "type": "number"
+          },
+          "skipped_count": {
+            "description": "How many were skipped as not contacts",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "send_invites": {
+      "description": "Invite people to an event by email (and text message, where Luma has their number). They choose whether to register.",
+      "display_name": "Send invites",
+      "display_str_template": "Send invites in Luma.",
+      "handler": "actions.send_invites",
+      "id": "luma_send_invites",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "event_id": "evt-01HXAMPLE",
+        "invited": [
+          "sam@example.com"
+        ],
+        "skipped": []
+      },
+      "name": "send_invites",
+      "parameters": [
+        {
+          "description": "The event. Pick one, or give its ID (it starts with evt-) or its luma.com link.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "One or more email addresses, separated by commas or new lines. Add a name like this: Jo Bloggs <jo@example.com>.",
+          "display_name": "Email addresses",
+          "examples": [
+            {
+              "label": "Two people",
+              "value": "jo@example.com, sam@example.com"
+            }
+          ],
+          "multiline": true,
+          "name": "emails",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A personal note for the email, up to 200 characters.",
+          "display_name": "Message",
+          "multiline": true,
+          "name": "message",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/send-invites",
+      "result_str_template": "Invites sent.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many were invited",
+            "type": "number"
+          },
+          "event_id": {
+            "description": "The event's ID",
+            "type": "string"
+          },
+          "invited": {
+            "description": "The email addresses invited",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "skipped": {
+            "description": "The email addresses Luma skipped",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "update_event": {
+      "description": "Change an event's name, time, place, description, visibility or capacity, or open or close registration. Only the fields given change.",
+      "display_name": "Update event",
+      "display_str_template": "Update event in Luma.",
+      "handler": "actions.update_event",
+      "id": "luma_update_event",
+      "method": "POST",
+      "mock_response": {
+        "event": {
+          "access": "manage",
+          "calendar_id": "cal-01HXAMPLE",
+          "coordinate": {
+            "latitude": 37.7955,
+            "longitude": -122.3937
+          },
+          "cover_url": "https://images.lumacdn.com/event-covers/default.png",
+          "created_at": "2026-10-15T09:00:00.000Z",
+          "description": "Coffee and introductions.",
+          "description_md": "Coffee and introductions.",
+          "duration_interval": "PT2H",
+          "end_at": "2026-11-20T18:00:00.000Z",
+          "geo_address_json": {
+            "address": "1 Ferry Building",
+            "city": "San Francisco",
+            "city_state": "San Francisco, California",
+            "country": "United States",
+            "description": "Upstairs",
+            "full_address": "1 Ferry Building, San Francisco, CA 94111, USA",
+            "google_maps_place_id": "ChIJwbvXZGSAhYARrvC8tTGBNIk",
+            "region": "California"
+          },
+          "guest_counts": {
+            "approved": {
+              "guests": 1,
+              "tickets": 1
+            },
+            "checked_in": {
+              "guests": 0,
+              "tickets": 0
+            },
+            "declined": {
+              "guests": 0,
+              "tickets": 0
+            },
+            "invited": {
+              "guests": 0,
+              "tickets": 0
+            },
+            "pending_approval": {
+              "guests": 0,
+              "tickets": 0
+            },
+            "waitlist": {
+              "guests": 0,
+              "tickets": 0
+            }
+          },
+          "hosts": [
+            {
+              "avatar_url": "https://images.lumacdn.com/avatars/jo.png",
+              "email": "jo@example.com",
+              "first_name": "Jo",
+              "id": "usr-01HXHOST",
+              "last_name": "Bloggs",
+              "name": "Jo Bloggs"
+            }
+          ],
+          "id": "evt-01HXAMPLE",
+          "location_type": "offline",
+          "location_visibility": "public",
+          "max_capacity": 50,
+          "meeting_url": "",
+          "name": "Founders lunch",
+          "platform": "luma",
+          "registration_open": true,
+          "require_approval": false,
+          "spots_remaining": 49,
+          "start_at": "2026-11-20T16:00:00.000Z",
+          "tags": [
+            {
+              "id": "tag-01HXEVT",
+              "name": "Breakfasts"
+            }
+          ],
+          "timezone": "America/New_York",
+          "url": "https://luma.com/founders-breakfast",
+          "user_id": "usr-01HXHOST",
+          "visibility": "public",
+          "waitlist_status": "disabled"
+        }
+      },
+      "name": "update_event",
+      "parameters": [
+        {
+          "description": "The event. Pick one, or give its ID (it starts with evt-) or its luma.com link.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A new name. Leave empty to keep it.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A new start time. Leave empty to keep it.",
+          "display_name": "Starts",
+          "name": "start_at",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "A new end time. Leave empty to keep it.",
+          "display_name": "Ends",
+          "name": "end_at",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "A new time zone for the event page. Leave empty to keep it.",
+          "display_name": "Time zone",
+          "dynamic_source": "time_zones",
+          "dynamic_source_allows_custom": true,
+          "name": "timezone",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What the event is about, in Markdown if you like. Leave empty to keep it.",
+          "display_name": "Description",
+          "multiline": true,
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A new address or place name for an in-person event. Leave empty to keep it.",
+          "display_name": "Address",
+          "examples": [
+            {
+              "label": "A place",
+              "value": "Ferry Building, San Francisco"
+            }
+          ],
+          "name": "address",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A new online meeting link. Leave empty to keep it.",
+          "display_name": "Online meeting link",
+          "name": "meeting_url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Who can find the event. Leave empty to keep it.",
+          "display_name": "Visibility",
+          "name": "visibility",
+          "options": [
+            {
+              "label": "Public: listed on your calendar",
+              "value": "public"
+            },
+            {
+              "label": "Private: only people with the link",
+              "value": "private"
+            },
+            {
+              "label": "Members only",
+              "value": "members-only"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The most people who can be going. Leave empty to keep it.",
+          "display_name": "Capacity",
+          "minimum": 1,
+          "name": "max_capacity",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Open or close registration. Leave empty to keep it.",
+          "display_name": "Registration",
+          "name": "registration",
+          "options": [
+            {
+              "label": "Open",
+              "value": "open"
+            },
+            {
+              "label": "Closed",
+              "value": "closed"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Let Luma email guests when the name, time or place changes. They still get an app notification for a new time or place.",
+          "display_name": "Email guests about changes",
+          "name": "email_guests",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/luma/update-event",
+      "result_str_template": "Event updated.",
+      "returns": {
+        "properties": {
+          "event": {
+            "description": "The event",
+            "properties": {
+              "access": {
+                "description": "manage for events the calendar runs, view for others",
+                "type": "string"
+              },
+              "calendar_id": {
+                "description": "The ID of the calendar that manages it",
+                "type": "string"
+              },
+              "coordinate": {
+                "description": "The place on a map",
+                "properties": {
+                  "latitude": {
+                    "description": "Latitude",
+                    "type": "number"
+                  },
+                  "longitude": {
+                    "description": "Longitude",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "cover_url": {
+                "description": "Link to the cover image",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created (UTC)",
+                "type": "string"
+              },
+              "description": {
+                "description": "The description as plain text (single event only)",
+                "type": "string"
+              },
+              "description_md": {
+                "description": "The description in Markdown (single event only)",
+                "type": "string"
+              },
+              "duration_interval": {
+                "description": "How long it lasts, such as PT2H",
+                "type": "string"
+              },
+              "end_at": {
+                "description": "When it ends (UTC)",
+                "type": "string"
+              },
+              "geo_address_json": {
+                "description": "Where it happens, for an in-person event",
+                "properties": {
+                  "address": {
+                    "description": "The street address",
+                    "type": "string"
+                  },
+                  "city": {
+                    "description": "The city",
+                    "type": "string"
+                  },
+                  "city_state": {
+                    "description": "The city and state together",
+                    "type": "string"
+                  },
+                  "country": {
+                    "description": "The country",
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Extra directions, such as a suite number",
+                    "type": "string"
+                  },
+                  "full_address": {
+                    "description": "The whole address on one line",
+                    "type": "string"
+                  },
+                  "google_maps_place_id": {
+                    "description": "The place's Google Maps ID",
+                    "type": "string"
+                  },
+                  "region": {
+                    "description": "The state or region",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "guest_counts": {
+                "description": "How many guests have each status (single event only)",
+                "properties": {
+                  "approved": {
+                    "description": "Guests going",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are going",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "checked_in": {
+                    "description": "Guests checked in",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are checked in",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "declined": {
+                    "description": "Guests declined",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are declined",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "invited": {
+                    "description": "Guests invited",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are invited",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "pending_approval": {
+                    "description": "Guests pending approval",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are pending approval",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "waitlist": {
+                    "description": "Guests on the waitlist",
+                    "properties": {
+                      "guests": {
+                        "description": "How many guests are on the waitlist",
+                        "type": "number"
+                      },
+                      "tickets": {
+                        "description": "How many tickets they hold",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
+              "hosts": {
+                "description": "The hosts (single event only)",
+                "items": {
+                  "properties": {
+                    "avatar_url": {
+                      "description": "Link to the host's picture",
+                      "type": "string"
+                    },
+                    "email": {
+                      "description": "The host's email address",
+                      "type": "string"
+                    },
+                    "first_name": {
+                      "description": "The host's first name",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "The host's user ID",
+                      "type": "string"
+                    },
+                    "last_name": {
+                      "description": "The host's last name",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The host's full name",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "id": {
+                "description": "The event's ID (starts with evt-)",
+                "type": "string"
+              },
+              "location_type": {
+                "description": "offline for in person, or the meeting platform",
+                "type": "string"
+              },
+              "location_visibility": {
+                "description": "public, or guests-only to hide the address",
+                "type": "string"
+              },
+              "max_capacity": {
+                "description": "The most people who can be going; empty for no limit",
+                "type": "number"
+              },
+              "meeting_url": {
+                "description": "The online meeting link, for an online event",
+                "type": "string"
+              },
+              "name": {
+                "description": "The event's name",
+                "type": "string"
+              },
+              "platform": {
+                "description": "Where the event lives: luma",
+                "type": "string"
+              },
+              "registration_open": {
+                "description": "Whether people can register",
+                "type": "boolean"
+              },
+              "require_approval": {
+                "description": "Whether registrations need approval",
+                "type": "boolean"
+              },
+              "spots_remaining": {
+                "description": "Spots left; empty for no limit",
+                "type": "number"
+              },
+              "start_at": {
+                "description": "When it starts (UTC)",
+                "type": "string"
+              },
+              "tags": {
+                "description": "The event's tags (lists only)",
+                "items": {
+                  "properties": {
+                    "id": {
+                      "description": "The tag's ID",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The tag's name",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "timezone": {
+                "description": "The time zone the event page shows times in",
+                "type": "string"
+              },
+              "url": {
+                "description": "The event page on luma.com",
+                "type": "string"
+              },
+              "user_id": {
+                "description": "The ID of the person who created it",
+                "type": "string"
+              },
+              "visibility": {
+                "description": "public, private or members-only",
+                "type": "string"
+              },
+              "waitlist_status": {
+                "description": "enabled when there is a waitlist",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "update_guest_status": {
+      "description": "Set a guest to going (approved), declined, pending approval or waitlist, optionally with a note in the email Luma sends them.",
+      "display_name": "Approve or decline guest",
+      "display_str_template": "Approve or decline guest in Luma.",
+      "handler": "actions.update_guest_status",
+      "id": "luma_update_guest_status",
+      "method": "POST",
+      "mock_response": {
+        "event_id": "evt-01HXAMPLE",
+        "guest_id": "sam@example.com",
+        "status": "approved",
+        "updated": true
+      },
+      "name": "update_guest_status",
+      "parameters": [
+        {
+          "description": "The event. Pick one, or give its ID (it starts with evt-) or its luma.com link.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The guest's email address, or their guest ID (it starts with gst-).",
+          "display_name": "Guest",
+          "name": "guest_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where the guest stands now.",
+          "display_name": "New status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Going (approve)",
+              "value": "approved"
+            },
+            {
+              "label": "Declined",
+              "value": "declined"
+            },
+            {
+              "label": "Pending approval",
+              "value": "pending_approval"
+            },
+            {
+              "label": "Waitlist",
+              "value": "waitlist"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A personal note for the email, up to 200 characters.",
+          "display_name": "Message",
+          "multiline": true,
+          "name": "message",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Let Luma email them about it. Turn off if you contact them yourself.",
+          "display_name": "Email the guest",
+          "name": "send_email",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Give their money back when they are no longer going.",
+          "display_name": "Refund their payment",
+          "name": "refund",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/luma/update-guest-status",
+      "result_str_template": "Guest status updated.",
+      "returns": {
+        "properties": {
+          "event_id": {
+            "description": "The event's ID",
+            "type": "string"
+          },
+          "guest_id": {
+            "description": "The guest, as given (email or ID)",
+            "type": "string"
+          },
+          "status": {
+            "description": "The guest's new status",
+            "type": "string"
+          },
+          "updated": {
+            "description": "Always true once changed",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "update_ticket_type": {
+      "description": "Change a ticket type's name, price, description, limit, approval or visibility. Only the fields given change.",
+      "display_name": "Update ticket type",
+      "display_str_template": "Update ticket type in Luma.",
+      "handler": "actions.update_ticket_type",
+      "id": "luma_update_ticket_type",
+      "method": "POST",
+      "mock_response": {
+        "ticket_type": {
+          "cents": 0,
+          "currency": "usd",
+          "description": "Entry and breakfast.",
+          "id": "ttype-01HXAMPLE",
+          "is_flexible": false,
+          "is_hidden": false,
+          "max_capacity": 50,
+          "min_cents": 0,
+          "name": "Early bird",
+          "require_approval": false,
+          "type": "free",
+          "valid_end_at": "2026-11-20T16:00:00.000Z",
+          "valid_start_at": "2026-10-15T09:00:00.000Z"
+        }
+      },
+      "name": "update_ticket_type",
+      "parameters": [
+        {
+          "description": "The event the ticket type is on, to pick the ticket type from a list.",
+          "display_name": "Event",
+          "dynamic_source": "events",
+          "dynamic_source_allows_custom": true,
+          "name": "event_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The ticket type. Pick one, or give its ID (it starts with ttype-).",
+          "display_name": "Ticket type",
+          "dynamic_source": "ticket_types",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "event_id"
+          ],
+          "name": "ticket_type_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A new name. Leave empty to keep it.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A new price in the currency's main unit (0 makes it free). Leave empty to keep it.",
+          "display_name": "Price",
+          "minimum": 0,
+          "name": "price",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The currency of the price. Needed for a paid ticket.",
+          "display_name": "Currency",
+          "name": "currency",
+          "options": [
+            {
+              "label": "US dollar (USD)",
+              "value": "usd"
+            },
+            {
+              "label": "Euro (EUR)",
+              "value": "eur"
+            },
+            {
+              "label": "British pound (GBP)",
+              "value": "gbp"
+            },
+            {
+              "label": "Canadian dollar (CAD)",
+              "value": "cad"
+            },
+            {
+              "label": "Australian dollar (AUD)",
+              "value": "aud"
+            },
+            {
+              "label": "New Zealand dollar (NZD)",
+              "value": "nzd"
+            },
+            {
+              "label": "Swiss franc (CHF)",
+              "value": "chf"
+            },
+            {
+              "label": "Swedish krona (SEK)",
+              "value": "sek"
+            },
+            {
+              "label": "Norwegian krone (NOK)",
+              "value": "nok"
+            },
+            {
+              "label": "Danish krone (DKK)",
+              "value": "dkk"
+            },
+            {
+              "label": "Polish zloty (PLN)",
+              "value": "pln"
+            },
+            {
+              "label": "Indian rupee (INR)",
+              "value": "inr"
+            },
+            {
+              "label": "Singapore dollar (SGD)",
+              "value": "sgd"
+            },
+            {
+              "label": "Hong Kong dollar (HKD)",
+              "value": "hkd"
+            },
+            {
+              "label": "Japanese yen (JPY)",
+              "value": "jpy"
+            },
+            {
+              "label": "South Korean won (KRW)",
+              "value": "krw"
+            },
+            {
+              "label": "Brazilian real (BRL)",
+              "value": "brl"
+            },
+            {
+              "label": "Mexican peso (MXN)",
+              "value": "mxn"
+            },
+            {
+              "label": "South African rand (ZAR)",
+              "value": "zar"
+            },
+            {
+              "label": "UAE dirham (AED)",
+              "value": "aed"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A new description. Leave empty to keep it.",
+          "display_name": "Description",
+          "multiline": true,
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A new limit on how many can be taken. Leave empty to keep it.",
+          "display_name": "How many available",
+          "minimum": 1,
+          "name": "max_capacity",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Whether registrations wait for your approval. Leave empty to keep it.",
+          "display_name": "Require approval",
+          "name": "require_approval",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "yes"
+            },
+            {
+              "label": "No",
+              "value": "no"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Show or hide the ticket on the event page. Leave empty to keep it.",
+          "display_name": "Visibility",
+          "name": "visibility",
+          "options": [
+            {
+              "label": "Visible",
+              "value": "visible"
+            },
+            {
+              "label": "Hidden",
+              "value": "hidden"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/luma/update-ticket-type",
+      "result_str_template": "Ticket type updated.",
+      "returns": {
+        "properties": {
+          "ticket_type": {
+            "description": "The ticket type",
+            "properties": {
+              "cents": {
+                "description": "The price in cents",
+                "type": "number"
+              },
+              "currency": {
+                "description": "The currency, such as usd",
+                "type": "string"
+              },
+              "description": {
+                "description": "What the ticket includes",
+                "type": "string"
+              },
+              "id": {
+                "description": "The ticket type's ID (starts with ttype-)",
+                "type": "string"
+              },
+              "is_flexible": {
+                "description": "Whether guests choose what to pay",
+                "type": "boolean"
+              },
+              "is_hidden": {
+                "description": "Whether it is hidden from the event page",
+                "type": "boolean"
+              },
+              "max_capacity": {
+                "description": "How many can be taken; empty for no limit",
+                "type": "number"
+              },
+              "min_cents": {
+                "description": "The least a guest can pay, when they choose",
+                "type": "number"
+              },
+              "name": {
+                "description": "The ticket type's name",
+                "type": "string"
+              },
+              "require_approval": {
+                "description": "Whether registrations need approval",
+                "type": "boolean"
+              },
+              "type": {
+                "description": "free or paid",
+                "type": "string"
+              },
+              "valid_end_at": {
+                "description": "When it stops being offered",
+                "type": "string"
+              },
+              "valid_start_at": {
+                "description": "When it goes on sale",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
     }
   },
   "categories": [
-    "Events"
+    "Events",
+    "Calendars"
   ],
-  "description": "Add people to your Luma calendar so you can invite them to events and send them newsletters.",
+  "description": "Run your Luma events from a workflow: create and update events, add, approve and invite guests, set up tickets and coupons, and keep your calendar's contacts and tags in step. Start a workflow when someone registers or an event is created.",
   "display_name": "Luma",
   "id": "luma",
   "logo": "https://www.lodol.com/app-icons/luma-icon.png",
-  "triggers": {}
+  "triggers": {
+    "luma_new_event_trigger": {
+      "description": "Runs when an event is created on your Luma calendar.",
+      "display_name": "New event",
+      "id": "luma_new_event_trigger",
+      "output": {
+        "address": "string",
+        "calendar_id": "string",
+        "created_at": "string",
+        "end_at": "string",
+        "event_id": "string",
+        "location_type": "string",
+        "meeting_url": "string",
+        "name": "string",
+        "start_at": "string",
+        "timezone": "string",
+        "url": "string",
+        "visibility": "string"
+      },
+      "parameters": []
+    },
+    "luma_new_guest_trigger": {
+      "description": "Runs when someone registers for a Luma event or is added as a guest.",
+      "display_name": "New guest",
+      "id": "luma_new_guest_trigger",
+      "output": {
+        "answers": "object",
+        "approval_status": "string",
+        "email": "string",
+        "event_id": "string",
+        "event_name": "string",
+        "first_name": "string",
+        "guest_id": "string",
+        "last_name": "string",
+        "name": "string",
+        "phone_number": "string",
+        "registered_at": "string",
+        "ticket_names": "array"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The event to watch. Leave empty to watch your next 25 events.",
+          "display_name": "Event",
+          "name": "event_id",
+          "required": false
+        }
+      ]
+    }
+  }
 }
