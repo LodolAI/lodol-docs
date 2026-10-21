@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { ArrowRight, ArrowUpRight, Blocks, Check } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Check } from 'lucide-react';
 import { getCatalog } from '@/lib/catalog';
 import { IntegrationIcon } from '@/components/integration-icon';
 import { HomeSearch } from '@/components/home-search';
@@ -108,7 +108,7 @@ function WorkflowPicture({ logos }: { logos: Map<string, string | undefined> }) 
 
 function CodePicture() {
   return (
-    <pre className="w-full max-w-[21rem] overflow-hidden rounded-lg border border-white/10 bg-[#16141f] px-3.5 py-3 font-mono text-[11px] leading-[1.6] text-[#d8d4e6] dark:bg-[#0a0910]">
+    <pre className="w-full max-w-[21rem] overflow-hidden rounded-lg border border-white/10 bg-[#16141f] px-3.5 py-3 font-mono text-[10px] leading-[1.6] text-[#d8d4e6] sm:text-[11px] dark:bg-[#0a0910]">
       {RUN_CALL.map((line) => (
         <span key={line} className="block whitespace-pre">
           {line}
@@ -139,10 +139,30 @@ const startingPoints = (logos: Map<string, string | undefined>) => [
   },
 ];
 
-function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
+/*
+ * One system for the whole page: every section opens the same way (a title,
+ * a muted line, a link on the right), sections sit 64px apart, cards have a
+ * 12px corner and tiles a 10px one, and nothing is a box inside a box.
+ */
+function SectionHeader({
+  id,
+  title,
+  description,
+  action,
+}: {
+  id: string;
+  title: ReactNode;
+  description?: ReactNode;
+  action?: ReactNode;
+}) {
   return (
-    <div className="mb-5 flex items-end justify-between gap-4">
-      <h2 className="text-xl font-semibold tracking-tight text-fd-foreground">{children}</h2>
+    <div className="mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+      <div className="min-w-0">
+        <h2 id={id} className="text-lg font-semibold tracking-tight text-fd-foreground">
+          {title}
+        </h2>
+        {description && <p className="mt-1 max-w-2xl text-sm text-fd-muted-foreground">{description}</p>}
+      </div>
       {action}
     </div>
   );
@@ -152,11 +172,61 @@ function MoreLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <Link
       href={href}
-      className="group inline-flex items-center gap-1 text-sm font-medium text-fd-primary"
+      className="group inline-flex shrink-0 items-center gap-1 text-sm font-medium text-fd-primary"
     >
       {children}
       <ArrowRight aria-hidden="true" className="size-4 transition-transform group-hover:translate-x-0.5" />
     </Link>
+  );
+}
+
+/** A step or an app: its icon and its name, the same tile wherever it's used. */
+function Tile({ href, icon, name }: { href: string; icon: ReactNode; name: string }) {
+  return (
+    <Link
+      href={href}
+      className="flex h-12 items-center gap-3 rounded-[10px] border border-fd-border bg-fd-card px-3 transition-colors hover:border-fd-primary/40 hover:bg-fd-accent/30"
+    >
+      {icon}
+      <span className="min-w-0 truncate text-sm font-medium text-fd-foreground">{name}</span>
+    </Link>
+  );
+}
+
+/** A list of links in two columns, ruled like an index rather than boxed. */
+function LinkList({
+  items,
+  external = false,
+}: {
+  items: { title: string; href: string }[];
+  external?: boolean;
+}) {
+  return (
+    <ul className="grid gap-x-8 border-t border-fd-border sm:grid-cols-2">
+      {items.map((item) => (
+        <li key={item.href} className="border-b border-fd-border">
+          {external ? (
+            <a
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center justify-between gap-3 py-2.5 text-sm text-fd-foreground transition-colors hover:text-fd-primary"
+            >
+              {item.title}
+              <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0 text-fd-muted-foreground group-hover:text-fd-primary" />
+            </a>
+          ) : (
+            <Link
+              href={item.href}
+              className="group flex items-center justify-between gap-3 py-2.5 text-sm text-fd-foreground transition-colors hover:text-fd-primary"
+            >
+              {item.title}
+              <ArrowRight aria-hidden="true" className="size-3.5 shrink-0 text-fd-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:text-fd-primary group-hover:opacity-100" />
+            </Link>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -174,7 +244,7 @@ export default function HomePage() {
           aria-hidden="true"
           className="pointer-events-none absolute -top-32 left-0 h-[24rem] w-[40rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--color-brand)_12%,transparent),transparent)] dark:bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--color-brand)_24%,transparent),transparent)]"
         />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-6 pb-14 pt-14 md:grid-cols-[1.15fr_1fr] md:pt-20">
+        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-6 py-12 md:grid-cols-[1.15fr_1fr] md:py-16">
           {/* min-w-0 on both: the command below doesn't wrap, and without it the
               column grows to fit it on a phone and the section clips the rest. */}
           <div className="min-w-0">
@@ -186,7 +256,7 @@ export default function HomePage() {
               <br />
               <span className="text-brand dark:text-brand-lilac">Lodol runs it.</span>
             </h1>
-            <p className="mt-5 max-w-lg text-[17px] leading-relaxed text-fd-muted-foreground">
+            <p className="mt-5 max-w-md text-[17px] leading-relaxed text-fd-muted-foreground">
               Connect your AI tool, learn how workflows run, and look up every app and step.
             </p>
             <div className="mt-7 flex">
@@ -196,13 +266,13 @@ export default function HomePage() {
 
           <section
             aria-labelledby="connect-title"
-            className="min-w-0 rounded-2xl border border-fd-border bg-fd-card p-5 shadow-[0_12px_32px_-16px_color-mix(in_oklab,var(--color-brand)_28%,transparent)] sm:p-6"
+            className="min-w-0 rounded-xl border border-fd-border bg-fd-card p-5 shadow-[0_12px_32px_-16px_color-mix(in_oklab,var(--color-brand)_28%,transparent)] sm:p-6"
           >
             <h2 id="connect-title" className="text-base font-semibold text-fd-foreground">
               Connect your AI tool
             </h2>
             <p className="mt-1 text-sm text-fd-muted-foreground">
-              Sign in with your Lodol account when it asks. There&apos;s no key to copy.
+              Sign in to Lodol when it asks. There&apos;s no key to copy.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {ADD_TO.map((tool) => (
@@ -218,7 +288,7 @@ export default function HomePage() {
                 </a>
               ))}
             </div>
-            <div className="mt-5 space-y-3.5">
+            <div className="mt-5 space-y-3">
               <CopyLine label="Claude Code" value={CLAUDE_CODE} />
               <CopyLine label="Any other MCP tool" value={MCP_URL} />
             </div>
@@ -229,17 +299,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="mx-auto w-full max-w-6xl px-6 py-16">
+      <div className="mx-auto w-full max-w-6xl space-y-16 px-6 py-14">
         <section aria-labelledby="start-here">
-          <h2 id="start-here" className="sr-only">
-            Start here
-          </h2>
+          <SectionHeader id="start-here" title="Start here" description="Three ways in, depending on what you're doing." />
           <div className="grid gap-4 md:grid-cols-3">
             {startingPoints(logos).map((point) => (
               <Link
                 key={point.href}
                 href={point.href}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-fd-border bg-fd-card transition-all hover:-translate-y-0.5 hover:border-fd-primary/40 hover:shadow-[0_12px_32px_-12px_color-mix(in_oklab,var(--color-brand)_30%,transparent)]"
+                className="group flex flex-col overflow-hidden rounded-xl border border-fd-border bg-fd-card transition-all hover:-translate-y-0.5 hover:border-fd-primary/40 hover:shadow-[0_12px_32px_-12px_color-mix(in_oklab,var(--color-brand)_30%,transparent)]"
               >
                 <div
                   aria-hidden="true"
@@ -247,14 +315,13 @@ export default function HomePage() {
                 >
                   {point.picture}
                 </div>
-                <div className="flex flex-1 flex-col p-5">
-                  <span className="text-base font-semibold text-fd-foreground">{point.title}</span>
-                  <span className="mt-1.5 flex-1 text-sm leading-relaxed text-fd-muted-foreground">
-                    {point.description}
+                <div className="p-5">
+                  <span className="flex items-center justify-between gap-3 text-base font-semibold text-fd-foreground">
+                    {point.title}
+                    <ArrowRight aria-hidden="true" className="size-4 shrink-0 text-fd-muted-foreground transition-all group-hover:translate-x-0.5 group-hover:text-fd-primary" />
                   </span>
-                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-fd-primary">
-                    Start
-                    <ArrowRight aria-hidden="true" className="size-4 transition-transform group-hover:translate-x-0.5" />
+                  <span className="mt-1.5 block text-sm leading-relaxed text-fd-muted-foreground">
+                    {point.description}
                   </span>
                 </div>
               </Link>
@@ -262,95 +329,51 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section aria-labelledby="built-in-steps" className="mt-20">
-          <SectionTitle
+        <section aria-labelledby="built-in-steps">
+          <SectionHeader
+            id="built-in-steps"
+            title="Built-in steps"
+            description="The steps every workflow is made of: decisions, loops, approvals, AI and data."
             action={<MoreLink href="/docs/integrations#built-in-steps">All built-in steps</MoreLink>}
-          >
-            <span id="built-in-steps">The steps every workflow is made of</span>
-          </SectionTitle>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          />
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             {steps.map((step) => (
-              <Link
+              <Tile
                 key={step.id}
                 href={step.href}
-                className="flex items-center gap-3 rounded-xl border border-fd-border bg-fd-card/60 p-3 transition-colors hover:border-fd-primary/40 hover:bg-fd-accent/40"
-              >
-                <IntegrationIcon name={step.name} icon={step.icon} builtIn size="sm" />
-                <span className="min-w-0 truncate text-sm font-medium text-fd-foreground">{step.name}</span>
-              </Link>
+                name={step.name}
+                icon={<IntegrationIcon name={step.name} icon={step.icon} builtIn size="sm" />}
+              />
             ))}
           </div>
         </section>
 
-        <section aria-labelledby="integrations" className="mt-20">
-          <div className="grid gap-10 rounded-3xl border border-fd-border bg-fd-card p-8 md:grid-cols-[1fr_1.4fr] md:p-10">
-            <div>
-              <span className="inline-flex size-10 items-center justify-center rounded-xl bg-brand-soft text-brand dark:bg-brand/20 dark:text-brand-lilac">
-                <Blocks aria-hidden="true" className="size-5" />
-              </span>
-              <h2 id="integrations" className="mt-5 text-2xl font-semibold tracking-tight text-fd-foreground">
-                {catalog.apps} apps, {catalog.appActions.toLocaleString('en-US')} actions
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-fd-muted-foreground">
-                Every action documented with its inputs, its outputs and an example of what it
-                returns. Anything else with an API is one Call an API step away.
-              </p>
-              <div className="mt-6">
-                <MoreLink href="/docs/integrations">Browse integrations</MoreLink>
-              </div>
-            </div>
-            <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-              {popular.map((app) => (
-                <li key={app.id}>
-                  <Link
-                    href={app.href}
-                    className="flex items-center gap-2.5 rounded-xl border border-fd-border bg-fd-background/60 p-2.5 transition-colors hover:border-fd-primary/40"
-                  >
-                    <IntegrationIcon name={app.name} logo={app.logo} size="sm" />
-                    <span className="min-w-0 truncate text-sm font-medium text-fd-foreground">{app.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <section aria-labelledby="integrations">
+          <SectionHeader
+            id="integrations"
+            title={`${catalog.apps} apps, ${catalog.appActions.toLocaleString('en-US')} actions`}
+            description="Every action documented with its inputs, outputs and an example. Anything else with an API is one Call an API step away."
+            action={<MoreLink href="/docs/integrations">Browse integrations</MoreLink>}
+          />
+          <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            {popular.map((app) => (
+              <li key={app.id}>
+                <Tile href={app.href} name={app.name} icon={<IntegrationIcon name={app.name} logo={app.logo} size="sm" />} />
+              </li>
+            ))}
+          </ul>
         </section>
 
-        <section className="mt-20 grid gap-12 md:grid-cols-2">
-          <div>
-            <SectionTitle>Guides</SectionTitle>
-            <ul className="divide-y divide-fd-border rounded-2xl border border-fd-border">
-              {GUIDES.map((guide) => (
-                <li key={guide.href}>
-                  <Link
-                    href={guide.href}
-                    className="group flex items-center justify-between px-5 py-3.5 text-sm font-medium text-fd-foreground transition-colors hover:text-fd-primary"
-                  >
-                    {guide.title}
-                    <ArrowRight aria-hidden="true" className="size-4 text-fd-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-fd-primary" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <SectionTitle>Resources</SectionTitle>
-            <ul className="divide-y divide-fd-border rounded-2xl border border-fd-border">
-              {RESOURCES.map((resource) => (
-                <li key={resource.href}>
-                  <a
-                    href={resource.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group flex items-center justify-between px-5 py-3.5 text-sm font-medium text-fd-foreground transition-colors hover:text-fd-primary"
-                  >
-                    {resource.title}
-                    <span aria-hidden="true" className="text-fd-muted-foreground group-hover:text-fd-primary">↗</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
+        <div className="grid gap-x-12 gap-y-14 md:grid-cols-2">
+          <section aria-labelledby="guides">
+            <SectionHeader id="guides" title="Guides" description="How to do the things most workflows need." />
+            <LinkList items={GUIDES} />
+          </section>
+          <section aria-labelledby="resources">
+            <SectionHeader id="resources" title="Resources" description="Everything else, on lodol.com and beyond." />
+            <LinkList items={RESOURCES} external />
+          </section>
+        </div>
       </div>
     </main>
   );
