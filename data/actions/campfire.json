@@ -1,0 +1,5599 @@
+{
+  "actions": {
+    "create_bill": {
+      "description": "Record a bill from a vendor. It posts to accounts payable at once.",
+      "display_name": "Create bill",
+      "display_str_template": "Create a bill in Campfire.",
+      "handler": "actions.create_bill",
+      "id": "campfire_create_bill",
+      "method": "POST",
+      "mock_response": {
+        "bill": {
+          "amount_due": 10000.0,
+          "amount_paid": 0.0,
+          "bill_date": "2025-08-01",
+          "bill_number": "1234567",
+          "created_at": "2025-07-25T04:24:32+00:00",
+          "currency": "USD",
+          "due_date": "2025-08-24",
+          "entity_id": "54",
+          "entity_name": "Top Level",
+          "id": "31894",
+          "journal_entry_id": "7491951",
+          "last_modified_at": "2025-07-25T04:24:32+00:00",
+          "lines": [
+            {
+              "account_id": "2622",
+              "account_name": "6700 - Office Expenses",
+              "amount": 10000.0,
+              "department_id": "35",
+              "department_name": "Engineering",
+              "description": "1x Large Expense Line",
+              "id": "298626"
+            }
+          ],
+          "memo": "A really big expense",
+          "paid_date": "",
+          "payment_status": "open",
+          "payments": [],
+          "status": "open",
+          "terms": "",
+          "total_amount": 10000.0,
+          "vendor_id": "34182",
+          "vendor_name": "ABC Bead Supply",
+          "voided_date": ""
+        }
+      },
+      "name": "create_bill",
+      "output_formatter": "actions.format_bill_output",
+      "parameters": [
+        {
+          "description": "Who the bill is from. Pick one, or give its id.",
+          "display_name": "Vendor",
+          "dynamic_source": "vendors",
+          "dynamic_source_allows_custom": true,
+          "name": "vendor_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The number on the vendor's bill or invoice.",
+          "display_name": "Bill number",
+          "examples": [
+            {
+              "label": "A bill number",
+              "value": "INV-20391"
+            }
+          ],
+          "name": "bill_number",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The account the cost goes to. Required unless Lines is used.",
+          "display_name": "Expense account",
+          "dynamic_source": "accounts",
+          "dynamic_source_allows_custom": true,
+          "name": "account_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The bill's amount. Required unless Lines is used.",
+          "display_name": "Amount",
+          "minimum": 0.01,
+          "name": "amount",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "What the bill is for.",
+          "display_name": "Description",
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The department the cost belongs to.",
+          "display_name": "Department",
+          "dynamic_source": "departments",
+          "dynamic_source_allows_custom": true,
+          "name": "department_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The date on the bill. Defaults to today.",
+          "display_name": "Bill date",
+          "name": "bill_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "When payment is due. Defaults to Net 30.",
+          "display_name": "Payment terms",
+          "name": "terms",
+          "options": [
+            {
+              "label": "Due on receipt",
+              "value": "due_on_receipt"
+            },
+            {
+              "label": "Net 5",
+              "value": "net_5"
+            },
+            {
+              "label": "Net 7",
+              "value": "net_7"
+            },
+            {
+              "label": "Net 10",
+              "value": "net_10"
+            },
+            {
+              "label": "Net 15",
+              "value": "net_15"
+            },
+            {
+              "label": "Net 20",
+              "value": "net_20"
+            },
+            {
+              "label": "Net 30 (default)",
+              "value": "net_30"
+            },
+            {
+              "label": "Net 40",
+              "value": "net_40"
+            },
+            {
+              "label": "Net 45",
+              "value": "net_45"
+            },
+            {
+              "label": "Net 60",
+              "value": "net_60"
+            },
+            {
+              "label": "Net 90",
+              "value": "net_90"
+            },
+            {
+              "label": "Net 105",
+              "value": "net_105"
+            },
+            {
+              "label": "Net 120",
+              "value": "net_120"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Defaults to the date the payment terms give.",
+          "display_name": "Due date",
+          "name": "due_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "The company or subsidiary it belongs to. Defaults to your main one.",
+          "display_name": "Entity",
+          "dynamic_source": "entities",
+          "dynamic_source_allows_custom": true,
+          "name": "entity_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Defaults to the entity's currency.",
+          "display_name": "Currency",
+          "dynamic_source": "currencies",
+          "dynamic_source_allows_custom": true,
+          "name": "currency",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A message shown on the document.",
+          "display_name": "Message",
+          "multiline": true,
+          "name": "memo",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a bill with several lines: a list such as [{\"account\": 2622, \"amount\": 120, \"description\": \"Paper\"}]. Each line takes account, amount, description and department. When filled in it replaces the single-line fields.",
+          "display_name": "Lines (advanced)",
+          "name": "lines",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/campfire/create-bill",
+      "result_str_template": "Bill created.",
+      "returns": {
+        "properties": {
+          "bill": {
+            "description": "The bill",
+            "properties": {
+              "amount_due": {
+                "description": "Amount still due",
+                "type": "number"
+              },
+              "amount_paid": {
+                "description": "Amount paid so far",
+                "type": "number"
+              },
+              "bill_date": {
+                "description": "Bill date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "bill_number": {
+                "description": "The vendor's bill or invoice number",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created",
+                "type": "string"
+              },
+              "currency": {
+                "description": "Currency code",
+                "type": "string"
+              },
+              "due_date": {
+                "description": "Due date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "entity_id": {
+                "description": "Entity id",
+                "type": "string"
+              },
+              "entity_name": {
+                "description": "Entity name",
+                "type": "string"
+              },
+              "id": {
+                "description": "Bill id",
+                "type": "string"
+              },
+              "journal_entry_id": {
+                "description": "Id of the journal entry that posts it",
+                "type": "string"
+              },
+              "last_modified_at": {
+                "description": "When it was last changed",
+                "type": "string"
+              },
+              "lines": {
+                "description": "The bill's lines",
+                "items": {
+                  "description": "A bill line",
+                  "properties": {
+                    "account_id": {
+                      "description": "Expense account id",
+                      "type": "string"
+                    },
+                    "account_name": {
+                      "description": "Expense account, number and name",
+                      "type": "string"
+                    },
+                    "amount": {
+                      "description": "Line amount",
+                      "type": "number"
+                    },
+                    "department_id": {
+                      "description": "Department id, empty if none",
+                      "type": "string"
+                    },
+                    "department_name": {
+                      "description": "Department name",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "Line description",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Line id",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "memo": {
+                "description": "Message on the bill",
+                "type": "string"
+              },
+              "paid_date": {
+                "description": "Date it was fully paid, empty if not",
+                "type": "string"
+              },
+              "payment_status": {
+                "description": "Payment status, such as open, partial or paid",
+                "type": "string"
+              },
+              "payments": {
+                "description": "Payments made on it",
+                "items": {
+                  "description": "A payment",
+                  "properties": {
+                    "amount": {
+                      "description": "Amount paid",
+                      "type": "number"
+                    },
+                    "currency": {
+                      "description": "Currency code",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Payment id",
+                      "type": "string"
+                    },
+                    "payment_date": {
+                      "description": "Payment date (YYYY-MM-DD)",
+                      "type": "string"
+                    },
+                    "voided_date": {
+                      "description": "When the payment was voided, empty if it stands",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "status": {
+                "description": "Status, such as open, paid, partially_paid or voided",
+                "type": "string"
+              },
+              "terms": {
+                "description": "Payment terms, such as net_30",
+                "type": "string"
+              },
+              "total_amount": {
+                "description": "Total amount",
+                "type": "number"
+              },
+              "vendor_id": {
+                "description": "Vendor id",
+                "type": "string"
+              },
+              "vendor_name": {
+                "description": "Vendor name",
+                "type": "string"
+              },
+              "voided_date": {
+                "description": "Date it was voided, empty if not",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_invoice": {
+      "description": "Create an invoice to a customer for one of your products. It posts to accounts receivable at once.",
+      "display_name": "Create invoice",
+      "display_str_template": "Create an invoice in Campfire.",
+      "handler": "actions.create_invoice",
+      "id": "campfire_create_invoice",
+      "method": "POST",
+      "mock_response": {
+        "invoice": {
+          "amount_due": 55.0,
+          "amount_paid": 0.0,
+          "contract_id": "12954",
+          "created_at": "2025-07-25T18:54:43+00:00",
+          "currency": "USD",
+          "customer_email": "",
+          "customer_id": "33973",
+          "customer_name": "Client A",
+          "due_date": "2025-07-31",
+          "entity_id": "54",
+          "entity_name": "Top Level",
+          "id": "145055",
+          "invoice_date": "2025-07-01",
+          "invoice_number": "987654321",
+          "journal_entry_id": "7491952",
+          "last_modified_at": "2025-07-25T18:54:43+00:00",
+          "lines": [
+            {
+              "amount": 50.0,
+              "description": "Invoice Line Item",
+              "id": "337587",
+              "product_id": "2545",
+              "product_name": "Product A",
+              "quantity": 1.0,
+              "rate": 50.0,
+              "service_date": "2025-07-01",
+              "tax": 5.0
+            }
+          ],
+          "memo": "Please pay by bank transfer.",
+          "paid_date": "",
+          "payment_link": "",
+          "payment_status": "open",
+          "payments": [],
+          "purchase_order_number": "123456789",
+          "status": "open",
+          "terms": "net_30",
+          "total_amount": 55.0,
+          "voided_date": ""
+        }
+      },
+      "name": "create_invoice",
+      "output_formatter": "actions.format_invoice_output",
+      "parameters": [
+        {
+          "description": "Who the invoice is to. Pick one, or give its id.",
+          "display_name": "Customer",
+          "dynamic_source": "customers",
+          "dynamic_source_allows_custom": true,
+          "name": "customer_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What you are charging for. Required unless Lines is used.",
+          "display_name": "Product",
+          "dynamic_source": "products",
+          "dynamic_source_allows_custom": true,
+          "name": "product_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The price of one unit. Required unless Lines is used.",
+          "display_name": "Price",
+          "name": "unit_price",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 1,
+          "description": "How many. Defaults to 1.",
+          "display_name": "Quantity",
+          "minimum": 0.0001,
+          "name": "quantity",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The line's description, shown on the invoice.",
+          "display_name": "Description",
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The invoice's number, such as INV-1042.",
+          "display_name": "Invoice number",
+          "name": "invoice_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The date on the invoice. Defaults to today.",
+          "display_name": "Invoice date",
+          "name": "invoice_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "When payment is due. Defaults to Net 30.",
+          "display_name": "Payment terms",
+          "name": "terms",
+          "options": [
+            {
+              "label": "Due on receipt",
+              "value": "due_on_receipt"
+            },
+            {
+              "label": "Net 5",
+              "value": "net_5"
+            },
+            {
+              "label": "Net 7",
+              "value": "net_7"
+            },
+            {
+              "label": "Net 10",
+              "value": "net_10"
+            },
+            {
+              "label": "Net 15",
+              "value": "net_15"
+            },
+            {
+              "label": "Net 20",
+              "value": "net_20"
+            },
+            {
+              "label": "Net 30 (default)",
+              "value": "net_30"
+            },
+            {
+              "label": "Net 40",
+              "value": "net_40"
+            },
+            {
+              "label": "Net 45",
+              "value": "net_45"
+            },
+            {
+              "label": "Net 60",
+              "value": "net_60"
+            },
+            {
+              "label": "Net 90",
+              "value": "net_90"
+            },
+            {
+              "label": "Net 105",
+              "value": "net_105"
+            },
+            {
+              "label": "Net 120",
+              "value": "net_120"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Defaults to the date the payment terms give.",
+          "display_name": "Due date",
+          "name": "due_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "The company or subsidiary it belongs to. Defaults to your main one.",
+          "display_name": "Entity",
+          "dynamic_source": "entities",
+          "dynamic_source_allows_custom": true,
+          "name": "entity_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Defaults to the entity's currency.",
+          "display_name": "Currency",
+          "dynamic_source": "currencies",
+          "dynamic_source_allows_custom": true,
+          "name": "currency",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A message shown on the document.",
+          "display_name": "Message",
+          "multiline": true,
+          "name": "memo",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The customer's purchase order number.",
+          "display_name": "PO number",
+          "name": "purchase_order_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For an invoice with several lines: a list such as [{\"product\": 2545, \"quantity\": 2, \"unit_price\": 50}]. Each line takes product, quantity, unit_price (or amount), description, service_date and tax. When filled in it replaces the single-line fields.",
+          "display_name": "Lines (advanced)",
+          "name": "lines",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/campfire/create-invoice",
+      "result_str_template": "Invoice created.",
+      "returns": {
+        "properties": {
+          "invoice": {
+            "description": "The invoice",
+            "properties": {
+              "amount_due": {
+                "description": "Amount still due",
+                "type": "number"
+              },
+              "amount_paid": {
+                "description": "Amount paid so far",
+                "type": "number"
+              },
+              "contract_id": {
+                "description": "Contract id, empty if none",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created",
+                "type": "string"
+              },
+              "currency": {
+                "description": "Currency code",
+                "type": "string"
+              },
+              "customer_email": {
+                "description": "Customer email address",
+                "type": "string"
+              },
+              "customer_id": {
+                "description": "Customer id",
+                "type": "string"
+              },
+              "customer_name": {
+                "description": "Customer name",
+                "type": "string"
+              },
+              "due_date": {
+                "description": "Due date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "entity_id": {
+                "description": "Entity id",
+                "type": "string"
+              },
+              "entity_name": {
+                "description": "Entity name",
+                "type": "string"
+              },
+              "id": {
+                "description": "Invoice id",
+                "type": "string"
+              },
+              "invoice_date": {
+                "description": "Invoice date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "invoice_number": {
+                "description": "Invoice number",
+                "type": "string"
+              },
+              "journal_entry_id": {
+                "description": "Id of the journal entry that posts it",
+                "type": "string"
+              },
+              "last_modified_at": {
+                "description": "When it was last changed",
+                "type": "string"
+              },
+              "lines": {
+                "description": "The invoice's lines",
+                "items": {
+                  "description": "An invoice line",
+                  "properties": {
+                    "amount": {
+                      "description": "Line amount before tax",
+                      "type": "number"
+                    },
+                    "description": {
+                      "description": "Line description",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Line id",
+                      "type": "string"
+                    },
+                    "product_id": {
+                      "description": "Product id",
+                      "type": "string"
+                    },
+                    "product_name": {
+                      "description": "Product name",
+                      "type": "string"
+                    },
+                    "quantity": {
+                      "description": "Quantity",
+                      "type": "number"
+                    },
+                    "rate": {
+                      "description": "Price per unit",
+                      "type": "number"
+                    },
+                    "service_date": {
+                      "description": "Service date (YYYY-MM-DD), empty if none",
+                      "type": "string"
+                    },
+                    "tax": {
+                      "description": "Tax on the line",
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "memo": {
+                "description": "Message on the invoice",
+                "type": "string"
+              },
+              "paid_date": {
+                "description": "Date it was fully paid, empty if not",
+                "type": "string"
+              },
+              "payment_link": {
+                "description": "Link where the customer can pay, if there is one",
+                "type": "string"
+              },
+              "payment_status": {
+                "description": "Payment status, such as open, partial or paid",
+                "type": "string"
+              },
+              "payments": {
+                "description": "Payments received on it",
+                "items": {
+                  "description": "A payment",
+                  "properties": {
+                    "amount": {
+                      "description": "Amount paid",
+                      "type": "number"
+                    },
+                    "currency": {
+                      "description": "Currency code",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Payment id",
+                      "type": "string"
+                    },
+                    "payment_date": {
+                      "description": "Payment date (YYYY-MM-DD)",
+                      "type": "string"
+                    },
+                    "voided_date": {
+                      "description": "When the payment was voided, empty if it stands",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "purchase_order_number": {
+                "description": "The customer's purchase order number",
+                "type": "string"
+              },
+              "status": {
+                "description": "Status, such as open, sent, paid, past_due or voided",
+                "type": "string"
+              },
+              "terms": {
+                "description": "Payment terms, such as net_30",
+                "type": "string"
+              },
+              "total_amount": {
+                "description": "Total amount, tax included",
+                "type": "number"
+              },
+              "voided_date": {
+                "description": "Date it was voided, empty if not",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_journal_entry": {
+      "description": "Post a journal entry: debit one account and credit another, or give several balanced lines.",
+      "display_name": "Create journal entry",
+      "display_str_template": "Create a journal entry in Campfire.",
+      "handler": "actions.create_journal_entry",
+      "id": "campfire_create_journal_entry",
+      "method": "POST",
+      "mock_response": {
+        "journal_entry": {
+          "created_at": "2025-07-25T00:01:28+00:00",
+          "currency": "USD",
+          "date": "2025-07-31",
+          "entity_id": "54",
+          "entity_name": "Top Level",
+          "id": "7491945",
+          "lines": [
+            {
+              "account_id": "180564",
+              "account_name": "1000 - Cash and Cash Equivalents",
+              "credit": 0.0,
+              "debit": 12345.67,
+              "department_id": "",
+              "department_name": "",
+              "description": "Test Line Description",
+              "id": "24429462",
+              "vendor_id": "",
+              "vendor_name": ""
+            },
+            {
+              "account_id": "2563",
+              "account_name": "1600 - Fixed Assets",
+              "credit": 12345.67,
+              "debit": 0.0,
+              "department_id": "35",
+              "department_name": "Engineering",
+              "description": "Test Line Description",
+              "id": "24429463",
+              "vendor_id": "34182",
+              "vendor_name": "ABC Bead Supply"
+            }
+          ],
+          "memo": "Test Journal Memo",
+          "number": "0004358",
+          "total": 12345.67,
+          "type": "journal_entry"
+        }
+      },
+      "name": "create_journal_entry",
+      "output_formatter": "actions.format_journal_entry_output",
+      "parameters": [
+        {
+          "description": "The account to debit. Required unless Lines is used.",
+          "display_name": "Debit account",
+          "dynamic_source": "accounts",
+          "dynamic_source_allows_custom": true,
+          "name": "debit_account_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The account to credit. Required unless Lines is used.",
+          "display_name": "Credit account",
+          "dynamic_source": "accounts",
+          "dynamic_source_allows_custom": true,
+          "name": "credit_account_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The amount debited and credited. Required unless Lines is used.",
+          "display_name": "Amount",
+          "minimum": 0.01,
+          "name": "amount",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "A description on both lines.",
+          "display_name": "Line description",
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The day the entry posts on. Defaults to today.",
+          "display_name": "Date",
+          "name": "entry_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "What the entry is for.",
+          "display_name": "Memo",
+          "name": "memo",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The company or subsidiary it belongs to. Defaults to your main one.",
+          "display_name": "Entity",
+          "dynamic_source": "entities",
+          "dynamic_source_allows_custom": true,
+          "name": "entity_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Defaults to the entity's currency.",
+          "display_name": "Currency",
+          "dynamic_source": "currencies",
+          "dynamic_source_allows_custom": true,
+          "name": "currency",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Post a reversing entry on this day, such as the first of next month for an accrual.",
+          "display_name": "Reverse on",
+          "name": "reversal_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "For more than one debit or credit: a list such as [{\"account\": 6700, \"debit\": 100}, {\"account\": 1000, \"credit\": 100}]. Each line takes account, debit or credit, description, vendor and department; debits must equal credits. When filled in it replaces the single-line fields.",
+          "display_name": "Lines (advanced)",
+          "name": "lines",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/campfire/create-journal-entry",
+      "result_str_template": "Journal entry created.",
+      "returns": {
+        "properties": {
+          "journal_entry": {
+            "description": "The journal entry",
+            "properties": {
+              "created_at": {
+                "description": "When it was created",
+                "type": "string"
+              },
+              "currency": {
+                "description": "Currency code",
+                "type": "string"
+              },
+              "date": {
+                "description": "Date it posts on (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "entity_id": {
+                "description": "Entity id",
+                "type": "string"
+              },
+              "entity_name": {
+                "description": "Entity name",
+                "type": "string"
+              },
+              "id": {
+                "description": "Journal entry id",
+                "type": "string"
+              },
+              "lines": {
+                "description": "The entry's lines",
+                "items": {
+                  "description": "A journal entry line",
+                  "properties": {
+                    "account_id": {
+                      "description": "Account id",
+                      "type": "string"
+                    },
+                    "account_name": {
+                      "description": "Account, number and name",
+                      "type": "string"
+                    },
+                    "credit": {
+                      "description": "Credit amount, 0 on a debit line",
+                      "type": "number"
+                    },
+                    "debit": {
+                      "description": "Debit amount, 0 on a credit line",
+                      "type": "number"
+                    },
+                    "department_id": {
+                      "description": "Department id, empty if none",
+                      "type": "string"
+                    },
+                    "department_name": {
+                      "description": "Department name",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "Line description",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Line id",
+                      "type": "string"
+                    },
+                    "vendor_id": {
+                      "description": "Vendor id, empty if none",
+                      "type": "string"
+                    },
+                    "vendor_name": {
+                      "description": "Vendor name",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "memo": {
+                "description": "Memo",
+                "type": "string"
+              },
+              "number": {
+                "description": "Journal entry number, such as 0004358",
+                "type": "string"
+              },
+              "total": {
+                "description": "Total of the debits",
+                "type": "number"
+              },
+              "type": {
+                "description": "Type, such as journal_entry, bill or invoice",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_vendor": {
+      "description": "Add a vendor (who sends you bills) or a customer (who gets your invoices).",
+      "display_name": "Create vendor or customer",
+      "display_str_template": "Create {0} in Campfire.",
+      "handler": "actions.create_vendor",
+      "id": "campfire_create_vendor",
+      "method": "POST",
+      "mock_response": {
+        "contact": {
+          "address_street_1": "1234 Campground Road",
+          "address_street_2": "",
+          "campfire_id": "VEN-0000042",
+          "city": "San Francisco",
+          "company_name": "ABC Bead Supply LLC",
+          "country": "US",
+          "created_at": "2025-07-17T16:21:02+00:00",
+          "display_name": "ABC Bead Supply",
+          "email": "billing@abcbeads.example.com",
+          "external_id": "",
+          "id": "34182",
+          "last_modified_at": "2025-07-17T16:21:02+00:00",
+          "name": "ABC Bead Supply",
+          "notes": "",
+          "phone_number": "+1 415 555 0100",
+          "state": "CA",
+          "status": "ACTIVE",
+          "terms": "net_30",
+          "type": "vendor",
+          "website": "https://abcbeads.example.com",
+          "zip_code": "98765"
+        }
+      },
+      "name": "create_vendor",
+      "output_formatter": "actions.format_contact_output",
+      "parameters": [
+        {
+          "description": "The vendor's or customer's name.",
+          "display_name": "Name",
+          "examples": [
+            {
+              "label": "A name",
+              "value": "Acme Cloud Services"
+            }
+          ],
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "vendor",
+          "description": "A vendor sends you bills; a customer gets your invoices.",
+          "display_name": "Type",
+          "name": "contact_type",
+          "options": [
+            {
+              "label": "Vendor (default)",
+              "value": "vendor"
+            },
+            {
+              "label": "Customer",
+              "value": "customer"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The legal company name, if it differs.",
+          "display_name": "Company name",
+          "name": "company_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where bills or invoices are sent.",
+          "display_name": "Email",
+          "name": "email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Phone number.",
+          "display_name": "Phone",
+          "name": "phone_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Website address.",
+          "display_name": "Website",
+          "name": "website",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Street and number.",
+          "display_name": "Street address",
+          "name": "address_street_1",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Suite, floor or building.",
+          "display_name": "Address line 2",
+          "name": "address_street_2",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "City.",
+          "display_name": "City",
+          "name": "city",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "State, province or region.",
+          "display_name": "State or region",
+          "name": "state",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "ZIP or postal code.",
+          "display_name": "ZIP or postal code",
+          "name": "zip_code",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Country.",
+          "display_name": "Country",
+          "name": "country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Their usual payment terms.",
+          "display_name": "Payment terms",
+          "name": "terms",
+          "options": [
+            {
+              "label": "Due on receipt",
+              "value": "due_on_receipt"
+            },
+            {
+              "label": "Net 5",
+              "value": "net_5"
+            },
+            {
+              "label": "Net 7",
+              "value": "net_7"
+            },
+            {
+              "label": "Net 10",
+              "value": "net_10"
+            },
+            {
+              "label": "Net 15",
+              "value": "net_15"
+            },
+            {
+              "label": "Net 20",
+              "value": "net_20"
+            },
+            {
+              "label": "Net 30 (default)",
+              "value": "net_30"
+            },
+            {
+              "label": "Net 40",
+              "value": "net_40"
+            },
+            {
+              "label": "Net 45",
+              "value": "net_45"
+            },
+            {
+              "label": "Net 60",
+              "value": "net_60"
+            },
+            {
+              "label": "Net 90",
+              "value": "net_90"
+            },
+            {
+              "label": "Net 105",
+              "value": "net_105"
+            },
+            {
+              "label": "Net 120",
+              "value": "net_120"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Your own id for them, such as their id in your CRM.",
+          "display_name": "External ID",
+          "name": "external_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Notes kept on the record.",
+          "display_name": "Notes",
+          "name": "notes",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/campfire/create-vendor",
+      "result_str_template": "Vendor or customer created.",
+      "returns": {
+        "properties": {
+          "contact": {
+            "description": "The vendor or customer",
+            "properties": {
+              "address_street_1": {
+                "description": "Street address",
+                "type": "string"
+              },
+              "address_street_2": {
+                "description": "Second line of the street address",
+                "type": "string"
+              },
+              "campfire_id": {
+                "description": "Campfire's reference, such as VEN-0000001 or CUST-0000001",
+                "type": "string"
+              },
+              "city": {
+                "description": "City",
+                "type": "string"
+              },
+              "company_name": {
+                "description": "Company name",
+                "type": "string"
+              },
+              "country": {
+                "description": "Country",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created",
+                "type": "string"
+              },
+              "display_name": {
+                "description": "Name as Campfire shows it",
+                "type": "string"
+              },
+              "email": {
+                "description": "Email address",
+                "type": "string"
+              },
+              "external_id": {
+                "description": "Your own id for the record, if set",
+                "type": "string"
+              },
+              "id": {
+                "description": "Vendor or customer id",
+                "type": "string"
+              },
+              "last_modified_at": {
+                "description": "When it was last changed",
+                "type": "string"
+              },
+              "name": {
+                "description": "Name",
+                "type": "string"
+              },
+              "notes": {
+                "description": "Notes",
+                "type": "string"
+              },
+              "phone_number": {
+                "description": "Phone number",
+                "type": "string"
+              },
+              "state": {
+                "description": "State or region",
+                "type": "string"
+              },
+              "status": {
+                "description": "ACTIVE or INACTIVE",
+                "type": "string"
+              },
+              "terms": {
+                "description": "Default payment terms, such as net_30",
+                "type": "string"
+              },
+              "type": {
+                "description": "vendor, customer or employee",
+                "type": "string"
+              },
+              "website": {
+                "description": "Website",
+                "type": "string"
+              },
+              "zip_code": {
+                "description": "ZIP or postal code",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_bill": {
+      "description": "Delete a bill and its journal entry for good. Bills in a closed period can't be deleted; void them instead.",
+      "display_name": "Delete bill",
+      "display_str_template": "Delete a bill in Campfire.",
+      "handler": "actions.delete_bill",
+      "id": "campfire_delete_bill",
+      "method": "POST",
+      "mock_response": {
+        "bill_id": "31894",
+        "deleted": true
+      },
+      "name": "delete_bill",
+      "output_formatter": "actions.format_deleted_output",
+      "parameters": [
+        {
+          "description": "The bill's id, from 'List bills', 'Create bill' or a trigger.",
+          "display_name": "Bill ID",
+          "name": "bill_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/campfire/delete-bill",
+      "result_str_template": "Bill deleted.",
+      "returns": {
+        "properties": {
+          "bill_id": {
+            "description": "The bill deleted",
+            "type": "string"
+          },
+          "deleted": {
+            "description": "Always true once deleted",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_invoice": {
+      "description": "Delete an invoice with its payments and journal entries for good. Invoices in a closed period can't be deleted; void them instead.",
+      "display_name": "Delete invoice",
+      "display_str_template": "Delete an invoice in Campfire.",
+      "handler": "actions.delete_invoice",
+      "id": "campfire_delete_invoice",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "invoice_id": "145055"
+      },
+      "name": "delete_invoice",
+      "output_formatter": "actions.format_deleted_output",
+      "parameters": [
+        {
+          "description": "The invoice's id, from 'List invoices', 'Create invoice' or a trigger.",
+          "display_name": "Invoice ID",
+          "name": "invoice_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/campfire/delete-invoice",
+      "result_str_template": "Invoice deleted.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Always true once deleted",
+            "type": "boolean"
+          },
+          "invoice_id": {
+            "description": "The invoice deleted",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_journal_entry": {
+      "description": "Delete a journal entry. Campfire refuses one in a closed period or one that a bill or invoice depends on.",
+      "display_name": "Delete journal entry",
+      "display_str_template": "Delete a journal entry in Campfire.",
+      "handler": "actions.delete_journal_entry",
+      "id": "campfire_delete_journal_entry",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "journal_entry_id": "7491945"
+      },
+      "name": "delete_journal_entry",
+      "output_formatter": "actions.format_deleted_output",
+      "parameters": [
+        {
+          "description": "The journal entry's id, from 'List journal entries' or 'Create journal entry'.",
+          "display_name": "Journal entry ID",
+          "name": "journal_entry_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/campfire/delete-journal-entry",
+      "result_str_template": "Journal entry deleted.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Always true once deleted",
+            "type": "boolean"
+          },
+          "journal_entry_id": {
+            "description": "The journal entry deleted",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_vendor": {
+      "description": "Delete a vendor or customer. Campfire finishes deleting it in the background.",
+      "display_name": "Delete vendor or customer",
+      "display_str_template": "Delete a vendor or customer in Campfire.",
+      "handler": "actions.delete_vendor",
+      "id": "campfire_delete_vendor",
+      "method": "POST",
+      "mock_response": {
+        "contact_id": "34182",
+        "deleted": true
+      },
+      "name": "delete_vendor",
+      "output_formatter": "actions.format_deleted_output",
+      "parameters": [
+        {
+          "description": "Pick one, or give its id from an earlier step.",
+          "display_name": "Vendor or customer",
+          "dynamic_source": "contacts",
+          "dynamic_source_allows_custom": true,
+          "name": "contact_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/campfire/delete-vendor",
+      "result_str_template": "Vendor or customer deleted.",
+      "returns": {
+        "properties": {
+          "contact_id": {
+            "description": "The id deleted",
+            "type": "string"
+          },
+          "deleted": {
+            "description": "Always true once deleted",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_balance_sheet": {
+      "description": "Get the balance sheet: each account's balance at the end of each month, quarter or year in a range.",
+      "display_name": "Get balance sheet",
+      "display_str_template": "Get the balance sheet from Campfire.",
+      "handler": "actions.get_balance_sheet",
+      "id": "campfire_get_balance_sheet",
+      "method": "POST",
+      "mock_response": {
+        "cadence": "monthly",
+        "count": 1,
+        "end_date": "2022-11-30",
+        "rows": [
+          {
+            "account_id": "12172",
+            "account_name": "Bill.com Money Out Clearing",
+            "account_number": "111000",
+            "amounts": {
+              "2022-11-01_Jupiter Consulting, LLC": 5.73,
+              "2022-11-01_Total": 5.36
+            },
+            "section": "ASSET"
+          }
+        ],
+        "start_date": "2022-11-01"
+      },
+      "name": "get_balance_sheet",
+      "output_formatter": "actions.format_report_output",
+      "parameters": [
+        {
+          "description": "The first day covered. Defaults to six months ago.",
+          "display_name": "From",
+          "name": "start_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "The last day covered. Defaults to the end of this month.",
+          "display_name": "To",
+          "name": "end_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "default": "monthly",
+          "description": "One column per month, quarter, year, week or day.",
+          "display_name": "Columns",
+          "name": "cadence",
+          "options": [
+            {
+              "label": "Monthly (default)",
+              "value": "monthly"
+            },
+            {
+              "label": "Quarterly",
+              "value": "quarterly"
+            },
+            {
+              "label": "Yearly",
+              "value": "yearly"
+            },
+            {
+              "label": "Weekly",
+              "value": "weekly"
+            },
+            {
+              "label": "Daily",
+              "value": "daily"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only this company or subsidiary. Leave empty for all.",
+          "display_name": "Entity",
+          "dynamic_source": "entities",
+          "dynamic_source_allows_custom": true,
+          "name": "entity_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/campfire/get-balance-sheet",
+      "result_str_template": "Balance sheet retrieved.",
+      "returns": {
+        "properties": {
+          "cadence": {
+            "description": "How the columns are split: monthly, quarterly and so on",
+            "type": "string"
+          },
+          "count": {
+            "description": "How many rows",
+            "type": "number"
+          },
+          "end_date": {
+            "description": "Last day covered (YYYY-MM-DD)",
+            "type": "string"
+          },
+          "rows": {
+            "description": "One row per account",
+            "items": {
+              "description": "One account's line on the report",
+              "properties": {
+                "account_id": {
+                  "description": "Account id",
+                  "type": "string"
+                },
+                "account_name": {
+                  "description": "Account name",
+                  "type": "string"
+                },
+                "account_number": {
+                  "description": "Account number",
+                  "type": "string"
+                },
+                "amounts": {
+                  "description": "The amount per column, keyed by period start and group, such as 2026-01-01_Total",
+                  "type": "object"
+                },
+                "section": {
+                  "description": "Section, such as REVENUE, OPERATING_EXPENSES or ASSET",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "start_date": {
+            "description": "First day covered (YYYY-MM-DD)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_bill": {
+      "description": "Get one bill with its lines, payments and amount due.",
+      "display_name": "Get bill",
+      "display_str_template": "Get a bill in Campfire.",
+      "handler": "actions.get_bill",
+      "id": "campfire_get_bill",
+      "method": "POST",
+      "mock_response": {
+        "bill": {
+          "amount_due": 10000.0,
+          "amount_paid": 0.0,
+          "bill_date": "2025-08-01",
+          "bill_number": "1234567",
+          "created_at": "2025-07-25T04:24:32+00:00",
+          "currency": "USD",
+          "due_date": "2025-08-24",
+          "entity_id": "54",
+          "entity_name": "Top Level",
+          "id": "31894",
+          "journal_entry_id": "7491951",
+          "last_modified_at": "2025-07-25T04:24:32+00:00",
+          "lines": [
+            {
+              "account_id": "2622",
+              "account_name": "6700 - Office Expenses",
+              "amount": 10000.0,
+              "department_id": "35",
+              "department_name": "Engineering",
+              "description": "1x Large Expense Line",
+              "id": "298626"
+            }
+          ],
+          "memo": "A really big expense",
+          "paid_date": "",
+          "payment_status": "open",
+          "payments": [],
+          "status": "open",
+          "terms": "",
+          "total_amount": 10000.0,
+          "vendor_id": "34182",
+          "vendor_name": "ABC Bead Supply",
+          "voided_date": ""
+        }
+      },
+      "name": "get_bill",
+      "output_formatter": "actions.format_bill_output",
+      "parameters": [
+        {
+          "description": "The bill's id, from 'List bills', 'Create bill' or a trigger.",
+          "display_name": "Bill ID",
+          "name": "bill_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/campfire/get-bill",
+      "result_str_template": "Bill retrieved.",
+      "returns": {
+        "properties": {
+          "bill": {
+            "description": "The bill",
+            "properties": {
+              "amount_due": {
+                "description": "Amount still due",
+                "type": "number"
+              },
+              "amount_paid": {
+                "description": "Amount paid so far",
+                "type": "number"
+              },
+              "bill_date": {
+                "description": "Bill date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "bill_number": {
+                "description": "The vendor's bill or invoice number",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created",
+                "type": "string"
+              },
+              "currency": {
+                "description": "Currency code",
+                "type": "string"
+              },
+              "due_date": {
+                "description": "Due date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "entity_id": {
+                "description": "Entity id",
+                "type": "string"
+              },
+              "entity_name": {
+                "description": "Entity name",
+                "type": "string"
+              },
+              "id": {
+                "description": "Bill id",
+                "type": "string"
+              },
+              "journal_entry_id": {
+                "description": "Id of the journal entry that posts it",
+                "type": "string"
+              },
+              "last_modified_at": {
+                "description": "When it was last changed",
+                "type": "string"
+              },
+              "lines": {
+                "description": "The bill's lines",
+                "items": {
+                  "description": "A bill line",
+                  "properties": {
+                    "account_id": {
+                      "description": "Expense account id",
+                      "type": "string"
+                    },
+                    "account_name": {
+                      "description": "Expense account, number and name",
+                      "type": "string"
+                    },
+                    "amount": {
+                      "description": "Line amount",
+                      "type": "number"
+                    },
+                    "department_id": {
+                      "description": "Department id, empty if none",
+                      "type": "string"
+                    },
+                    "department_name": {
+                      "description": "Department name",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "Line description",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Line id",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "memo": {
+                "description": "Message on the bill",
+                "type": "string"
+              },
+              "paid_date": {
+                "description": "Date it was fully paid, empty if not",
+                "type": "string"
+              },
+              "payment_status": {
+                "description": "Payment status, such as open, partial or paid",
+                "type": "string"
+              },
+              "payments": {
+                "description": "Payments made on it",
+                "items": {
+                  "description": "A payment",
+                  "properties": {
+                    "amount": {
+                      "description": "Amount paid",
+                      "type": "number"
+                    },
+                    "currency": {
+                      "description": "Currency code",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Payment id",
+                      "type": "string"
+                    },
+                    "payment_date": {
+                      "description": "Payment date (YYYY-MM-DD)",
+                      "type": "string"
+                    },
+                    "voided_date": {
+                      "description": "When the payment was voided, empty if it stands",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "status": {
+                "description": "Status, such as open, paid, partially_paid or voided",
+                "type": "string"
+              },
+              "terms": {
+                "description": "Payment terms, such as net_30",
+                "type": "string"
+              },
+              "total_amount": {
+                "description": "Total amount",
+                "type": "number"
+              },
+              "vendor_id": {
+                "description": "Vendor id",
+                "type": "string"
+              },
+              "vendor_name": {
+                "description": "Vendor name",
+                "type": "string"
+              },
+              "voided_date": {
+                "description": "Date it was voided, empty if not",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_income_statement": {
+      "description": "Get the profit and loss (income statement): revenue and expenses per account for each month, quarter or year in a range.",
+      "display_name": "Get profit and loss",
+      "display_str_template": "Get the profit and loss from Campfire.",
+      "handler": "actions.get_income_statement",
+      "id": "campfire_get_income_statement",
+      "method": "POST",
+      "mock_response": {
+        "cadence": "monthly",
+        "count": 2,
+        "end_date": "2024-01-31",
+        "rows": [
+          {
+            "account_id": "2555",
+            "account_name": "Sales, General, and Administrative Expenses",
+            "account_number": "600000",
+            "amounts": {
+              "2024-01-01_Total": 14883.910000000002
+            },
+            "section": "OPERATING_EXPENSES"
+          },
+          {
+            "account_id": "2556",
+            "account_name": "Sales",
+            "account_number": "400000",
+            "amounts": {
+              "2024-01-01_Total": 766651.0
+            },
+            "section": "REVENUE"
+          }
+        ],
+        "start_date": "2024-01-01"
+      },
+      "name": "get_income_statement",
+      "output_formatter": "actions.format_report_output",
+      "parameters": [
+        {
+          "description": "The first day covered. Defaults to six months ago.",
+          "display_name": "From",
+          "name": "start_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "The last day covered. Defaults to the end of this month.",
+          "display_name": "To",
+          "name": "end_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "default": "monthly",
+          "description": "One column per month, quarter, year, week or day.",
+          "display_name": "Columns",
+          "name": "cadence",
+          "options": [
+            {
+              "label": "Monthly (default)",
+              "value": "monthly"
+            },
+            {
+              "label": "Quarterly",
+              "value": "quarterly"
+            },
+            {
+              "label": "Yearly",
+              "value": "yearly"
+            },
+            {
+              "label": "Weekly",
+              "value": "weekly"
+            },
+            {
+              "label": "Daily",
+              "value": "daily"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only this company or subsidiary. Leave empty for all.",
+          "display_name": "Entity",
+          "dynamic_source": "entities",
+          "dynamic_source_allows_custom": true,
+          "name": "entity_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/campfire/get-income-statement",
+      "result_str_template": "Profit and loss retrieved.",
+      "returns": {
+        "properties": {
+          "cadence": {
+            "description": "How the columns are split: monthly, quarterly and so on",
+            "type": "string"
+          },
+          "count": {
+            "description": "How many rows",
+            "type": "number"
+          },
+          "end_date": {
+            "description": "Last day covered (YYYY-MM-DD)",
+            "type": "string"
+          },
+          "rows": {
+            "description": "One row per account",
+            "items": {
+              "description": "One account's line on the report",
+              "properties": {
+                "account_id": {
+                  "description": "Account id",
+                  "type": "string"
+                },
+                "account_name": {
+                  "description": "Account name",
+                  "type": "string"
+                },
+                "account_number": {
+                  "description": "Account number",
+                  "type": "string"
+                },
+                "amounts": {
+                  "description": "The amount per column, keyed by period start and group, such as 2026-01-01_Total",
+                  "type": "object"
+                },
+                "section": {
+                  "description": "Section, such as REVENUE, OPERATING_EXPENSES or ASSET",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "start_date": {
+            "description": "First day covered (YYYY-MM-DD)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_invoice": {
+      "description": "Get one invoice with its lines, payments, amount due and payment link.",
+      "display_name": "Get invoice",
+      "display_str_template": "Get an invoice in Campfire.",
+      "handler": "actions.get_invoice",
+      "id": "campfire_get_invoice",
+      "method": "POST",
+      "mock_response": {
+        "invoice": {
+          "amount_due": 55.0,
+          "amount_paid": 0.0,
+          "contract_id": "12954",
+          "created_at": "2025-07-25T18:54:43+00:00",
+          "currency": "USD",
+          "customer_email": "",
+          "customer_id": "33973",
+          "customer_name": "Client A",
+          "due_date": "2025-07-31",
+          "entity_id": "54",
+          "entity_name": "Top Level",
+          "id": "145055",
+          "invoice_date": "2025-07-01",
+          "invoice_number": "987654321",
+          "journal_entry_id": "7491952",
+          "last_modified_at": "2025-07-25T18:54:43+00:00",
+          "lines": [
+            {
+              "amount": 50.0,
+              "description": "Invoice Line Item",
+              "id": "337587",
+              "product_id": "2545",
+              "product_name": "Product A",
+              "quantity": 1.0,
+              "rate": 50.0,
+              "service_date": "2025-07-01",
+              "tax": 5.0
+            }
+          ],
+          "memo": "Please pay by bank transfer.",
+          "paid_date": "",
+          "payment_link": "",
+          "payment_status": "open",
+          "payments": [],
+          "purchase_order_number": "123456789",
+          "status": "open",
+          "terms": "net_30",
+          "total_amount": 55.0,
+          "voided_date": ""
+        }
+      },
+      "name": "get_invoice",
+      "output_formatter": "actions.format_invoice_output",
+      "parameters": [
+        {
+          "description": "The invoice's id, from 'List invoices', 'Create invoice' or a trigger.",
+          "display_name": "Invoice ID",
+          "name": "invoice_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/campfire/get-invoice",
+      "result_str_template": "Invoice retrieved.",
+      "returns": {
+        "properties": {
+          "invoice": {
+            "description": "The invoice",
+            "properties": {
+              "amount_due": {
+                "description": "Amount still due",
+                "type": "number"
+              },
+              "amount_paid": {
+                "description": "Amount paid so far",
+                "type": "number"
+              },
+              "contract_id": {
+                "description": "Contract id, empty if none",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created",
+                "type": "string"
+              },
+              "currency": {
+                "description": "Currency code",
+                "type": "string"
+              },
+              "customer_email": {
+                "description": "Customer email address",
+                "type": "string"
+              },
+              "customer_id": {
+                "description": "Customer id",
+                "type": "string"
+              },
+              "customer_name": {
+                "description": "Customer name",
+                "type": "string"
+              },
+              "due_date": {
+                "description": "Due date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "entity_id": {
+                "description": "Entity id",
+                "type": "string"
+              },
+              "entity_name": {
+                "description": "Entity name",
+                "type": "string"
+              },
+              "id": {
+                "description": "Invoice id",
+                "type": "string"
+              },
+              "invoice_date": {
+                "description": "Invoice date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "invoice_number": {
+                "description": "Invoice number",
+                "type": "string"
+              },
+              "journal_entry_id": {
+                "description": "Id of the journal entry that posts it",
+                "type": "string"
+              },
+              "last_modified_at": {
+                "description": "When it was last changed",
+                "type": "string"
+              },
+              "lines": {
+                "description": "The invoice's lines",
+                "items": {
+                  "description": "An invoice line",
+                  "properties": {
+                    "amount": {
+                      "description": "Line amount before tax",
+                      "type": "number"
+                    },
+                    "description": {
+                      "description": "Line description",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Line id",
+                      "type": "string"
+                    },
+                    "product_id": {
+                      "description": "Product id",
+                      "type": "string"
+                    },
+                    "product_name": {
+                      "description": "Product name",
+                      "type": "string"
+                    },
+                    "quantity": {
+                      "description": "Quantity",
+                      "type": "number"
+                    },
+                    "rate": {
+                      "description": "Price per unit",
+                      "type": "number"
+                    },
+                    "service_date": {
+                      "description": "Service date (YYYY-MM-DD), empty if none",
+                      "type": "string"
+                    },
+                    "tax": {
+                      "description": "Tax on the line",
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "memo": {
+                "description": "Message on the invoice",
+                "type": "string"
+              },
+              "paid_date": {
+                "description": "Date it was fully paid, empty if not",
+                "type": "string"
+              },
+              "payment_link": {
+                "description": "Link where the customer can pay, if there is one",
+                "type": "string"
+              },
+              "payment_status": {
+                "description": "Payment status, such as open, partial or paid",
+                "type": "string"
+              },
+              "payments": {
+                "description": "Payments received on it",
+                "items": {
+                  "description": "A payment",
+                  "properties": {
+                    "amount": {
+                      "description": "Amount paid",
+                      "type": "number"
+                    },
+                    "currency": {
+                      "description": "Currency code",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Payment id",
+                      "type": "string"
+                    },
+                    "payment_date": {
+                      "description": "Payment date (YYYY-MM-DD)",
+                      "type": "string"
+                    },
+                    "voided_date": {
+                      "description": "When the payment was voided, empty if it stands",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "purchase_order_number": {
+                "description": "The customer's purchase order number",
+                "type": "string"
+              },
+              "status": {
+                "description": "Status, such as open, sent, paid, past_due or voided",
+                "type": "string"
+              },
+              "terms": {
+                "description": "Payment terms, such as net_30",
+                "type": "string"
+              },
+              "total_amount": {
+                "description": "Total amount, tax included",
+                "type": "number"
+              },
+              "voided_date": {
+                "description": "Date it was voided, empty if not",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_accounts": {
+      "description": "List the chart of accounts with balances, optionally only one type (such as expenses) or those matching a name or number.",
+      "display_name": "List accounts",
+      "display_str_template": "List accounts in Campfire.",
+      "handler": "actions.list_accounts",
+      "id": "campfire_list_accounts",
+      "method": "POST",
+      "mock_response": {
+        "accounts": [
+          {
+            "account_subtype": "EXPENSE",
+            "account_type": "OPERATING_EXPENSES",
+            "currency": "USD",
+            "current_balance": 18250.4,
+            "description": "Supplies and small equipment",
+            "id": "2622",
+            "name": "Office Expenses",
+            "name_and_number": "6700 - Office Expenses",
+            "number": "6700",
+            "parent_id": "",
+            "status": "ACTIVE"
+          }
+        ],
+        "count": 1,
+        "total": 1
+      },
+      "name": "list_accounts",
+      "output_formatter": "actions.format_accounts_output",
+      "parameters": [
+        {
+          "description": "Only accounts of this type.",
+          "display_name": "Type",
+          "name": "account_type",
+          "options": [
+            {
+              "label": "Assets",
+              "value": "ASSET"
+            },
+            {
+              "label": "Liabilities",
+              "value": "LIABILITY"
+            },
+            {
+              "label": "Equity",
+              "value": "EQUITY"
+            },
+            {
+              "label": "Revenue",
+              "value": "REVENUE"
+            },
+            {
+              "label": "Cost of goods sold",
+              "value": "COGS"
+            },
+            {
+              "label": "Operating expenses",
+              "value": "OPERATING_EXPENSES"
+            },
+            {
+              "label": "Other income",
+              "value": "OTHER_INCOME"
+            },
+            {
+              "label": "Other expenses",
+              "value": "OTHER_EXPENSE"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Part of an account's name or number.",
+          "display_name": "Search",
+          "name": "search",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many accounts to return at most. Defaults to 100.",
+          "display_name": "Most to return",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/campfire/list-accounts",
+      "result_str_template": "Accounts retrieved.",
+      "returns": {
+        "properties": {
+          "accounts": {
+            "description": "The matching accounts",
+            "items": {
+              "description": "An account in the chart of accounts",
+              "properties": {
+                "account_subtype": {
+                  "description": "Subtype, such as BANK, ACCOUNTS_PAYABLE or EXPENSE",
+                  "type": "string"
+                },
+                "account_type": {
+                  "description": "Type, such as ASSET, REVENUE or OPERATING_EXPENSES",
+                  "type": "string"
+                },
+                "currency": {
+                  "description": "Currency code",
+                  "type": "string"
+                },
+                "current_balance": {
+                  "description": "Current balance",
+                  "type": "number"
+                },
+                "description": {
+                  "description": "Description",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Account id",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Account name",
+                  "type": "string"
+                },
+                "name_and_number": {
+                  "description": "Number and name together, such as 6700 - Office",
+                  "type": "string"
+                },
+                "number": {
+                  "description": "Account number, such as 6700",
+                  "type": "string"
+                },
+                "parent_id": {
+                  "description": "Parent account id, empty for a top-level account",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "ACTIVE or INACTIVE",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many are returned",
+            "type": "number"
+          },
+          "total": {
+            "description": "How many match in all",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_bank_accounts": {
+      "description": "List bank and card accounts with their current and available balances.",
+      "display_name": "List bank accounts",
+      "display_str_template": "List bank accounts in Campfire.",
+      "handler": "actions.list_bank_accounts",
+      "id": "campfire_list_bank_accounts",
+      "method": "POST",
+      "mock_response": {
+        "bank_accounts": [
+          {
+            "available_balance": 248500.0,
+            "currency": "USD",
+            "current_balance": 250000.0,
+            "entity_id": "54",
+            "entity_name": "Top Level",
+            "id": "811",
+            "last_modified_at": "2025-07-25T04:24:32+00:00",
+            "ledger_account_id": "180564",
+            "ledger_account_name": "1000 - Cash and Cash Equivalents",
+            "name": "Operating Checking",
+            "nickname": "Ops",
+            "status": "active",
+            "type": "Checking"
+          }
+        ],
+        "count": 1,
+        "has_more": false,
+        "next_offset": 0,
+        "total": 1
+      },
+      "name": "list_bank_accounts",
+      "output_formatter": "actions.format_bank_accounts_output",
+      "parameters": [
+        {
+          "description": "How many to return, 1 to 1000. Defaults to 50.",
+          "display_name": "Page size",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many to skip, to get a later page. Use 'next_offset' from the page before.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/campfire/list-bank-accounts",
+      "result_str_template": "Bank accounts retrieved.",
+      "returns": {
+        "properties": {
+          "bank_accounts": {
+            "description": "The bank and card accounts",
+            "items": {
+              "description": "A bank or card account",
+              "properties": {
+                "available_balance": {
+                  "description": "Available balance",
+                  "type": "number"
+                },
+                "currency": {
+                  "description": "Currency code",
+                  "type": "string"
+                },
+                "current_balance": {
+                  "description": "Current balance",
+                  "type": "number"
+                },
+                "entity_id": {
+                  "description": "Entity id",
+                  "type": "string"
+                },
+                "entity_name": {
+                  "description": "Entity name",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Bank account id",
+                  "type": "string"
+                },
+                "last_modified_at": {
+                  "description": "When it was last changed",
+                  "type": "string"
+                },
+                "ledger_account_id": {
+                  "description": "Id of the chart account it posts to; use it to record payments",
+                  "type": "string"
+                },
+                "ledger_account_name": {
+                  "description": "Name of the chart account it posts to",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Account name",
+                  "type": "string"
+                },
+                "nickname": {
+                  "description": "Nickname",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "Status",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Type, such as Checking, Savings or Credit Card",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many are on this page",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "Whether there are more after this page",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "What to put in Skip for the next page; 0 on the last",
+            "type": "number"
+          },
+          "total": {
+            "description": "How many match in all",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_bank_transactions": {
+      "description": "List the transactions from your bank and card feeds, with amounts, descriptions and the entries they were booked to.",
+      "display_name": "List bank transactions",
+      "display_str_template": "List bank transactions in Campfire.",
+      "handler": "actions.list_bank_transactions",
+      "id": "campfire_list_bank_transactions",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "has_more": false,
+        "next_offset": 0,
+        "total": 1,
+        "transactions": [
+          {
+            "amount": -8999.99,
+            "bank_account_id": "811",
+            "bank_account_name": "Operating Checking",
+            "created_at": "2025-07-08T12:00:00+00:00",
+            "currency": "USD",
+            "date": "2025-07-08",
+            "description": "ScholarShare ACHCONTRIB 070825",
+            "entity_name": "Top Level",
+            "excluded": false,
+            "id": "21069178",
+            "journal_entry_id": "7491960",
+            "kind": "ach",
+            "merchant_name": "ScholarShare",
+            "note": "",
+            "status": "posted"
+          }
+        ]
+      },
+      "name": "list_bank_transactions",
+      "output_formatter": "actions.format_bank_transactions_output",
+      "parameters": [
+        {
+          "description": "How many to return, 1 to 1000. Defaults to 50.",
+          "display_name": "Page size",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many to skip, to get a later page. Use 'next_offset' from the page before.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/campfire/list-bank-transactions",
+      "result_str_template": "Bank transactions retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many are on this page",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "Whether there are more after this page",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "What to put in Skip for the next page; 0 on the last",
+            "type": "number"
+          },
+          "total": {
+            "description": "How many match in all",
+            "type": "number"
+          },
+          "transactions": {
+            "description": "The bank transactions",
+            "items": {
+              "description": "A bank or card transaction",
+              "properties": {
+                "amount": {
+                  "description": "Amount",
+                  "type": "number"
+                },
+                "bank_account_id": {
+                  "description": "Bank account id",
+                  "type": "string"
+                },
+                "bank_account_name": {
+                  "description": "Bank account name",
+                  "type": "string"
+                },
+                "created_at": {
+                  "description": "When Campfire received it",
+                  "type": "string"
+                },
+                "currency": {
+                  "description": "Currency code",
+                  "type": "string"
+                },
+                "date": {
+                  "description": "Date it posted",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "Description from the bank",
+                  "type": "string"
+                },
+                "entity_name": {
+                  "description": "Entity name",
+                  "type": "string"
+                },
+                "excluded": {
+                  "description": "Whether it is excluded from the books",
+                  "type": "boolean"
+                },
+                "id": {
+                  "description": "Transaction id",
+                  "type": "string"
+                },
+                "journal_entry_id": {
+                  "description": "Id of the journal entry it was booked to, if any",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "Kind of transaction",
+                  "type": "string"
+                },
+                "merchant_name": {
+                  "description": "Merchant name",
+                  "type": "string"
+                },
+                "note": {
+                  "description": "Note",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "Status",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_bills": {
+      "description": "List bills, newest first, filtered by status, vendor, entity, bill date, search words or when they last changed.",
+      "display_name": "List bills",
+      "display_str_template": "List bills in Campfire.",
+      "handler": "actions.list_bills",
+      "id": "campfire_list_bills",
+      "method": "POST",
+      "mock_response": {
+        "bills": [
+          {
+            "amount_due": 10000.0,
+            "amount_paid": 0.0,
+            "bill_date": "2025-08-01",
+            "bill_number": "1234567",
+            "created_at": "2025-07-25T04:24:32+00:00",
+            "currency": "USD",
+            "due_date": "2025-08-24",
+            "entity_id": "54",
+            "entity_name": "Top Level",
+            "id": "31894",
+            "journal_entry_id": "7491951",
+            "last_modified_at": "2025-07-25T04:24:32+00:00",
+            "lines": [
+              {
+                "account_id": "2622",
+                "account_name": "6700 - Office Expenses",
+                "amount": 10000.0,
+                "department_id": "35",
+                "department_name": "Engineering",
+                "description": "1x Large Expense Line",
+                "id": "298626"
+              }
+            ],
+            "memo": "A really big expense",
+            "paid_date": "",
+            "payment_status": "open",
+            "payments": [],
+            "status": "open",
+            "terms": "",
+            "total_amount": 10000.0,
+            "vendor_id": "34182",
+            "vendor_name": "ABC Bead Supply",
+            "voided_date": ""
+          }
+        ],
+        "count": 1,
+        "has_more": false,
+        "next_offset": 0,
+        "total": 1
+      },
+      "name": "list_bills",
+      "output_formatter": "actions.format_bills_output",
+      "parameters": [
+        {
+          "description": "Only bills in this state.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Unpaid",
+              "value": "unpaid"
+            },
+            {
+              "label": "Open",
+              "value": "open"
+            },
+            {
+              "label": "Partially paid",
+              "value": "partially_paid"
+            },
+            {
+              "label": "Paid",
+              "value": "paid"
+            },
+            {
+              "label": "Past due",
+              "value": "past_due"
+            },
+            {
+              "label": "Not yet due",
+              "value": "current"
+            },
+            {
+              "label": "Needs approval",
+              "value": "needs_approval"
+            },
+            {
+              "label": "Payment pending",
+              "value": "payment_pending"
+            },
+            {
+              "label": "Voided",
+              "value": "voided"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only bills from this vendor.",
+          "display_name": "Vendor",
+          "dynamic_source": "vendors",
+          "dynamic_source_allows_custom": true,
+          "name": "vendor_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only this company or subsidiary.",
+          "display_name": "Entity",
+          "dynamic_source": "entities",
+          "dynamic_source_allows_custom": true,
+          "name": "entity_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only those dated on or after this day.",
+          "display_name": "From",
+          "name": "start_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only those dated on or before this day.",
+          "display_name": "To",
+          "name": "end_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Words to look for, such as a name or a number.",
+          "display_name": "Search",
+          "name": "search",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only those created or changed at or after this time.",
+          "display_name": "Changed since",
+          "name": "modified_since",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "How many to return, 1 to 1000. Defaults to 50.",
+          "display_name": "Page size",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many to skip, to get a later page. Use 'next_offset' from the page before.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/campfire/list-bills",
+      "result_str_template": "Bills retrieved.",
+      "returns": {
+        "properties": {
+          "bills": {
+            "description": "The bills",
+            "items": {
+              "description": "A bill",
+              "properties": {
+                "amount_due": {
+                  "description": "Amount still due",
+                  "type": "number"
+                },
+                "amount_paid": {
+                  "description": "Amount paid so far",
+                  "type": "number"
+                },
+                "bill_date": {
+                  "description": "Bill date (YYYY-MM-DD)",
+                  "type": "string"
+                },
+                "bill_number": {
+                  "description": "The vendor's bill or invoice number",
+                  "type": "string"
+                },
+                "created_at": {
+                  "description": "When it was created",
+                  "type": "string"
+                },
+                "currency": {
+                  "description": "Currency code",
+                  "type": "string"
+                },
+                "due_date": {
+                  "description": "Due date (YYYY-MM-DD)",
+                  "type": "string"
+                },
+                "entity_id": {
+                  "description": "Entity id",
+                  "type": "string"
+                },
+                "entity_name": {
+                  "description": "Entity name",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Bill id",
+                  "type": "string"
+                },
+                "journal_entry_id": {
+                  "description": "Id of the journal entry that posts it",
+                  "type": "string"
+                },
+                "last_modified_at": {
+                  "description": "When it was last changed",
+                  "type": "string"
+                },
+                "lines": {
+                  "description": "The bill's lines",
+                  "items": {
+                    "description": "A bill line",
+                    "properties": {
+                      "account_id": {
+                        "description": "Expense account id",
+                        "type": "string"
+                      },
+                      "account_name": {
+                        "description": "Expense account, number and name",
+                        "type": "string"
+                      },
+                      "amount": {
+                        "description": "Line amount",
+                        "type": "number"
+                      },
+                      "department_id": {
+                        "description": "Department id, empty if none",
+                        "type": "string"
+                      },
+                      "department_name": {
+                        "description": "Department name",
+                        "type": "string"
+                      },
+                      "description": {
+                        "description": "Line description",
+                        "type": "string"
+                      },
+                      "id": {
+                        "description": "Line id",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "memo": {
+                  "description": "Message on the bill",
+                  "type": "string"
+                },
+                "paid_date": {
+                  "description": "Date it was fully paid, empty if not",
+                  "type": "string"
+                },
+                "payment_status": {
+                  "description": "Payment status, such as open, partial or paid",
+                  "type": "string"
+                },
+                "payments": {
+                  "description": "Payments made on it",
+                  "items": {
+                    "description": "A payment",
+                    "properties": {
+                      "amount": {
+                        "description": "Amount paid",
+                        "type": "number"
+                      },
+                      "currency": {
+                        "description": "Currency code",
+                        "type": "string"
+                      },
+                      "id": {
+                        "description": "Payment id",
+                        "type": "string"
+                      },
+                      "payment_date": {
+                        "description": "Payment date (YYYY-MM-DD)",
+                        "type": "string"
+                      },
+                      "voided_date": {
+                        "description": "When the payment was voided, empty if it stands",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "status": {
+                  "description": "Status, such as open, paid, partially_paid or voided",
+                  "type": "string"
+                },
+                "terms": {
+                  "description": "Payment terms, such as net_30",
+                  "type": "string"
+                },
+                "total_amount": {
+                  "description": "Total amount",
+                  "type": "number"
+                },
+                "vendor_id": {
+                  "description": "Vendor id",
+                  "type": "string"
+                },
+                "vendor_name": {
+                  "description": "Vendor name",
+                  "type": "string"
+                },
+                "voided_date": {
+                  "description": "Date it was voided, empty if not",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many are on this page",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "Whether there are more after this page",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "What to put in Skip for the next page; 0 on the last",
+            "type": "number"
+          },
+          "total": {
+            "description": "How many match in all",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_invoices": {
+      "description": "List invoices, newest first, filtered by status, customer, entity, invoice date, number or search words.",
+      "display_name": "List invoices",
+      "display_str_template": "List invoices in Campfire.",
+      "handler": "actions.list_invoices",
+      "id": "campfire_list_invoices",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "has_more": false,
+        "invoices": [
+          {
+            "amount_due": 55.0,
+            "amount_paid": 0.0,
+            "contract_id": "12954",
+            "created_at": "2025-07-25T18:54:43+00:00",
+            "currency": "USD",
+            "customer_email": "",
+            "customer_id": "33973",
+            "customer_name": "Client A",
+            "due_date": "2025-07-31",
+            "entity_id": "54",
+            "entity_name": "Top Level",
+            "id": "145055",
+            "invoice_date": "2025-07-01",
+            "invoice_number": "987654321",
+            "journal_entry_id": "7491952",
+            "last_modified_at": "2025-07-25T18:54:43+00:00",
+            "lines": [
+              {
+                "amount": 50.0,
+                "description": "Invoice Line Item",
+                "id": "337587",
+                "product_id": "2545",
+                "product_name": "Product A",
+                "quantity": 1.0,
+                "rate": 50.0,
+                "service_date": "2025-07-01",
+                "tax": 5.0
+              }
+            ],
+            "memo": "Please pay by bank transfer.",
+            "paid_date": "",
+            "payment_link": "",
+            "payment_status": "open",
+            "payments": [],
+            "purchase_order_number": "123456789",
+            "status": "open",
+            "terms": "net_30",
+            "total_amount": 55.0,
+            "voided_date": ""
+          }
+        ],
+        "next_offset": 0,
+        "total": 1
+      },
+      "name": "list_invoices",
+      "output_formatter": "actions.format_invoices_output",
+      "parameters": [
+        {
+          "description": "Only invoices in this state.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Unpaid",
+              "value": "unpaid"
+            },
+            {
+              "label": "Open",
+              "value": "open"
+            },
+            {
+              "label": "Sent",
+              "value": "sent"
+            },
+            {
+              "label": "Partially paid",
+              "value": "partially_paid"
+            },
+            {
+              "label": "Paid",
+              "value": "paid"
+            },
+            {
+              "label": "Past due",
+              "value": "past_due"
+            },
+            {
+              "label": "Not yet due",
+              "value": "current"
+            },
+            {
+              "label": "Scheduled",
+              "value": "scheduled"
+            },
+            {
+              "label": "Uncollectible",
+              "value": "uncollectible"
+            },
+            {
+              "label": "Voided",
+              "value": "voided"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only invoices to this customer.",
+          "display_name": "Customer",
+          "dynamic_source": "customers",
+          "dynamic_source_allows_custom": true,
+          "name": "customer_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only this company or subsidiary.",
+          "display_name": "Entity",
+          "dynamic_source": "entities",
+          "dynamic_source_allows_custom": true,
+          "name": "entity_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only those dated on or after this day.",
+          "display_name": "From",
+          "name": "start_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only those dated on or before this day.",
+          "display_name": "To",
+          "name": "end_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only the invoice with exactly this number.",
+          "display_name": "Invoice number",
+          "name": "invoice_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Words to look for, such as a name or a number.",
+          "display_name": "Search",
+          "name": "search",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many to return, 1 to 1000. Defaults to 50.",
+          "display_name": "Page size",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many to skip, to get a later page. Use 'next_offset' from the page before.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/campfire/list-invoices",
+      "result_str_template": "Invoices retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many are on this page",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "Whether there are more after this page",
+            "type": "boolean"
+          },
+          "invoices": {
+            "description": "The invoices",
+            "items": {
+              "description": "An invoice",
+              "properties": {
+                "amount_due": {
+                  "description": "Amount still due",
+                  "type": "number"
+                },
+                "amount_paid": {
+                  "description": "Amount paid so far",
+                  "type": "number"
+                },
+                "contract_id": {
+                  "description": "Contract id, empty if none",
+                  "type": "string"
+                },
+                "created_at": {
+                  "description": "When it was created",
+                  "type": "string"
+                },
+                "currency": {
+                  "description": "Currency code",
+                  "type": "string"
+                },
+                "customer_email": {
+                  "description": "Customer email address",
+                  "type": "string"
+                },
+                "customer_id": {
+                  "description": "Customer id",
+                  "type": "string"
+                },
+                "customer_name": {
+                  "description": "Customer name",
+                  "type": "string"
+                },
+                "due_date": {
+                  "description": "Due date (YYYY-MM-DD)",
+                  "type": "string"
+                },
+                "entity_id": {
+                  "description": "Entity id",
+                  "type": "string"
+                },
+                "entity_name": {
+                  "description": "Entity name",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Invoice id",
+                  "type": "string"
+                },
+                "invoice_date": {
+                  "description": "Invoice date (YYYY-MM-DD)",
+                  "type": "string"
+                },
+                "invoice_number": {
+                  "description": "Invoice number",
+                  "type": "string"
+                },
+                "journal_entry_id": {
+                  "description": "Id of the journal entry that posts it",
+                  "type": "string"
+                },
+                "last_modified_at": {
+                  "description": "When it was last changed",
+                  "type": "string"
+                },
+                "lines": {
+                  "description": "The invoice's lines",
+                  "items": {
+                    "description": "An invoice line",
+                    "properties": {
+                      "amount": {
+                        "description": "Line amount before tax",
+                        "type": "number"
+                      },
+                      "description": {
+                        "description": "Line description",
+                        "type": "string"
+                      },
+                      "id": {
+                        "description": "Line id",
+                        "type": "string"
+                      },
+                      "product_id": {
+                        "description": "Product id",
+                        "type": "string"
+                      },
+                      "product_name": {
+                        "description": "Product name",
+                        "type": "string"
+                      },
+                      "quantity": {
+                        "description": "Quantity",
+                        "type": "number"
+                      },
+                      "rate": {
+                        "description": "Price per unit",
+                        "type": "number"
+                      },
+                      "service_date": {
+                        "description": "Service date (YYYY-MM-DD), empty if none",
+                        "type": "string"
+                      },
+                      "tax": {
+                        "description": "Tax on the line",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "memo": {
+                  "description": "Message on the invoice",
+                  "type": "string"
+                },
+                "paid_date": {
+                  "description": "Date it was fully paid, empty if not",
+                  "type": "string"
+                },
+                "payment_link": {
+                  "description": "Link where the customer can pay, if there is one",
+                  "type": "string"
+                },
+                "payment_status": {
+                  "description": "Payment status, such as open, partial or paid",
+                  "type": "string"
+                },
+                "payments": {
+                  "description": "Payments received on it",
+                  "items": {
+                    "description": "A payment",
+                    "properties": {
+                      "amount": {
+                        "description": "Amount paid",
+                        "type": "number"
+                      },
+                      "currency": {
+                        "description": "Currency code",
+                        "type": "string"
+                      },
+                      "id": {
+                        "description": "Payment id",
+                        "type": "string"
+                      },
+                      "payment_date": {
+                        "description": "Payment date (YYYY-MM-DD)",
+                        "type": "string"
+                      },
+                      "voided_date": {
+                        "description": "When the payment was voided, empty if it stands",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "purchase_order_number": {
+                  "description": "The customer's purchase order number",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "Status, such as open, sent, paid, past_due or voided",
+                  "type": "string"
+                },
+                "terms": {
+                  "description": "Payment terms, such as net_30",
+                  "type": "string"
+                },
+                "total_amount": {
+                  "description": "Total amount, tax included",
+                  "type": "number"
+                },
+                "voided_date": {
+                  "description": "Date it was voided, empty if not",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "next_offset": {
+            "description": "What to put in Skip for the next page; 0 on the last",
+            "type": "number"
+          },
+          "total": {
+            "description": "How many match in all",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_journal_entries": {
+      "description": "List journal entries with their lines, in a date range (the last six months unless given) and optionally for one account.",
+      "display_name": "List journal entries",
+      "display_str_template": "List journal entries in Campfire.",
+      "handler": "actions.list_journal_entries",
+      "id": "campfire_list_journal_entries",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "has_more": false,
+        "journal_entries": [
+          {
+            "created_at": "2025-07-25T00:01:28+00:00",
+            "currency": "USD",
+            "date": "2025-07-31",
+            "entity_id": "54",
+            "entity_name": "Top Level",
+            "id": "7491945",
+            "lines": [
+              {
+                "account_id": "180564",
+                "account_name": "1000 - Cash and Cash Equivalents",
+                "credit": 0.0,
+                "debit": 12345.67,
+                "department_id": "",
+                "department_name": "",
+                "description": "Test Line Description",
+                "id": "24429462",
+                "vendor_id": "",
+                "vendor_name": ""
+              },
+              {
+                "account_id": "2563",
+                "account_name": "1600 - Fixed Assets",
+                "credit": 12345.67,
+                "debit": 0.0,
+                "department_id": "35",
+                "department_name": "Engineering",
+                "description": "Test Line Description",
+                "id": "24429463",
+                "vendor_id": "34182",
+                "vendor_name": "ABC Bead Supply"
+              }
+            ],
+            "memo": "Test Journal Memo",
+            "number": "0004358",
+            "total": 12345.67,
+            "type": "journal_entry"
+          }
+        ],
+        "next_offset": 0,
+        "total": 1
+      },
+      "name": "list_journal_entries",
+      "output_formatter": "actions.format_journal_entries_output",
+      "parameters": [
+        {
+          "description": "Only those dated on or after this day.",
+          "display_name": "From",
+          "name": "start_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only those dated on or before this day.",
+          "display_name": "To",
+          "name": "end_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only entries with a line on this account.",
+          "display_name": "Account",
+          "dynamic_source": "accounts",
+          "dynamic_source_allows_custom": true,
+          "name": "account_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many to return, 1 to 1000. Defaults to 50.",
+          "display_name": "Page size",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many to skip, to get a later page. Use 'next_offset' from the page before.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/campfire/list-journal-entries",
+      "result_str_template": "Journal entries retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many are on this page",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "Whether there are more after this page",
+            "type": "boolean"
+          },
+          "journal_entries": {
+            "description": "The journal entries",
+            "items": {
+              "description": "A journal entry",
+              "properties": {
+                "created_at": {
+                  "description": "When it was created",
+                  "type": "string"
+                },
+                "currency": {
+                  "description": "Currency code",
+                  "type": "string"
+                },
+                "date": {
+                  "description": "Date it posts on (YYYY-MM-DD)",
+                  "type": "string"
+                },
+                "entity_id": {
+                  "description": "Entity id",
+                  "type": "string"
+                },
+                "entity_name": {
+                  "description": "Entity name",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Journal entry id",
+                  "type": "string"
+                },
+                "lines": {
+                  "description": "The entry's lines",
+                  "items": {
+                    "description": "A journal entry line",
+                    "properties": {
+                      "account_id": {
+                        "description": "Account id",
+                        "type": "string"
+                      },
+                      "account_name": {
+                        "description": "Account, number and name",
+                        "type": "string"
+                      },
+                      "credit": {
+                        "description": "Credit amount, 0 on a debit line",
+                        "type": "number"
+                      },
+                      "debit": {
+                        "description": "Debit amount, 0 on a credit line",
+                        "type": "number"
+                      },
+                      "department_id": {
+                        "description": "Department id, empty if none",
+                        "type": "string"
+                      },
+                      "department_name": {
+                        "description": "Department name",
+                        "type": "string"
+                      },
+                      "description": {
+                        "description": "Line description",
+                        "type": "string"
+                      },
+                      "id": {
+                        "description": "Line id",
+                        "type": "string"
+                      },
+                      "vendor_id": {
+                        "description": "Vendor id, empty if none",
+                        "type": "string"
+                      },
+                      "vendor_name": {
+                        "description": "Vendor name",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "memo": {
+                  "description": "Memo",
+                  "type": "string"
+                },
+                "number": {
+                  "description": "Journal entry number, such as 0004358",
+                  "type": "string"
+                },
+                "total": {
+                  "description": "Total of the debits",
+                  "type": "number"
+                },
+                "type": {
+                  "description": "Type, such as journal_entry, bill or invoice",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "next_offset": {
+            "description": "What to put in Skip for the next page; 0 on the last",
+            "type": "number"
+          },
+          "total": {
+            "description": "How many match in all",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_products": {
+      "description": "List the products and services you sell, with prices.",
+      "display_name": "List products",
+      "display_str_template": "List products in Campfire.",
+      "handler": "actions.list_products",
+      "id": "campfire_list_products",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "has_more": false,
+        "next_offset": 0,
+        "products": [
+          {
+            "currency": "USD",
+            "description": "Annual platform subscription",
+            "id": "2545",
+            "is_taxable": false,
+            "name": "Product A",
+            "price": 50.0,
+            "revenue_account_name": "4000 - Sales"
+          }
+        ],
+        "total": 1
+      },
+      "name": "list_products",
+      "output_formatter": "actions.format_products_output",
+      "parameters": [
+        {
+          "description": "How many to return, 1 to 1000. Defaults to 50.",
+          "display_name": "Page size",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many to skip, to get a later page. Use 'next_offset' from the page before.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/campfire/list-products",
+      "result_str_template": "Products retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many are on this page",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "Whether there are more after this page",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "What to put in Skip for the next page; 0 on the last",
+            "type": "number"
+          },
+          "products": {
+            "description": "The products",
+            "items": {
+              "description": "A product or service",
+              "properties": {
+                "currency": {
+                  "description": "Currency code",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "Description",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Product id",
+                  "type": "string"
+                },
+                "is_taxable": {
+                  "description": "Whether sales tax applies",
+                  "type": "boolean"
+                },
+                "name": {
+                  "description": "Product name",
+                  "type": "string"
+                },
+                "price": {
+                  "description": "List price",
+                  "type": "number"
+                },
+                "revenue_account_name": {
+                  "description": "Revenue account it posts to",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total": {
+            "description": "How many match in all",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_vendors": {
+      "description": "Find vendors and customers by name, email or company, or those changed since a time.",
+      "display_name": "Find vendors and customers",
+      "display_str_template": "Find vendors and customers in Campfire.",
+      "handler": "actions.list_vendors",
+      "id": "campfire_list_vendors",
+      "method": "POST",
+      "mock_response": {
+        "contacts": [
+          {
+            "address_street_1": "1234 Campground Road",
+            "address_street_2": "",
+            "campfire_id": "VEN-0000042",
+            "city": "San Francisco",
+            "company_name": "ABC Bead Supply LLC",
+            "country": "US",
+            "created_at": "2025-07-17T16:21:02+00:00",
+            "display_name": "ABC Bead Supply",
+            "email": "billing@abcbeads.example.com",
+            "external_id": "",
+            "id": "34182",
+            "last_modified_at": "2025-07-17T16:21:02+00:00",
+            "name": "ABC Bead Supply",
+            "notes": "",
+            "phone_number": "+1 415 555 0100",
+            "state": "CA",
+            "status": "ACTIVE",
+            "terms": "net_30",
+            "type": "vendor",
+            "website": "https://abcbeads.example.com",
+            "zip_code": "98765"
+          }
+        ],
+        "count": 1,
+        "has_more": false,
+        "next_offset": 0,
+        "total": 1
+      },
+      "name": "list_vendors",
+      "output_formatter": "actions.format_contacts_output",
+      "parameters": [
+        {
+          "description": "Only vendors, or only customers. Leave empty for both.",
+          "display_name": "Type",
+          "name": "contact_type",
+          "options": [
+            {
+              "label": "Vendors",
+              "value": "vendor"
+            },
+            {
+              "label": "Customers",
+              "value": "customer"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A name, email or company name to look for.",
+          "display_name": "Search",
+          "name": "search",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only those created or changed at or after this time.",
+          "display_name": "Changed since",
+          "name": "modified_since",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": false,
+          "description": "Also return vendors and customers marked inactive.",
+          "display_name": "Include inactive",
+          "name": "include_inactive",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "How many to return, 1 to 1000. Defaults to 50.",
+          "display_name": "Page size",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many to skip, to get a later page. Use 'next_offset' from the page before.",
+          "display_name": "Skip",
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/campfire/list-vendors",
+      "result_str_template": "Vendors and customers retrieved.",
+      "returns": {
+        "properties": {
+          "contacts": {
+            "description": "The vendors and customers",
+            "items": {
+              "description": "A vendor or customer",
+              "properties": {
+                "address_street_1": {
+                  "description": "Street address",
+                  "type": "string"
+                },
+                "address_street_2": {
+                  "description": "Second line of the street address",
+                  "type": "string"
+                },
+                "campfire_id": {
+                  "description": "Campfire's reference, such as VEN-0000001 or CUST-0000001",
+                  "type": "string"
+                },
+                "city": {
+                  "description": "City",
+                  "type": "string"
+                },
+                "company_name": {
+                  "description": "Company name",
+                  "type": "string"
+                },
+                "country": {
+                  "description": "Country",
+                  "type": "string"
+                },
+                "created_at": {
+                  "description": "When it was created",
+                  "type": "string"
+                },
+                "display_name": {
+                  "description": "Name as Campfire shows it",
+                  "type": "string"
+                },
+                "email": {
+                  "description": "Email address",
+                  "type": "string"
+                },
+                "external_id": {
+                  "description": "Your own id for the record, if set",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Vendor or customer id",
+                  "type": "string"
+                },
+                "last_modified_at": {
+                  "description": "When it was last changed",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Name",
+                  "type": "string"
+                },
+                "notes": {
+                  "description": "Notes",
+                  "type": "string"
+                },
+                "phone_number": {
+                  "description": "Phone number",
+                  "type": "string"
+                },
+                "state": {
+                  "description": "State or region",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "ACTIVE or INACTIVE",
+                  "type": "string"
+                },
+                "terms": {
+                  "description": "Default payment terms, such as net_30",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "vendor, customer or employee",
+                  "type": "string"
+                },
+                "website": {
+                  "description": "Website",
+                  "type": "string"
+                },
+                "zip_code": {
+                  "description": "ZIP or postal code",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many are on this page",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "Whether there are more after this page",
+            "type": "boolean"
+          },
+          "next_offset": {
+            "description": "What to put in Skip for the next page; 0 on the last",
+            "type": "number"
+          },
+          "total": {
+            "description": "How many match in all",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "record_bill_payment": {
+      "description": "Record that a bill was paid, in full or in part, from an account such as your bank account.",
+      "display_name": "Record bill payment",
+      "display_str_template": "Record a bill payment in Campfire.",
+      "handler": "actions.record_bill_payment",
+      "id": "campfire_record_bill_payment",
+      "method": "POST",
+      "mock_response": {
+        "amount_recorded": 10000.0,
+        "bill": {
+          "amount_due": 0.0,
+          "amount_paid": 10000.0,
+          "bill_date": "2025-08-01",
+          "bill_number": "1234567",
+          "created_at": "2025-07-25T04:24:32+00:00",
+          "currency": "USD",
+          "due_date": "2025-08-24",
+          "entity_id": "54",
+          "entity_name": "Top Level",
+          "id": "31894",
+          "journal_entry_id": "7491951",
+          "last_modified_at": "2025-07-25T04:24:32+00:00",
+          "lines": [
+            {
+              "account_id": "2622",
+              "account_name": "6700 - Office Expenses",
+              "amount": 10000.0,
+              "department_id": "35",
+              "department_name": "Engineering",
+              "description": "1x Large Expense Line",
+              "id": "298626"
+            }
+          ],
+          "memo": "A really big expense",
+          "paid_date": "",
+          "payment_status": "paid",
+          "payments": [],
+          "status": "paid",
+          "terms": "",
+          "total_amount": 10000.0,
+          "vendor_id": "34182",
+          "vendor_name": "ABC Bead Supply",
+          "voided_date": ""
+        }
+      },
+      "name": "record_bill_payment",
+      "output_formatter": "actions.format_bill_output",
+      "parameters": [
+        {
+          "description": "The bill's id, from 'List bills', 'Create bill' or a trigger.",
+          "display_name": "Bill ID",
+          "name": "bill_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The account the money moved through, usually a bank or card account.",
+          "display_name": "Paid through",
+          "dynamic_source": "payment_accounts",
+          "dynamic_source_allows_custom": true,
+          "name": "account_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How much was paid. Defaults to the full amount due.",
+          "display_name": "Amount",
+          "minimum": 0.01,
+          "name": "amount",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The day it was paid. Defaults to today.",
+          "display_name": "Payment date",
+          "name": "payment_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "A note kept with the payment.",
+          "display_name": "Note",
+          "name": "memo",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/campfire/record-bill-payment",
+      "result_str_template": "Bill payment recorded.",
+      "returns": {
+        "properties": {
+          "amount_recorded": {
+            "description": "The amount of the payment recorded",
+            "type": "number"
+          },
+          "bill": {
+            "description": "The bill, after the payment",
+            "properties": {
+              "amount_due": {
+                "description": "Amount still due",
+                "type": "number"
+              },
+              "amount_paid": {
+                "description": "Amount paid so far",
+                "type": "number"
+              },
+              "bill_date": {
+                "description": "Bill date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "bill_number": {
+                "description": "The vendor's bill or invoice number",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created",
+                "type": "string"
+              },
+              "currency": {
+                "description": "Currency code",
+                "type": "string"
+              },
+              "due_date": {
+                "description": "Due date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "entity_id": {
+                "description": "Entity id",
+                "type": "string"
+              },
+              "entity_name": {
+                "description": "Entity name",
+                "type": "string"
+              },
+              "id": {
+                "description": "Bill id",
+                "type": "string"
+              },
+              "journal_entry_id": {
+                "description": "Id of the journal entry that posts it",
+                "type": "string"
+              },
+              "last_modified_at": {
+                "description": "When it was last changed",
+                "type": "string"
+              },
+              "lines": {
+                "description": "The bill's lines",
+                "items": {
+                  "description": "A bill line",
+                  "properties": {
+                    "account_id": {
+                      "description": "Expense account id",
+                      "type": "string"
+                    },
+                    "account_name": {
+                      "description": "Expense account, number and name",
+                      "type": "string"
+                    },
+                    "amount": {
+                      "description": "Line amount",
+                      "type": "number"
+                    },
+                    "department_id": {
+                      "description": "Department id, empty if none",
+                      "type": "string"
+                    },
+                    "department_name": {
+                      "description": "Department name",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "Line description",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Line id",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "memo": {
+                "description": "Message on the bill",
+                "type": "string"
+              },
+              "paid_date": {
+                "description": "Date it was fully paid, empty if not",
+                "type": "string"
+              },
+              "payment_status": {
+                "description": "Payment status, such as open, partial or paid",
+                "type": "string"
+              },
+              "payments": {
+                "description": "Payments made on it",
+                "items": {
+                  "description": "A payment",
+                  "properties": {
+                    "amount": {
+                      "description": "Amount paid",
+                      "type": "number"
+                    },
+                    "currency": {
+                      "description": "Currency code",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Payment id",
+                      "type": "string"
+                    },
+                    "payment_date": {
+                      "description": "Payment date (YYYY-MM-DD)",
+                      "type": "string"
+                    },
+                    "voided_date": {
+                      "description": "When the payment was voided, empty if it stands",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "status": {
+                "description": "Status, such as open, paid, partially_paid or voided",
+                "type": "string"
+              },
+              "terms": {
+                "description": "Payment terms, such as net_30",
+                "type": "string"
+              },
+              "total_amount": {
+                "description": "Total amount",
+                "type": "number"
+              },
+              "vendor_id": {
+                "description": "Vendor id",
+                "type": "string"
+              },
+              "vendor_name": {
+                "description": "Vendor name",
+                "type": "string"
+              },
+              "voided_date": {
+                "description": "Date it was voided, empty if not",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "record_invoice_payment": {
+      "description": "Record a payment received on an invoice, in full or in part, into an account such as your bank account.",
+      "display_name": "Record invoice payment",
+      "display_str_template": "Record an invoice payment in Campfire.",
+      "handler": "actions.record_invoice_payment",
+      "id": "campfire_record_invoice_payment",
+      "method": "POST",
+      "mock_response": {
+        "amount_recorded": 55.0,
+        "invoice": {
+          "amount_due": 0.0,
+          "amount_paid": 55.0,
+          "contract_id": "12954",
+          "created_at": "2025-07-25T18:54:43+00:00",
+          "currency": "USD",
+          "customer_email": "",
+          "customer_id": "33973",
+          "customer_name": "Client A",
+          "due_date": "2025-07-31",
+          "entity_id": "54",
+          "entity_name": "Top Level",
+          "id": "145055",
+          "invoice_date": "2025-07-01",
+          "invoice_number": "987654321",
+          "journal_entry_id": "7491952",
+          "last_modified_at": "2025-07-25T18:54:43+00:00",
+          "lines": [
+            {
+              "amount": 50.0,
+              "description": "Invoice Line Item",
+              "id": "337587",
+              "product_id": "2545",
+              "product_name": "Product A",
+              "quantity": 1.0,
+              "rate": 50.0,
+              "service_date": "2025-07-01",
+              "tax": 5.0
+            }
+          ],
+          "memo": "Please pay by bank transfer.",
+          "paid_date": "",
+          "payment_link": "",
+          "payment_status": "paid",
+          "payments": [],
+          "purchase_order_number": "123456789",
+          "status": "paid",
+          "terms": "net_30",
+          "total_amount": 55.0,
+          "voided_date": ""
+        },
+        "journal_entry_ids": [
+          "7491960"
+        ]
+      },
+      "name": "record_invoice_payment",
+      "output_formatter": "actions.format_invoice_output",
+      "parameters": [
+        {
+          "description": "The invoice's id, from 'List invoices', 'Create invoice' or a trigger.",
+          "display_name": "Invoice ID",
+          "name": "invoice_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The account the money moved through, usually a bank or card account.",
+          "display_name": "Paid through",
+          "dynamic_source": "payment_accounts",
+          "dynamic_source_allows_custom": true,
+          "name": "account_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How much was paid. Defaults to the full amount due.",
+          "display_name": "Amount",
+          "minimum": 0.01,
+          "name": "amount",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The day it was paid. Defaults to today.",
+          "display_name": "Payment date",
+          "name": "payment_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "A note kept with the payment.",
+          "display_name": "Note",
+          "name": "memo",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/campfire/record-invoice-payment",
+      "result_str_template": "Invoice payment recorded.",
+      "returns": {
+        "properties": {
+          "amount_recorded": {
+            "description": "The amount of the payment recorded",
+            "type": "number"
+          },
+          "invoice": {
+            "description": "The invoice, after the payment",
+            "properties": {
+              "amount_due": {
+                "description": "Amount still due",
+                "type": "number"
+              },
+              "amount_paid": {
+                "description": "Amount paid so far",
+                "type": "number"
+              },
+              "contract_id": {
+                "description": "Contract id, empty if none",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created",
+                "type": "string"
+              },
+              "currency": {
+                "description": "Currency code",
+                "type": "string"
+              },
+              "customer_email": {
+                "description": "Customer email address",
+                "type": "string"
+              },
+              "customer_id": {
+                "description": "Customer id",
+                "type": "string"
+              },
+              "customer_name": {
+                "description": "Customer name",
+                "type": "string"
+              },
+              "due_date": {
+                "description": "Due date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "entity_id": {
+                "description": "Entity id",
+                "type": "string"
+              },
+              "entity_name": {
+                "description": "Entity name",
+                "type": "string"
+              },
+              "id": {
+                "description": "Invoice id",
+                "type": "string"
+              },
+              "invoice_date": {
+                "description": "Invoice date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "invoice_number": {
+                "description": "Invoice number",
+                "type": "string"
+              },
+              "journal_entry_id": {
+                "description": "Id of the journal entry that posts it",
+                "type": "string"
+              },
+              "last_modified_at": {
+                "description": "When it was last changed",
+                "type": "string"
+              },
+              "lines": {
+                "description": "The invoice's lines",
+                "items": {
+                  "description": "An invoice line",
+                  "properties": {
+                    "amount": {
+                      "description": "Line amount before tax",
+                      "type": "number"
+                    },
+                    "description": {
+                      "description": "Line description",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Line id",
+                      "type": "string"
+                    },
+                    "product_id": {
+                      "description": "Product id",
+                      "type": "string"
+                    },
+                    "product_name": {
+                      "description": "Product name",
+                      "type": "string"
+                    },
+                    "quantity": {
+                      "description": "Quantity",
+                      "type": "number"
+                    },
+                    "rate": {
+                      "description": "Price per unit",
+                      "type": "number"
+                    },
+                    "service_date": {
+                      "description": "Service date (YYYY-MM-DD), empty if none",
+                      "type": "string"
+                    },
+                    "tax": {
+                      "description": "Tax on the line",
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "memo": {
+                "description": "Message on the invoice",
+                "type": "string"
+              },
+              "paid_date": {
+                "description": "Date it was fully paid, empty if not",
+                "type": "string"
+              },
+              "payment_link": {
+                "description": "Link where the customer can pay, if there is one",
+                "type": "string"
+              },
+              "payment_status": {
+                "description": "Payment status, such as open, partial or paid",
+                "type": "string"
+              },
+              "payments": {
+                "description": "Payments received on it",
+                "items": {
+                  "description": "A payment",
+                  "properties": {
+                    "amount": {
+                      "description": "Amount paid",
+                      "type": "number"
+                    },
+                    "currency": {
+                      "description": "Currency code",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Payment id",
+                      "type": "string"
+                    },
+                    "payment_date": {
+                      "description": "Payment date (YYYY-MM-DD)",
+                      "type": "string"
+                    },
+                    "voided_date": {
+                      "description": "When the payment was voided, empty if it stands",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "purchase_order_number": {
+                "description": "The customer's purchase order number",
+                "type": "string"
+              },
+              "status": {
+                "description": "Status, such as open, sent, paid, past_due or voided",
+                "type": "string"
+              },
+              "terms": {
+                "description": "Payment terms, such as net_30",
+                "type": "string"
+              },
+              "total_amount": {
+                "description": "Total amount, tax included",
+                "type": "number"
+              },
+              "voided_date": {
+                "description": "Date it was voided, empty if not",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "journal_entry_ids": {
+            "description": "Ids of the journal entries the payment posted",
+            "items": {
+              "description": "A journal entry id",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "reopen_bill": {
+      "description": "Undo a bill's void, so it is open to pay again.",
+      "display_name": "Reopen voided bill",
+      "display_str_template": "Reopen a voided bill in Campfire.",
+      "handler": "actions.reopen_bill",
+      "id": "campfire_reopen_bill",
+      "method": "POST",
+      "mock_response": {
+        "bill": {
+          "amount_due": 10000.0,
+          "amount_paid": 0.0,
+          "bill_date": "2025-08-01",
+          "bill_number": "1234567",
+          "created_at": "2025-07-25T04:24:32+00:00",
+          "currency": "USD",
+          "due_date": "2025-08-24",
+          "entity_id": "54",
+          "entity_name": "Top Level",
+          "id": "31894",
+          "journal_entry_id": "7491951",
+          "last_modified_at": "2025-07-25T04:24:32+00:00",
+          "lines": [
+            {
+              "account_id": "2622",
+              "account_name": "6700 - Office Expenses",
+              "amount": 10000.0,
+              "department_id": "35",
+              "department_name": "Engineering",
+              "description": "1x Large Expense Line",
+              "id": "298626"
+            }
+          ],
+          "memo": "A really big expense",
+          "paid_date": "",
+          "payment_status": "open",
+          "payments": [],
+          "status": "open",
+          "terms": "",
+          "total_amount": 10000.0,
+          "vendor_id": "34182",
+          "vendor_name": "ABC Bead Supply",
+          "voided_date": ""
+        }
+      },
+      "name": "reopen_bill",
+      "output_formatter": "actions.format_bill_output",
+      "parameters": [
+        {
+          "description": "The bill's id, from 'List bills', 'Create bill' or a trigger.",
+          "display_name": "Bill ID",
+          "name": "bill_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/campfire/reopen-bill",
+      "result_str_template": "Bill reopened.",
+      "returns": {
+        "properties": {
+          "bill": {
+            "description": "The bill",
+            "properties": {
+              "amount_due": {
+                "description": "Amount still due",
+                "type": "number"
+              },
+              "amount_paid": {
+                "description": "Amount paid so far",
+                "type": "number"
+              },
+              "bill_date": {
+                "description": "Bill date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "bill_number": {
+                "description": "The vendor's bill or invoice number",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created",
+                "type": "string"
+              },
+              "currency": {
+                "description": "Currency code",
+                "type": "string"
+              },
+              "due_date": {
+                "description": "Due date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "entity_id": {
+                "description": "Entity id",
+                "type": "string"
+              },
+              "entity_name": {
+                "description": "Entity name",
+                "type": "string"
+              },
+              "id": {
+                "description": "Bill id",
+                "type": "string"
+              },
+              "journal_entry_id": {
+                "description": "Id of the journal entry that posts it",
+                "type": "string"
+              },
+              "last_modified_at": {
+                "description": "When it was last changed",
+                "type": "string"
+              },
+              "lines": {
+                "description": "The bill's lines",
+                "items": {
+                  "description": "A bill line",
+                  "properties": {
+                    "account_id": {
+                      "description": "Expense account id",
+                      "type": "string"
+                    },
+                    "account_name": {
+                      "description": "Expense account, number and name",
+                      "type": "string"
+                    },
+                    "amount": {
+                      "description": "Line amount",
+                      "type": "number"
+                    },
+                    "department_id": {
+                      "description": "Department id, empty if none",
+                      "type": "string"
+                    },
+                    "department_name": {
+                      "description": "Department name",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "Line description",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Line id",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "memo": {
+                "description": "Message on the bill",
+                "type": "string"
+              },
+              "paid_date": {
+                "description": "Date it was fully paid, empty if not",
+                "type": "string"
+              },
+              "payment_status": {
+                "description": "Payment status, such as open, partial or paid",
+                "type": "string"
+              },
+              "payments": {
+                "description": "Payments made on it",
+                "items": {
+                  "description": "A payment",
+                  "properties": {
+                    "amount": {
+                      "description": "Amount paid",
+                      "type": "number"
+                    },
+                    "currency": {
+                      "description": "Currency code",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Payment id",
+                      "type": "string"
+                    },
+                    "payment_date": {
+                      "description": "Payment date (YYYY-MM-DD)",
+                      "type": "string"
+                    },
+                    "voided_date": {
+                      "description": "When the payment was voided, empty if it stands",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "status": {
+                "description": "Status, such as open, paid, partially_paid or voided",
+                "type": "string"
+              },
+              "terms": {
+                "description": "Payment terms, such as net_30",
+                "type": "string"
+              },
+              "total_amount": {
+                "description": "Total amount",
+                "type": "number"
+              },
+              "vendor_id": {
+                "description": "Vendor id",
+                "type": "string"
+              },
+              "vendor_name": {
+                "description": "Vendor name",
+                "type": "string"
+              },
+              "voided_date": {
+                "description": "Date it was voided, empty if not",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "update_vendor": {
+      "description": "Change a vendor's or customer's details. Only the fields filled in change.",
+      "display_name": "Update vendor or customer",
+      "display_str_template": "Update a vendor or customer in Campfire.",
+      "handler": "actions.update_vendor",
+      "id": "campfire_update_vendor",
+      "method": "POST",
+      "mock_response": {
+        "contact": {
+          "address_street_1": "1234 Campground Road",
+          "address_street_2": "",
+          "campfire_id": "VEN-0000042",
+          "city": "San Francisco",
+          "company_name": "ABC Bead Supply LLC",
+          "country": "US",
+          "created_at": "2025-07-17T16:21:02+00:00",
+          "display_name": "ABC Bead Supply",
+          "email": "billing@abcbeads.example.com",
+          "external_id": "",
+          "id": "34182",
+          "last_modified_at": "2025-07-17T16:21:02+00:00",
+          "name": "ABC Bead Supply",
+          "notes": "",
+          "phone_number": "+1 415 555 0100",
+          "state": "CA",
+          "status": "ACTIVE",
+          "terms": "net_30",
+          "type": "vendor",
+          "website": "https://abcbeads.example.com",
+          "zip_code": "98765"
+        }
+      },
+      "name": "update_vendor",
+      "output_formatter": "actions.format_contact_output",
+      "parameters": [
+        {
+          "description": "Pick one, or give its id from an earlier step.",
+          "display_name": "Vendor or customer",
+          "dynamic_source": "contacts",
+          "dynamic_source_allows_custom": true,
+          "name": "contact_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A new name. Leave empty to keep it.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The legal company name, if it differs.",
+          "display_name": "Company name",
+          "name": "company_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where bills or invoices are sent.",
+          "display_name": "Email",
+          "name": "email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Phone number.",
+          "display_name": "Phone",
+          "name": "phone_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Website address.",
+          "display_name": "Website",
+          "name": "website",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Street and number.",
+          "display_name": "Street address",
+          "name": "address_street_1",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Suite, floor or building.",
+          "display_name": "Address line 2",
+          "name": "address_street_2",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "City.",
+          "display_name": "City",
+          "name": "city",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "State, province or region.",
+          "display_name": "State or region",
+          "name": "state",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "ZIP or postal code.",
+          "display_name": "ZIP or postal code",
+          "name": "zip_code",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Country.",
+          "display_name": "Country",
+          "name": "country",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Their usual payment terms.",
+          "display_name": "Payment terms",
+          "name": "terms",
+          "options": [
+            {
+              "label": "Due on receipt",
+              "value": "due_on_receipt"
+            },
+            {
+              "label": "Net 5",
+              "value": "net_5"
+            },
+            {
+              "label": "Net 7",
+              "value": "net_7"
+            },
+            {
+              "label": "Net 10",
+              "value": "net_10"
+            },
+            {
+              "label": "Net 15",
+              "value": "net_15"
+            },
+            {
+              "label": "Net 20",
+              "value": "net_20"
+            },
+            {
+              "label": "Net 30 (default)",
+              "value": "net_30"
+            },
+            {
+              "label": "Net 40",
+              "value": "net_40"
+            },
+            {
+              "label": "Net 45",
+              "value": "net_45"
+            },
+            {
+              "label": "Net 60",
+              "value": "net_60"
+            },
+            {
+              "label": "Net 90",
+              "value": "net_90"
+            },
+            {
+              "label": "Net 105",
+              "value": "net_105"
+            },
+            {
+              "label": "Net 120",
+              "value": "net_120"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Your own id for them, such as their id in your CRM.",
+          "display_name": "External ID",
+          "name": "external_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Notes kept on the record.",
+          "display_name": "Notes",
+          "name": "notes",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/campfire/update-vendor",
+      "result_str_template": "Vendor or customer updated.",
+      "returns": {
+        "properties": {
+          "contact": {
+            "description": "The vendor or customer",
+            "properties": {
+              "address_street_1": {
+                "description": "Street address",
+                "type": "string"
+              },
+              "address_street_2": {
+                "description": "Second line of the street address",
+                "type": "string"
+              },
+              "campfire_id": {
+                "description": "Campfire's reference, such as VEN-0000001 or CUST-0000001",
+                "type": "string"
+              },
+              "city": {
+                "description": "City",
+                "type": "string"
+              },
+              "company_name": {
+                "description": "Company name",
+                "type": "string"
+              },
+              "country": {
+                "description": "Country",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created",
+                "type": "string"
+              },
+              "display_name": {
+                "description": "Name as Campfire shows it",
+                "type": "string"
+              },
+              "email": {
+                "description": "Email address",
+                "type": "string"
+              },
+              "external_id": {
+                "description": "Your own id for the record, if set",
+                "type": "string"
+              },
+              "id": {
+                "description": "Vendor or customer id",
+                "type": "string"
+              },
+              "last_modified_at": {
+                "description": "When it was last changed",
+                "type": "string"
+              },
+              "name": {
+                "description": "Name",
+                "type": "string"
+              },
+              "notes": {
+                "description": "Notes",
+                "type": "string"
+              },
+              "phone_number": {
+                "description": "Phone number",
+                "type": "string"
+              },
+              "state": {
+                "description": "State or region",
+                "type": "string"
+              },
+              "status": {
+                "description": "ACTIVE or INACTIVE",
+                "type": "string"
+              },
+              "terms": {
+                "description": "Default payment terms, such as net_30",
+                "type": "string"
+              },
+              "type": {
+                "description": "vendor, customer or employee",
+                "type": "string"
+              },
+              "website": {
+                "description": "Website",
+                "type": "string"
+              },
+              "zip_code": {
+                "description": "ZIP or postal code",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "void_bill": {
+      "description": "Void a bill with a reversing entry. 'Reopen voided bill' undoes it.",
+      "display_name": "Void bill",
+      "display_str_template": "Void a bill in Campfire.",
+      "handler": "actions.void_bill",
+      "id": "campfire_void_bill",
+      "method": "POST",
+      "mock_response": {
+        "bill": {
+          "amount_due": 10000.0,
+          "amount_paid": 0.0,
+          "bill_date": "2025-08-01",
+          "bill_number": "1234567",
+          "created_at": "2025-07-25T04:24:32+00:00",
+          "currency": "USD",
+          "due_date": "2025-08-24",
+          "entity_id": "54",
+          "entity_name": "Top Level",
+          "id": "31894",
+          "journal_entry_id": "7491951",
+          "last_modified_at": "2025-07-25T04:24:32+00:00",
+          "lines": [
+            {
+              "account_id": "2622",
+              "account_name": "6700 - Office Expenses",
+              "amount": 10000.0,
+              "department_id": "35",
+              "department_name": "Engineering",
+              "description": "1x Large Expense Line",
+              "id": "298626"
+            }
+          ],
+          "memo": "A really big expense",
+          "paid_date": "",
+          "payment_status": "voided",
+          "payments": [],
+          "status": "voided",
+          "terms": "",
+          "total_amount": 10000.0,
+          "vendor_id": "34182",
+          "vendor_name": "ABC Bead Supply",
+          "voided_date": "2025-08-02"
+        }
+      },
+      "name": "void_bill",
+      "output_formatter": "actions.format_bill_output",
+      "parameters": [
+        {
+          "description": "The bill's id, from 'List bills', 'Create bill' or a trigger.",
+          "display_name": "Bill ID",
+          "name": "bill_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The day the void posts on. Defaults to today.",
+          "display_name": "Void date",
+          "name": "void_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        }
+      ],
+      "path": "/actions/library/campfire/void-bill",
+      "result_str_template": "Bill voided.",
+      "returns": {
+        "properties": {
+          "bill": {
+            "description": "The bill",
+            "properties": {
+              "amount_due": {
+                "description": "Amount still due",
+                "type": "number"
+              },
+              "amount_paid": {
+                "description": "Amount paid so far",
+                "type": "number"
+              },
+              "bill_date": {
+                "description": "Bill date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "bill_number": {
+                "description": "The vendor's bill or invoice number",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created",
+                "type": "string"
+              },
+              "currency": {
+                "description": "Currency code",
+                "type": "string"
+              },
+              "due_date": {
+                "description": "Due date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "entity_id": {
+                "description": "Entity id",
+                "type": "string"
+              },
+              "entity_name": {
+                "description": "Entity name",
+                "type": "string"
+              },
+              "id": {
+                "description": "Bill id",
+                "type": "string"
+              },
+              "journal_entry_id": {
+                "description": "Id of the journal entry that posts it",
+                "type": "string"
+              },
+              "last_modified_at": {
+                "description": "When it was last changed",
+                "type": "string"
+              },
+              "lines": {
+                "description": "The bill's lines",
+                "items": {
+                  "description": "A bill line",
+                  "properties": {
+                    "account_id": {
+                      "description": "Expense account id",
+                      "type": "string"
+                    },
+                    "account_name": {
+                      "description": "Expense account, number and name",
+                      "type": "string"
+                    },
+                    "amount": {
+                      "description": "Line amount",
+                      "type": "number"
+                    },
+                    "department_id": {
+                      "description": "Department id, empty if none",
+                      "type": "string"
+                    },
+                    "department_name": {
+                      "description": "Department name",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "Line description",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Line id",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "memo": {
+                "description": "Message on the bill",
+                "type": "string"
+              },
+              "paid_date": {
+                "description": "Date it was fully paid, empty if not",
+                "type": "string"
+              },
+              "payment_status": {
+                "description": "Payment status, such as open, partial or paid",
+                "type": "string"
+              },
+              "payments": {
+                "description": "Payments made on it",
+                "items": {
+                  "description": "A payment",
+                  "properties": {
+                    "amount": {
+                      "description": "Amount paid",
+                      "type": "number"
+                    },
+                    "currency": {
+                      "description": "Currency code",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Payment id",
+                      "type": "string"
+                    },
+                    "payment_date": {
+                      "description": "Payment date (YYYY-MM-DD)",
+                      "type": "string"
+                    },
+                    "voided_date": {
+                      "description": "When the payment was voided, empty if it stands",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "status": {
+                "description": "Status, such as open, paid, partially_paid or voided",
+                "type": "string"
+              },
+              "terms": {
+                "description": "Payment terms, such as net_30",
+                "type": "string"
+              },
+              "total_amount": {
+                "description": "Total amount",
+                "type": "number"
+              },
+              "vendor_id": {
+                "description": "Vendor id",
+                "type": "string"
+              },
+              "vendor_name": {
+                "description": "Vendor name",
+                "type": "string"
+              },
+              "voided_date": {
+                "description": "Date it was voided, empty if not",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "void_invoice": {
+      "description": "Void an invoice with a reversing entry.",
+      "display_name": "Void invoice",
+      "display_str_template": "Void an invoice in Campfire.",
+      "handler": "actions.void_invoice",
+      "id": "campfire_void_invoice",
+      "method": "POST",
+      "mock_response": {
+        "invoice": {
+          "amount_due": 55.0,
+          "amount_paid": 0.0,
+          "contract_id": "12954",
+          "created_at": "2025-07-25T18:54:43+00:00",
+          "currency": "USD",
+          "customer_email": "",
+          "customer_id": "33973",
+          "customer_name": "Client A",
+          "due_date": "2025-07-31",
+          "entity_id": "54",
+          "entity_name": "Top Level",
+          "id": "145055",
+          "invoice_date": "2025-07-01",
+          "invoice_number": "987654321",
+          "journal_entry_id": "7491952",
+          "last_modified_at": "2025-07-25T18:54:43+00:00",
+          "lines": [
+            {
+              "amount": 50.0,
+              "description": "Invoice Line Item",
+              "id": "337587",
+              "product_id": "2545",
+              "product_name": "Product A",
+              "quantity": 1.0,
+              "rate": 50.0,
+              "service_date": "2025-07-01",
+              "tax": 5.0
+            }
+          ],
+          "memo": "Please pay by bank transfer.",
+          "paid_date": "",
+          "payment_link": "",
+          "payment_status": "voided",
+          "payments": [],
+          "purchase_order_number": "123456789",
+          "status": "voided",
+          "terms": "net_30",
+          "total_amount": 55.0,
+          "voided_date": "2025-07-02"
+        }
+      },
+      "name": "void_invoice",
+      "output_formatter": "actions.format_invoice_output",
+      "parameters": [
+        {
+          "description": "The invoice's id, from 'List invoices', 'Create invoice' or a trigger.",
+          "display_name": "Invoice ID",
+          "name": "invoice_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The day the void posts on. Defaults to today.",
+          "display_name": "Void date",
+          "name": "void_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        }
+      ],
+      "path": "/actions/library/campfire/void-invoice",
+      "result_str_template": "Invoice voided.",
+      "returns": {
+        "properties": {
+          "invoice": {
+            "description": "The invoice",
+            "properties": {
+              "amount_due": {
+                "description": "Amount still due",
+                "type": "number"
+              },
+              "amount_paid": {
+                "description": "Amount paid so far",
+                "type": "number"
+              },
+              "contract_id": {
+                "description": "Contract id, empty if none",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "When it was created",
+                "type": "string"
+              },
+              "currency": {
+                "description": "Currency code",
+                "type": "string"
+              },
+              "customer_email": {
+                "description": "Customer email address",
+                "type": "string"
+              },
+              "customer_id": {
+                "description": "Customer id",
+                "type": "string"
+              },
+              "customer_name": {
+                "description": "Customer name",
+                "type": "string"
+              },
+              "due_date": {
+                "description": "Due date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "entity_id": {
+                "description": "Entity id",
+                "type": "string"
+              },
+              "entity_name": {
+                "description": "Entity name",
+                "type": "string"
+              },
+              "id": {
+                "description": "Invoice id",
+                "type": "string"
+              },
+              "invoice_date": {
+                "description": "Invoice date (YYYY-MM-DD)",
+                "type": "string"
+              },
+              "invoice_number": {
+                "description": "Invoice number",
+                "type": "string"
+              },
+              "journal_entry_id": {
+                "description": "Id of the journal entry that posts it",
+                "type": "string"
+              },
+              "last_modified_at": {
+                "description": "When it was last changed",
+                "type": "string"
+              },
+              "lines": {
+                "description": "The invoice's lines",
+                "items": {
+                  "description": "An invoice line",
+                  "properties": {
+                    "amount": {
+                      "description": "Line amount before tax",
+                      "type": "number"
+                    },
+                    "description": {
+                      "description": "Line description",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Line id",
+                      "type": "string"
+                    },
+                    "product_id": {
+                      "description": "Product id",
+                      "type": "string"
+                    },
+                    "product_name": {
+                      "description": "Product name",
+                      "type": "string"
+                    },
+                    "quantity": {
+                      "description": "Quantity",
+                      "type": "number"
+                    },
+                    "rate": {
+                      "description": "Price per unit",
+                      "type": "number"
+                    },
+                    "service_date": {
+                      "description": "Service date (YYYY-MM-DD), empty if none",
+                      "type": "string"
+                    },
+                    "tax": {
+                      "description": "Tax on the line",
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "memo": {
+                "description": "Message on the invoice",
+                "type": "string"
+              },
+              "paid_date": {
+                "description": "Date it was fully paid, empty if not",
+                "type": "string"
+              },
+              "payment_link": {
+                "description": "Link where the customer can pay, if there is one",
+                "type": "string"
+              },
+              "payment_status": {
+                "description": "Payment status, such as open, partial or paid",
+                "type": "string"
+              },
+              "payments": {
+                "description": "Payments received on it",
+                "items": {
+                  "description": "A payment",
+                  "properties": {
+                    "amount": {
+                      "description": "Amount paid",
+                      "type": "number"
+                    },
+                    "currency": {
+                      "description": "Currency code",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Payment id",
+                      "type": "string"
+                    },
+                    "payment_date": {
+                      "description": "Payment date (YYYY-MM-DD)",
+                      "type": "string"
+                    },
+                    "voided_date": {
+                      "description": "When the payment was voided, empty if it stands",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "purchase_order_number": {
+                "description": "The customer's purchase order number",
+                "type": "string"
+              },
+              "status": {
+                "description": "Status, such as open, sent, paid, past_due or voided",
+                "type": "string"
+              },
+              "terms": {
+                "description": "Payment terms, such as net_30",
+                "type": "string"
+              },
+              "total_amount": {
+                "description": "Total amount, tax included",
+                "type": "number"
+              },
+              "voided_date": {
+                "description": "Date it was voided, empty if not",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "categories": [
+    "Accounting & Finance"
+  ],
+  "description": "Run your Campfire books from workflows: create, pay and void bills and invoices, manage vendors and customers, post journal entries, read bank balances and transactions, and pull the profit and loss and balance sheet.",
+  "display_name": "Campfire",
+  "id": "campfire",
+  "logo": "https://www.lodol.com/app-icons/campfire-icon.png",
+  "triggers": {
+    "campfire_invoice_payment_received_trigger": {
+      "description": "Runs when a payment is recorded on an invoice in Campfire, in full or in part.",
+      "display_name": "Campfire invoice payment received",
+      "id": "campfire_invoice_payment_received_trigger",
+      "output": {
+        "amount": "The amount paid.",
+        "created_at": "When it was recorded.",
+        "currency": "The currency code.",
+        "external_id": "The payment's id where it came from, such as Stripe.",
+        "id": "The payment's id.",
+        "invoice_id": "The invoice's id; use 'Get invoice' for the rest.",
+        "invoice_number": "The invoice number.",
+        "payment_date": "The payment date (YYYY-MM-DD).",
+        "payment_type": "How it was paid: BANK_TRANSACTION, CREDIT_MEMO or MANUAL."
+      },
+      "parameters": []
+    },
+    "campfire_new_bill_trigger": {
+      "description": "Runs when a bill is added in Campfire.",
+      "display_name": "New Campfire bill",
+      "id": "campfire_new_bill_trigger",
+      "output": {
+        "amount_due": "The amount still due.",
+        "bill_date": "The bill date (YYYY-MM-DD).",
+        "bill_number": "The vendor's bill number.",
+        "created_at": "When it was created.",
+        "currency": "The currency code.",
+        "due_date": "The due date (YYYY-MM-DD).",
+        "entity_id": "The entity's id.",
+        "entity_name": "The entity's name.",
+        "id": "The bill's id.",
+        "lines": "The bill's lines: account, description and amount.",
+        "memo": "The message on the bill.",
+        "status": "The status, such as open or paid.",
+        "total_amount": "The total amount.",
+        "vendor_id": "The vendor's id.",
+        "vendor_name": "The vendor's name."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only run for bills of this company or subsidiary. Leave blank to run for every entity.",
+          "display_name": "Entity",
+          "name": "entity_id",
+          "required": false
+        }
+      ]
+    },
+    "campfire_new_invoice_trigger": {
+      "description": "Runs when an invoice is created in Campfire.",
+      "display_name": "New Campfire invoice",
+      "id": "campfire_new_invoice_trigger",
+      "output": {
+        "amount_due": "The amount still due.",
+        "created_at": "When it was created.",
+        "currency": "The currency code.",
+        "customer_email": "The customer's email address.",
+        "customer_id": "The customer's id.",
+        "customer_name": "The customer's name.",
+        "due_date": "The due date (YYYY-MM-DD).",
+        "entity_id": "The entity's id.",
+        "entity_name": "The entity's name.",
+        "id": "The invoice's id.",
+        "invoice_date": "The invoice date (YYYY-MM-DD).",
+        "invoice_number": "The invoice number.",
+        "lines": "The invoice's lines: product, quantity, price and amount.",
+        "payment_link": "Where the customer can pay, if there is a link.",
+        "status": "The status, such as open or sent.",
+        "total_amount": "The total amount, tax included."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only run for invoices of this company or subsidiary. Leave blank to run for every entity.",
+          "display_name": "Entity",
+          "name": "entity_id",
+          "required": false
+        }
+      ]
+    }
+  }
+}
