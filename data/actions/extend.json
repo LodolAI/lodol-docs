@@ -1,7 +1,193 @@
 {
   "actions": {
+    "classify_document": {
+      "description": "Decide what kind of document a file is, such as an invoice, a receipt, or a bank statement, from types you describe or a classifier saved in Extend. Use the answer to send each document down the right branch of a workflow.",
+      "display_name": "Classify a document",
+      "display_str_template": "Classify a document with Extend.",
+      "handler": "actions.classify_document",
+      "id": "extend_classify_document",
+      "method": "POST",
+      "mock_response": {
+        "classification_id": "invoice",
+        "classify_run_id": "clr_Xj8mK2pL9nR4vT7qY5wZ",
+        "confidence": 0.97,
+        "credits": 1,
+        "dashboard_url": "https://dashboard.extend.ai/classify_runs/clr_Xj8mK2pL9nR4vT7qY5wZ",
+        "document_type": "invoice",
+        "file_id": "file_xK9mLPqRtN3vS8wF5hB2cQ",
+        "file_name": "scan_0042.pdf",
+        "reasoning": "The document lists line items with prices and an amount due."
+      },
+      "name": "classify_document",
+      "output_formatter": "actions.format_classify_document_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "description": "The document: upload one here, pick a file from an earlier step, give its public link, or pass the file id an earlier Extend step returned. A file from Lodol is sent to Extend first.",
+          "display_name": "File",
+          "name": "file",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The types the document could be, each with a name and a description of how to recognise it. A catch-all 'other' type is added for anything that fits none of them. Needed unless you pick a saved classifier.",
+          "display_name": "Document types",
+          "name": "document_types",
+          "required": false,
+          "schema": {
+            "items": {
+              "properties": {
+                "description": {
+                  "description": "How to recognise it, e.g. 'A bill from a supplier listing items and a total due'. The clearer this is, the better the answer.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "What to call this type, e.g. 'invoice'. It comes back as the answer.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Plain-language rules for telling similar types apart, e.g. 'A purchase order has a PO number; an invoice has an amount due'.",
+          "display_name": "Classification guidance",
+          "multiline": true,
+          "name": "classification_rules",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Which engine to classify with. Defaults to the high-accuracy engine.",
+          "display_name": "Classification engine",
+          "name": "engine",
+          "options": [
+            {
+              "label": "Performance: highest accuracy (default)",
+              "value": "classification_performance"
+            },
+            {
+              "label": "Light: faster and cheaper",
+              "value": "classification_light"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. A classifier saved in Extend to run instead of listing types here. Any types, guidance or engine set above then replace the saved ones for this run only.",
+          "display_name": "Saved classifier",
+          "dynamic_source": "classifiers",
+          "dynamic_source_allows_custom": true,
+          "name": "classifier",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Which published version of the saved classifier to run, such as '1.0', or 'draft' for the draft. Leave blank for the latest published version.",
+          "display_name": "Version",
+          "examples": [
+            {
+              "label": "Draft",
+              "value": "draft"
+            },
+            {
+              "label": "Version 1.0",
+              "value": "1.0"
+            }
+          ],
+          "name": "classifier_version",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/extend/classify-document",
+      "result_str_template": "Extend classified the document as {extend_classify_document,document_type}.",
+      "returns": {
+        "properties": {
+          "classification_id": {
+            "description": "That type's id: its name in lowercase with underscores",
+            "type": "string"
+          },
+          "classify_run_id": {
+            "description": "Extend's id for this classification run",
+            "type": "string"
+          },
+          "confidence": {
+            "description": "How sure Extend is, from 0 to 1",
+            "type": "number"
+          },
+          "credits": {
+            "description": "Extend credits this classification used",
+            "type": "number"
+          },
+          "dashboard_url": {
+            "description": "Link to review this run in the Extend dashboard",
+            "type": "string"
+          },
+          "document_type": {
+            "description": "The type the document was found to be, as you named it, or 'other' when it fits none",
+            "type": "string"
+          },
+          "file_id": {
+            "description": "Extend's id for the file, reusable in a later Extend step",
+            "type": "string"
+          },
+          "file_name": {
+            "description": "The name of the file that was read",
+            "type": "string"
+          },
+          "reasoning": {
+            "description": "Extend's explanation of its choice",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_file": {
+      "description": "Delete a file from Extend for good, with everything Extend holds about it. Use it to remove documents once a workflow is done with them.",
+      "display_name": "Delete a file",
+      "display_str_template": "Delete the Extend file {0}.",
+      "handler": "actions.delete_file",
+      "id": "extend_delete_file",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "file_id": "file_xK9mLPqRtN3vS8wF5hB2cQ"
+      },
+      "name": "delete_file",
+      "output_formatter": "actions.format_delete_file_output",
+      "parameters": [
+        {
+          "description": "The Extend file id to delete, e.g. file_xK9mLPqRtN3vS8wF5hB2cQ.",
+          "display_name": "File ID",
+          "name": "file_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/extend/delete-file",
+      "result_str_template": "Deleted the file from Extend.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "True once Extend has deleted the file",
+            "type": "boolean"
+          },
+          "file_id": {
+            "description": "The id of the deleted file",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "extract_data": {
-      "description": "Pull structured values out of a document (invoice totals, contract dates, form answers) as named fields you can use in later steps. List the fields you want, or leave them blank and let Extend work out the shape of the document for you.",
+      "description": "Pull structured values out of a document (invoice totals, contract dates, form answers) as named fields you can use in later steps. List the fields you want, run an extractor saved in Extend, or leave both blank and let Extend work out the shape of the document for you.",
       "display_name": "Extract data from a document",
       "display_str_template": "Extract data from a document with Extend.",
       "handler": "actions.extract_data",
@@ -38,14 +224,14 @@
       "parameters": [
         {
           "accepts_file_upload": true,
-          "description": "The document to extract from: upload one here, give its public URL, or pass the file id from an earlier Extend step. Uploaded files are sent to Extend first.",
+          "description": "The document: upload one here, pick a file from an earlier step, give its public link, or pass the file id an earlier Extend step returned. A file from Lodol is sent to Extend first.",
           "display_name": "File",
           "name": "file",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Optional. The values to pull out, each with a name and a description of what to look for. Leave this empty to let Extend infer the fields from the document itself.",
+          "description": "Optional. The values to pull out, each with a name and a description of what to look for. Leave this empty to let Extend infer the fields from the document itself, or to use a saved extractor's fields.",
           "display_name": "Fields to extract",
           "name": "fields",
           "required": false,
@@ -85,14 +271,44 @@
           "name": "engine",
           "options": [
             {
-              "label": "Performance - highest accuracy (default)",
+              "label": "Performance: highest accuracy (default)",
               "value": "extraction_performance"
             },
             {
-              "label": "Light - faster and cheaper for simple documents",
+              "label": "Light: faster and cheaper for simple documents",
               "value": "extraction_light"
+            },
+            {
+              "label": "Operator: an agent for long, table-heavy documents (5 credits a page, can be slower)",
+              "value": "extraction_operator"
             }
           ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. An extractor saved in Extend to run instead of listing fields here. Any fields, guidance or engine set above then replace the saved ones for this run only.",
+          "display_name": "Saved extractor",
+          "dynamic_source": "extractors",
+          "dynamic_source_allows_custom": true,
+          "name": "extractor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Which published version of the saved extractor to run, such as '1.0', or 'draft' for the draft. Leave blank for the latest published version.",
+          "display_name": "Version",
+          "examples": [
+            {
+              "label": "Draft",
+              "value": "draft"
+            },
+            {
+              "label": "Version 1.0",
+              "value": "1.0"
+            }
+          ],
+          "name": "extractor_version",
           "required": false,
           "type": "ParameterType.STRING"
         }
@@ -154,6 +370,525 @@
         "type": "object"
       }
     },
+    "fill_pdf_form": {
+      "description": "Fill in the fields of a PDF form from plain-language instructions, such as 'Set the name to Jordan Avery and tick Single', and save the completed PDF for later steps to email, upload, or sign. Extend finds the form's fields itself.",
+      "display_name": "Fill a PDF form",
+      "display_str_template": "Fill a PDF form with Extend.",
+      "handler": "actions.fill_pdf_form",
+      "id": "extend_fill_pdf_form",
+      "method": "POST",
+      "mock_response": {
+        "content_type": "application/pdf",
+        "credits": 4,
+        "document_ref": "doc_4b7c1e2a9d3f45c88a1e6f0b2d5c7e91",
+        "documents": [
+          {
+            "content_type": "application/pdf",
+            "document_ref": "doc_4b7c1e2a9d3f45c88a1e6f0b2d5c7e91",
+            "filename": "f1040_filled.pdf",
+            "size_bytes": 182344,
+            "url": "/actions/core/serve-document/doc_4b7c1e2a9d3f45c88a1e6f0b2d5c7e91?teamId=6512a1b2c3d4e5f600000001"
+          }
+        ],
+        "edit_run_id": "edr_xK9mLPqRtN3vS8wF5hB2cQ",
+        "edited_file_id": "file_Q7wZ2pL9nR4vT8mK3yX5c",
+        "field_count": 141,
+        "file_id": "file_GzKUy0VDhHscv7tweODYb",
+        "file_name": "f1040.pdf",
+        "filename": "f1040_filled.pdf",
+        "filled_values": {
+          "filing_status_single": true,
+          "first_name": "Jordan",
+          "last_name": "Avery"
+        },
+        "page_count": 2,
+        "size_bytes": 182344,
+        "url": "/actions/core/serve-document/doc_4b7c1e2a9d3f45c88a1e6f0b2d5c7e91?teamId=6512a1b2c3d4e5f600000001"
+      },
+      "name": "fill_pdf_form",
+      "output_formatter": "actions.format_fill_pdf_form_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "description": "The PDF form to fill: upload one here, pick a file from an earlier step, give its public link, or pass an Extend file id. Leave blank to use a saved form template instead.",
+          "display_name": "File",
+          "name": "file",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. A form template saved in Extend, used in place of a file. Its saved settings apply wherever this step sets none.",
+          "display_name": "Saved form template",
+          "dynamic_source": "edit_templates",
+          "dynamic_source_allows_custom": true,
+          "name": "template",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The values to write and where, in plain language, e.g. 'Fill the first name as Jordan and the last name as Avery. Tick Single. Leave everything else blank.' Insert values from earlier steps to fill each form with its own data.",
+          "display_name": "What to fill in",
+          "multiline": true,
+          "name": "instructions",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Flatten the form so the filled values can no longer be edited. Extend does this by default; turn it off to keep the fields editable.",
+          "display_name": "Lock the filled fields",
+          "name": "flatten",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/extend/fill-pdf-form",
+      "result_str_template": "Extend filled the form.",
+      "returns": {
+        "properties": {
+          "content_type": {
+            "description": "MIME type of the saved file",
+            "type": "string"
+          },
+          "credits": {
+            "description": "Extend credits this run used",
+            "type": "number"
+          },
+          "document_ref": {
+            "description": "Reference to the saved file, for use by a later step",
+            "type": "string"
+          },
+          "documents": {
+            "description": "The filled PDF, in the shape steps that send or upload files expect",
+            "items": {
+              "properties": {
+                "content_type": {
+                  "description": "MIME type of the saved file",
+                  "type": "string"
+                },
+                "document_ref": {
+                  "description": "Reference to the saved file, for use by a later step",
+                  "type": "string"
+                },
+                "filename": {
+                  "description": "Name the file was saved under",
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "description": "Size of the file in bytes",
+                  "type": "number"
+                },
+                "url": {
+                  "description": "Download link for the saved file",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "edit_run_id": {
+            "description": "Extend's id for this form-filling run",
+            "type": "string"
+          },
+          "edited_file_id": {
+            "description": "Extend's id for the filled PDF, reusable in a later Extend step",
+            "type": "string"
+          },
+          "field_count": {
+            "description": "How many fields Extend found on the form",
+            "type": "number"
+          },
+          "file_id": {
+            "description": "Extend's id for the blank form that was filled",
+            "type": "string"
+          },
+          "file_name": {
+            "description": "The name of the blank form that was filled",
+            "type": "string"
+          },
+          "filename": {
+            "description": "Name the file was saved under",
+            "type": "string"
+          },
+          "filled_values": {
+            "description": "The value written into each field, by field name",
+            "type": "object"
+          },
+          "page_count": {
+            "description": "How many pages the form has",
+            "type": "number"
+          },
+          "size_bytes": {
+            "description": "Size of the file in bytes",
+            "type": "number"
+          },
+          "url": {
+            "description": "Download link for the saved file",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_file": {
+      "description": "Look up a file in Extend by its id: its name, type and page count, and a download link that works for 15 minutes.",
+      "display_name": "Get a file",
+      "display_str_template": "Get the Extend file {0}.",
+      "handler": "actions.get_file",
+      "id": "extend_get_file",
+      "method": "POST",
+      "mock_response": {
+        "created_at": "2026-03-21T16:45:00Z",
+        "download_url": "https://extend-files.s3.amazonaws.com/file_xK9mLPqRtN3vS8wF5hB2cQ?X-Amz-Expires=900",
+        "file_id": "file_xK9mLPqRtN3vS8wF5hB2cQ",
+        "file_name": "invoice.pdf",
+        "file_type": "PDF",
+        "page_count": 2,
+        "parent_file_id": "",
+        "updated_at": "2026-03-21T16:45:00Z"
+      },
+      "name": "get_file",
+      "output_formatter": "actions.format_file_output",
+      "parameters": [
+        {
+          "description": "The Extend file id, such as the file_id an earlier Extend step returned, e.g. file_xK9mLPqRtN3vS8wF5hB2cQ.",
+          "display_name": "File ID",
+          "name": "file_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/extend/get-file",
+      "result_str_template": "Got {extend_get_file,file_name} from Extend.",
+      "returns": {
+        "properties": {
+          "created_at": {
+            "description": "When the file was added",
+            "type": "string"
+          },
+          "download_url": {
+            "description": "A link to download the file. It stops working after 15 minutes.",
+            "type": "string"
+          },
+          "file_id": {
+            "description": "Extend's id for the file, reusable in a later Extend step",
+            "type": "string"
+          },
+          "file_name": {
+            "description": "The file's name",
+            "type": "string"
+          },
+          "file_type": {
+            "description": "The kind of file Extend detected: PDF, IMG, DOCX, EXCEL, CSV, TXT, XML or HTML",
+            "type": "string"
+          },
+          "page_count": {
+            "description": "How many pages the file has. Only set for PDF and Word files.",
+            "type": "number"
+          },
+          "parent_file_id": {
+            "description": "The file this one was split out of, when an Extend workflow split it",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the file last changed",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_workflow_run": {
+      "description": "Read where an Extend workflow run has got to and what each of its steps produced: the extracted values, the document type, the split parts, and validation results. Wait and read again until 'finished' is true.",
+      "display_name": "Get an Extend workflow run",
+      "display_str_template": "Get the Extend workflow run {0}.",
+      "handler": "actions.get_workflow_run",
+      "id": "extend_get_workflow_run",
+      "method": "POST",
+      "mock_response": {
+        "credits": 6,
+        "dashboard_url": "https://dashboard.extend.ai/workflows/workflow_run_xKm9pNv3qWsY_jL2tR5Dh",
+        "ended_at": "2026-03-21T15:31:12Z",
+        "failure_message": "",
+        "failure_reason": "",
+        "files": [
+          {
+            "file_id": "file_xK9mLPqRtN3vS8wF5hB2cQ",
+            "file_name": "invoice.pdf",
+            "file_type": "PDF"
+          }
+        ],
+        "finished": true,
+        "outputs": {
+          "Extract invoice": {
+            "invoice_number": "INV-2024-001",
+            "total_amount": 1234.56
+          }
+        },
+        "rejection_note": "",
+        "reviewed": false,
+        "started_at": "2026-03-21T15:30:00Z",
+        "status": "PROCESSED",
+        "steps": [
+          {
+            "name": "Extract invoice",
+            "output": {
+              "invoice_number": "INV-2024-001",
+              "total_amount": 1234.56
+            },
+            "status": "PROCESSED",
+            "type": "EXTRACT"
+          }
+        ],
+        "workflow_id": "workflow_BMdfq_yWM3sT-ZzvCnA3f",
+        "workflow_name": "Invoice processing",
+        "workflow_run_id": "workflow_run_xKm9pNv3qWsY_jL2tR5Dh",
+        "workflow_version": "3"
+      },
+      "name": "get_workflow_run",
+      "output_formatter": "actions.format_workflow_run_output",
+      "parameters": [
+        {
+          "description": "The run to read: the workflow_run_id 'Run an Extend workflow' returned, such as workflow_run_xKm9pNv3qWsY_jL2tR5Dh.",
+          "display_name": "Workflow run ID",
+          "name": "workflow_run_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/extend/get-workflow-run",
+      "result_str_template": "The workflow run is {extend_get_workflow_run,status}.",
+      "returns": {
+        "properties": {
+          "credits": {
+            "description": "Extend credits the run's steps have used",
+            "type": "number"
+          },
+          "dashboard_url": {
+            "description": "Link to the run in the Extend dashboard",
+            "type": "string"
+          },
+          "ended_at": {
+            "description": "When the run finished. Empty until it finishes.",
+            "type": "string"
+          },
+          "failure_message": {
+            "description": "Extend's explanation of the failure. Empty unless it failed.",
+            "type": "string"
+          },
+          "failure_reason": {
+            "description": "Why the run failed, as Extend's code. Empty unless it failed.",
+            "type": "string"
+          },
+          "files": {
+            "description": "The files the run processed",
+            "items": {
+              "properties": {
+                "file_id": {
+                  "description": "Extend's id for the file",
+                  "type": "string"
+                },
+                "file_name": {
+                  "description": "The file's name",
+                  "type": "string"
+                },
+                "file_type": {
+                  "description": "The kind of file Extend detected",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "finished": {
+            "description": "True once the run will not change on its own: processed, failed, cancelled, rejected, or waiting for a person to review it",
+            "type": "boolean"
+          },
+          "outputs": {
+            "description": "Each step's output under the step's name, so a later step can read one by name",
+            "type": "object"
+          },
+          "rejection_note": {
+            "description": "The reviewer's note when the run was rejected",
+            "type": "string"
+          },
+          "reviewed": {
+            "description": "Whether a person has reviewed the run in Extend",
+            "type": "boolean"
+          },
+          "started_at": {
+            "description": "When the run started. Empty until it starts.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Where the run is: PENDING, PROCESSING, NEEDS_REVIEW, REJECTED, PROCESSED, FAILED, CANCELLED or CANCELLING",
+            "type": "string"
+          },
+          "steps": {
+            "description": "Every step of the workflow that has run so far, in order",
+            "items": {
+              "properties": {
+                "name": {
+                  "description": "The step's name in the workflow",
+                  "type": "string"
+                },
+                "output": {
+                  "description": "What the step produced: the extracted values for an extraction, the document type and confidence for a classification, the parts for a split, the content for a parse, or Extend's own result otherwise",
+                  "type": "object"
+                },
+                "status": {
+                  "description": "Where the step is: PENDING, PROCESSING, PROCESSED, FAILED, ...",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "The kind of step, such as PARSE, EXTRACT, CLASSIFY, SPLIT, VALIDATION or ROUTER",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "workflow_id": {
+            "description": "The workflow that ran",
+            "type": "string"
+          },
+          "workflow_name": {
+            "description": "The workflow's name",
+            "type": "string"
+          },
+          "workflow_run_id": {
+            "description": "Extend's id for this run, for 'Get a workflow run'",
+            "type": "string"
+          },
+          "workflow_version": {
+            "description": "The workflow version used, or 'draft'",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_files": {
+      "description": "List the files in your Extend workspace, newest first, optionally only those whose name contains some text. A file just uploaded can take a few seconds to appear.",
+      "display_name": "List files",
+      "display_str_template": "List files in Extend.",
+      "handler": "actions.list_files",
+      "id": "extend_list_files",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "files": [
+          {
+            "created_at": "2026-03-21T16:45:00Z",
+            "file_id": "file_xK9mLPqRtN3vS8wF5hB2cQ",
+            "file_name": "invoice.pdf",
+            "file_type": "PDF",
+            "page_count": 2,
+            "parent_file_id": "",
+            "updated_at": "2026-03-21T16:45:00Z"
+          }
+        ],
+        "next_page_token": ""
+      },
+      "name": "list_files",
+      "output_formatter": "actions.format_list_files_output",
+      "parameters": [
+        {
+          "description": "Optional. Only files whose name contains this text, e.g. 'invoice'.",
+          "display_name": "Name contains",
+          "name": "name_contains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Newest first (the default) or oldest first.",
+          "display_name": "Order",
+          "name": "sort_direction",
+          "options": [
+            {
+              "label": "Newest first",
+              "value": "desc"
+            },
+            {
+              "label": "Oldest first",
+              "value": "asc"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. How many to return, up to 100. Defaults to 10.",
+          "display_name": "How many",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. The next_page_token a previous step returned, to get the page after it.",
+          "display_name": "Next page",
+          "name": "page_token",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/extend/list-files",
+      "result_str_template": "Found {extend_list_files,count} files.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many files are on this page",
+            "type": "number"
+          },
+          "files": {
+            "description": "The files on this page",
+            "items": {
+              "properties": {
+                "created_at": {
+                  "description": "When the file was added",
+                  "type": "string"
+                },
+                "file_id": {
+                  "description": "Extend's id for the file, reusable in a later Extend step",
+                  "type": "string"
+                },
+                "file_name": {
+                  "description": "The file's name",
+                  "type": "string"
+                },
+                "file_type": {
+                  "description": "The kind of file Extend detected: PDF, IMG, DOCX, EXCEL, CSV, TXT, XML or HTML",
+                  "type": "string"
+                },
+                "page_count": {
+                  "description": "How many pages the file has. Only set for PDF and Word files.",
+                  "type": "number"
+                },
+                "parent_file_id": {
+                  "description": "The file this one was split out of, when an Extend workflow split it",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "When the file last changed",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "next_page_token": {
+            "description": "Give this to 'Next page' to get the next page. Empty on the last page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "parse_document": {
       "description": "Turn a PDF, image, spreadsheet, presentation, or scan into clean, layout-aware markdown split into chunks: ready to feed into a later AI step, a search index, or a RAG pipeline.",
       "display_name": "Parse a document",
@@ -189,7 +924,7 @@
       "parameters": [
         {
           "accepts_file_upload": true,
-          "description": "The document to parse: upload one here, give its public URL, or pass the file id from an earlier Extend step. Uploaded files are sent to Extend first, then parsed.",
+          "description": "The document: upload one here, pick a file from an earlier step, give its public link, or pass the file id an earlier Extend step returned. A file from Lodol is sent to Extend first.",
           "display_name": "File",
           "name": "file",
           "required": true,
@@ -222,12 +957,33 @@
           "name": "engine",
           "options": [
             {
-              "label": "Performance - highest accuracy for complex tables, handwriting, and checkboxes (default)",
+              "label": "Performance: highest accuracy for complex tables, handwriting, and checkboxes (default)",
               "value": "parse_performance"
             },
             {
-              "label": "Light - faster and cheaper for high-volume, good-quality documents",
+              "label": "Light: faster and cheaper for high-volume, good-quality documents",
               "value": "parse_light"
+            },
+            {
+              "label": "Auto: Light for simple pages, Performance for hard ones, billed page by page",
+              "value": "parse_auto"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Markdown follows the reading order and suits AI steps and search. Spatial keeps text where it sits on the page, which suits messy scans, handwriting, and forms like bills of lading; it can only be split by pages. Defaults to Markdown.",
+          "display_name": "Layout",
+          "name": "target",
+          "options": [
+            {
+              "label": "Markdown (default)",
+              "value": "markdown"
+            },
+            {
+              "label": "Spatial (keeps the layout)",
+              "value": "spatial"
             }
           ],
           "required": false,
@@ -239,11 +995,11 @@
           "name": "table_format",
           "options": [
             {
-              "label": "HTML - complex tables with merged cells (default)",
+              "label": "HTML: complex tables with merged cells (default)",
               "value": "html"
             },
             {
-              "label": "Markdown - simple tables and LLM workflows",
+              "label": "Markdown: simple tables and AI steps",
               "value": "markdown"
             }
           ],
@@ -252,7 +1008,7 @@
         },
         {
           "default": false,
-          "description": "Optional. Also return every element on the page individually -- each table, figure, heading, and key-value pair -- with the page it came from.",
+          "description": "Optional. Also return every element on the page individually (each table, figure, heading, and key-value pair) with the page it came from.",
           "display_name": "Include element breakdown",
           "name": "include_blocks",
           "required": false,
@@ -352,12 +1108,473 @@
         },
         "type": "object"
       }
+    },
+    "run_workflow": {
+      "description": "Start one of your Extend workflows on a file, with every step you set up in Extend Studio: parsing, classifying, splitting, extracting, validation, and human review. Extend runs it in the background, so this returns the run straight away; read the results with 'Get an Extend workflow run'.",
+      "display_name": "Run an Extend workflow",
+      "display_str_template": "Run the Extend workflow {0} on a file.",
+      "handler": "actions.run_workflow",
+      "id": "extend_run_workflow",
+      "method": "POST",
+      "mock_response": {
+        "credits": 0,
+        "dashboard_url": "https://dashboard.extend.ai/workflows/workflow_run_xKm9pNv3qWsY_jL2tR5Dh",
+        "ended_at": "",
+        "failure_message": "",
+        "failure_reason": "",
+        "files": [
+          {
+            "file_id": "file_xK9mLPqRtN3vS8wF5hB2cQ",
+            "file_name": "invoice.pdf",
+            "file_type": "PDF"
+          }
+        ],
+        "finished": false,
+        "outputs": {},
+        "rejection_note": "",
+        "reviewed": false,
+        "started_at": "",
+        "status": "PENDING",
+        "steps": [],
+        "workflow_id": "workflow_BMdfq_yWM3sT-ZzvCnA3f",
+        "workflow_name": "Invoice processing",
+        "workflow_run_id": "workflow_run_xKm9pNv3qWsY_jL2tR5Dh",
+        "workflow_version": "3"
+      },
+      "name": "run_workflow",
+      "output_formatter": "actions.format_workflow_run_output",
+      "parameters": [
+        {
+          "description": "The Extend workflow to run.",
+          "display_name": "Workflow",
+          "dynamic_source": "workflows",
+          "dynamic_source_allows_custom": true,
+          "name": "workflow",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "accepts_file_upload": true,
+          "description": "The document: upload one here, pick a file from an earlier step, give its public link, or pass the file id an earlier Extend step returned. A file from Lodol is sent to Extend first.",
+          "display_name": "File",
+          "name": "file",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Which version of the workflow to run, such as '3', or 'draft' for the draft. Leave blank for the latest deployed version.",
+          "display_name": "Version",
+          "examples": [
+            {
+              "label": "Draft",
+              "value": "draft"
+            },
+            {
+              "label": "Version 1",
+              "value": "1"
+            }
+          ],
+          "name": "workflow_version",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/extend/run-workflow",
+      "result_str_template": "Extend started the workflow run.",
+      "returns": {
+        "properties": {
+          "credits": {
+            "description": "Extend credits the run's steps have used",
+            "type": "number"
+          },
+          "dashboard_url": {
+            "description": "Link to the run in the Extend dashboard",
+            "type": "string"
+          },
+          "ended_at": {
+            "description": "When the run finished. Empty until it finishes.",
+            "type": "string"
+          },
+          "failure_message": {
+            "description": "Extend's explanation of the failure. Empty unless it failed.",
+            "type": "string"
+          },
+          "failure_reason": {
+            "description": "Why the run failed, as Extend's code. Empty unless it failed.",
+            "type": "string"
+          },
+          "files": {
+            "description": "The files the run processed",
+            "items": {
+              "properties": {
+                "file_id": {
+                  "description": "Extend's id for the file",
+                  "type": "string"
+                },
+                "file_name": {
+                  "description": "The file's name",
+                  "type": "string"
+                },
+                "file_type": {
+                  "description": "The kind of file Extend detected",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "finished": {
+            "description": "True once the run will not change on its own: processed, failed, cancelled, rejected, or waiting for a person to review it",
+            "type": "boolean"
+          },
+          "outputs": {
+            "description": "Each step's output under the step's name, so a later step can read one by name",
+            "type": "object"
+          },
+          "rejection_note": {
+            "description": "The reviewer's note when the run was rejected",
+            "type": "string"
+          },
+          "reviewed": {
+            "description": "Whether a person has reviewed the run in Extend",
+            "type": "boolean"
+          },
+          "started_at": {
+            "description": "When the run started. Empty until it starts.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Where the run is: PENDING, PROCESSING, NEEDS_REVIEW, REJECTED, PROCESSED, FAILED, CANCELLED or CANCELLING",
+            "type": "string"
+          },
+          "steps": {
+            "description": "Every step of the workflow that has run so far, in order",
+            "items": {
+              "properties": {
+                "name": {
+                  "description": "The step's name in the workflow",
+                  "type": "string"
+                },
+                "output": {
+                  "description": "What the step produced: the extracted values for an extraction, the document type and confidence for a classification, the parts for a split, the content for a parse, or Extend's own result otherwise",
+                  "type": "object"
+                },
+                "status": {
+                  "description": "Where the step is: PENDING, PROCESSING, PROCESSED, FAILED, ...",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "The kind of step, such as PARSE, EXTRACT, CLASSIFY, SPLIT, VALIDATION or ROUTER",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "workflow_id": {
+            "description": "The workflow that ran",
+            "type": "string"
+          },
+          "workflow_name": {
+            "description": "The workflow's name",
+            "type": "string"
+          },
+          "workflow_run_id": {
+            "description": "Extend's id for this run, for 'Get a workflow run'",
+            "type": "string"
+          },
+          "workflow_version": {
+            "description": "The workflow version used, or 'draft'",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "split_document": {
+      "description": "Find the separate documents inside one file, such as the application, pay stubs, and bank statements in a scanned loan packet, with the pages each one covers. Every part comes back as an Extend file of its own, ready to extract from.",
+      "display_name": "Split a document",
+      "display_str_template": "Split a document into its parts with Extend.",
+      "handler": "actions.split_document",
+      "id": "extend_split_document",
+      "method": "POST",
+      "mock_response": {
+        "credits": 3,
+        "dashboard_url": "https://dashboard.extend.ai/split_runs/splr_Xj8mK2pL9nR4vT7qY5wZ",
+        "file_id": "file_GzKUy0VDhHscv7tweODYb",
+        "file_name": "loan_application.pdf",
+        "split_count": 2,
+        "split_run_id": "splr_Xj8mK2pL9nR4vT7qY5wZ",
+        "splits": [
+          {
+            "classification_id": "loan_application",
+            "document_type": "loan_application",
+            "file_id": "file_8sLPqRtN3vS2wF5hB2cQ",
+            "identifier": "Jordan Avery",
+            "name": "",
+            "observation": "Pages 1-5 are a Uniform Residential Loan Application.",
+            "page_end": 5,
+            "page_start": 1,
+            "split_id": "splt_xK9mLPqRtN3vS8wF5hB2cQ"
+          },
+          {
+            "classification_id": "bank_statement",
+            "document_type": "bank_statement",
+            "file_id": "file_R4vT7qY5wZj8mK2pL9nR",
+            "identifier": "Jordan Avery",
+            "name": "",
+            "observation": "Pages 6-9 are a monthly bank statement.",
+            "page_end": 9,
+            "page_start": 6,
+            "split_id": "splt_2pL9nR4vT7qY5wZj8mK2"
+          }
+        ]
+      },
+      "name": "split_document",
+      "output_formatter": "actions.format_split_document_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "description": "The document: upload one here, pick a file from an earlier step, give its public link, or pass the file id an earlier Extend step returned. A file from Lodol is sent to Extend first.",
+          "display_name": "File",
+          "name": "file",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The types of document the file may contain, each with a name and a description of how to recognise it. A catch-all 'other' type is added for pages that fit none of them. Needed unless you pick a saved splitter.",
+          "display_name": "Document types",
+          "name": "document_types",
+          "required": false,
+          "schema": {
+            "items": {
+              "properties": {
+                "description": {
+                  "description": "How to recognise it, e.g. 'A bill from a supplier listing items and a total due'. The clearer this is, the better the answer.",
+                  "type": "string"
+                },
+                "identifier": {
+                  "description": "Optional. How to tell two documents of this type apart, e.g. 'The invoice number in the header'. Pages sharing it stay together.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "What to call this type, e.g. 'invoice'. It comes back as the answer.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional. Plain-language rules for where one document ends and the next begins, e.g. 'Each invoice starts on a page with the company logo'.",
+          "display_name": "Splitting guidance",
+          "multiline": true,
+          "name": "split_rules",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Which engine to split with. Defaults to the high-accuracy engine.",
+          "display_name": "Splitting engine",
+          "name": "engine",
+          "options": [
+            {
+              "label": "Performance: highest accuracy (default)",
+              "value": "splitting_performance"
+            },
+            {
+              "label": "Light: faster and cheaper",
+              "value": "splitting_light"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. A splitter saved in Extend to run instead of listing types here. Any types, guidance or engine set above then replace the saved ones for this run only.",
+          "display_name": "Saved splitter",
+          "dynamic_source": "splitters",
+          "dynamic_source_allows_custom": true,
+          "name": "splitter",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. Which published version of the saved splitter to run, such as '1.0', or 'draft' for the draft. Leave blank for the latest published version.",
+          "display_name": "Version",
+          "examples": [
+            {
+              "label": "Draft",
+              "value": "draft"
+            },
+            {
+              "label": "Version 1.0",
+              "value": "1.0"
+            }
+          ],
+          "name": "splitter_version",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/extend/split-document",
+      "result_str_template": "Extend found {extend_split_document,split_count} documents.",
+      "returns": {
+        "properties": {
+          "credits": {
+            "description": "Extend credits this split used",
+            "type": "number"
+          },
+          "dashboard_url": {
+            "description": "Link to review this run in the Extend dashboard",
+            "type": "string"
+          },
+          "file_id": {
+            "description": "Extend's id for the whole file",
+            "type": "string"
+          },
+          "file_name": {
+            "description": "The name of the file that was split",
+            "type": "string"
+          },
+          "split_count": {
+            "description": "How many documents were found",
+            "type": "number"
+          },
+          "split_run_id": {
+            "description": "Extend's id for this split run",
+            "type": "string"
+          },
+          "splits": {
+            "description": "The documents found in the file, in page order",
+            "items": {
+              "properties": {
+                "classification_id": {
+                  "description": "The id of that document type, in lowercase with underscores",
+                  "type": "string"
+                },
+                "document_type": {
+                  "description": "The document type this part was found to be",
+                  "type": "string"
+                },
+                "file_id": {
+                  "description": "Extend's id for this part as a file of its own, reusable in a later Extend step",
+                  "type": "string"
+                },
+                "identifier": {
+                  "description": "A value that tells this part apart, such as an invoice number or a person's name",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "A name Extend gave the part, if any",
+                  "type": "string"
+                },
+                "observation": {
+                  "description": "Extend's explanation of why these pages belong together",
+                  "type": "string"
+                },
+                "page_end": {
+                  "description": "The part's last page",
+                  "type": "number"
+                },
+                "page_start": {
+                  "description": "The part's first page",
+                  "type": "number"
+                },
+                "split_id": {
+                  "description": "Extend's id for this part",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "upload_file": {
+      "description": "Send a file to Extend once and get back its Extend file id, so several Extend steps can read it without sending it again. Word and PowerPoint files are turned into PDFs on the way in.",
+      "display_name": "Upload a file",
+      "display_str_template": "Upload a file to Extend.",
+      "handler": "actions.upload_file",
+      "id": "extend_upload_file",
+      "method": "POST",
+      "mock_response": {
+        "created_at": "2026-03-21T16:45:00Z",
+        "file_id": "file_xK9mLPqRtN3vS8wF5hB2cQ",
+        "file_name": "invoice.pdf",
+        "file_type": "PDF",
+        "page_count": 2,
+        "parent_file_id": "",
+        "updated_at": "2026-03-21T16:45:00Z"
+      },
+      "name": "upload_file",
+      "output_formatter": "actions.format_file_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "description": "The file to upload: upload one here or pick a file from an earlier step. A public link needs no upload; give it to the step that reads the document instead.",
+          "display_name": "File",
+          "name": "file",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional. The password of a password-protected PDF, so Extend can open it.",
+          "display_name": "PDF password",
+          "name": "password",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/extend/upload-file",
+      "result_str_template": "Uploaded {extend_upload_file,file_name} to Extend.",
+      "returns": {
+        "properties": {
+          "created_at": {
+            "description": "When the file was added",
+            "type": "string"
+          },
+          "file_id": {
+            "description": "Extend's id for the file, reusable in a later Extend step",
+            "type": "string"
+          },
+          "file_name": {
+            "description": "The file's name",
+            "type": "string"
+          },
+          "file_type": {
+            "description": "The kind of file Extend detected: PDF, IMG, DOCX, EXCEL, CSV, TXT, XML or HTML",
+            "type": "string"
+          },
+          "page_count": {
+            "description": "How many pages the file has. Only set for PDF and Word files.",
+            "type": "number"
+          },
+          "parent_file_id": {
+            "description": "The file this one was split out of, when an Extend workflow split it",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the file last changed",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     }
   },
   "categories": [
     "Document Extraction"
   ],
-  "description": "Turn documents into clean, LLM-ready markdown and pull structured data out of them with Extend's document processing AI.",
+  "description": "Turn documents into clean, LLM-ready markdown, pull structured data out of them, classify and split them, and fill PDF forms with Extend's document processing AI. Run your Extend workflows and manage the files they read.",
   "display_name": "Extend",
   "id": "extend",
   "logo": "https://www.lodol.com/app-icons/extend-icon.svg",
