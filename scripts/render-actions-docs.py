@@ -108,6 +108,7 @@ BUILT_IN_ICONS = {
     "skipflow_lists": "List",
     "skipflow_loops": "Repeat",
     "skipflow_math": "Calculator",
+    "skipflow_mcp": "Plug",
     "skipflow_random": "Dices",
     "skipflow_review": "UserCheck",
     "skipflow_rss": "Rss",
