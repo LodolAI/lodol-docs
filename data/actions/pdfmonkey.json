@@ -1,7 +1,7 @@
 {
   "actions": {
     "create_document": {
-      "description": "Queue a document for generation without waiting for it. Use this for large batches, then check on it later; to get the file in one step, use 'Generate a document' instead.",
+      "description": "Queue a document for generation without waiting for it, or save it as a draft. Use this for large batches, then check on it later; to get the file in one step, use 'Generate a document' instead.",
       "display_name": "Create a document",
       "display_str_template": "Create a PDFMonkey document from template {0}.",
       "handler": "actions.create_document",
@@ -15,41 +15,45 @@
         "failure_reason": "",
         "filename": "invoice-1042.pdf",
         "meta": {
-          "_filename": "invoice-1042.pdf"
+          "_filename": "invoice-1042.pdf",
+          "orderRef": "1042"
         },
         "output_type": "pdf",
         "preview_url": "https://preview.pdfmonkey.io/pdf/web/viewer.html?file=...",
         "public_share_link": "",
         "template_id": "2903f5b4-623b-4e10-b2e3-dc7e2e67ea39",
         "template_name": "Invoice",
-        "updated_at": "2026-03-13T12:34:59.412+02:00"
+        "updated_at": "2026-03-13T12:34:59.412+02:00",
+        "workspace_id": "d6b4e8f2-7a3c-4d1e-9f5b-2c8a1d3e6f90"
       },
       "name": "create_document",
+      "output_formatter": "formatters.document_formatter",
       "parameters": [
         {
-          "description": "The PDFMonkey template to generate from. Pick one of your templates, or a template ID from an earlier step.",
+          "description": "The PDFMonkey template to generate from. Pick one of your templates, or use a template ID from an earlier step.",
           "display_name": "Template",
           "dynamic_source": "templates",
+          "dynamic_source_allows_custom": true,
           "name": "template_id",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The fields and values that fill in the template's placeholders, for example the customer name or order total.",
+          "description": "The fields and values that fill in the template's placeholders, for example the customer name or order total. An object, or its JSON text.",
           "display_name": "Template data",
           "name": "payload",
           "required": true,
           "type": "ParameterType.OBJECT"
         },
         {
-          "description": "Name for the generated file, for example 'invoice-1042.pdf'. Leave empty to let PDFMonkey name it.",
+          "description": "Name for the generated file, for example 'invoice-1042'. PDFMonkey adds the right extension itself. Leave empty to let PDFMonkey name it.",
           "display_name": "File name",
           "name": "filename",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Optional extra details to store alongside the document, for example an order reference.",
+          "description": "Optional extra details to store with the document, for example an order reference. They come back with the document, so a later step can read them. An object, or its JSON text.",
           "display_name": "Extra details",
           "name": "metadata",
           "required": false,
@@ -62,6 +66,59 @@
           "name": "generate",
           "required": false,
           "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Lock the PDF so it opens only with this password. Leave empty for no password. Images can't be locked.",
+          "display_name": "PDF password",
+          "name": "password",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a template that makes images: the format to make. PDFMonkey makes WebP when this is empty. Ignored for PDFs.",
+          "display_name": "Image format",
+          "name": "image_format",
+          "options": [
+            {
+              "label": "WebP (PDFMonkey's default)",
+              "value": "webp"
+            },
+            {
+              "label": "PNG",
+              "value": "png"
+            },
+            {
+              "label": "JPG",
+              "value": "jpg"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a template that makes images: the width in pixels, instead of the template's own. Ignored for PDFs.",
+          "display_name": "Image width (pixels)",
+          "minimum": 1,
+          "name": "image_width",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "For a template that makes images: the height in pixels, instead of the template's own. Ignored for PDFs.",
+          "display_name": "Image height (pixels)",
+          "minimum": 1,
+          "name": "image_height",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "For a WebP image: the quality from 1 to 100. PDFMonkey uses 100 when this is empty.",
+          "display_name": "Image quality",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "image_quality",
+          "required": false,
+          "type": "ParameterType.NUMBER"
         }
       ],
       "path": "/actions/library/pdfmonkey/create-document",
@@ -81,7 +138,7 @@
             "type": "string"
           },
           "download_url": {
-            "description": "Link to download the finished file. Empty until the document is ready, and it expires about an hour after it is issued.",
+            "description": "PDFMonkey's link to download the finished file. Empty until the document is ready, and it stops working an hour after it is issued.",
             "type": "string"
           },
           "failure_reason": {
@@ -93,7 +150,7 @@
             "type": "string"
           },
           "meta": {
-            "description": "The extra details stored with the document.",
+            "description": "The extra details stored with the document, including its file name under _filename. A PDF password is never shown here.",
             "type": "object"
           },
           "output_type": {
@@ -105,7 +162,7 @@
             "type": "string"
           },
           "public_share_link": {
-            "description": "Permanent public link to the file. Only set when share links are enabled on the PDFMonkey account.",
+            "description": "Permanent public link to the file. Only set on PDFMonkey plans with share links (Pro+, Premium and the trial).",
             "type": "string"
           },
           "template_id": {
@@ -118,6 +175,405 @@
           },
           "updated_at": {
             "description": "When the document was last updated.",
+            "type": "string"
+          },
+          "workspace_id": {
+            "description": "The ID of the PDFMonkey workspace the document belongs to.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "create_template": {
+      "description": "Create a template from HTML and CSS, with its page settings, ready to generate documents from. The HTML can hold Liquid placeholders that each document fills in.",
+      "display_name": "Create a template",
+      "display_str_template": "Create PDFMonkey template {0}.",
+      "handler": "actions.create_template",
+      "id": "pdfmonkey_create_template",
+      "method": "POST",
+      "mock_response": {
+        "body": "<h1>Invoice {{number}}</h1><p>Total: {{total}}</p>",
+        "body_draft": "<h1>Invoice {{number}}</h1><p>Total: {{total}}</p>",
+        "created_at": "2026-01-08T09:12:04.512+02:00",
+        "edition_mode": "code",
+        "engine_id": "5c709522-90db-4aea-b49f-15aeaa7180c7",
+        "folder_id": "",
+        "name": "Invoice",
+        "output_type": "pdf",
+        "preview_url": "https://preview.pdfmonkey.io/pdf/web/viewer.html?file=...",
+        "retention_seconds": 86400,
+        "sample_data": {
+          "number": "INV-001",
+          "total": "$123.50"
+        },
+        "sample_data_draft": {
+          "number": "INV-001",
+          "total": "$123.50"
+        },
+        "settings": {
+          "footer": {
+            "right": "Page [page] of [topage]"
+          },
+          "margin": {
+            "bottom": 20,
+            "left": 15,
+            "right": 15,
+            "top": 20
+          },
+          "orientation": "portrait",
+          "paper_format": "a4"
+        },
+        "settings_draft": {
+          "footer": {
+            "right": "Page [page] of [topage]"
+          },
+          "margin": {
+            "bottom": 20,
+            "left": 15,
+            "right": 15,
+            "top": 20
+          },
+          "orientation": "portrait",
+          "paper_format": "a4"
+        },
+        "styles": "h1 { color: #333; }",
+        "styles_draft": "h1 { color: #333; }",
+        "template_id": "2903f5b4-623b-4e10-b2e3-dc7e2e67ea39",
+        "updated_at": "2026-02-27T16:40:11.902+02:00",
+        "workspace_id": "d6b4e8f2-7a3c-4d1e-9f5b-2c8a1d3e6f90"
+      },
+      "name": "create_template",
+      "output_formatter": "formatters.template_formatter",
+      "parameters": [
+        {
+          "description": "The template's name, as shown in PDFMonkey (up to 100 characters).",
+          "display_name": "Template name",
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The PDFMonkey workspace to create the template in. Leave empty when the account has only one.",
+          "display_name": "Workspace",
+          "dynamic_source": "workspaces",
+          "dynamic_source_allows_custom": true,
+          "name": "workspace_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The template's HTML, with Liquid placeholders such as {{customer_name}} for the values each document fills in.",
+          "display_name": "HTML",
+          "multiline": true,
+          "name": "body",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "CSS or SCSS for the template's HTML. It doesn't apply to the header and footer.",
+          "display_name": "CSS",
+          "multiline": true,
+          "name": "styles",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Example values the PDFMonkey dashboard previews the template with, as an object or its JSON text. Documents use their own data.",
+          "display_name": "Test data",
+          "name": "sample_data",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Whether the template makes PDFs or images. PDFMonkey makes PDFs when this is empty.",
+          "display_name": "Makes",
+          "name": "output_type",
+          "options": [
+            {
+              "label": "PDF",
+              "value": "pdf"
+            },
+            {
+              "label": "Image (WebP, PNG or JPG)",
+              "value": "image"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How the template is edited in PDFMonkey: with code (HTML and CSS, the default) or in the visual builder. The HTML and CSS fields only apply to code templates.",
+          "display_name": "Editor",
+          "name": "edition_mode",
+          "options": [
+            {
+              "label": "Code (HTML and CSS)",
+              "value": "code"
+            },
+            {
+              "label": "Visual builder",
+              "value": "builder"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The page size of the PDFs the template makes.",
+          "display_name": "Paper size",
+          "name": "paper_format",
+          "options": [
+            {
+              "label": "A4",
+              "value": "a4"
+            },
+            {
+              "label": "US Letter",
+              "value": "letter"
+            },
+            {
+              "label": "A0",
+              "value": "a0"
+            },
+            {
+              "label": "A1",
+              "value": "a1"
+            },
+            {
+              "label": "A2",
+              "value": "a2"
+            },
+            {
+              "label": "A3",
+              "value": "a3"
+            },
+            {
+              "label": "A5",
+              "value": "a5"
+            },
+            {
+              "label": "A6",
+              "value": "a6"
+            },
+            {
+              "label": "Custom size",
+              "value": "custom"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Whether pages are upright (portrait) or sideways (landscape).",
+          "display_name": "Orientation",
+          "name": "orientation",
+          "options": [
+            {
+              "label": "Portrait",
+              "value": "portrait"
+            },
+            {
+              "label": "Landscape",
+              "value": "landscape"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a custom paper size: the page width in millimetres.",
+          "display_name": "Paper width (mm)",
+          "minimum": 1,
+          "name": "paper_width",
+          "required": false,
+          "type": "ParameterType.NUMBER",
+          "visible_when": {
+            "paper_format": [
+              "custom"
+            ]
+          }
+        },
+        {
+          "description": "For a custom paper size: the page height in millimetres.",
+          "display_name": "Paper height (mm)",
+          "minimum": 1,
+          "name": "paper_height",
+          "required": false,
+          "type": "ParameterType.NUMBER",
+          "visible_when": {
+            "paper_format": [
+              "custom"
+            ]
+          }
+        },
+        {
+          "description": "Space at the top of each page, in millimetres. PDFMonkey uses 10 when it isn't set. A header needs room here.",
+          "display_name": "Top margin (mm)",
+          "minimum": 0,
+          "name": "margin_top",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Space at the bottom of each page, in millimetres. PDFMonkey uses 10 when it isn't set. A footer needs room here.",
+          "display_name": "Bottom margin (mm)",
+          "minimum": 0,
+          "name": "margin_bottom",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Space at the left of each page, in millimetres. PDFMonkey uses 10 when it isn't set.",
+          "display_name": "Left margin (mm)",
+          "minimum": 0,
+          "name": "margin_left",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Space at the right of each page, in millimetres. PDFMonkey uses 10 when it isn't set.",
+          "display_name": "Right margin (mm)",
+          "minimum": 0,
+          "name": "margin_right",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Other page settings, as an object or its JSON text, for example {\"footer\": {\"right\": \"Page [page] of [topage]\"}, \"use_emojis\": true}. The step's own page fields win over the same settings here.",
+          "display_name": "More settings",
+          "name": "settings",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "How long PDFMonkey keeps the documents made from this template before deleting them. A period your plan doesn't allow becomes its longest.",
+          "display_name": "Keep documents for",
+          "name": "retention",
+          "options": [
+            {
+              "label": "5 minutes",
+              "value": "300"
+            },
+            {
+              "label": "20 minutes",
+              "value": "1200"
+            },
+            {
+              "label": "1 hour",
+              "value": "3600"
+            },
+            {
+              "label": "1 day",
+              "value": "86400"
+            },
+            {
+              "label": "1 week (Pro plan or higher)",
+              "value": "604800"
+            },
+            {
+              "label": "1 month (Pro+ or Premium)",
+              "value": "2592000"
+            },
+            {
+              "label": "1 year (Pro+ or Premium)",
+              "value": "31536000"
+            },
+            {
+              "label": "Never delete (Pro+ or Premium)",
+              "value": "0"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Publish the template, so documents can be generated from it straight away. Turn this off to save it as a draft to review and publish in the PDFMonkey dashboard.",
+          "display_name": "Publish",
+          "name": "publish",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/pdfmonkey/create-template",
+      "result_str_template": "Template created.",
+      "returns": {
+        "properties": {
+          "body": {
+            "description": "The published HTML and Liquid that documents are generated from.",
+            "type": "string"
+          },
+          "body_draft": {
+            "description": "The HTML and Liquid being edited, not yet used for documents.",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "When the template was created.",
+            "type": "string"
+          },
+          "edition_mode": {
+            "description": "How the template is edited: \"code\" (HTML and CSS) or \"builder\" (PDFMonkey's visual builder).",
+            "type": "string"
+          },
+          "engine_id": {
+            "description": "The ID of the rendering engine documents are generated with.",
+            "type": "string"
+          },
+          "folder_id": {
+            "description": "The ID of that folder, if any.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The template's name, as shown in PDFMonkey.",
+            "type": "string"
+          },
+          "output_type": {
+            "description": "What the template produces: \"pdf\" or \"image\".",
+            "type": "string"
+          },
+          "preview_url": {
+            "description": "Link that previews the template's draft in a browser.",
+            "type": "string"
+          },
+          "retention_seconds": {
+            "description": "How long documents made from the template are kept before PDFMonkey deletes them, in seconds. 0 keeps them for good.",
+            "type": "number"
+          },
+          "sample_data": {
+            "description": "The published test data PDFMonkey previews the template with.",
+            "type": "object"
+          },
+          "sample_data_draft": {
+            "description": "The test data being edited, used for the dashboard preview.",
+            "type": "object"
+          },
+          "settings": {
+            "description": "The published page settings: paper_format, orientation, margin (in millimetres), header, footer and the rest.",
+            "type": "object"
+          },
+          "settings_draft": {
+            "description": "The page settings being edited.",
+            "type": "object"
+          },
+          "styles": {
+            "description": "The published CSS or SCSS styles.",
+            "type": "string"
+          },
+          "styles_draft": {
+            "description": "The CSS or SCSS styles being edited.",
+            "type": "string"
+          },
+          "template_id": {
+            "description": "The template's ID, used to generate a document from it.",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the template was last updated.",
+            "type": "string"
+          },
+          "workspace_id": {
+            "description": "The ID of the PDFMonkey workspace the template belongs to.",
             "type": "string"
           }
         },
@@ -136,6 +592,7 @@
         "document_id": "a5e86d72-f5b7-43d4-a04e-8b7e08e6741c"
       },
       "name": "delete_document",
+      "output_formatter": "formatters.deleted_document_formatter",
       "parameters": [
         {
           "description": "The ID of the PDFMonkey document to delete.",
@@ -155,6 +612,46 @@
           },
           "document_id": {
             "description": "The ID of the document that was deleted.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "delete_template": {
+      "description": "Permanently delete a template. Documents already made from it are kept.",
+      "display_name": "Delete a template",
+      "display_str_template": "Delete PDFMonkey template {0}.",
+      "handler": "actions.delete_template",
+      "id": "pdfmonkey_delete_template",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "template_id": "2903f5b4-623b-4e10-b2e3-dc7e2e67ea39"
+      },
+      "name": "delete_template",
+      "output_formatter": "formatters.deleted_template_formatter",
+      "parameters": [
+        {
+          "description": "The template to delete.",
+          "display_name": "Template",
+          "dynamic_source": "templates",
+          "dynamic_source_allows_custom": true,
+          "name": "template_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/pdfmonkey/delete-template",
+      "result_str_template": "Template deleted.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Whether the template was deleted.",
+            "type": "boolean"
+          },
+          "template_id": {
+            "description": "The ID of the template that was deleted.",
             "type": "string"
           }
         },
@@ -187,7 +684,8 @@
         "failure_reason": "",
         "filename": "invoice-1042.pdf",
         "meta": {
-          "_filename": "invoice-1042.pdf"
+          "_filename": "invoice-1042.pdf",
+          "orderRef": "1042"
         },
         "output_type": "pdf",
         "preview_url": "https://preview.pdfmonkey.io/pdf/web/viewer.html?file=...",
@@ -196,10 +694,11 @@
         "template_id": "2903f5b4-623b-4e10-b2e3-dc7e2e67ea39",
         "template_name": "Invoice",
         "updated_at": "2026-03-13T12:34:59.412+02:00",
-        "url": "/actions/core/serve-document/doc_4b7c1e2a9d3f45c88a1e6f0b2d5c7e91?teamId=6512a1b2c3d4e5f600000001"
+        "url": "/actions/core/serve-document/doc_4b7c1e2a9d3f45c88a1e6f0b2d5c7e91?teamId=6512a1b2c3d4e5f600000001",
+        "workspace_id": "d6b4e8f2-7a3c-4d1e-9f5b-2c8a1d3e6f90"
       },
       "name": "download_document",
-      "output_formatter": "actions.generated_document_formatter",
+      "output_formatter": "formatters.generated_document_formatter",
       "parameters": [
         {
           "description": "The ID of the PDFMonkey document to download.",
@@ -263,7 +762,7 @@
             "type": "array"
           },
           "download_url": {
-            "description": "Link to download the finished file. Empty until the document is ready, and it expires about an hour after it is issued.",
+            "description": "PDFMonkey's link to download the finished file. Empty until the document is ready, and it stops working an hour after it is issued.",
             "type": "string"
           },
           "failure_reason": {
@@ -275,7 +774,7 @@
             "type": "string"
           },
           "meta": {
-            "description": "The extra details stored with the document.",
+            "description": "The extra details stored with the document, including its file name under _filename. A PDF password is never shown here.",
             "type": "object"
           },
           "output_type": {
@@ -287,7 +786,7 @@
             "type": "string"
           },
           "public_share_link": {
-            "description": "Permanent public link to the file. Only set when share links are enabled on the PDFMonkey account.",
+            "description": "Permanent public link to the file. Only set on PDFMonkey plans with share links (Pro+, Premium and the trial).",
             "type": "string"
           },
           "size_bytes": {
@@ -309,13 +808,17 @@
           "url": {
             "description": "Download URL for the saved file, served by Lodol",
             "type": "string"
+          },
+          "workspace_id": {
+            "description": "The ID of the PDFMonkey workspace the document belongs to.",
+            "type": "string"
           }
         },
         "type": "object"
       }
     },
     "generate_document": {
-      "description": "Fill in one of your PDFMonkey templates and wait for the finished file. The document is saved so a later step can email, upload, or store it.",
+      "description": "Fill in one of your PDFMonkey templates and wait for the finished file. The document is saved so a later step can email, upload, or store it. Each document counts against your PDFMonkey quota.",
       "display_name": "Generate a document",
       "display_str_template": "Generate a PDFMonkey document from template {0}.",
       "handler": "actions.generate_document",
@@ -340,7 +843,8 @@
         "failure_reason": "",
         "filename": "invoice-1042.pdf",
         "meta": {
-          "_filename": "invoice-1042.pdf"
+          "_filename": "invoice-1042.pdf",
+          "orderRef": "1042"
         },
         "output_type": "pdf",
         "preview_url": "https://preview.pdfmonkey.io/pdf/web/viewer.html?file=...",
@@ -349,39 +853,94 @@
         "template_id": "2903f5b4-623b-4e10-b2e3-dc7e2e67ea39",
         "template_name": "Invoice",
         "updated_at": "2026-03-13T12:34:59.412+02:00",
-        "url": "/actions/core/serve-document/doc_4b7c1e2a9d3f45c88a1e6f0b2d5c7e91?teamId=6512a1b2c3d4e5f600000001"
+        "url": "/actions/core/serve-document/doc_4b7c1e2a9d3f45c88a1e6f0b2d5c7e91?teamId=6512a1b2c3d4e5f600000001",
+        "workspace_id": "d6b4e8f2-7a3c-4d1e-9f5b-2c8a1d3e6f90"
       },
       "name": "generate_document",
-      "output_formatter": "actions.generated_document_formatter",
+      "output_formatter": "formatters.generated_document_formatter",
       "parameters": [
         {
-          "description": "The PDFMonkey template to generate from. Pick one of your templates, or a template ID from an earlier step.",
+          "description": "The PDFMonkey template to generate from. Pick one of your templates, or use a template ID from an earlier step.",
           "display_name": "Template",
           "dynamic_source": "templates",
+          "dynamic_source_allows_custom": true,
           "name": "template_id",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The fields and values that fill in the template's placeholders, for example the customer name or order total.",
+          "description": "The fields and values that fill in the template's placeholders, for example the customer name or order total. An object, or its JSON text.",
           "display_name": "Template data",
           "name": "payload",
           "required": true,
           "type": "ParameterType.OBJECT"
         },
         {
-          "description": "Name for the generated file, for example 'invoice-1042.pdf'. Leave empty to let PDFMonkey name it.",
+          "description": "Name for the generated file, for example 'invoice-1042'. PDFMonkey adds the right extension itself. Leave empty to let PDFMonkey name it.",
           "display_name": "File name",
           "name": "filename",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Optional extra details to store alongside the document, for example an order reference.",
+          "description": "Optional extra details to store with the document, for example an order reference. They come back with the document, so a later step can read them. An object, or its JSON text.",
           "display_name": "Extra details",
           "name": "metadata",
           "required": false,
           "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Lock the PDF so it opens only with this password. Leave empty for no password. Images can't be locked.",
+          "display_name": "PDF password",
+          "name": "password",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a template that makes images: the format to make. PDFMonkey makes WebP when this is empty. Ignored for PDFs.",
+          "display_name": "Image format",
+          "name": "image_format",
+          "options": [
+            {
+              "label": "WebP (PDFMonkey's default)",
+              "value": "webp"
+            },
+            {
+              "label": "PNG",
+              "value": "png"
+            },
+            {
+              "label": "JPG",
+              "value": "jpg"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a template that makes images: the width in pixels, instead of the template's own. Ignored for PDFs.",
+          "display_name": "Image width (pixels)",
+          "minimum": 1,
+          "name": "image_width",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "For a template that makes images: the height in pixels, instead of the template's own. Ignored for PDFs.",
+          "display_name": "Image height (pixels)",
+          "minimum": 1,
+          "name": "image_height",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "For a WebP image: the quality from 1 to 100. PDFMonkey uses 100 when this is empty.",
+          "display_name": "Image quality",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "image_quality",
+          "required": false,
+          "type": "ParameterType.NUMBER"
         }
       ],
       "path": "/actions/library/pdfmonkey/generate-document",
@@ -438,7 +997,7 @@
             "type": "array"
           },
           "download_url": {
-            "description": "Link to download the finished file. Empty until the document is ready, and it expires about an hour after it is issued.",
+            "description": "PDFMonkey's link to download the finished file. Empty until the document is ready, and it stops working an hour after it is issued.",
             "type": "string"
           },
           "failure_reason": {
@@ -450,7 +1009,7 @@
             "type": "string"
           },
           "meta": {
-            "description": "The extra details stored with the document.",
+            "description": "The extra details stored with the document, including its file name under _filename. A PDF password is never shown here.",
             "type": "object"
           },
           "output_type": {
@@ -462,7 +1021,7 @@
             "type": "string"
           },
           "public_share_link": {
-            "description": "Permanent public link to the file. Only set when share links are enabled on the PDFMonkey account.",
+            "description": "Permanent public link to the file. Only set on PDFMonkey plans with share links (Pro+, Premium and the trial).",
             "type": "string"
           },
           "size_bytes": {
@@ -484,13 +1043,97 @@
           "url": {
             "description": "Download URL for the saved file, served by Lodol",
             "type": "string"
+          },
+          "workspace_id": {
+            "description": "The ID of the PDFMonkey workspace the document belongs to.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_account": {
+      "description": "Get the PDFMonkey account's plan and how many documents it allows this period, for example to check before a large batch.",
+      "display_name": "Get account",
+      "display_str_template": "Get the PDFMonkey account.",
+      "handler": "actions.get_account",
+      "id": "pdfmonkey_get_account",
+      "method": "POST",
+      "mock_response": {
+        "available_documents": 3000,
+        "billing_interval": "month",
+        "created_at": "2025-01-01T12:34:56.123+00:00",
+        "email": "jane.doe@example.com",
+        "external_resources_blocked": false,
+        "language": "en",
+        "name": "Jane Doe",
+        "paying_customer": true,
+        "plan": "pro",
+        "share_links": false,
+        "trial_ends_on": "",
+        "user_id": "12345678-90ab-cdef-1234-567890abcdef"
+      },
+      "name": "get_account",
+      "output_formatter": "formatters.account_formatter",
+      "parameters": [],
+      "path": "/actions/library/pdfmonkey/get-account",
+      "result_str_template": "Account retrieved.",
+      "returns": {
+        "properties": {
+          "available_documents": {
+            "description": "How many documents the plan allows in the current period. PDFMonkey doesn't say how many of them are used.",
+            "type": "number"
+          },
+          "billing_interval": {
+            "description": "How often the plan is billed: \"month\" or \"year\".",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "When the account was created.",
+            "type": "string"
+          },
+          "email": {
+            "description": "The user's email address.",
+            "type": "string"
+          },
+          "external_resources_blocked": {
+            "description": "Whether templates are kept from loading web fonts, images and other files from the internet, as on the Free plan.",
+            "type": "boolean"
+          },
+          "language": {
+            "description": "The language the account uses, such as en.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The user's name.",
+            "type": "string"
+          },
+          "paying_customer": {
+            "description": "Whether the account is on a paid plan.",
+            "type": "boolean"
+          },
+          "plan": {
+            "description": "The PDFMonkey plan, such as \"free\", \"starter\", \"pro\" or \"premium\".",
+            "type": "string"
+          },
+          "share_links": {
+            "description": "Whether documents get a permanent public share link.",
+            "type": "boolean"
+          },
+          "trial_ends_on": {
+            "description": "The day the free trial ends, or empty when there is none.",
+            "type": "string"
+          },
+          "user_id": {
+            "description": "The ID of the PDFMonkey user the key belongs to.",
+            "type": "string"
           }
         },
         "type": "object"
       }
     },
     "get_document": {
-      "description": "Check whether a document has finished generating, and get its download link.",
+      "description": "Check whether a document has finished generating, and get its details and a fresh download link.",
       "display_name": "Get a document",
       "display_str_template": "Get PDFMonkey document {0}.",
       "handler": "actions.get_document",
@@ -504,16 +1147,19 @@
         "failure_reason": "",
         "filename": "invoice-1042.pdf",
         "meta": {
-          "_filename": "invoice-1042.pdf"
+          "_filename": "invoice-1042.pdf",
+          "orderRef": "1042"
         },
         "output_type": "pdf",
         "preview_url": "https://preview.pdfmonkey.io/pdf/web/viewer.html?file=...",
         "public_share_link": "",
         "template_id": "2903f5b4-623b-4e10-b2e3-dc7e2e67ea39",
         "template_name": "Invoice",
-        "updated_at": "2026-03-13T12:34:59.412+02:00"
+        "updated_at": "2026-03-13T12:34:59.412+02:00",
+        "workspace_id": "d6b4e8f2-7a3c-4d1e-9f5b-2c8a1d3e6f90"
       },
       "name": "get_document",
+      "output_formatter": "formatters.document_formatter",
       "parameters": [
         {
           "description": "The ID of the PDFMonkey document to check.",
@@ -540,7 +1186,7 @@
             "type": "string"
           },
           "download_url": {
-            "description": "Link to download the finished file. Empty until the document is ready, and it expires about an hour after it is issued.",
+            "description": "PDFMonkey's link to download the finished file. Empty until the document is ready, and it stops working an hour after it is issued.",
             "type": "string"
           },
           "failure_reason": {
@@ -552,7 +1198,7 @@
             "type": "string"
           },
           "meta": {
-            "description": "The extra details stored with the document.",
+            "description": "The extra details stored with the document, including its file name under _filename. A PDF password is never shown here.",
             "type": "object"
           },
           "output_type": {
@@ -564,7 +1210,7 @@
             "type": "string"
           },
           "public_share_link": {
-            "description": "Permanent public link to the file. Only set when share links are enabled on the PDFMonkey account.",
+            "description": "Permanent public link to the file. Only set on PDFMonkey plans with share links (Pro+, Premium and the trial).",
             "type": "string"
           },
           "template_id": {
@@ -578,13 +1224,172 @@
           "updated_at": {
             "description": "When the document was last updated.",
             "type": "string"
+          },
+          "workspace_id": {
+            "description": "The ID of the PDFMonkey workspace the document belongs to.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_template": {
+      "description": "Read a template in full: its HTML, styles, test data and page settings, both as published and as being edited.",
+      "display_name": "Get a template",
+      "display_str_template": "Get PDFMonkey template {0}.",
+      "handler": "actions.get_template",
+      "id": "pdfmonkey_get_template",
+      "method": "POST",
+      "mock_response": {
+        "body": "<h1>Invoice {{number}}</h1><p>Total: {{total}}</p>",
+        "body_draft": "<h1>Invoice {{number}}</h1><p>Total: {{total}}</p>",
+        "created_at": "2026-01-08T09:12:04.512+02:00",
+        "edition_mode": "code",
+        "engine_id": "5c709522-90db-4aea-b49f-15aeaa7180c7",
+        "folder_id": "",
+        "name": "Invoice",
+        "output_type": "pdf",
+        "preview_url": "https://preview.pdfmonkey.io/pdf/web/viewer.html?file=...",
+        "retention_seconds": 86400,
+        "sample_data": {
+          "number": "INV-001",
+          "total": "$123.50"
+        },
+        "sample_data_draft": {
+          "number": "INV-001",
+          "total": "$123.50"
+        },
+        "settings": {
+          "footer": {
+            "right": "Page [page] of [topage]"
+          },
+          "margin": {
+            "bottom": 20,
+            "left": 15,
+            "right": 15,
+            "top": 20
+          },
+          "orientation": "portrait",
+          "paper_format": "a4"
+        },
+        "settings_draft": {
+          "footer": {
+            "right": "Page [page] of [topage]"
+          },
+          "margin": {
+            "bottom": 20,
+            "left": 15,
+            "right": 15,
+            "top": 20
+          },
+          "orientation": "portrait",
+          "paper_format": "a4"
+        },
+        "styles": "h1 { color: #333; }",
+        "styles_draft": "h1 { color: #333; }",
+        "template_id": "2903f5b4-623b-4e10-b2e3-dc7e2e67ea39",
+        "updated_at": "2026-02-27T16:40:11.902+02:00",
+        "workspace_id": "d6b4e8f2-7a3c-4d1e-9f5b-2c8a1d3e6f90"
+      },
+      "name": "get_template",
+      "output_formatter": "formatters.template_formatter",
+      "parameters": [
+        {
+          "description": "The template to read.",
+          "display_name": "Template",
+          "dynamic_source": "templates",
+          "dynamic_source_allows_custom": true,
+          "name": "template_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/pdfmonkey/get-template",
+      "result_str_template": "Template retrieved.",
+      "returns": {
+        "properties": {
+          "body": {
+            "description": "The published HTML and Liquid that documents are generated from.",
+            "type": "string"
+          },
+          "body_draft": {
+            "description": "The HTML and Liquid being edited, not yet used for documents.",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "When the template was created.",
+            "type": "string"
+          },
+          "edition_mode": {
+            "description": "How the template is edited: \"code\" (HTML and CSS) or \"builder\" (PDFMonkey's visual builder).",
+            "type": "string"
+          },
+          "engine_id": {
+            "description": "The ID of the rendering engine documents are generated with.",
+            "type": "string"
+          },
+          "folder_id": {
+            "description": "The ID of that folder, if any.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The template's name, as shown in PDFMonkey.",
+            "type": "string"
+          },
+          "output_type": {
+            "description": "What the template produces: \"pdf\" or \"image\".",
+            "type": "string"
+          },
+          "preview_url": {
+            "description": "Link that previews the template's draft in a browser.",
+            "type": "string"
+          },
+          "retention_seconds": {
+            "description": "How long documents made from the template are kept before PDFMonkey deletes them, in seconds. 0 keeps them for good.",
+            "type": "number"
+          },
+          "sample_data": {
+            "description": "The published test data PDFMonkey previews the template with.",
+            "type": "object"
+          },
+          "sample_data_draft": {
+            "description": "The test data being edited, used for the dashboard preview.",
+            "type": "object"
+          },
+          "settings": {
+            "description": "The published page settings: paper_format, orientation, margin (in millimetres), header, footer and the rest.",
+            "type": "object"
+          },
+          "settings_draft": {
+            "description": "The page settings being edited.",
+            "type": "object"
+          },
+          "styles": {
+            "description": "The published CSS or SCSS styles.",
+            "type": "string"
+          },
+          "styles_draft": {
+            "description": "The CSS or SCSS styles being edited.",
+            "type": "string"
+          },
+          "template_id": {
+            "description": "The template's ID, used to generate a document from it.",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the template was last updated.",
+            "type": "string"
+          },
+          "workspace_id": {
+            "description": "The ID of the PDFMonkey workspace the template belongs to.",
+            "type": "string"
           }
         },
         "type": "object"
       }
     },
     "list_documents": {
-      "description": "List the documents on the account, newest first, optionally narrowed to one template or status. Returns 24 per page.",
+      "description": "List the documents on the account, newest first, optionally narrowed to one template, status or workspace. Returns 24 per page.",
       "display_name": "List documents",
       "display_str_template": "List PDFMonkey documents.",
       "handler": "actions.list_documents",
@@ -602,14 +1407,16 @@
             "failure_reason": "",
             "filename": "invoice-1042.pdf",
             "meta": {
-              "_filename": "invoice-1042.pdf"
+              "_filename": "invoice-1042.pdf",
+              "orderRef": "1042"
             },
             "output_type": "pdf",
             "preview_url": "https://preview.pdfmonkey.io/pdf/web/viewer.html?file=...",
             "public_share_link": "",
             "template_id": "2903f5b4-623b-4e10-b2e3-dc7e2e67ea39",
             "template_name": "Invoice",
-            "updated_at": "2026-03-13T12:34:59.412+02:00"
+            "updated_at": "2026-03-13T12:34:59.412+02:00",
+            "workspace_id": "d6b4e8f2-7a3c-4d1e-9f5b-2c8a1d3e6f90"
           }
         ],
         "next_page": null,
@@ -617,12 +1424,13 @@
         "total_pages": 1
       },
       "name": "list_documents",
-      "output_formatter": "actions.document_list_formatter",
+      "output_formatter": "formatters.document_list_formatter",
       "parameters": [
         {
           "description": "Only list documents generated from this template. Leave empty for every template.",
           "display_name": "Template",
           "dynamic_source": "templates",
+          "dynamic_source_allows_custom": true,
           "name": "template_id",
           "required": false,
           "type": "ParameterType.STRING"
@@ -677,6 +1485,15 @@
           "name": "page",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only list documents in this PDFMonkey workspace. Leave empty for every workspace.",
+          "display_name": "Workspace",
+          "dynamic_source": "workspaces",
+          "dynamic_source_allows_custom": true,
+          "name": "workspace_id",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/pdfmonkey/list-documents",
@@ -708,7 +1525,7 @@
                   "type": "string"
                 },
                 "download_url": {
-                  "description": "Link to download the finished file. Empty until the document is ready, and it expires about an hour after it is issued.",
+                  "description": "PDFMonkey's link to download the finished file. Empty until the document is ready, and it stops working an hour after it is issued.",
                   "type": "string"
                 },
                 "failure_reason": {
@@ -720,7 +1537,7 @@
                   "type": "string"
                 },
                 "meta": {
-                  "description": "The extra details stored with the document.",
+                  "description": "The extra details stored with the document, including its file name under _filename. A PDF password is never shown here.",
                   "type": "object"
                 },
                 "output_type": {
@@ -732,7 +1549,7 @@
                   "type": "string"
                 },
                 "public_share_link": {
-                  "description": "Permanent public link to the file. Only set when share links are enabled on the PDFMonkey account.",
+                  "description": "Permanent public link to the file. Only set on PDFMonkey plans with share links (Pro+, Premium and the trial).",
                   "type": "string"
                 },
                 "template_id": {
@@ -746,6 +1563,10 @@
                 "updated_at": {
                   "description": "When the document was last updated.",
                   "type": "string"
+                },
+                "workspace_id": {
+                  "description": "The ID of the PDFMonkey workspace the document belongs to.",
+                  "type": "string"
                 }
               },
               "type": "object"
@@ -754,10 +1575,12 @@
           },
           "next_page": {
             "description": "The next page number, or empty on the last page.",
+            "nullable": true,
             "type": "number"
           },
           "prev_page": {
             "description": "The previous page number, or empty on the first page.",
+            "nullable": true,
             "type": "number"
           },
           "total_pages": {
@@ -783,17 +1606,22 @@
         "templates": [
           {
             "created_at": "2026-01-08T09:12:04.512+02:00",
+            "edition_mode": "code",
+            "engine": "v5",
             "folder": "Billing",
+            "folder_id": "440da20b-c5a0-40a9-862f-4070faf963ea",
             "is_draft": false,
             "name": "Invoice",
+            "output_type": "pdf",
             "template_id": "2903f5b4-623b-4e10-b2e3-dc7e2e67ea39",
-            "updated_at": "2026-02-27T16:40:11.902+02:00"
+            "updated_at": "2026-02-27T16:40:11.902+02:00",
+            "workspace_id": "d6b4e8f2-7a3c-4d1e-9f5b-2c8a1d3e6f90"
           }
         ],
         "total_pages": 1
       },
       "name": "list_templates",
-      "output_formatter": "actions.template_list_formatter",
+      "output_formatter": "formatters.template_list_formatter",
       "parameters": [
         {
           "description": "Which page of results to return. Starts at 1.",
@@ -802,6 +1630,15 @@
           "name": "page",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only list templates in this PDFMonkey workspace. Leave empty for the account's templates.",
+          "display_name": "Workspace",
+          "dynamic_source": "workspaces",
+          "dynamic_source_allows_custom": true,
+          "name": "workspace_id",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/pdfmonkey/list-templates",
@@ -818,10 +1655,12 @@
           },
           "next_page": {
             "description": "The next page number, or empty on the last page.",
+            "nullable": true,
             "type": "number"
           },
           "prev_page": {
             "description": "The previous page number, or empty on the first page.",
+            "nullable": true,
             "type": "number"
           },
           "templates": {
@@ -832,16 +1671,32 @@
                   "description": "When the template was created.",
                   "type": "string"
                 },
+                "edition_mode": {
+                  "description": "How the template is edited: \"code\" (HTML and CSS) or \"builder\" (PDFMonkey's visual builder).",
+                  "type": "string"
+                },
+                "engine": {
+                  "description": "The PDFMonkey rendering engine the template uses, such as v5.",
+                  "type": "string"
+                },
                 "folder": {
                   "description": "The folder the template is filed under, if any.",
                   "type": "string"
                 },
+                "folder_id": {
+                  "description": "The ID of that folder, if any.",
+                  "type": "string"
+                },
                 "is_draft": {
-                  "description": "Whether the template is still a draft.",
+                  "description": "Whether the template has changes that aren't published yet.",
                   "type": "boolean"
                 },
                 "name": {
                   "description": "The template's name, as shown in PDFMonkey.",
+                  "type": "string"
+                },
+                "output_type": {
+                  "description": "What the template produces: \"pdf\" or \"image\".",
                   "type": "string"
                 },
                 "template_id": {
@@ -850,6 +1705,10 @@
                 },
                 "updated_at": {
                   "description": "When the template was last updated.",
+                  "type": "string"
+                },
+                "workspace_id": {
+                  "description": "The ID of the PDFMonkey workspace the template belongs to.",
                   "type": "string"
                 }
               },
@@ -865,8 +1724,56 @@
         "type": "object"
       }
     },
+    "list_workspaces": {
+      "description": "List the PDFMonkey workspaces the API key can reach, with the ID a new template needs.",
+      "display_name": "List workspaces",
+      "display_str_template": "List PDFMonkey workspaces.",
+      "handler": "actions.list_workspaces",
+      "id": "pdfmonkey_list_workspaces",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "workspaces": [
+          {
+            "name": "Acme invoicing",
+            "workspace_id": "d6b4e8f2-7a3c-4d1e-9f5b-2c8a1d3e6f90"
+          }
+        ]
+      },
+      "name": "list_workspaces",
+      "output_formatter": "formatters.workspace_list_formatter",
+      "parameters": [],
+      "path": "/actions/library/pdfmonkey/list-workspaces",
+      "result_str_template": "Workspaces listed.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many workspaces there are.",
+            "type": "number"
+          },
+          "workspaces": {
+            "description": "The workspaces.",
+            "items": {
+              "properties": {
+                "name": {
+                  "description": "The workspace's name, as shown in PDFMonkey.",
+                  "type": "string"
+                },
+                "workspace_id": {
+                  "description": "The workspace's ID, used to create a template in it.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
     "update_document": {
-      "description": "Change a document's data and generate it again: for example to correct a total on an invoice, or to generate a draft that was created earlier.",
+      "description": "Change a document's data and generate it again: for example to correct a total on an invoice, to generate a draft that was created earlier, or to try again after a failure.",
       "display_name": "Update a document",
       "display_str_template": "Update PDFMonkey document {0}.",
       "handler": "actions.update_document",
@@ -880,16 +1787,19 @@
         "failure_reason": "",
         "filename": "invoice-1042.pdf",
         "meta": {
-          "_filename": "invoice-1042.pdf"
+          "_filename": "invoice-1042.pdf",
+          "orderRef": "1042"
         },
         "output_type": "pdf",
         "preview_url": "https://preview.pdfmonkey.io/pdf/web/viewer.html?file=...",
         "public_share_link": "",
         "template_id": "2903f5b4-623b-4e10-b2e3-dc7e2e67ea39",
         "template_name": "Invoice",
-        "updated_at": "2026-03-13T12:34:59.412+02:00"
+        "updated_at": "2026-03-13T12:34:59.412+02:00",
+        "workspace_id": "d6b4e8f2-7a3c-4d1e-9f5b-2c8a1d3e6f90"
       },
       "name": "update_document",
+      "output_formatter": "formatters.document_formatter",
       "parameters": [
         {
           "description": "The ID of the PDFMonkey document to update.",
@@ -899,21 +1809,21 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "New values for the template's placeholders. This replaces the document's existing data.",
+          "description": "New values for the template's placeholders, as an object or its JSON text. This replaces the document's existing data.",
           "display_name": "Template data",
           "name": "payload",
           "required": false,
           "type": "ParameterType.OBJECT"
         },
         {
-          "description": "A new name for the generated file.",
+          "description": "A new name for the generated file. The document's other extra details are kept.",
           "display_name": "File name",
           "name": "filename",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "New extra details to store with the document. This replaces the existing details.",
+          "description": "New extra details to store with the document, as an object or its JSON text. This replaces the existing details.",
           "display_name": "Extra details",
           "name": "metadata",
           "required": false,
@@ -923,17 +1833,71 @@
           "description": "Generate the document from a different template. Leave empty to keep the one it already uses.",
           "display_name": "Template",
           "dynamic_source": "templates",
+          "dynamic_source_allows_custom": true,
           "name": "template_id",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
           "default": true,
-          "description": "Generate the file again with the new data. Turn this off to change the stored data without producing a new file.",
+          "description": "Generate the file again with the new data. Turn this off to change the stored data without producing a new file (or using your quota).",
           "display_name": "Generate again",
           "name": "regenerate",
           "required": false,
           "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Lock the PDF so it opens only with this password. Leave empty for no password. Images can't be locked.",
+          "display_name": "PDF password",
+          "name": "password",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a template that makes images: the format to make. PDFMonkey makes WebP when this is empty. Ignored for PDFs.",
+          "display_name": "Image format",
+          "name": "image_format",
+          "options": [
+            {
+              "label": "WebP (PDFMonkey's default)",
+              "value": "webp"
+            },
+            {
+              "label": "PNG",
+              "value": "png"
+            },
+            {
+              "label": "JPG",
+              "value": "jpg"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a template that makes images: the width in pixels, instead of the template's own. Ignored for PDFs.",
+          "display_name": "Image width (pixels)",
+          "minimum": 1,
+          "name": "image_width",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "For a template that makes images: the height in pixels, instead of the template's own. Ignored for PDFs.",
+          "display_name": "Image height (pixels)",
+          "minimum": 1,
+          "name": "image_height",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "For a WebP image: the quality from 1 to 100. PDFMonkey uses 100 when this is empty.",
+          "display_name": "Image quality",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "image_quality",
+          "required": false,
+          "type": "ParameterType.NUMBER"
         }
       ],
       "path": "/actions/library/pdfmonkey/update-document",
@@ -953,7 +1917,7 @@
             "type": "string"
           },
           "download_url": {
-            "description": "Link to download the finished file. Empty until the document is ready, and it expires about an hour after it is issued.",
+            "description": "PDFMonkey's link to download the finished file. Empty until the document is ready, and it stops working an hour after it is issued.",
             "type": "string"
           },
           "failure_reason": {
@@ -965,7 +1929,7 @@
             "type": "string"
           },
           "meta": {
-            "description": "The extra details stored with the document.",
+            "description": "The extra details stored with the document, including its file name under _filename. A PDF password is never shown here.",
             "type": "object"
           },
           "output_type": {
@@ -977,7 +1941,7 @@
             "type": "string"
           },
           "public_share_link": {
-            "description": "Permanent public link to the file. Only set when share links are enabled on the PDFMonkey account.",
+            "description": "Permanent public link to the file. Only set on PDFMonkey plans with share links (Pro+, Premium and the trial).",
             "type": "string"
           },
           "template_id": {
@@ -991,6 +1955,388 @@
           "updated_at": {
             "description": "When the document was last updated.",
             "type": "string"
+          },
+          "workspace_id": {
+            "description": "The ID of the PDFMonkey workspace the document belongs to.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "update_template": {
+      "description": "Change a template's name, HTML, styles, test data or page settings. Only the fields you fill in are changed.",
+      "display_name": "Update a template",
+      "display_str_template": "Update PDFMonkey template {0}.",
+      "handler": "actions.update_template",
+      "id": "pdfmonkey_update_template",
+      "method": "POST",
+      "mock_response": {
+        "body": "<h1>Invoice {{number}}</h1><p>Total: {{total}}</p>",
+        "body_draft": "<h1>Invoice {{number}}</h1><p>Total: {{total}}</p>",
+        "created_at": "2026-01-08T09:12:04.512+02:00",
+        "edition_mode": "code",
+        "engine_id": "5c709522-90db-4aea-b49f-15aeaa7180c7",
+        "folder_id": "",
+        "name": "Invoice",
+        "output_type": "pdf",
+        "preview_url": "https://preview.pdfmonkey.io/pdf/web/viewer.html?file=...",
+        "retention_seconds": 86400,
+        "sample_data": {
+          "number": "INV-001",
+          "total": "$123.50"
+        },
+        "sample_data_draft": {
+          "number": "INV-001",
+          "total": "$123.50"
+        },
+        "settings": {
+          "footer": {
+            "right": "Page [page] of [topage]"
+          },
+          "margin": {
+            "bottom": 20,
+            "left": 15,
+            "right": 15,
+            "top": 20
+          },
+          "orientation": "portrait",
+          "paper_format": "a4"
+        },
+        "settings_draft": {
+          "footer": {
+            "right": "Page [page] of [topage]"
+          },
+          "margin": {
+            "bottom": 20,
+            "left": 15,
+            "right": 15,
+            "top": 20
+          },
+          "orientation": "portrait",
+          "paper_format": "a4"
+        },
+        "styles": "h1 { color: #333; }",
+        "styles_draft": "h1 { color: #333; }",
+        "template_id": "2903f5b4-623b-4e10-b2e3-dc7e2e67ea39",
+        "updated_at": "2026-02-27T16:40:11.902+02:00",
+        "workspace_id": "d6b4e8f2-7a3c-4d1e-9f5b-2c8a1d3e6f90"
+      },
+      "name": "update_template",
+      "output_formatter": "formatters.template_formatter",
+      "parameters": [
+        {
+          "description": "The template to change.",
+          "display_name": "Template",
+          "dynamic_source": "templates",
+          "dynamic_source_allows_custom": true,
+          "name": "template_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A new name for the template (up to 100 characters).",
+          "display_name": "Template name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The template's HTML, with Liquid placeholders such as {{customer_name}} for the values each document fills in.",
+          "display_name": "HTML",
+          "multiline": true,
+          "name": "body",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "CSS or SCSS for the template's HTML. It doesn't apply to the header and footer.",
+          "display_name": "CSS",
+          "multiline": true,
+          "name": "styles",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Example values the PDFMonkey dashboard previews the template with, as an object or its JSON text. Documents use their own data.",
+          "display_name": "Test data",
+          "name": "sample_data",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Whether the template makes PDFs or images. PDFMonkey makes PDFs when this is empty.",
+          "display_name": "Makes",
+          "name": "output_type",
+          "options": [
+            {
+              "label": "PDF",
+              "value": "pdf"
+            },
+            {
+              "label": "Image (WebP, PNG or JPG)",
+              "value": "image"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The page size of the PDFs the template makes.",
+          "display_name": "Paper size",
+          "name": "paper_format",
+          "options": [
+            {
+              "label": "A4",
+              "value": "a4"
+            },
+            {
+              "label": "US Letter",
+              "value": "letter"
+            },
+            {
+              "label": "A0",
+              "value": "a0"
+            },
+            {
+              "label": "A1",
+              "value": "a1"
+            },
+            {
+              "label": "A2",
+              "value": "a2"
+            },
+            {
+              "label": "A3",
+              "value": "a3"
+            },
+            {
+              "label": "A5",
+              "value": "a5"
+            },
+            {
+              "label": "A6",
+              "value": "a6"
+            },
+            {
+              "label": "Custom size",
+              "value": "custom"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Whether pages are upright (portrait) or sideways (landscape).",
+          "display_name": "Orientation",
+          "name": "orientation",
+          "options": [
+            {
+              "label": "Portrait",
+              "value": "portrait"
+            },
+            {
+              "label": "Landscape",
+              "value": "landscape"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a custom paper size: the page width in millimetres.",
+          "display_name": "Paper width (mm)",
+          "minimum": 1,
+          "name": "paper_width",
+          "required": false,
+          "type": "ParameterType.NUMBER",
+          "visible_when": {
+            "paper_format": [
+              "custom"
+            ]
+          }
+        },
+        {
+          "description": "For a custom paper size: the page height in millimetres.",
+          "display_name": "Paper height (mm)",
+          "minimum": 1,
+          "name": "paper_height",
+          "required": false,
+          "type": "ParameterType.NUMBER",
+          "visible_when": {
+            "paper_format": [
+              "custom"
+            ]
+          }
+        },
+        {
+          "description": "Space at the top of each page, in millimetres. PDFMonkey uses 10 when it isn't set. A header needs room here.",
+          "display_name": "Top margin (mm)",
+          "minimum": 0,
+          "name": "margin_top",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Space at the bottom of each page, in millimetres. PDFMonkey uses 10 when it isn't set. A footer needs room here.",
+          "display_name": "Bottom margin (mm)",
+          "minimum": 0,
+          "name": "margin_bottom",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Space at the left of each page, in millimetres. PDFMonkey uses 10 when it isn't set.",
+          "display_name": "Left margin (mm)",
+          "minimum": 0,
+          "name": "margin_left",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Space at the right of each page, in millimetres. PDFMonkey uses 10 when it isn't set.",
+          "display_name": "Right margin (mm)",
+          "minimum": 0,
+          "name": "margin_right",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Other page settings, as an object or its JSON text, for example {\"footer\": {\"right\": \"Page [page] of [topage]\"}, \"use_emojis\": true}. The step's own page fields win over the same settings here.",
+          "display_name": "More settings",
+          "name": "settings",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "How long PDFMonkey keeps the documents made from this template before deleting them. A period your plan doesn't allow becomes its longest.",
+          "display_name": "Keep documents for",
+          "name": "retention",
+          "options": [
+            {
+              "label": "5 minutes",
+              "value": "300"
+            },
+            {
+              "label": "20 minutes",
+              "value": "1200"
+            },
+            {
+              "label": "1 hour",
+              "value": "3600"
+            },
+            {
+              "label": "1 day",
+              "value": "86400"
+            },
+            {
+              "label": "1 week (Pro plan or higher)",
+              "value": "604800"
+            },
+            {
+              "label": "1 month (Pro+ or Premium)",
+              "value": "2592000"
+            },
+            {
+              "label": "1 year (Pro+ or Premium)",
+              "value": "31536000"
+            },
+            {
+              "label": "Never delete (Pro+ or Premium)",
+              "value": "0"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Publish the changes, so new documents use them straight away. Turn this off to save them as a draft to review and publish in the PDFMonkey dashboard.",
+          "display_name": "Publish",
+          "name": "publish",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/pdfmonkey/update-template",
+      "result_str_template": "Template updated.",
+      "returns": {
+        "properties": {
+          "body": {
+            "description": "The published HTML and Liquid that documents are generated from.",
+            "type": "string"
+          },
+          "body_draft": {
+            "description": "The HTML and Liquid being edited, not yet used for documents.",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "When the template was created.",
+            "type": "string"
+          },
+          "edition_mode": {
+            "description": "How the template is edited: \"code\" (HTML and CSS) or \"builder\" (PDFMonkey's visual builder).",
+            "type": "string"
+          },
+          "engine_id": {
+            "description": "The ID of the rendering engine documents are generated with.",
+            "type": "string"
+          },
+          "folder_id": {
+            "description": "The ID of that folder, if any.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The template's name, as shown in PDFMonkey.",
+            "type": "string"
+          },
+          "output_type": {
+            "description": "What the template produces: \"pdf\" or \"image\".",
+            "type": "string"
+          },
+          "preview_url": {
+            "description": "Link that previews the template's draft in a browser.",
+            "type": "string"
+          },
+          "retention_seconds": {
+            "description": "How long documents made from the template are kept before PDFMonkey deletes them, in seconds. 0 keeps them for good.",
+            "type": "number"
+          },
+          "sample_data": {
+            "description": "The published test data PDFMonkey previews the template with.",
+            "type": "object"
+          },
+          "sample_data_draft": {
+            "description": "The test data being edited, used for the dashboard preview.",
+            "type": "object"
+          },
+          "settings": {
+            "description": "The published page settings: paper_format, orientation, margin (in millimetres), header, footer and the rest.",
+            "type": "object"
+          },
+          "settings_draft": {
+            "description": "The page settings being edited.",
+            "type": "object"
+          },
+          "styles": {
+            "description": "The published CSS or SCSS styles.",
+            "type": "string"
+          },
+          "styles_draft": {
+            "description": "The CSS or SCSS styles being edited.",
+            "type": "string"
+          },
+          "template_id": {
+            "description": "The template's ID, used to generate a document from it.",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the template was last updated.",
+            "type": "string"
+          },
+          "workspace_id": {
+            "description": "The ID of the PDFMonkey workspace the template belongs to.",
+            "type": "string"
           }
         },
         "type": "object"
@@ -1000,7 +2346,7 @@
   "categories": [
     "Documents"
   ],
-  "description": "Generate PDFs and images from your PDFMonkey templates, and manage the documents they produce.",
+  "description": "Generate PDFs and images from your PDFMonkey templates, manage the documents they produce, and create and edit the templates themselves.",
   "display_name": "PDFMonkey",
   "id": "pdfmonkey",
   "logo": "https://www.lodol.com/app-icons/pdfmonkey-icon.jpeg",
