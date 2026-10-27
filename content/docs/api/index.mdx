@@ -1,10 +1,10 @@
 ---
 title: Developer API
-description: Start workflows from your own code, pass them inputs, and read what each run did. A small REST API with JSON bodies and API-key authentication.
+description: Start workflows from your own code, pass them inputs, read what each run did, answer the approvals runs wait on, and create or change workflows. A small REST API with JSON bodies and API-key authentication.
 icon: Terminal
 ---
 
-The developer API lets your own systems use the workflows you've built in Lodol: list them, start runs with the inputs they need, follow each run to its result, and stop or delete a run. Workflows themselves are built in Lodol, or by your [AI tool](/docs/build-with-ai).
+The developer API lets your own systems use the workflows you've built in Lodol: list them, start runs with the inputs they need, follow each run to its result, answer the approval requests runs wait on, and stop, retry or delete a run. Workflows are usually built in Lodol or by your [AI tool](/docs/build-with-ai), and the API can create and change them too, in the [workflow format](/docs/api/workflow-format).
 
 <Cards>
   <Card title="Quickstart" description="Create a key, start a run and read its result, in about five minutes." href="/docs/api/quickstart" />
@@ -25,12 +25,20 @@ https://api-prod.lodol.com/api/v1
 | --- | --- | --- |
 | [`GET /workflows`](/docs/api/workflows#list-workflows) | List the workspace's workflows | `workflows:read` |
 | [`GET /workflows/:id`](/docs/api/workflows#get-a-workflow) | Get one workflow, with its steps | `workflows:read` |
+| [`POST /workflows`](/docs/api/workflows#create-a-workflow) | Create a workflow | `workflows:write` |
+| [`PUT /workflows/:id`](/docs/api/workflows#replace-a-workflow) | Replace a workflow's steps, name or description | `workflows:write` |
+| [`PATCH /workflows/:id`](/docs/api/workflows#edit-a-workflow) | Change part of a workflow's steps | `workflows:write` |
+| [`POST /workflows/validate`](/docs/api/workflows#validate-a-workflow) | Check a workflow without saving it | `workflows:write` |
 | [`DELETE /workflows/:id`](/docs/api/workflows#delete-a-workflow) | Delete a workflow for good | `workflows:delete` |
 | [`POST /workflows/:id/run-async`](/docs/api/runs#run-a-workflow) | Start a run | `workflows:execute` |
 | [`GET /executions`](/docs/api/runs#list-runs) | List runs | `executions:read` |
 | [`GET /executions/:id`](/docs/api/runs#get-a-run) | Get a run's status and results | `executions:read` |
 | [`POST /executions/:id/stop`](/docs/api/runs#stop-a-run) | Stop a run | `workflows:execute` |
+| [`POST /executions/:id/retry`](/docs/api/runs#retry-a-run) | Retry a failed run | `workflows:execute` |
 | [`DELETE /executions/:id`](/docs/api/runs#delete-a-run) | Delete a finished run for good | `executions:delete` |
+| [`GET /approvals`](/docs/api/approvals#list-approval-requests) | List approval requests | `executions:read` |
+| [`GET /approvals/:id`](/docs/api/approvals#get-an-approval-request) | Get one approval request | `executions:read` |
+| [`POST /approvals/:id/decision`](/docs/api/approvals#answer-an-approval-request) | Approve, reject or reply to one | `workflows:execute` |
 
 The API calls a run an **execution**: run IDs are `execution_id`, and their endpoints are under `/executions`.
 
@@ -40,12 +48,12 @@ The API calls a run an **execution**: run IDs are `execution_id`, and their endp
 - **JSON.** Request bodies are JSON, sent with `Content-Type: application/json`. Every response is JSON.
 - **Timestamps** are ISO 8601 with an offset, such as `2026-03-17T08:00:00+00:00`.
 - **Errors** have a JSON body with an `error` message and a standard HTTP status. See [Errors and retries](/docs/api/errors).
-- **Retries.** Send an `Idempotency-Key` with each run you start, so retrying a request never starts the same run twice. See [Idempotency](/docs/api/errors#idempotency).
+- **Retries.** Send an `Idempotency-Key` with each run you start and each workflow you save, so retrying a request never does the work twice. See [Idempotency](/docs/api/errors#idempotency).
 - **Limits.** Requests are rate-limited per workspace, by plan. See [Limits](/docs/api/limits).
 
 ## Paging through lists
 
-[List runs](/docs/api/runs#list-runs) returns results a page at a time. Pass `limit` (1 to 100, default 20) for the page size, and `after` with the last ID of the page you have to get the next one.
+[List runs](/docs/api/runs#list-runs) returns results a page at a time. Pass `limit` (1 to 100, default 20) for the page size, and `after` with the last ID of the page you have to get the next one. [List approval requests](/docs/api/approvals#list-approval-requests) pages the same way, but its cursor is `before`, set to the `next_before` the page came with.
 
 ```bash
 # First page

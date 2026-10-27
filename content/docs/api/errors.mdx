@@ -1,6 +1,6 @@
 ---
 title: Errors and retries
-description: The error codes the API returns and what to do about each, the request ID to quote to support, which requests are safe to retry, and how idempotency keys stop a retry from starting a run twice.
+description: The error codes the API returns and what to do about each, the request ID to quote to support, which requests are safe to retry, and how idempotency keys stop a retry from doing the work twice.
 icon: TriangleAlert
 ---
 
@@ -31,14 +31,14 @@ When something goes wrong and you contact Lodol's support, quote it: it finds th
 | --- | --- | --- |
 | `200` | Success | |
 | `202` | Accepted: the run has started | Follow it with [Get a run](/docs/api/runs#get-a-run) |
-| `400` | The request isn't valid, such as an input that doesn't match the workflow | Fix the request; the message names the problem. Don't retry as is. |
+| `400` | The request isn't valid, such as an input that doesn't match the workflow, or a workflow to save that isn't valid | Fix the request; the message names the problem. Don't retry as is. |
 | `401` | The API key is missing or invalid | Check the `Authorization` header and the key |
 | `402` | Lodol Local only: the installation needs a licence | Add the licence in **Settings** |
 | `403` | The key lacks a scope, its creator's role doesn't allow the action, or the plan doesn't include it | Use a key with the right scope, or change the creator's role |
-| `404` | The workflow or run doesn't exist, or was deleted | Check the ID |
-| `409` | A request with the same `Idempotency-Key` is still being processed, or a run to delete hasn't finished | Depends on the `error_code`: see [Error codes](#error-codes) |
+| `404` | The workflow, run or approval request doesn't exist, or was deleted | Check the ID |
+| `409` | A request with the same `Idempotency-Key` is still being processed, a run to delete hasn't finished, a run can't be retried, or an approval request has already been settled | Depends on the `error_code`: see [Error codes](#error-codes) |
 | `422` | The `Idempotency-Key` was already used for a different request | Use a new key for a new request |
-| `429` | Too many requests, too many runs in progress at once, or the month's runs are used up | Depends on the `error_code`: see [Error codes](#error-codes) |
+| `429` | Too many requests, or the month's runs are used up | Depends on the `error_code`: see [Error codes](#error-codes) |
 | `500` | Something went wrong on Lodol's side | Retry with backoff |
 
 ## Error codes
@@ -58,10 +58,14 @@ These name a problem precisely, so your code can handle each its own way:
 | `workflow_not_runnable` | `400` | The workflow is a draft, or isn't finished | Publish or fix it in Lodol |
 | `run_already_finished` | `400` | [Stop a run](/docs/api/runs#stop-a-run) on a run that has already finished | Nothing: the run is over. [Get it](/docs/api/runs#get-a-run) to see how it ended |
 | `run_not_finished` | `409` | [Delete a run](/docs/api/runs#delete-a-run) on a run that, or a run it started, hasn't finished | [Stop it](/docs/api/runs#stop-a-run), or wait for it to finish, then delete it |
+| `run_not_retryable` | `409` | [Retry a run](/docs/api/runs#retry-a-run) on a run that can't be retried that way, such as one that didn't fail | The message says why; some can still be retried from the start |
+| `invalid_workflow` | `400` | A workflow to [create](/docs/api/workflows#create-a-workflow) or change isn't valid, uses something the key's member can't, or would lose all its steps | Fix it; the message says what. [Validate a workflow](/docs/api/workflows#validate-a-workflow) checks without saving |
+| `approval_already_answered` | `409` | [Answer an approval request](/docs/api/approvals#answer-an-approval-request) on one someone already answered | Nothing: read its `decision` to see the answer |
+| `approval_expired` | `409` | Nobody answered the request in time: it closed, or its time limit answered it | Nothing: the step has moved on as it was set to |
+| `approval_withdrawn` | `409` | The run was stopped, or its workflow deleted, before anyone answered | Nothing: there's no run waiting for an answer |
 | `request_in_progress` | `409` | A request with this `Idempotency-Key` is still being worked on | Retry after the `Retry-After` header's seconds |
 | `idempotency_key_reused` | `422` | This `Idempotency-Key` was already used for a different request | Use a new key for a new request |
 | `rate_limited` | `429` | Too many requests in the last minute | Retry after the `Retry-After` header's seconds |
-| `concurrency_limit` | `429` | As many runs are going as your plan allows at once | Start the run once one finishes. Retrying straight away won't help |
 | `monthly_run_limit` | `429` | The month's runs are used up | Runs come back at `resets_at`; add runs or turn on extra runs in **Billing** to go on now |
 
 Any other error has the code for its kind of problem: `invalid_request` (`400`), `unauthorized` (`401`), `licence_required` (`402`), `forbidden` (`403`), `not_found` (`404`), `method_not_allowed` (`405`), `conflict` (`409`), `request_too_large` (`413`), `unprocessable_request` (`422`), `internal_error` (`500`) or `service_unavailable` (`503`).
@@ -102,20 +106,11 @@ Any other error has the code for its kind of problem: `invalid_request` (`400`),
     }
     ```
   </Accordion>
-  <Accordion title="429: Too many requests, too many runs at once, or no runs left">
+  <Accordion title="429: Too many requests, or no runs left">
     Over the rate limit, with a `Retry-After` header saying how many seconds to wait:
 
     ```json
     { "error": "Rate limit exceeded. Please wait before trying again.", "error_code": "rate_limited" }
-    ```
-
-    Too many runs already in progress. There's no `Retry-After`: start the run once one of them finishes.
-
-    ```json
-    {
-      "error": "Concurrent execution limit reached. Your plan allows 5 concurrent executions via the API.",
-      "error_code": "concurrency_limit"
-    }
     ```
 
     The month's runs are used up. `resets_at` says when they come back, `limit` how many runs a month the plan includes, and `extra_runs_spend_limit` how many dollars of extra runs a month the workspace allows (`null` when it pays for none):
@@ -134,15 +129,18 @@ Any other error has the code for its kind of problem: `invalid_request` (`400`),
 
 ## Retry safely
 
-Retry `409`, `5xx`, and `429` with the code `rate_limited`, waiting longer each time. When the response has a `Retry-After` header, wait that many seconds; otherwise back off exponentially. Don't retry other `4xx` responses: the request itself needs fixing. Nor the other `429`s: `concurrency_limit` clears only when a run finishes, and `monthly_run_limit` when the month's runs come back.
+Retry `5xx`, `409` with the code `request_in_progress`, and `429` with the code `rate_limited`, waiting longer each time. When the response has a `Retry-After` header, wait that many seconds; otherwise back off exponentially. Don't retry other `4xx` responses: the request itself needs fixing, or, like an approval request that's already been answered, there's nothing left to do. Nor `429` with `monthly_run_limit`, which clears only when the month's runs come back.
 
 ```js tab="JavaScript" tab-group="lang"
 async function lodolRequest(url, options = {}, maxRetries = 3) {
   for (let attempt = 0; ; attempt++) {
     const response = await fetch(url, options);
-    const code = response.status === 429 ? (await response.clone().json()).error_code : null;
+    const code =
+      response.status === 409 || response.status === 429
+        ? (await response.clone().json()).error_code
+        : null;
     const retryable =
-      response.status === 409 || response.status >= 500 || code === 'rate_limited';
+      response.status >= 500 || code === 'request_in_progress' || code === 'rate_limited';
     if (!retryable || attempt === maxRetries) return response;
 
     const retryAfter = Number(response.headers.get('Retry-After'));
@@ -159,11 +157,14 @@ import requests
 def lodol_request(method, url, max_retries=3, **kwargs):
     for attempt in range(max_retries + 1):
         response = requests.request(method, url, **kwargs)
-        code = response.json().get("error_code") if response.status_code == 429 else None
-        retryable = (
-            response.status_code == 409
-            or response.status_code >= 500
-            or code == "rate_limited"
+        code = (
+            response.json().get("error_code")
+            if response.status_code in (409, 429)
+            else None
+        )
+        retryable = response.status_code >= 500 or code in (
+            "request_in_progress",
+            "rate_limited",
         )
         if not retryable or attempt == max_retries:
             return response
@@ -171,11 +172,11 @@ def lodol_request(method, url, max_retries=3, **kwargs):
         time.sleep(int(retry_after) if retry_after else 2 ** attempt)
 ```
 
-Retry a request that starts a run only with an idempotency key, or a timeout could start the same run twice.
+Retry a request that starts a run or saves a workflow only with an idempotency key, or a timeout could do it twice.
 
 ## Idempotency
 
-`POST` requests, [Run a workflow](/docs/api/runs#run-a-workflow) and [Stop a run](/docs/api/runs#stop-a-run), accept an `Idempotency-Key` header. Lodol remembers the response to the first request with each key, and returns that same response to any later request with the same key, instead of doing the work again.
+Requests that do something, [Run a workflow](/docs/api/runs#run-a-workflow), [Stop a run](/docs/api/runs#stop-a-run), [Retry a run](/docs/api/runs#retry-a-run), [Answer an approval request](/docs/api/approvals#answer-an-approval-request) and [creating](/docs/api/workflows#create-a-workflow), [replacing](/docs/api/workflows#replace-a-workflow) or [editing](/docs/api/workflows#edit-a-workflow) a workflow, accept an `Idempotency-Key` header. Lodol remembers the response to the first request with each key, and returns that same response to any later request with the same key, instead of doing the work again.
 
 ```bash
 curl -X POST https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async \

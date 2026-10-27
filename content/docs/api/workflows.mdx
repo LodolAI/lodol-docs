@@ -1,6 +1,6 @@
 ---
 title: Workflows
-description: List the workspace's workflows, read one with its steps, or delete one for good.
+description: List the workspace's workflows, read one with its steps, create or change one, check a workflow before saving it, or delete one for good.
 icon: Workflow
 ---
 
@@ -15,6 +15,8 @@ icon: Workflow
   "created_at": "2026-01-15T10:30:00+00:00",
   "updated_at": "2026-01-15T10:30:00+00:00",
   "last_run_at": "2026-03-17T08:00:00+00:00",
+  "publish_state": "published",
+  "starts_from_trigger": false,
   "inputs": [
     { "name": "client", "type": "text", "required": true, "default": null, "description": "The client to report on" },
     { "name": "month", "type": "text", "required": false, "default": "last month", "description": "" }
@@ -34,6 +36,8 @@ icon: Workflow
 <Field id="created_at" type="string or null" description="When it was created, in ISO 8601." />
 <Field id="updated_at" type="string or null" description="When it was last changed, in ISO 8601." />
 <Field id="last_run_at" type="string or null" description="When it last ran, in ISO 8601." />
+<Field id="publish_state" type="string" description="published, or draft for a workflow that can't be run until it's published in Lodol." />
+<Field id="starts_from_trigger" type="boolean" description="Whether it starts from its own trigger or schedule. Running one turns it on rather than running it to an end: see Workflows that start themselves." />
 <Field id="inputs" type="array" description="The inputs the workflow declares, which a run can give values for. Empty if it declares none, and for a workflow that starts from a trigger or a schedule, which takes no inputs." />
 <Field id="outputs" type="array" description="The outputs the workflow declares: what a run that succeeds hands back, in the run's outputs. Empty if it declares none." />
 </Fields>
@@ -55,6 +59,8 @@ Each entry in `outputs` describes one output:
 <Field id="type" type="string" description="One of text, number, boolean, list or object." />
 <Field id="description" type="string" description="What the output is, as written in the workflow." />
 </Fields>
+
+A workflow that starts from its own trigger is described under [Workflows that start themselves](/docs/api/runs#workflows-that-start-themselves).
 
 ### Workflow IDs and versions
 
@@ -156,6 +162,190 @@ workflow = response.json()
   "...": "the other workflow fields"
 }
 ```
+
+---
+
+## Create a workflow
+
+<Endpoint method="POST" path="/api/v1/workflows" />
+
+Saves a new workflow, published, so it can be run straight away, and private to the member who created the key until they share it. Creating a workflow doesn't run it. Requires the `workflows:write` scope (**Create and edit workflows**, ticked by default), and the member who created the key must be allowed to create workflows.
+
+The workflow is checked as it is when your AI tool saves one: its program must be valid, and may use only the apps, connections and other workflows that member can use. A workflow that fails a check isn't saved: the request gets `400` with the code `invalid_workflow` and a message saying what to fix. [Validate a workflow](#validate-a-workflow) runs the same checks without saving.
+
+<Fields title="Headers">
+<Field id="Idempotency-Key" type="string" description="Makes the request safe to retry: a repeat with the same key returns the first response instead of saving another workflow. See Idempotency." />
+</Fields>
+
+<Fields title="Body">
+<Field id="name" type="string" description="The workflow's name, up to 255 characters." facts="Required." />
+<Field id="description" type="string" description="What it does, up to 5,000 characters." />
+<Field id="program" type="object" description="Its trigger, inputs, outputs and steps, in the format described in Workflow format." facts="Required." />
+</Fields>
+
+```bash tab="cURL" tab-group="lang"
+curl -X POST https://api-prod.lodol.com/api/v1/workflows \
+  -H "Authorization: Bearer $LODOL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: create-greeting-workflow" \
+  -d '{
+    "name": "Greeting",
+    "program": {
+      "kind": "Program",
+      "version": 1,
+      "inputs": [{ "name": "who", "type": "text", "required": true }],
+      "outputs": [{ "name": "greeting", "type": "text" }],
+      "body": [
+        {
+          "kind": "LetStmt",
+          "name": "greeting",
+          "init": {
+            "kind": "BinaryExpr",
+            "op": "+",
+            "left": { "kind": "Literal", "value": "Hello, " },
+            "right": { "kind": "VarRef", "name": "who" }
+          }
+        }
+      ]
+    }
+  }'
+```
+
+```js tab="JavaScript"
+const response = await fetch('https://api-prod.lodol.com/api/v1/workflows', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.LODOL_API_KEY}`,
+    'Content-Type': 'application/json',
+    'Idempotency-Key': 'create-greeting-workflow',
+  },
+  body: JSON.stringify({ name: 'Greeting', program }),
+});
+const workflow = await response.json();
+```
+
+```python tab="Python"
+response = requests.post(
+    "https://api-prod.lodol.com/api/v1/workflows",
+    headers={
+        "Authorization": f"Bearer {os.environ['LODOL_API_KEY']}",
+        "Idempotency-Key": "create-greeting-workflow",
+    },
+    json={"name": "Greeting", "program": program},
+)
+workflow = response.json()
+```
+
+**Response `201`:** the new [workflow object](#the-workflow-object), with its `program` and these fields too:
+
+<Fields title="Also returned">
+<Field id="version_id" type="string" description="The ID of the version that was saved." />
+<Field id="url" type="string" description="Where to open the workflow in Lodol." />
+<Field id="apps_to_connect" type="array" description="Apps the workflow uses that the key's member hasn't connected yet. Connect them in Lodol before running it." />
+<Field id="note" type="string" description="Anything Lodol filled in for you, such as an empty branch for a step's failures. Left out when there's nothing to say." />
+</Fields>
+
+```json
+{
+  "id": "6ae1295539658490afe878cc",
+  "name": "Greeting",
+  "description": "",
+  "program": { "kind": "Program", "version": 1, "...": "..." },
+  "publish_state": "published",
+  "starts_from_trigger": false,
+  "inputs": [{ "name": "who", "type": "text", "required": true, "default": null, "description": "" }],
+  "outputs": [{ "name": "greeting", "type": "text", "description": "" }],
+  "version_id": "6ae1295539658490afe878cc",
+  "url": "https://app.lodol.com/create?programId=6ae1295539658490afe878cc",
+  "apps_to_connect": [],
+  "...": "the other workflow fields"
+}
+```
+
+---
+
+## Replace a workflow
+
+<Endpoint method="PUT" path="/api/v1/workflows/:id" />
+
+Replaces a workflow's program, its name, its description, or any of them, and saves it as a new version. It keeps its `id`, its publish state and who it's shared with. Requires the `workflows:write` scope; the member who created the key must be allowed to edit workflows, and have edit access to this one (otherwise `403` with the code `item_view_only`).
+
+A new program is checked as for [Create a workflow](#create-a-workflow), and one that fails a check changes nothing. Sending a program with no steps for a workflow that has some is refused too, as it's far more often a mistake: leave `program` out to change only the name or description.
+
+<Fields title="Headers">
+<Field id="Idempotency-Key" type="string" description="Makes the request safe to retry, as for Create a workflow." />
+</Fields>
+
+<Fields title="Body" description="At least one of these.">
+<Field id="program" type="object" description="The new program, in the format described in Workflow format." />
+<Field id="name" type="string" description="A new name." />
+<Field id="description" type="string" description="A new description." />
+</Fields>
+
+```bash
+curl -X PUT https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d \
+  -H "Authorization: Bearer $LODOL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Monthly Client Report (EU)"}'
+```
+
+**Response `200`:** the workflow as saved, as for [Create a workflow](#create-a-workflow), and `trigger_paused`. Saving a workflow that starts from its own trigger pauses its trigger, and `trigger_paused` is `true` when it was listening: [run it](/docs/api/runs#run-a-workflow) again to turn it on with the new version.
+
+---
+
+## Edit a workflow
+
+<Endpoint method="PATCH" path="/api/v1/workflows/:id" />
+
+Changes part of a workflow's program with [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902) operations, and optionally its name or description, and saves it as a new version. Use it instead of [Replace a workflow](#replace-a-workflow) for a change short of a rewrite. Requires what replacing a workflow does, and is checked the same way.
+
+<Fields title="Headers">
+<Field id="Idempotency-Key" type="string" description="Makes the request safe to retry, as for Create a workflow." />
+</Fields>
+
+<Fields title="Body">
+<Field id="operations" type="array" description="1 to 100 operations, applied in order to the program as it is now. Each has an op (replace, add or remove), a path into the program, such as /body/0/init/value, and for add and replace a value. To add to a list, give the index to insert at, or - to add at the end." facts="Required." />
+<Field id="name" type="string" description="A new name." />
+<Field id="description" type="string" description="A new description." />
+</Fields>
+
+```bash
+curl -X PATCH https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d \
+  -H "Authorization: Bearer $LODOL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"operations": [{"op": "replace", "path": "/body/0/init/left/value", "value": "Hi, "}]}'
+```
+
+When an edit touches several places in one list, put the operations from the highest index down, so an insert or removal doesn't move the ones after it. An operation that can't be applied, such as a path that isn't there, returns `400` with a message naming it, and nothing changes.
+
+**Response `200`:** as for [Replace a workflow](#replace-a-workflow).
+
+---
+
+## Validate a workflow
+
+<Endpoint method="POST" path="/api/v1/workflows/validate" />
+
+Checks a program without saving anything, and previews what it would do: a dry run against stand-ins for its apps, its steps, and warnings about likely mistakes, such as a field it reads that the step before never returns. Requires the `workflows:write` scope.
+
+<Fields title="Body">
+<Field id="program" type="object" description="The program to check, in the format described in Workflow format." facts="Required." />
+</Fields>
+
+```bash
+curl -X POST https://api-prod.lodol.com/api/v1/workflows/validate \
+  -H "Authorization: Bearer $LODOL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"program": {"kind": "Program", "version": 1, "body": [{"kind": "Nope"}]}}'
+```
+
+**Response `200`:** `valid` says whether it would save. When it wouldn't, `error` says what to fix:
+
+```json
+{ "valid": false, "error": "Invalid Stmt kind: Nope (at /body/0)" }
+```
+
+When it would, the response has the preview: `preview` (the dry run), `steps`, `actions` (the app actions it calls), `has_trigger`, and `warnings` when there are any.
 
 ---
 
