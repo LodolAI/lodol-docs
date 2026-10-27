@@ -1,7 +1,7 @@
 {
   "actions": {
     "ask": {
-      "description": "Ask Foursquare a question in plain language, such as 'best cocktail lounge in Williamsburg', and get back the places that answer it along with why each one matches.",
+      "description": "Ask Foursquare a question in plain language, such as 'best cocktail lounge in Williamsburg', and get back the places that answer it along with why each one matches. Foursquare bills Ask at its own rate and allows about one request a second.",
       "display_name": "Ask for places",
       "display_str_template": "Ask Foursquare '{query}'.",
       "handler": "actions.ask",
@@ -15,15 +15,20 @@
             "categories": [
               "Coffee Shop"
             ],
+            "country": "US",
+            "date_closed": null,
             "fsq_place_id": "4b6f0b40f964a520bce02ce3",
             "justifications": [
               "Reviewers mention quiet seating and wifi"
             ],
             "latitude": 41.878,
+            "locality": "Chicago",
             "longitude": -87.629,
             "name": "Intelligentsia Coffee",
+            "postcode": "60604",
             "price": 2,
             "rating": 8.7,
+            "region": "IL",
             "tel": "(312) 253-0594",
             "website": "https://www.intelligentsiacoffee.com"
           }
@@ -31,6 +36,7 @@
         "summary": "Three well-rated cafes with quiet seating downtown."
       },
       "name": "ask",
+      "output_formatter": "actions.format_ask_output",
       "parameters": [
         {
           "description": "The question to answer, for example 'show me all cheap cafes in Williamsburg'.",
@@ -60,10 +66,17 @@
           "name": "context",
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Also return premium data such as the rating and price tier. Foursquare bills the request as a Premium call, which has no free allowance.",
+          "display_name": "Include premium data",
+          "name": "include_premium_fields",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         }
       ],
       "path": "/actions/library/foursquare/ask",
-      "result_str_template": "Places retrieved.",
+      "result_str_template": "Found {foursquare_ask,count} places.",
       "returns": {
         "properties": {
           "count": {
@@ -85,6 +98,20 @@
                   },
                   "type": "array"
                 },
+                "country": {
+                  "description": "Two-letter country code of the place, such as US.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "date_closed": {
+                  "description": "When Foursquare recorded the place as permanently closed. Empty for a place that is open.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "fsq_place_id": {
                   "description": "Foursquare place ID. Pass this to the other Foursquare actions.",
                   "type": "string"
@@ -100,6 +127,13 @@
                   "description": "Latitude of the place.",
                   "type": "number"
                 },
+                "locality": {
+                  "description": "City or locality the place is in.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "longitude": {
                   "description": "Longitude of the place.",
                   "type": "number"
@@ -108,13 +142,27 @@
                   "description": "Name of the place.",
                   "type": "string"
                 },
+                "postcode": {
+                  "description": "Postal or ZIP code of the place.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "price": {
-                  "description": "Price tier from 1 (most affordable) to 4 (most expensive).",
+                  "description": "Price tier from 1 (most affordable) to 4 (most expensive). Premium data: empty unless premium data was included.",
                   "type": "integer"
                 },
                 "rating": {
-                  "description": "Foursquare rating from 0 to 10.",
+                  "description": "Foursquare rating from 0 to 10. Premium data: empty unless premium data was included.",
                   "type": "number"
+                },
+                "region": {
+                  "description": "State, province or region the place is in.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "tel": {
                   "description": "Phone number of the place.",
@@ -137,8 +185,608 @@
         "type": "object"
       }
     },
+    "autocomplete": {
+      "description": "Complete a partly typed name near a point, the way a search box suggests as you type: matching places, searches such as a category or chain, and areas such as cities.",
+      "display_name": "Autocomplete places",
+      "display_str_template": "Autocomplete '{0}' on Foursquare.",
+      "handler": "actions.autocomplete",
+      "id": "foursquare_autocomplete",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "suggestions": [
+          {
+            "address": "53 W Jackson Blvd, Chicago, IL 60604",
+            "category": null,
+            "chain": null,
+            "country_code": null,
+            "distance": 120,
+            "fsq_place_id": "4b6f0b40f964a520bce02ce3",
+            "geo_type": null,
+            "latitude": 41.878,
+            "longitude": -87.629,
+            "name": "Intelligentsia Coffee",
+            "search_query": null,
+            "secondary_text": "53 W Jackson Blvd, Chicago, IL 60604",
+            "text": "Intelligentsia Coffee",
+            "type": "place"
+          }
+        ]
+      },
+      "name": "autocomplete",
+      "output_formatter": "actions.format_autocomplete_output",
+      "parameters": [
+        {
+          "description": "The text typed so far, at least 3 characters.",
+          "display_name": "Query",
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Coordinates to suggest around, as 'latitude,longitude' (e.g. 41.8781,-87.6298).",
+          "display_name": "Latitude, longitude",
+          "name": "ll",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How far from the coordinates to favour suggestions, in meters. Defaults to 5000.",
+          "display_name": "Radius (meters)",
+          "maximum": 100000,
+          "minimum": 0,
+          "name": "radius",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Which kinds of suggestion to return. Defaults to all.",
+          "display_name": "Kinds of suggestion",
+          "multi_select": true,
+          "name": "types",
+          "options": [
+            {
+              "label": "Places",
+              "value": "place"
+            },
+            {
+              "label": "Searches (categories and chains)",
+              "value": "search"
+            },
+            {
+              "label": "Areas (cities, neighbourhoods, regions)",
+              "value": "geo"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "One kind of suggestion to rank first.",
+          "display_name": "Favour",
+          "name": "bias",
+          "options": [
+            {
+              "label": "Places",
+              "value": "place"
+            },
+            {
+              "label": "Searches (categories and chains)",
+              "value": "search"
+            },
+            {
+              "label": "Areas (cities, neighbourhoods, regions)",
+              "value": "geo"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Maximum number of suggestions, up to 50. Defaults to 10.",
+          "display_name": "Limit",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/foursquare/autocomplete",
+      "result_str_template": "Found {foursquare_autocomplete,count} suggestions.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "Number of suggestions returned.",
+            "type": "integer"
+          },
+          "suggestions": {
+            "description": "Suggestions, best first.",
+            "items": {
+              "properties": {
+                "address": {
+                  "description": "Address of the place, for a place.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "category": {
+                  "description": "The category a search suggestion is for.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "chain": {
+                  "description": "The chain a search suggestion is for.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "country_code": {
+                  "description": "Country code of the area.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "distance": {
+                  "description": "Distance in meters from the coordinates, for a place.",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "fsq_place_id": {
+                  "description": "The place's ID, for a place.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "geo_type": {
+                  "description": "What kind of area it is, such as a city.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "latitude": {
+                  "description": "Latitude of the place, or the area's centre.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "longitude": {
+                  "description": "Longitude of the place, or the area's centre.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Name of the place or area.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "search_query": {
+                  "description": "The search to run, for a search suggestion.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "secondary_text": {
+                  "description": "Text shown under it, such as the address.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "text": {
+                  "description": "The suggestion's main text.",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "place, search or geo (an area).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "find_geotagging_candidates": {
+      "description": "List the places someone standing at a point is most likely at, closest first, for tagging a photo, post or visit with a place. Includes smaller places that a search leaves out.",
+      "display_name": "Find places at a location",
+      "display_str_template": "Find Foursquare places at {0}.",
+      "handler": "actions.find_geotagging_candidates",
+      "id": "foursquare_find_geotagging_candidates",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "places": [
+          {
+            "address": "53 W Jackson Blvd, Chicago, IL 60604",
+            "categories": [
+              "Coffee Shop"
+            ],
+            "country": "US",
+            "date_closed": null,
+            "distance": 15,
+            "fsq_place_id": "4b6f0b40f964a520bce02ce3",
+            "latitude": 41.878,
+            "locality": "Chicago",
+            "longitude": -87.629,
+            "name": "Intelligentsia Coffee",
+            "postcode": "60604",
+            "price": 2,
+            "rating": 8.7,
+            "region": "IL",
+            "tel": "(312) 253-0594",
+            "website": "https://www.intelligentsiacoffee.com"
+          }
+        ]
+      },
+      "name": "find_geotagging_candidates",
+      "output_formatter": "actions.format_places_output",
+      "parameters": [
+        {
+          "description": "Where the person is, as 'latitude,longitude' (e.g. 41.8781,-87.6298).",
+          "display_name": "Latitude, longitude",
+          "name": "ll",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How accurate the coordinates are, in meters, as a phone reports it.",
+          "display_name": "Location accuracy (meters)",
+          "minimum": 0,
+          "name": "hacc",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Height above sea level in meters, as a phone reports it, to tell floors apart.",
+          "display_name": "Altitude (meters)",
+          "name": "altitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only places whose name matches this text.",
+          "display_name": "Query",
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Maximum number of places to return, up to 50. Defaults to 10.",
+          "display_name": "Limit",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Also return premium data such as the rating and price tier. Foursquare bills the request as a Premium call, which has no free allowance.",
+          "display_name": "Include premium data",
+          "name": "include_premium_fields",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/foursquare/find-geotagging-candidates",
+      "result_str_template": "Found {foursquare_find_geotagging_candidates,count} places.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "Number of places returned.",
+            "type": "integer"
+          },
+          "places": {
+            "description": "The places found, best match first.",
+            "items": {
+              "properties": {
+                "address": {
+                  "description": "Full formatted street address.",
+                  "type": "string"
+                },
+                "categories": {
+                  "description": "Category labels, such as 'Coffee Shop' or 'Italian Restaurant'.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "country": {
+                  "description": "Two-letter country code of the place, such as US.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "date_closed": {
+                  "description": "When Foursquare recorded the place as permanently closed. Empty for a place that is open.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "distance": {
+                  "description": "Distance in meters from the search location, when the search was anchored to one.",
+                  "type": "integer"
+                },
+                "fsq_place_id": {
+                  "description": "Foursquare place ID. Pass this to the other Foursquare actions.",
+                  "type": "string"
+                },
+                "latitude": {
+                  "description": "Latitude of the place.",
+                  "type": "number"
+                },
+                "locality": {
+                  "description": "City or locality the place is in.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "longitude": {
+                  "description": "Longitude of the place.",
+                  "type": "number"
+                },
+                "name": {
+                  "description": "Name of the place.",
+                  "type": "string"
+                },
+                "postcode": {
+                  "description": "Postal or ZIP code of the place.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "price": {
+                  "description": "Price tier from 1 (most affordable) to 4 (most expensive). Premium data: empty unless premium data was included.",
+                  "type": "integer"
+                },
+                "rating": {
+                  "description": "Foursquare rating from 0 to 10. Premium data: empty unless premium data was included.",
+                  "type": "number"
+                },
+                "region": {
+                  "description": "State, province or region the place is in.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "tel": {
+                  "description": "Phone number of the place.",
+                  "type": "string"
+                },
+                "website": {
+                  "description": "Website of the place.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "flag_place": {
+      "description": "Report that some of a place's details are wrong, such as its address or phone number, without knowing the right ones.",
+      "display_name": "Flag a place",
+      "display_str_template": "Flag Foursquare place {0}.",
+      "handler": "actions.flag_place",
+      "id": "foursquare_flag_place",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "dry_run": false,
+        "errors": [],
+        "suggested_edits": [
+          {
+            "created_at": "2025-07-01T15:04:05Z",
+            "created_fsq_place_id": null,
+            "fsq_place_id": "4b6f0b40f964a520bce02ce3",
+            "matched_fsq_place_id": null,
+            "resolved_at": null,
+            "status": "pending",
+            "suggestion_id": "6650c1d2e3f4a5b6c7d8e9f0",
+            "type": "flag"
+          }
+        ],
+        "suggestion_id": "6650c1d2e3f4a5b6c7d8e9f0",
+        "suggestion_status": "pending"
+      },
+      "name": "flag_place",
+      "output_formatter": "actions.format_suggestion_output",
+      "parameters": [
+        {
+          "description": "The Foursquare place ID, from a search or an earlier step.",
+          "display_name": "Place ID",
+          "name": "fsq_place_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The details that are wrong.",
+          "display_name": "Wrong details",
+          "multi_select": true,
+          "name": "fields",
+          "options": [
+            {
+              "label": "Name",
+              "value": "name"
+            },
+            {
+              "label": "Address",
+              "value": "address"
+            },
+            {
+              "label": "City or locality",
+              "value": "locality"
+            },
+            {
+              "label": "Region",
+              "value": "region"
+            },
+            {
+              "label": "State",
+              "value": "state"
+            },
+            {
+              "label": "Postcode",
+              "value": "postcode"
+            },
+            {
+              "label": "Latitude",
+              "value": "latitude"
+            },
+            {
+              "label": "Longitude",
+              "value": "longitude"
+            },
+            {
+              "label": "Phone number",
+              "value": "tel"
+            },
+            {
+              "label": "Website",
+              "value": "website"
+            },
+            {
+              "label": "Action links (booking, ordering)",
+              "value": "placeActions"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "A note for Foursquare's reviewers explaining the problem.",
+          "display_name": "Comment",
+          "multiline": true,
+          "name": "comment",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Have Foursquare check the suggestion and answer as it would, without recording it.",
+          "display_name": "Check only (dry run)",
+          "name": "dry_run",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/foursquare/flag-place",
+      "result_str_template": "Flag {foursquare_flag_place,suggestion_id} is {foursquare_flag_place,suggestion_status}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "Number of suggestions recorded.",
+            "type": "integer"
+          },
+          "dry_run": {
+            "description": "True when the suggestion was only checked, not sent.",
+            "type": "boolean"
+          },
+          "errors": {
+            "description": "Problems Foursquare noted with the suggestion.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "suggested_edits": {
+            "description": "The suggestions Foursquare recorded.",
+            "items": {
+              "properties": {
+                "created_at": {
+                  "description": "When the suggestion was made.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "created_fsq_place_id": {
+                  "description": "The place the suggestion created, if it made a new one.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "fsq_place_id": {
+                  "description": "The place the suggestion is about.",
+                  "type": "string"
+                },
+                "matched_fsq_place_id": {
+                  "description": "The existing place the suggestion was matched to, if any.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "resolved_at": {
+                  "description": "When Foursquare accepted or rejected it, once it has.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "status": {
+                  "description": "Where the suggestion has got to, such as pending or accepted.",
+                  "type": "string"
+                },
+                "suggestion_id": {
+                  "description": "ID of the suggestion, for 'Get suggestion status'.",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "What kind of suggestion it is, such as an edit or a flag.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "suggestion_id": {
+            "description": "ID of the first suggestion recorded, for 'Get suggestion status'.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suggestion_status": {
+            "description": "Status of the first suggestion recorded, such as pending.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
     "get_place_details": {
-      "description": "Look up the full profile of a place, including hours and contact details.",
+      "description": "Look up the full profile of a place, including its address, contact details and chains, and with premium data its hours, rating and description.",
       "display_name": "Get place details",
       "display_str_template": "Get Foursquare place details.",
       "handler": "actions.get_place_details",
@@ -149,20 +797,39 @@
         "categories": [
           "Coffee Shop"
         ],
+        "chains": [
+          "Intelligentsia Coffee"
+        ],
+        "country": "US",
+        "date_closed": null,
         "description": "Third-wave coffee bar in the Loop.",
         "email": "hello@intelligentsiacoffee.com",
+        "facebook_id": "110428365655224",
         "fsq_place_id": "4b6f0b40f964a520bce02ce3",
         "hours": "Mon-Fri 6:00 AM-7:00 PM; Sat-Sun 7:00 AM-7:00 PM",
+        "instagram": "intelligentsiacoffee",
         "latitude": 41.878,
+        "locality": "Chicago",
         "longitude": -87.629,
+        "menu": "https://www.intelligentsiacoffee.com/menu",
         "name": "Intelligentsia Coffee",
         "open_now": true,
+        "placemaker_url": "https://foursquare.com/placemakers/review-place/4b6f0b40f964a520bce02ce3",
+        "popularity": 0.97,
+        "postcode": "60604",
         "price": 2,
         "rating": 8.7,
+        "region": "IL",
+        "tastes": [
+          "pour over",
+          "cozy"
+        ],
         "tel": "(312) 253-0594",
+        "twitter": "intelligentsia",
         "website": "https://www.intelligentsiacoffee.com"
       },
       "name": "get_place_details",
+      "output_formatter": "actions.format_place_details_output",
       "parameters": [
         {
           "description": "The Foursquare place ID to look up.",
@@ -170,10 +837,17 @@
           "name": "fsq_place_id",
           "required": true,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Also return premium data such as the rating and price tier. Foursquare bills the request as a Premium call, which has no free allowance.",
+          "display_name": "Include premium data",
+          "name": "include_premium_fields",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         }
       ],
       "path": "/actions/library/foursquare/place-details",
-      "result_str_template": "Place details retrieved.",
+      "result_str_template": "Retrieved {foursquare_get_place_details,name}.",
       "returns": {
         "description": "Detailed information about a single place.",
         "properties": {
@@ -188,49 +862,140 @@
             },
             "type": "array"
           },
+          "chains": {
+            "description": "Chains the place belongs to.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "country": {
+            "description": "Two-letter country code of the place, such as US.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_closed": {
+            "description": "When Foursquare recorded the place as permanently closed. Empty for a place that is open.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "description": {
-            "description": "Description of the place.",
+            "description": "Description of the place. Premium data.",
             "type": "string"
           },
           "email": {
             "description": "Contact email address for the place.",
             "type": "string"
           },
+          "facebook_id": {
+            "description": "The place's Facebook page ID.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "fsq_place_id": {
             "description": "Foursquare place ID. Pass this to the other Foursquare actions.",
             "type": "string"
           },
           "hours": {
-            "description": "Opening hours, written out for reading.",
+            "description": "Opening hours, written out for reading. Premium data.",
             "type": "string"
+          },
+          "instagram": {
+            "description": "The place's Instagram handle.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "latitude": {
             "description": "Latitude of the place.",
             "type": "number"
           },
+          "locality": {
+            "description": "City or locality the place is in.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "longitude": {
             "description": "Longitude of the place.",
             "type": "number"
+          },
+          "menu": {
+            "description": "Link to the place's menu. Premium data.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "name": {
             "description": "Name of the place.",
             "type": "string"
           },
           "open_now": {
-            "description": "Whether the place is open right now.",
+            "description": "Whether the place is open right now. Premium data.",
             "type": "boolean"
           },
+          "placemaker_url": {
+            "description": "Link to suggest changes to the place on Foursquare.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "popularity": {
+            "description": "How busy the place is by foot traffic, from 0 to 1. Premium data.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "postcode": {
+            "description": "Postal or ZIP code of the place.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "price": {
-            "description": "Price tier from 1 (most affordable) to 4 (most expensive).",
+            "description": "Price tier from 1 (most affordable) to 4 (most expensive). Premium data: empty unless premium data was included.",
             "type": "integer"
           },
           "rating": {
-            "description": "Foursquare rating from 0 to 10.",
+            "description": "Foursquare rating from 0 to 10. Premium data: empty unless premium data was included.",
             "type": "number"
+          },
+          "region": {
+            "description": "State, province or region the place is in.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tastes": {
+            "description": "Words visitors use for the place, such as 'cozy'. Premium data.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "tel": {
             "description": "Phone number of the place.",
             "type": "string"
+          },
+          "twitter": {
+            "description": "The place's X (Twitter) handle.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "website": {
             "description": "Website of the place.",
@@ -241,7 +1006,7 @@
       }
     },
     "get_place_photos": {
-      "description": "List the photos Foursquare users have uploaded for a place.",
+      "description": "List the photos Foursquare users have uploaded for a place. Foursquare bills photos as a Premium call.",
       "display_name": "Get place photos",
       "display_str_template": "Get Foursquare photos for a place.",
       "handler": "actions.get_place_photos",
@@ -252,7 +1017,7 @@
         "photos": [
           {
             "classifications": [
-              "indoor"
+              "indoor_general"
             ],
             "created_at": "2024-03-02T18:41:11.000Z",
             "fsq_photo_id": "5b2c3d4e5f6a7b8c9d0e1f2a",
@@ -263,6 +1028,7 @@
         ]
       },
       "name": "get_place_photos",
+      "output_formatter": "actions.format_photos_output",
       "parameters": [
         {
           "description": "The Foursquare place ID to get photos for.",
@@ -279,10 +1045,101 @@
           "name": "limit",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Which photos come first. Defaults to most popular.",
+          "display_name": "Order",
+          "name": "sort",
+          "options": [
+            {
+              "label": "Most popular first",
+              "value": "POPULAR"
+            },
+            {
+              "label": "Newest first",
+              "value": "NEWEST"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only photos of these kinds. Defaults to every kind.",
+          "display_name": "What the photos show",
+          "multi_select": true,
+          "name": "classifications",
+          "options": [
+            {
+              "label": "Exhibit",
+              "value": "exhibit"
+            },
+            {
+              "label": "Facilities",
+              "value": "facilities"
+            },
+            {
+              "label": "Food or drink",
+              "value": "food_or_drink"
+            },
+            {
+              "label": "Indoor facilities and classrooms",
+              "value": "indoor_facilities_and_classrooms"
+            },
+            {
+              "label": "Indoors, general",
+              "value": "indoor_general"
+            },
+            {
+              "label": "Indoors or ambience",
+              "value": "indoor_or_ambience"
+            },
+            {
+              "label": "Logos",
+              "value": "logos"
+            },
+            {
+              "label": "Menu",
+              "value": "menu"
+            },
+            {
+              "label": "Monuments and landmark buildings",
+              "value": "monuments_and_landmark_buildings"
+            },
+            {
+              "label": "Outdoors",
+              "value": "outdoor"
+            },
+            {
+              "label": "Building and grounds, outside",
+              "value": "outdoor_building_and_grounds"
+            },
+            {
+              "label": "Building exterior",
+              "value": "outdoor_building_exterior"
+            },
+            {
+              "label": "Grounds, outside",
+              "value": "outdoor_grounds"
+            },
+            {
+              "label": "Outside or storefront",
+              "value": "outdoor_or_storefront"
+            },
+            {
+              "label": "Scenery",
+              "value": "outdoor_scenery"
+            },
+            {
+              "label": "Product",
+              "value": "product"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
         }
       ],
       "path": "/actions/library/foursquare/place-photos",
-      "result_str_template": "Photos retrieved.",
+      "result_str_template": "Retrieved {foursquare_get_place_photos,count} photos.",
       "returns": {
         "properties": {
           "count": {
@@ -294,7 +1151,7 @@
             "items": {
               "properties": {
                 "classifications": {
-                  "description": "What the photo shows, such as 'food' or 'indoor'.",
+                  "description": "What the photo shows, such as 'food_or_drink' or 'outdoor'.",
                   "items": {
                     "type": "string"
                   },
@@ -330,7 +1187,7 @@
       }
     },
     "get_place_tips": {
-      "description": "List the short tips Foursquare users have left about a place.",
+      "description": "List the short tips Foursquare users have left about a place. Foursquare bills tips as a Premium call.",
       "display_name": "Get place tips",
       "display_str_template": "Get Foursquare tips for a place.",
       "handler": "actions.get_place_tips",
@@ -345,12 +1202,13 @@
             "disagree_count": 0,
             "fsq_tip_id": "5a1b2c3d4e5f6a7b8c9d0e1f",
             "lang": "en",
-            "text": "Grab a seat upstairs -- quieter and there are outlets.",
+            "text": "Grab a seat upstairs: quieter, and there are outlets.",
             "url": "https://foursquare.com/item/5a1b2c3d4e5f6a7b8c9d0e1f"
           }
         ]
       },
       "name": "get_place_tips",
+      "output_formatter": "actions.format_tips_output",
       "parameters": [
         {
           "description": "The Foursquare place ID to get tips for.",
@@ -367,10 +1225,27 @@
           "name": "limit",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Which tips come first. Defaults to most popular.",
+          "display_name": "Order",
+          "name": "sort",
+          "options": [
+            {
+              "label": "Most popular first",
+              "value": "POPULAR"
+            },
+            {
+              "label": "Newest first",
+              "value": "NEWEST"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/foursquare/place-tips",
-      "result_str_template": "Tips retrieved.",
+      "result_str_template": "Retrieved {foursquare_get_place_tips,count} tips.",
       "returns": {
         "properties": {
           "count": {
@@ -418,6 +1293,459 @@
         "type": "object"
       }
     },
+    "get_suggestion_status": {
+      "description": "See where the suggestions sent with this connection have got to: pending, accepted or rejected. Leave the IDs empty for the most recent ones.",
+      "display_name": "Get suggestion status",
+      "display_str_template": "Get the status of Foursquare suggestions.",
+      "handler": "actions.get_suggestion_status",
+      "id": "foursquare_get_suggestion_status",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "suggested_edits": [
+          {
+            "created_at": "2025-07-01T15:04:05Z",
+            "created_fsq_place_id": null,
+            "fsq_place_id": "4b6f0b40f964a520bce02ce3",
+            "matched_fsq_place_id": null,
+            "resolved_at": null,
+            "status": "pending",
+            "suggestion_id": "6650c1d2e3f4a5b6c7d8e9f0",
+            "type": "edit"
+          }
+        ]
+      },
+      "name": "get_suggestion_status",
+      "output_formatter": "actions.format_suggestion_status_output",
+      "parameters": [
+        {
+          "description": "Only these suggestions, by ID, separated by commas. Leave empty for every suggestion sent with this key.",
+          "display_name": "Suggestion IDs",
+          "name": "suggested_edit_ids",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Maximum number of suggestions to return, up to 50. Defaults to 10.",
+          "display_name": "Limit",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/foursquare/get-suggestion-status",
+      "result_str_template": "Retrieved {foursquare_get_suggestion_status,count} suggestions.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "Number of suggestions returned.",
+            "type": "integer"
+          },
+          "suggested_edits": {
+            "description": "The suggestions and their status.",
+            "items": {
+              "properties": {
+                "created_at": {
+                  "description": "When the suggestion was made.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "created_fsq_place_id": {
+                  "description": "The place the suggestion created, if it made a new one.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "fsq_place_id": {
+                  "description": "The place the suggestion is about.",
+                  "type": "string"
+                },
+                "matched_fsq_place_id": {
+                  "description": "The existing place the suggestion was matched to, if any.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "resolved_at": {
+                  "description": "When Foursquare accepted or rejected it, once it has.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "status": {
+                  "description": "Where the suggestion has got to, such as pending or accepted.",
+                  "type": "string"
+                },
+                "suggestion_id": {
+                  "description": "ID of the suggestion, for 'Get suggestion status'.",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "What kind of suggestion it is, such as an edit or a flag.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_places_needing_review": {
+      "description": "List the places in an area that have suggested edits waiting for review, with what kind of edits they are.",
+      "display_name": "List places needing review",
+      "display_str_template": "List Foursquare places needing review.",
+      "handler": "actions.list_places_needing_review",
+      "id": "foursquare_list_places_needing_review",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "places": [
+          {
+            "address": "53 W Jackson Blvd, Chicago, IL 60604",
+            "fsq_place_id": "4b6f0b40f964a520bce02ce3",
+            "name": "Intelligentsia Coffee",
+            "pending_count": 1,
+            "pending_edits": [
+              {
+                "created_at": "2025-07-01T15:04:05Z",
+                "created_fsq_place_id": null,
+                "fsq_place_id": "4b6f0b40f964a520bce02ce3",
+                "matched_fsq_place_id": null,
+                "resolved_at": null,
+                "status": "pending",
+                "suggestion_id": "6650c1d2e3f4a5b6c7d8e9f0",
+                "type": "edit"
+              }
+            ],
+            "pending_types": [
+              "edit"
+            ]
+          }
+        ]
+      },
+      "name": "list_places_needing_review",
+      "output_formatter": "actions.format_review_output",
+      "parameters": [
+        {
+          "description": "The area to look in, such as 'Chicago, IL'. Provide this or a box.",
+          "display_name": "Near",
+          "name": "near",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "With the south-west corner, a box to search in, as 'latitude,longitude' (e.g. 41.90,-87.60).",
+          "display_name": "North-east corner",
+          "name": "ne",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "With the north-east corner, a box to search in, as 'latitude,longitude' (e.g. 41.85,-87.65).",
+          "display_name": "South-west corner",
+          "name": "sw",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/foursquare/list-places-needing-review",
+      "result_str_template": "Found {foursquare_list_places_needing_review,count} places.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "Number of places returned.",
+            "type": "integer"
+          },
+          "places": {
+            "description": "Places with suggestions waiting for review.",
+            "items": {
+              "properties": {
+                "address": {
+                  "description": "Full formatted street address.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "fsq_place_id": {
+                  "description": "Foursquare place ID.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Name of the place.",
+                  "type": "string"
+                },
+                "pending_count": {
+                  "description": "How many suggestions are waiting.",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "pending_edits": {
+                  "description": "The suggestions waiting for review.",
+                  "items": {
+                    "properties": {
+                      "created_at": {
+                        "description": "When the suggestion was made.",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "created_fsq_place_id": {
+                        "description": "The place the suggestion created, if it made a new one.",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "fsq_place_id": {
+                        "description": "The place the suggestion is about.",
+                        "type": "string"
+                      },
+                      "matched_fsq_place_id": {
+                        "description": "The existing place the suggestion was matched to, if any.",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "resolved_at": {
+                        "description": "When Foursquare accepted or rejected it, once it has.",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "Where the suggestion has got to, such as pending or accepted.",
+                        "type": "string"
+                      },
+                      "suggestion_id": {
+                        "description": "ID of the suggestion, for 'Get suggestion status'.",
+                        "type": "string"
+                      },
+                      "type": {
+                        "description": "What kind of suggestion it is, such as an edit or a flag.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "pending_types": {
+                  "description": "Kinds of suggestion waiting.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "match_place": {
+      "description": "Find the Foursquare place a name and street address describe, for example to link your own records to Foursquare. Says when there is no match rather than failing.",
+      "display_name": "Match a place",
+      "display_str_template": "Match '{0}' to a Foursquare place.",
+      "handler": "actions.match_place",
+      "id": "foursquare_match_place",
+      "method": "POST",
+      "mock_response": {
+        "address": "53 W Jackson Blvd, Chicago, IL 60604",
+        "categories": [
+          "Coffee Shop"
+        ],
+        "country": "US",
+        "date_closed": null,
+        "fsq_place_id": "4b6f0b40f964a520bce02ce3",
+        "latitude": 41.878,
+        "locality": "Chicago",
+        "longitude": -87.629,
+        "match_score": 0.98,
+        "matched": true,
+        "name": "Intelligentsia Coffee",
+        "postcode": "60604",
+        "price": 2,
+        "rating": 8.7,
+        "region": "IL",
+        "tel": "(312) 253-0594",
+        "website": "https://www.intelligentsiacoffee.com"
+      },
+      "name": "match_place",
+      "output_formatter": "actions.format_match_output",
+      "parameters": [
+        {
+          "description": "Name of the place, such as 'Wrigley Field'.",
+          "display_name": "Name",
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Street address, such as '1060 W Addison St'.",
+          "display_name": "Address",
+          "name": "address",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "City or locality, such as 'Chicago'.",
+          "display_name": "City",
+          "name": "city",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "State or region, such as 'Illinois'.",
+          "display_name": "State",
+          "name": "state",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Postal or ZIP code, such as '60613'.",
+          "display_name": "Postal code",
+          "name": "postal_code",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Two-letter country code, such as US. Foursquare matches places in English-speaking countries only.",
+          "display_name": "Country code",
+          "name": "cc",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The place's coordinates, as 'latitude,longitude', for an address Foursquare can't place by itself.",
+          "display_name": "Latitude, longitude",
+          "name": "ll",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Also return premium data such as the rating and price tier. Foursquare bills the request as a Premium call, which has no free allowance.",
+          "display_name": "Include premium data",
+          "name": "include_premium_fields",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/foursquare/match-place",
+      "result_str_template": "Match found: {foursquare_match_place,matched}.",
+      "returns": {
+        "properties": {
+          "address": {
+            "description": "Full formatted street address.",
+            "type": "string"
+          },
+          "categories": {
+            "description": "Category labels, such as 'Coffee Shop' or 'Italian Restaurant'.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "country": {
+            "description": "Two-letter country code of the place, such as US.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_closed": {
+            "description": "When Foursquare recorded the place as permanently closed. Empty for a place that is open.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fsq_place_id": {
+            "description": "Foursquare place ID. Pass this to the other Foursquare actions.",
+            "type": "string"
+          },
+          "latitude": {
+            "description": "Latitude of the place.",
+            "type": "number"
+          },
+          "locality": {
+            "description": "City or locality the place is in.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "longitude": {
+            "description": "Longitude of the place.",
+            "type": "number"
+          },
+          "match_score": {
+            "description": "How confident the match is, higher is surer.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "matched": {
+            "description": "Whether Foursquare found a matching place.",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "Name of the place.",
+            "type": "string"
+          },
+          "postcode": {
+            "description": "Postal or ZIP code of the place.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "price": {
+            "description": "Price tier from 1 (most affordable) to 4 (most expensive). Premium data: empty unless premium data was included.",
+            "type": "integer"
+          },
+          "rating": {
+            "description": "Foursquare rating from 0 to 10. Premium data: empty unless premium data was included.",
+            "type": "number"
+          },
+          "region": {
+            "description": "State, province or region the place is in.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tel": {
+            "description": "Phone number of the place.",
+            "type": "string"
+          },
+          "website": {
+            "description": "Website of the place.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
     "search_places": {
       "description": "Search the Foursquare Places database by keyword and location, for example coffee shops in Chicago.",
       "display_name": "Search places",
@@ -427,42 +1755,49 @@
       "method": "POST",
       "mock_response": {
         "count": 1,
+        "next_cursor": "c3ViLTEwOjIw",
         "places": [
           {
             "address": "53 W Jackson Blvd, Chicago, IL 60604",
             "categories": [
               "Coffee Shop"
             ],
+            "country": "US",
+            "date_closed": null,
             "distance": 120,
             "fsq_place_id": "4b6f0b40f964a520bce02ce3",
             "latitude": 41.878,
+            "locality": "Chicago",
             "longitude": -87.629,
             "name": "Intelligentsia Coffee",
+            "postcode": "60604",
             "price": 2,
             "rating": 8.7,
+            "region": "IL",
             "tel": "(312) 253-0594",
             "website": "https://www.intelligentsiacoffee.com"
           }
         ]
       },
       "name": "search_places",
+      "output_formatter": "actions.format_search_output",
       "parameters": [
         {
-          "description": "What to search for -- a place name, category name, or keyword such as 'tacos'. Required unless you filter by category IDs instead.",
+          "description": "What to search for: a place name, category name, phone number or keyword such as 'tacos'. Required unless you filter by category or chain IDs instead.",
           "display_name": "Query",
           "name": "query",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "A place to search in, such as 'Chicago, IL'. Provide this or a latitude/longitude.",
+          "description": "A place to search in, such as 'Chicago, IL'. Provide this, a latitude/longitude, or a search box.",
           "display_name": "Near",
           "name": "near",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Coordinates to search around, as 'latitude,longitude' (e.g. 41.8781,-87.6298). Provide this or a place name.",
+          "description": "Coordinates to search around, as 'latitude,longitude' (e.g. 41.8781,-87.6298). Provide this, a place name, or a search box.",
           "display_name": "Latitude, longitude",
           "name": "ll",
           "required": false,
@@ -478,11 +1813,46 @@
           "type": "ParameterType.NUMBER"
         },
         {
+          "description": "With the south-west corner, a box to search in, as 'latitude,longitude' (e.g. 41.90,-87.60).",
+          "display_name": "North-east corner",
+          "name": "ne",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "With the north-east corner, a box to search in, as 'latitude,longitude' (e.g. 41.85,-87.65).",
+          "display_name": "South-west corner",
+          "name": "sw",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
           "description": "Only return places in these Foursquare category IDs, separated by commas.",
           "display_name": "Category IDs",
           "name": "fsq_category_ids",
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only return places belonging to these Foursquare chain IDs, separated by commas.",
+          "display_name": "Chain IDs",
+          "name": "fsq_chain_ids",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Leave out places belonging to these Foursquare chain IDs, separated by commas.",
+          "display_name": "Leave out chain IDs",
+          "name": "exclude_fsq_chain_ids",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Set to true to leave out every place known to be part of a chain.",
+          "display_name": "Independent places only",
+          "name": "exclude_all_chains",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         },
         {
           "description": "Cheapest price tier to include, from 1 to 4.",
@@ -508,6 +1878,13 @@
           "name": "open_now",
           "required": false,
           "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Only include places open at a local day and time, as day 1 (Monday) to 7 (Sunday), T, then the 24-hour time: 1T2130 is Monday at 21:30. Not with 'Open now'.",
+          "display_name": "Open at",
+          "name": "open_at",
+          "required": false,
+          "type": "ParameterType.STRING"
         },
         {
           "default": "RELEVANCE",
@@ -536,6 +1913,30 @@
           "type": "ParameterType.STRING"
         },
         {
+          "description": "How to write the phone numbers that come back.",
+          "display_name": "Phone number format",
+          "name": "tel_format",
+          "options": [
+            {
+              "label": "National, as dialled in the country",
+              "value": "NATIONAL"
+            },
+            {
+              "label": "International (E.164), such as +13122530594",
+              "value": "E164"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Also return premium data such as the rating and price tier. Foursquare bills the request as a Premium call, which has no free allowance.",
+          "display_name": "Include premium data",
+          "name": "include_premium_fields",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
           "description": "Maximum number of places to return, up to 50. Defaults to 10.",
           "display_name": "Limit",
           "maximum": 50,
@@ -543,15 +1944,29 @@
           "name": "limit",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The 'next_cursor' from an earlier search, to get the page after it. Give the same search fields again.",
+          "display_name": "Next page cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/foursquare/search-places",
-      "result_str_template": "Places retrieved.",
+      "result_str_template": "Found {foursquare_search_places,count} places.",
       "returns": {
         "properties": {
           "count": {
             "description": "Number of places returned.",
             "type": "integer"
+          },
+          "next_cursor": {
+            "description": "Pass this as 'Next page cursor' to get the next page. Empty when there are no more places.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "places": {
             "description": "Matching places, best match first.",
@@ -568,6 +1983,20 @@
                   },
                   "type": "array"
                 },
+                "country": {
+                  "description": "Two-letter country code of the place, such as US.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "date_closed": {
+                  "description": "When Foursquare recorded the place as permanently closed. Empty for a place that is open.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "distance": {
                   "description": "Distance in meters from the search location, when the search was anchored to one.",
                   "type": "integer"
@@ -580,6 +2009,13 @@
                   "description": "Latitude of the place.",
                   "type": "number"
                 },
+                "locality": {
+                  "description": "City or locality the place is in.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "longitude": {
                   "description": "Longitude of the place.",
                   "type": "number"
@@ -588,13 +2024,27 @@
                   "description": "Name of the place.",
                   "type": "string"
                 },
+                "postcode": {
+                  "description": "Postal or ZIP code of the place.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "price": {
-                  "description": "Price tier from 1 (most affordable) to 4 (most expensive).",
+                  "description": "Price tier from 1 (most affordable) to 4 (most expensive). Premium data: empty unless premium data was included.",
                   "type": "integer"
                 },
                 "rating": {
-                  "description": "Foursquare rating from 0 to 10.",
+                  "description": "Foursquare rating from 0 to 10. Premium data: empty unless premium data was included.",
                   "type": "number"
+                },
+                "region": {
+                  "description": "State, province or region the place is in.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "tel": {
                   "description": "Phone number of the place.",
@@ -612,12 +2062,1029 @@
         },
         "type": "object"
       }
+    },
+    "suggest_new_place": {
+      "description": "Add a place Foursquare doesn't have yet. Foursquare first looks for a match and, when it finds one, names that place instead of adding a second.",
+      "display_name": "Suggest a new place",
+      "display_str_template": "Suggest new Foursquare place '{0}'.",
+      "handler": "actions.suggest_new_place",
+      "id": "foursquare_suggest_new_place",
+      "method": "POST",
+      "mock_response": {
+        "created_at": "2025-07-01T15:04:05Z",
+        "dry_run": false,
+        "errors": [],
+        "matched_fsq_place_id": null,
+        "matched_name": null,
+        "resolved_at": null,
+        "suggestion_id": "6650c1d2e3f4a5b6c7d8e9f1",
+        "suggestion_status": "pending"
+      },
+      "name": "suggest_new_place",
+      "output_formatter": "actions.format_new_place_output",
+      "parameters": [
+        {
+          "description": "Name of the new place.",
+          "display_name": "Name",
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Street address, such as '53 W Jackson Blvd'.",
+          "display_name": "Address",
+          "name": "address",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "City or locality, such as 'Chicago'.",
+          "display_name": "City",
+          "name": "locality",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "State, province or region, such as 'IL'.",
+          "display_name": "Region",
+          "name": "region",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Postal or ZIP code.",
+          "display_name": "Postcode",
+          "name": "postcode",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Two-letter country code, such as US.",
+          "display_name": "Country code",
+          "name": "country_code",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Latitude of the entrance.",
+          "display_name": "Latitude",
+          "maximum": 90,
+          "minimum": -90,
+          "name": "latitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Longitude of the entrance.",
+          "display_name": "Longitude",
+          "maximum": 180,
+          "minimum": -180,
+          "name": "longitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Foursquare category IDs for it, separated by commas.",
+          "display_name": "Category IDs",
+          "name": "categories",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Foursquare chain IDs it belongs to, separated by commas.",
+          "display_name": "Chain IDs",
+          "name": "chains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a place inside a larger one, such as a cafe inside a store, the larger place's ID.",
+          "display_name": "Parent place ID",
+          "name": "parent_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Phone number of the place.",
+          "display_name": "Phone number",
+          "name": "tel",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Home page of the place, such as https://example.com.",
+          "display_name": "Website",
+          "name": "website",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Contact email address for the place.",
+          "display_name": "Email",
+          "name": "email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Link to the place's Facebook page.",
+          "display_name": "Facebook page",
+          "name": "facebook_url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The place's Instagram handle.",
+          "display_name": "Instagram handle",
+          "name": "instagram",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The place's X (Twitter) handle.",
+          "display_name": "X (Twitter) handle",
+          "name": "twitter",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Opening hours as day,open,close for each opening, separated by ';'. Days run 1 (Monday) to 7 (Sunday) and times are 24-hour HHMM, with + for a time past midnight; for example 1,0700,1900;2,0700,1900;6,0900,+0100.",
+          "display_name": "Opening hours",
+          "name": "hours",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Features the place has.",
+          "display_name": "Features",
+          "multi_select": true,
+          "name": "attributes",
+          "options": [
+            {
+              "label": "ATM",
+              "value": "atm"
+            },
+            {
+              "label": "Takes reservations",
+              "value": "reservation"
+            },
+            {
+              "label": "Offers delivery",
+              "value": "offers_delivery"
+            },
+            {
+              "label": "Parking",
+              "value": "parking"
+            },
+            {
+              "label": "Outdoor seating",
+              "value": "outdoor_seating"
+            },
+            {
+              "label": "Restroom",
+              "value": "restroom"
+            },
+            {
+              "label": "Takes credit cards",
+              "value": "credit_cards"
+            },
+            {
+              "label": "Wi-Fi",
+              "value": "wifi"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "True for a private place, such as a home, that shouldn't be listed publicly; false for a public one.",
+          "display_name": "Private place",
+          "name": "is_private_place",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Have Foursquare check the suggestion and answer as it would, without recording it.",
+          "display_name": "Check only (dry run)",
+          "name": "dry_run",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/foursquare/suggest-new-place",
+      "result_str_template": "New place suggestion {foursquare_suggest_new_place,suggestion_id} is {foursquare_suggest_new_place,suggestion_status}.",
+      "returns": {
+        "properties": {
+          "created_at": {
+            "description": "When the suggestion was made.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dry_run": {
+            "description": "True when the suggestion was only checked, not sent.",
+            "type": "boolean"
+          },
+          "errors": {
+            "description": "Problems Foursquare noted with the suggestion.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "matched_fsq_place_id": {
+            "description": "The existing place Foursquare matched instead, if any.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "matched_name": {
+            "description": "Name of the existing place it matched.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resolved_at": {
+            "description": "When Foursquare accepted or rejected it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suggestion_id": {
+            "description": "ID of the new place suggestion, for 'Get suggestion status'. Empty when an existing place matched.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suggestion_status": {
+            "description": "Status of the suggestion, such as pending.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "suggest_place_edit": {
+      "description": "Suggest corrections to a place's details, such as its name, address, phone number or opening hours. Foursquare reviews the suggestion before it changes the place; fill in only what should change.",
+      "display_name": "Suggest a place edit",
+      "display_str_template": "Suggest an edit to Foursquare place {0}.",
+      "handler": "actions.suggest_place_edit",
+      "id": "foursquare_suggest_place_edit",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "dry_run": false,
+        "errors": [],
+        "suggested_edits": [
+          {
+            "created_at": "2025-07-01T15:04:05Z",
+            "created_fsq_place_id": null,
+            "fsq_place_id": "4b6f0b40f964a520bce02ce3",
+            "matched_fsq_place_id": null,
+            "resolved_at": null,
+            "status": "pending",
+            "suggestion_id": "6650c1d2e3f4a5b6c7d8e9f0",
+            "type": "edit"
+          }
+        ],
+        "suggestion_id": "6650c1d2e3f4a5b6c7d8e9f0",
+        "suggestion_status": "pending"
+      },
+      "name": "suggest_place_edit",
+      "output_formatter": "actions.format_suggestion_output",
+      "parameters": [
+        {
+          "description": "The Foursquare place ID, from a search or an earlier step.",
+          "display_name": "Place ID",
+          "name": "fsq_place_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The place's correct name.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Street address, such as '53 W Jackson Blvd'.",
+          "display_name": "Address",
+          "name": "address",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "City or locality, such as 'Chicago'.",
+          "display_name": "City",
+          "name": "locality",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "State, province or region, such as 'IL'.",
+          "display_name": "Region",
+          "name": "region",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Postal or ZIP code.",
+          "display_name": "Postcode",
+          "name": "postcode",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Two-letter country code, such as US.",
+          "display_name": "Country code",
+          "name": "country_code",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Latitude of the entrance, with the longitude.",
+          "display_name": "Latitude",
+          "maximum": 90,
+          "minimum": -90,
+          "name": "latitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Longitude of the entrance, with the latitude.",
+          "display_name": "Longitude",
+          "maximum": 180,
+          "minimum": -180,
+          "name": "longitude",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Phone number of the place.",
+          "display_name": "Phone number",
+          "name": "tel",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Home page of the place, such as https://example.com.",
+          "display_name": "Website",
+          "name": "website",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Link to the place's menu.",
+          "display_name": "Menu link",
+          "name": "menu",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A description of the place, up to 300 characters.",
+          "display_name": "Description",
+          "multiline": true,
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Link to the place's Facebook page.",
+          "display_name": "Facebook page",
+          "name": "facebook_url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The place's Instagram handle.",
+          "display_name": "Instagram handle",
+          "name": "instagram",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The place's X (Twitter) handle.",
+          "display_name": "X (Twitter) handle",
+          "name": "twitter",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Opening hours as day,open,close for each opening, separated by ';'. Days run 1 (Monday) to 7 (Sunday) and times are 24-hour HHMM, with + for a time past midnight; for example 1,0700,1900;2,0700,1900;6,0900,+0100.",
+          "display_name": "Opening hours",
+          "name": "hours",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Features the place has, to add.",
+          "display_name": "Add features",
+          "multi_select": true,
+          "name": "add_attributes",
+          "options": [
+            {
+              "label": "ATM",
+              "value": "atm"
+            },
+            {
+              "label": "Takes reservations",
+              "value": "reservations"
+            },
+            {
+              "label": "Offers delivery",
+              "value": "offers_delivery"
+            },
+            {
+              "label": "Parking",
+              "value": "parking"
+            },
+            {
+              "label": "Outdoor seating",
+              "value": "outdoor_seating"
+            },
+            {
+              "label": "Restroom",
+              "value": "restroom"
+            },
+            {
+              "label": "Takes credit cards",
+              "value": "credit_cards"
+            },
+            {
+              "label": "Wi-Fi",
+              "value": "wifi"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Features the place doesn't have, to remove.",
+          "display_name": "Remove features",
+          "multi_select": true,
+          "name": "remove_attributes",
+          "options": [
+            {
+              "label": "ATM",
+              "value": "atm"
+            },
+            {
+              "label": "Takes reservations",
+              "value": "reservations"
+            },
+            {
+              "label": "Offers delivery",
+              "value": "offers_delivery"
+            },
+            {
+              "label": "Parking",
+              "value": "parking"
+            },
+            {
+              "label": "Outdoor seating",
+              "value": "outdoor_seating"
+            },
+            {
+              "label": "Restroom",
+              "value": "restroom"
+            },
+            {
+              "label": "Takes credit cards",
+              "value": "credit_cards"
+            },
+            {
+              "label": "Wi-Fi",
+              "value": "wifi"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "The Foursquare category ID that best describes it.",
+          "display_name": "Main category ID",
+          "name": "primary_fsq_category_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Foursquare category IDs to add, separated by commas.",
+          "display_name": "Add category IDs",
+          "name": "add_fsq_category_ids",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Foursquare category IDs to remove, separated by commas.",
+          "display_name": "Remove category IDs",
+          "name": "remove_fsq_category_ids",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The Foursquare chain ID the place mainly belongs to.",
+          "display_name": "Main chain ID",
+          "name": "primary_fsq_chain_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Foursquare chain IDs to add, separated by commas.",
+          "display_name": "Add chain IDs",
+          "name": "add_fsq_chain_ids",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Foursquare chain IDs to remove, separated by commas.",
+          "display_name": "Remove chain IDs",
+          "name": "remove_fsq_chain_ids",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "For a place inside a larger one, such as a cafe inside a store, the larger place's ID.",
+          "display_name": "Parent place ID",
+          "name": "parent_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "True for a private place, such as a home, that shouldn't be listed publicly; false for a public one.",
+          "display_name": "Private place",
+          "name": "is_private_place",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Details the place should no longer show.",
+          "display_name": "Details to clear",
+          "multi_select": true,
+          "name": "unset_fields",
+          "options": [
+            {
+              "label": "Menu link",
+              "value": "menu"
+            },
+            {
+              "label": "Facebook page",
+              "value": "facebook_url"
+            },
+            {
+              "label": "Description",
+              "value": "description"
+            },
+            {
+              "label": "Address",
+              "value": "address"
+            },
+            {
+              "label": "Phone number",
+              "value": "tel"
+            },
+            {
+              "label": "X (Twitter) handle",
+              "value": "twitter"
+            },
+            {
+              "label": "Website",
+              "value": "website"
+            },
+            {
+              "label": "Chains",
+              "value": "fsq_chain_ids"
+            },
+            {
+              "label": "Opening hours",
+              "value": "hours"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Have Foursquare check the suggestion and answer as it would, without recording it.",
+          "display_name": "Check only (dry run)",
+          "name": "dry_run",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/foursquare/suggest-place-edit",
+      "result_str_template": "Suggestion {foursquare_suggest_place_edit,suggestion_id} is {foursquare_suggest_place_edit,suggestion_status}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "Number of suggestions recorded.",
+            "type": "integer"
+          },
+          "dry_run": {
+            "description": "True when the suggestion was only checked, not sent.",
+            "type": "boolean"
+          },
+          "errors": {
+            "description": "Problems Foursquare noted with the suggestion.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "suggested_edits": {
+            "description": "The suggestions Foursquare recorded.",
+            "items": {
+              "properties": {
+                "created_at": {
+                  "description": "When the suggestion was made.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "created_fsq_place_id": {
+                  "description": "The place the suggestion created, if it made a new one.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "fsq_place_id": {
+                  "description": "The place the suggestion is about.",
+                  "type": "string"
+                },
+                "matched_fsq_place_id": {
+                  "description": "The existing place the suggestion was matched to, if any.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "resolved_at": {
+                  "description": "When Foursquare accepted or rejected it, once it has.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "status": {
+                  "description": "Where the suggestion has got to, such as pending or accepted.",
+                  "type": "string"
+                },
+                "suggestion_id": {
+                  "description": "ID of the suggestion, for 'Get suggestion status'.",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "What kind of suggestion it is, such as an edit or a flag.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "suggestion_id": {
+            "description": "ID of the first suggestion recorded, for 'Get suggestion status'.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suggestion_status": {
+            "description": "Status of the first suggestion recorded, such as pending.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "suggest_place_merge": {
+      "description": "Tell Foursquare that other places are duplicates of this one, so it can merge them into one.",
+      "display_name": "Suggest merging places",
+      "display_str_template": "Suggest merging duplicates into Foursquare place {0}.",
+      "handler": "actions.suggest_place_merge",
+      "id": "foursquare_suggest_place_merge",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "dry_run": false,
+        "errors": [],
+        "suggested_edits": [
+          {
+            "created_at": "2025-07-01T15:04:05Z",
+            "created_fsq_place_id": null,
+            "fsq_place_id": "4b6f0b40f964a520bce02ce3",
+            "matched_fsq_place_id": null,
+            "resolved_at": null,
+            "status": "pending",
+            "suggestion_id": "6650c1d2e3f4a5b6c7d8e9f0",
+            "type": "merge"
+          }
+        ],
+        "suggestion_id": "6650c1d2e3f4a5b6c7d8e9f0",
+        "suggestion_status": "pending"
+      },
+      "name": "suggest_place_merge",
+      "output_formatter": "actions.format_suggestion_output",
+      "parameters": [
+        {
+          "description": "The Foursquare place ID of the place to keep.",
+          "display_name": "Place ID",
+          "name": "fsq_place_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Foursquare place IDs of the duplicates, separated by commas.",
+          "display_name": "Duplicate place IDs",
+          "name": "duplicate_fsq_place_ids",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Have Foursquare check the suggestion and answer as it would, without recording it.",
+          "display_name": "Check only (dry run)",
+          "name": "dry_run",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/foursquare/suggest-place-merge",
+      "result_str_template": "Merge suggestion {foursquare_suggest_place_merge,suggestion_id} is {foursquare_suggest_place_merge,suggestion_status}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "Number of suggestions recorded.",
+            "type": "integer"
+          },
+          "dry_run": {
+            "description": "True when the suggestion was only checked, not sent.",
+            "type": "boolean"
+          },
+          "errors": {
+            "description": "Problems Foursquare noted with the suggestion.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "suggested_edits": {
+            "description": "The suggestions Foursquare recorded.",
+            "items": {
+              "properties": {
+                "created_at": {
+                  "description": "When the suggestion was made.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "created_fsq_place_id": {
+                  "description": "The place the suggestion created, if it made a new one.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "fsq_place_id": {
+                  "description": "The place the suggestion is about.",
+                  "type": "string"
+                },
+                "matched_fsq_place_id": {
+                  "description": "The existing place the suggestion was matched to, if any.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "resolved_at": {
+                  "description": "When Foursquare accepted or rejected it, once it has.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "status": {
+                  "description": "Where the suggestion has got to, such as pending or accepted.",
+                  "type": "string"
+                },
+                "suggestion_id": {
+                  "description": "ID of the suggestion, for 'Get suggestion status'.",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "What kind of suggestion it is, such as an edit or a flag.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "suggestion_id": {
+            "description": "ID of the first suggestion recorded, for 'Get suggestion status'.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suggestion_status": {
+            "description": "Status of the first suggestion recorded, such as pending.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "suggest_place_removal": {
+      "description": "Ask Foursquare to remove a place that has closed, doesn't exist, is private or is inappropriate, or to reopen one wrongly marked closed.",
+      "display_name": "Suggest removing a place",
+      "display_str_template": "Suggest removing Foursquare place {0}.",
+      "handler": "actions.suggest_place_removal",
+      "id": "foursquare_suggest_place_removal",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "dry_run": false,
+        "errors": [],
+        "suggested_edits": [
+          {
+            "created_at": "2025-07-01T15:04:05Z",
+            "created_fsq_place_id": null,
+            "fsq_place_id": "4b6f0b40f964a520bce02ce3",
+            "matched_fsq_place_id": null,
+            "resolved_at": null,
+            "status": "pending",
+            "suggestion_id": "6650c1d2e3f4a5b6c7d8e9f0",
+            "type": "remove"
+          }
+        ],
+        "suggestion_id": "6650c1d2e3f4a5b6c7d8e9f0",
+        "suggestion_status": "pending"
+      },
+      "name": "suggest_place_removal",
+      "output_formatter": "actions.format_suggestion_output",
+      "parameters": [
+        {
+          "description": "The Foursquare place ID, from a search or an earlier step.",
+          "display_name": "Place ID",
+          "name": "fsq_place_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Why the place should go.",
+          "display_name": "Reason",
+          "name": "reason",
+          "options": [
+            {
+              "label": "Closed permanently",
+              "value": "CLOSED"
+            },
+            {
+              "label": "Doesn't exist",
+              "value": "DOESNT_EXIST"
+            },
+            {
+              "label": "Inappropriate",
+              "value": "INAPPROPRIATE"
+            },
+            {
+              "label": "Private place",
+              "value": "PRIVATE"
+            },
+            {
+              "label": "Wrongly marked closed",
+              "value": "NOT_CLOSED"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A note for Foursquare's reviewers explaining the problem.",
+          "display_name": "Comment",
+          "multiline": true,
+          "name": "comment",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Have Foursquare check the suggestion and answer as it would, without recording it.",
+          "display_name": "Check only (dry run)",
+          "name": "dry_run",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/foursquare/suggest-place-removal",
+      "result_str_template": "Removal request {foursquare_suggest_place_removal,suggestion_id} is {foursquare_suggest_place_removal,suggestion_status}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "Number of suggestions recorded.",
+            "type": "integer"
+          },
+          "dry_run": {
+            "description": "True when the suggestion was only checked, not sent.",
+            "type": "boolean"
+          },
+          "errors": {
+            "description": "Problems Foursquare noted with the suggestion.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "suggested_edits": {
+            "description": "The suggestions Foursquare recorded.",
+            "items": {
+              "properties": {
+                "created_at": {
+                  "description": "When the suggestion was made.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "created_fsq_place_id": {
+                  "description": "The place the suggestion created, if it made a new one.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "fsq_place_id": {
+                  "description": "The place the suggestion is about.",
+                  "type": "string"
+                },
+                "matched_fsq_place_id": {
+                  "description": "The existing place the suggestion was matched to, if any.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "resolved_at": {
+                  "description": "When Foursquare accepted or rejected it, once it has.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "status": {
+                  "description": "Where the suggestion has got to, such as pending or accepted.",
+                  "type": "string"
+                },
+                "suggestion_id": {
+                  "description": "ID of the suggestion, for 'Get suggestion status'.",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "What kind of suggestion it is, such as an edit or a flag.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "suggestion_id": {
+            "description": "ID of the first suggestion recorded, for 'Get suggestion status'.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suggestion_status": {
+            "description": "Status of the first suggestion recorded, such as pending.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
     }
   },
   "categories": [
     "Maps & Travel"
   ],
-  "description": "Search Foursquare for places, ask for recommendations in plain language, and pull a place's details, tips, and photos.",
+  "description": "Search Foursquare for places, ask for recommendations in plain language, autocomplete and match places, find the places at a location, pull a place's details, tips, and photos, and suggest corrections to Foursquare's places.",
   "display_name": "Foursquare",
   "id": "foursquare",
   "logo": "https://www.lodol.com/app-icons/foursquare-icon.svg",

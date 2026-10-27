@@ -125,7 +125,7 @@
       }
     },
     "close_matter": {
-      "description": "Close a matter when its case is over. Delete its holds first if their data no longer needs keeping.",
+      "description": "Close a matter once its case or request is over. It stays in Vault as the record of what was done; delete its holds first if their data no longer needs keeping.",
       "display_name": "Close matter",
       "display_str_template": "Close Google Vault matter '{0}'.",
       "handler": "actions.close_matter",
@@ -139,7 +139,8 @@
         "matter_id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
         "name": "Acme v. Example Corp",
         "owner_account_id": "104738291038475610293",
-        "state": "CLOSED"
+        "state": "closed",
+        "url": "https://vault.google.com/matter/a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
       },
       "name": "close_matter",
       "output_formatter": "actions.format_matter_output",
@@ -181,7 +182,11 @@
             "type": "string"
           },
           "state": {
-            "description": "OPEN, CLOSED or DELETED",
+            "description": "open, closed or deleted",
+            "type": "string"
+          },
+          "url": {
+            "description": "The matter in Google Vault",
             "type": "string"
           }
         },
@@ -203,9 +208,9 @@
           }
         ],
         "accounts_not_searched": [],
+        "items_found": 1284,
         "matching_accounts": 1,
-        "searched_accounts": 1,
-        "total_count": 1284
+        "searched_accounts": 1
       },
       "name": "count_results",
       "output_formatter": "actions.format_count_output",
@@ -331,6 +336,19 @@
           ],
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Include Gmail drafts, which were never sent. On unless you turn it off.",
+          "display_name": "Include drafts",
+          "name": "include_drafts",
+          "required": false,
+          "type": "ParameterType.BOOLEAN",
+          "visible_when": {
+            "corpus": [
+              "MAIL"
+            ]
+          }
         }
       ],
       "path": "/actions/library/google-vault/count-results",
@@ -361,6 +379,10 @@
             },
             "type": "array"
           },
+          "items_found": {
+            "description": "How many messages the search finds",
+            "type": "number"
+          },
           "matching_accounts": {
             "description": "How many accounts have at least one match",
             "type": "number"
@@ -368,17 +390,13 @@
           "searched_accounts": {
             "description": "How many accounts were searched",
             "type": "number"
-          },
-          "total_count": {
-            "description": "How many messages the search finds",
-            "type": "number"
           }
         },
         "type": "object"
       }
     },
     "create_export": {
-      "description": "Search a service and export what it finds, for download from Vault. Exports run in the background; the 'Google Vault export finished' trigger or 'Get export' tells you when it is ready.",
+      "description": "Search a service and export what it finds, for download from Vault. Exports run in the background: 'Get export' tells you when one is ready.",
       "display_name": "Start export",
       "display_str_template": "Start export '{1}' in Google Vault matter '{0}'.",
       "handler": "actions.create_export",
@@ -387,8 +405,9 @@
       "mock_response": {
         "created_at": "2026-10-21T09:12:44.118Z",
         "export_id": "8cb7e9a1d2f34c05",
-        "exported_count": 0,
         "files": [],
+        "items_exported": 0,
+        "items_found": 0,
         "matter_id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
         "name": "Sales team email Q3",
         "requester_email": "counsel@example.com",
@@ -396,8 +415,8 @@
         "search_terms": "subject:contract",
         "service": "MAIL",
         "size_bytes": 0,
-        "status": "IN_PROGRESS",
-        "total_count": 0
+        "status": "in progress",
+        "url": "https://vault.google.com/matter/a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d/exports"
       },
       "name": "create_export",
       "output_formatter": "actions.format_export_output",
@@ -550,6 +569,19 @@
           "type": "ParameterType.STRING"
         },
         {
+          "default": true,
+          "description": "Include Gmail drafts, which were never sent. On unless you turn it off.",
+          "display_name": "Include drafts",
+          "name": "include_drafts",
+          "required": false,
+          "type": "ParameterType.BOOLEAN",
+          "visible_when": {
+            "corpus": [
+              "MAIL"
+            ]
+          }
+        },
+        {
           "default": "standard",
           "description": "The format of the exported messages or events.",
           "display_name": "File format",
@@ -576,8 +608,8 @@
           }
         },
         {
-          "default": false,
-          "description": "Also cover files in shared drives the people can access.",
+          "default": true,
+          "description": "Also search files in shared drives the people can access. On unless turned off.",
           "display_name": "Include shared drives",
           "name": "include_shared_drives",
           "required": false,
@@ -614,10 +646,6 @@
             "description": "The export's ID",
             "type": "string"
           },
-          "exported_count": {
-            "description": "How many messages or files have been exported so far",
-            "type": "number"
-          },
           "files": {
             "description": "The export's files, once it is complete",
             "items": {
@@ -642,6 +670,14 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "items_exported": {
+            "description": "How many of them have been exported so far",
+            "type": "number"
+          },
+          "items_found": {
+            "description": "How many messages or files the search found",
+            "type": "number"
           },
           "matter_id": {
             "description": "The matter it is in",
@@ -672,12 +708,12 @@
             "type": "number"
           },
           "status": {
-            "description": "IN_PROGRESS, COMPLETED or FAILED",
+            "description": "in progress, completed or failed",
             "type": "string"
           },
-          "total_count": {
-            "description": "How many messages or files it will export",
-            "type": "number"
+          "url": {
+            "description": "The matter's exports in Google Vault, to download from",
+            "type": "string"
           }
         },
         "type": "object"
@@ -950,7 +986,8 @@
         "matter_id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
         "name": "Acme v. Example Corp",
         "owner_account_id": "",
-        "state": "OPEN"
+        "state": "open",
+        "url": "https://vault.google.com/matter/a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
       },
       "name": "create_matter",
       "output_formatter": "actions.format_matter_output",
@@ -1005,7 +1042,11 @@
             "type": "string"
           },
           "state": {
-            "description": "OPEN, CLOSED or DELETED",
+            "description": "open, closed or deleted",
+            "type": "string"
+          },
+          "url": {
+            "description": "The matter in Google Vault",
             "type": "string"
           }
         },
@@ -1185,8 +1226,21 @@
           "type": "ParameterType.STRING"
         },
         {
-          "default": false,
-          "description": "Also cover files in shared drives the people can access.",
+          "default": true,
+          "description": "Include Gmail drafts, which were never sent. On unless you turn it off.",
+          "display_name": "Include drafts",
+          "name": "include_drafts",
+          "required": false,
+          "type": "ParameterType.BOOLEAN",
+          "visible_when": {
+            "corpus": [
+              "MAIL"
+            ]
+          }
+        },
+        {
+          "default": true,
+          "description": "Also search files in shared drives the people can access. On unless turned off.",
           "display_name": "Include shared drives",
           "name": "include_shared_drives",
           "required": false,
@@ -1392,7 +1446,8 @@
         "matter_id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
         "name": "Acme v. Example Corp",
         "owner_account_id": "104738291038475610293",
-        "state": "DELETED"
+        "state": "deleted",
+        "url": "https://vault.google.com/matter/a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
       },
       "name": "delete_matter",
       "output_formatter": "actions.format_matter_output",
@@ -1438,7 +1493,11 @@
             "type": "string"
           },
           "state": {
-            "description": "OPEN, CLOSED or DELETED",
+            "description": "open, closed or deleted",
+            "type": "string"
+          },
+          "url": {
+            "description": "The matter in Google Vault",
             "type": "string"
           }
         },
@@ -1501,7 +1560,7 @@
       }
     },
     "get_export": {
-      "description": "Read an export: whether it is still running, has completed or failed, how many items it holds, and its files.",
+      "description": "Read an export: whether it is still in progress, has completed or failed, how many items its search found and it holds, and its files.",
       "display_name": "Get export",
       "display_str_template": "Get export '{1}' in Google Vault matter '{0}'.",
       "handler": "actions.get_export",
@@ -1510,7 +1569,6 @@
       "mock_response": {
         "created_at": "2026-10-21T09:12:44.118Z",
         "export_id": "8cb7e9a1d2f34c05",
-        "exported_count": 1284,
         "files": [
           {
             "bucket_name": "vault-export-example-1234",
@@ -1519,6 +1577,8 @@
             "size_bytes": 48211904
           }
         ],
+        "items_exported": 1284,
+        "items_found": 1284,
         "matter_id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
         "name": "Sales team email Q3",
         "requester_email": "counsel@example.com",
@@ -1526,8 +1586,8 @@
         "search_terms": "subject:contract",
         "service": "MAIL",
         "size_bytes": 48211904,
-        "status": "COMPLETED",
-        "total_count": 1284
+        "status": "completed",
+        "url": "https://vault.google.com/matter/a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d/exports"
       },
       "name": "get_export",
       "output_formatter": "actions.format_export_output",
@@ -1564,10 +1624,6 @@
             "description": "The export's ID",
             "type": "string"
           },
-          "exported_count": {
-            "description": "How many messages or files have been exported so far",
-            "type": "number"
-          },
           "files": {
             "description": "The export's files, once it is complete",
             "items": {
@@ -1592,6 +1648,14 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "items_exported": {
+            "description": "How many of them have been exported so far",
+            "type": "number"
+          },
+          "items_found": {
+            "description": "How many messages or files the search found",
+            "type": "number"
           },
           "matter_id": {
             "description": "The matter it is in",
@@ -1622,12 +1686,12 @@
             "type": "number"
           },
           "status": {
-            "description": "IN_PROGRESS, COMPLETED or FAILED",
+            "description": "in progress, completed or failed",
             "type": "string"
           },
-          "total_count": {
-            "description": "How many messages or files it will export",
-            "type": "number"
+          "url": {
+            "description": "The matter's exports in Google Vault, to download from",
+            "type": "string"
           }
         },
         "type": "object"
@@ -1786,7 +1850,8 @@
         "matter_id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
         "name": "Acme v. Example Corp",
         "owner_account_id": "104738291038475610293",
-        "state": "OPEN"
+        "state": "open",
+        "url": "https://vault.google.com/matter/a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
       },
       "name": "get_matter",
       "output_formatter": "actions.format_matter_output",
@@ -1828,7 +1893,11 @@
             "type": "string"
           },
           "state": {
-            "description": "OPEN, CLOSED or DELETED",
+            "description": "open, closed or deleted",
+            "type": "string"
+          },
+          "url": {
+            "description": "The matter in Google Vault",
             "type": "string"
           }
         },
@@ -1848,7 +1917,6 @@
           {
             "created_at": "2026-10-21T09:12:44.118Z",
             "export_id": "8cb7e9a1d2f34c05",
-            "exported_count": 1284,
             "files": [
               {
                 "bucket_name": "vault-export-example-1234",
@@ -1857,6 +1925,8 @@
                 "size_bytes": 48211904
               }
             ],
+            "items_exported": 1284,
+            "items_found": 1284,
             "matter_id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
             "name": "Sales team email Q3",
             "requester_email": "counsel@example.com",
@@ -1864,8 +1934,8 @@
             "search_terms": "subject:contract",
             "service": "MAIL",
             "size_bytes": 48211904,
-            "status": "COMPLETED",
-            "total_count": 1284
+            "status": "completed",
+            "url": "https://vault.google.com/matter/a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d/exports"
           }
         ]
       },
@@ -1911,10 +1981,6 @@
                   "description": "The export's ID",
                   "type": "string"
                 },
-                "exported_count": {
-                  "description": "How many messages or files have been exported so far",
-                  "type": "number"
-                },
                 "files": {
                   "description": "The export's files, once it is complete",
                   "items": {
@@ -1939,6 +2005,14 @@
                     "type": "object"
                   },
                   "type": "array"
+                },
+                "items_exported": {
+                  "description": "How many of them have been exported so far",
+                  "type": "number"
+                },
+                "items_found": {
+                  "description": "How many messages or files the search found",
+                  "type": "number"
                 },
                 "matter_id": {
                   "description": "The matter it is in",
@@ -1969,12 +2043,12 @@
                   "type": "number"
                 },
                 "status": {
-                  "description": "IN_PROGRESS, COMPLETED or FAILED",
+                  "description": "in progress, completed or failed",
                   "type": "string"
                 },
-                "total_count": {
-                  "description": "How many messages or files it will export",
-                  "type": "number"
+                "url": {
+                  "description": "The matter's exports in Google Vault, to download from",
+                  "type": "string"
                 }
               },
               "type": "object"
@@ -2158,7 +2232,8 @@
             "matter_id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
             "name": "Acme v. Example Corp",
             "owner_account_id": "104738291038475610293",
-            "state": "OPEN"
+            "state": "open",
+            "url": "https://vault.google.com/matter/a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
           }
         ]
       },
@@ -2166,22 +2241,22 @@
       "output_formatter": "actions.format_matters_output",
       "parameters": [
         {
-          "default": "OPEN",
+          "default": "open",
           "description": "Which matters to list.",
           "display_name": "State",
           "name": "state",
           "options": [
             {
               "label": "Open",
-              "value": "OPEN"
+              "value": "open"
             },
             {
               "label": "Closed",
-              "value": "CLOSED"
+              "value": "closed"
             },
             {
               "label": "Deleted",
-              "value": "DELETED"
+              "value": "deleted"
             },
             {
               "label": "All",
@@ -2238,7 +2313,11 @@
                   "type": "string"
                 },
                 "state": {
-                  "description": "OPEN, CLOSED or DELETED",
+                  "description": "open, closed or deleted",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "The matter in Google Vault",
                   "type": "string"
                 }
               },
@@ -2474,7 +2553,8 @@
         "matter_id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
         "name": "Acme v. Example Corp",
         "owner_account_id": "104738291038475610293",
-        "state": "OPEN"
+        "state": "open",
+        "url": "https://vault.google.com/matter/a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
       },
       "name": "reopen_matter",
       "output_formatter": "actions.format_matter_output",
@@ -2516,7 +2596,11 @@
             "type": "string"
           },
           "state": {
-            "description": "OPEN, CLOSED or DELETED",
+            "description": "open, closed or deleted",
+            "type": "string"
+          },
+          "url": {
+            "description": "The matter in Google Vault",
             "type": "string"
           }
         },
@@ -2538,7 +2622,8 @@
         "matter_id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
         "name": "Acme v. Example Corp",
         "owner_account_id": "104738291038475610293",
-        "state": "CLOSED"
+        "state": "closed",
+        "url": "https://vault.google.com/matter/a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
       },
       "name": "undelete_matter",
       "output_formatter": "actions.format_matter_output",
@@ -2580,7 +2665,11 @@
             "type": "string"
           },
           "state": {
-            "description": "OPEN, CLOSED or DELETED",
+            "description": "open, closed or deleted",
+            "type": "string"
+          },
+          "url": {
+            "description": "The matter in Google Vault",
             "type": "string"
           }
         },
@@ -2768,7 +2857,8 @@
         "matter_id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
         "name": "Acme v. Example Corp",
         "owner_account_id": "104738291038475610293",
-        "state": "OPEN"
+        "state": "open",
+        "url": "https://vault.google.com/matter/a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
       },
       "name": "update_matter",
       "output_formatter": "actions.format_matter_output",
@@ -2825,7 +2915,11 @@
             "type": "string"
           },
           "state": {
-            "description": "OPEN, CLOSED or DELETED",
+            "description": "open, closed or deleted",
+            "type": "string"
+          },
+          "url": {
+            "description": "The matter in Google Vault",
             "type": "string"
           }
         },
@@ -2849,8 +2943,9 @@
       "output": {
         "created_at": "When it was started.",
         "export_id": "The export's ID.",
-        "exported_count": "How many messages or files it holds.",
         "files": "Its files: bucket, file name, size and MD5 hash.",
+        "items_exported": "How many messages or files it holds.",
+        "items_found": "How many messages or files the search found.",
         "matter_id": "The matter it is in.",
         "name": "The export's name.",
         "requester_email": "Email address of whoever started it.",
@@ -2858,8 +2953,8 @@
         "search_terms": "The search terms it exported.",
         "service": "The service exported: MAIL, DRIVE, GROUPS, HANGOUTS_CHAT or CALENDAR.",
         "size_bytes": "Its size in bytes.",
-        "status": "COMPLETED.",
-        "total_count": "How many messages or files the search found."
+        "status": "completed.",
+        "url": "The matter's exports in Google Vault, to download it from."
       },
       "parameters": [
         {
