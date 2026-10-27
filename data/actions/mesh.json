@@ -1,0 +1,3408 @@
+{
+  "actions": {
+    "build_pubmed_search": {
+      "description": "Build a PubMed search for a MeSH heading or supplementary concept, with its exact name and the right search tag: optionally narrowed to subheadings or to articles where it is a main topic, without the headings below it, or widened with its entry terms as title and abstract words. Returns the query and a link that runs it; the PubMed integration's search takes the query as it is.",
+      "display_name": "Build PubMed search",
+      "display_str_template": "Build a PubMed search for {0}.",
+      "handler": "actions.build_pubmed_search",
+      "id": "mesh_build_pubmed_search",
+      "method": "POST",
+      "mock_response": {
+        "heading_id": "D009203",
+        "heading_name": "Myocardial Infarction",
+        "include_narrower": true,
+        "kind": "heading",
+        "major_topic_only": true,
+        "pubmed_url": "https://pubmed.ncbi.nlm.nih.gov/?term=%28%22Myocardial+Infarction%2Fdrug+therapy%22%5BMajr%5D+OR+%22Myocardial+Infarction%2Fsurgery%22%5BMajr%5D%29",
+        "query": "(\"Myocardial Infarction/drug therapy\"[Majr] OR \"Myocardial Infarction/surgery\"[Majr])",
+        "subheadings": [
+          "drug therapy",
+          "surgery"
+        ],
+        "summary": "PubMed search for Myocardial Infarction: (\"Myocardial Infarction/drug therapy\"[Majr] OR \"Myocardial Infarction/surgery\"[Majr])",
+        "text_words": [],
+        "type": "Topical heading"
+      },
+      "name": "build_pubmed_search",
+      "output_formatter": "formatting.format_build_pubmed_search_output",
+      "parameters": [
+        {
+          "description": "A heading's ID (D009203), a supplementary concept's ID (C000718217), or either's exact name.",
+          "display_name": "Heading or supplementary concept",
+          "examples": [
+            {
+              "label": "A heading",
+              "value": "Myocardial Infarction"
+            },
+            {
+              "label": "A supplementary concept",
+              "value": "C000718217"
+            }
+          ],
+          "name": "heading",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only articles indexed with the heading under any of these subheadings. Leave empty for all of them. Headings only.",
+          "display_name": "Subheadings",
+          "dynamic_source": "subheadings",
+          "dynamic_source_allows_custom": true,
+          "multi_select": true,
+          "name": "subheadings",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": false,
+          "description": "Only articles where the heading is a main topic. Off by default.",
+          "display_name": "Main topic only",
+          "name": "major_topic_only",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": true,
+          "description": "Also find articles indexed with the headings below it, as PubMed does by default. On by default.",
+          "display_name": "Include narrower headings",
+          "name": "include_narrower",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Also search titles and abstracts for the heading's name and synonyms, to catch articles not yet indexed. Off by default.",
+          "display_name": "Add entry terms as text words",
+          "name": "add_entry_terms",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/mesh/build-pubmed-search",
+      "result_str_template": "{mesh_build_pubmed_search,summary}.",
+      "returns": {
+        "properties": {
+          "heading_id": {
+            "description": "The heading's (or supplementary concept's) MeSH ID.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "heading_name": {
+            "description": "Its exact name, as the search uses it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "include_narrower": {
+            "description": "True when the headings below it are found too.",
+            "type": "boolean"
+          },
+          "kind": {
+            "description": "heading or supplementary_concept.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "major_topic_only": {
+            "description": "True when only articles with it as a main topic are found.",
+            "type": "boolean"
+          },
+          "pubmed_url": {
+            "description": "A link that runs the search on pubmed.ncbi.nlm.nih.gov.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "query": {
+            "description": "The PubMed search, ready for PubMed's search box or Search step.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subheadings": {
+            "description": "The subheadings the search narrows to, by name.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          },
+          "text_words": {
+            "description": "The names searched for in titles and abstracts too.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": {
+            "description": "Its type in words: Topical heading, Geographic heading, Publication type, Check tag, Subheading, or a supplementary concept's type (Chemical, Disease, Organism, Population, Protocol, Anatomy).",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "check_subheading": {
+      "description": "Check whether MeSH allows a subheading with a heading, such as Ofloxacin/adverse effects, and get the pair's ID. For a pair it doesn't allow, NLM often names the heading to use instead: Heart/abnormalities points to Heart Defects, Congenital.",
+      "display_name": "Check heading and subheading",
+      "display_str_template": "Check whether MeSH allows {1} with {0}.",
+      "handler": "actions.check_subheading",
+      "id": "mesh_check_subheading",
+      "method": "POST",
+      "mock_response": {
+        "abbreviation": "AB",
+        "allowed": false,
+        "found": true,
+        "heading_id": "D006321",
+        "heading_name": "Heart",
+        "mesh_year": "current",
+        "pair_id": "D006321Q000002",
+        "pair_name": "Heart/abnormalities",
+        "subheading_id": "Q000002",
+        "subheading_name": "abnormalities",
+        "summary": "Heart/abnormalities is not allowed; use Heart Defects, Congenital (D006330) instead",
+        "use_instead_id": "D006330",
+        "use_instead_name": "Heart Defects, Congenital"
+      },
+      "name": "check_subheading",
+      "output_formatter": "formatting.format_check_subheading_output",
+      "parameters": [
+        {
+          "description": "The heading's MeSH ID, such as D009203, or its exact name. 'Search headings' finds either.",
+          "display_name": "Heading",
+          "examples": [
+            {
+              "label": "An ID",
+              "value": "D009203"
+            },
+            {
+              "label": "A name",
+              "value": "Myocardial Infarction"
+            }
+          ],
+          "name": "heading",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Pick a subheading, or type its ID (Q000009), name (adverse effects) or abbreviation (AE).",
+          "display_name": "Subheading",
+          "dynamic_source": "subheadings",
+          "dynamic_source_allows_custom": true,
+          "name": "subheading",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "current",
+          "description": "Which year's MeSH to read. Current by default; pick an earlier year to match work indexed with it.",
+          "display_name": "MeSH year",
+          "dynamic_source": "years",
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mesh/check-subheading",
+      "result_str_template": "{mesh_check_subheading,summary}.",
+      "returns": {
+        "properties": {
+          "abbreviation": {
+            "description": "The subheading's two-letter abbreviation.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "allowed": {
+            "description": "True when MeSH allows the subheading with the heading.",
+            "type": "boolean"
+          },
+          "found": {
+            "description": "True when MeSH has both the heading and the subheading.",
+            "type": "boolean"
+          },
+          "heading_id": {
+            "description": "The heading's MeSH ID.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "heading_name": {
+            "description": "The heading's name.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mesh_year": {
+            "description": "The MeSH read: 'current', or a year such as '2025'.",
+            "type": "string"
+          },
+          "pair_id": {
+            "description": "The pair's MeSH ID, such as D015242Q000009.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pair_name": {
+            "description": "The pair as PubMed writes it, such as Ofloxacin/adverse effects.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subheading_id": {
+            "description": "The subheading's MeSH ID.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subheading_name": {
+            "description": "The subheading's name.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          },
+          "use_instead_id": {
+            "description": "For a pair MeSH does not allow, the ID of the heading (or pair) NLM says to use instead, when it names one.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "use_instead_name": {
+            "description": "Its name, such as Heart Defects, Congenital.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_broader_headings": {
+      "description": "Get every heading above a heading in the MeSH trees: its direct parents, all its ancestors up to the top of each tree, and one readable path per tree number, such as Diseases > Cardiovascular Diseases > Heart Diseases > Myocardial Ischemia > Myocardial Infarction. Useful for tagging with broader subjects.",
+      "display_name": "Get broader headings",
+      "display_str_template": "Get the headings above {0} in MeSH.",
+      "handler": "actions.get_broader_headings",
+      "id": "mesh_get_broader_headings",
+      "method": "POST",
+      "mock_response": {
+        "ancestor_count": 9,
+        "ancestor_ids": [
+          "D002318",
+          "D013568",
+          "D006331",
+          "D010335",
+          "D014652",
+          "D007511",
+          "D017202",
+          "D009336",
+          "D007238"
+        ],
+        "ancestors": [
+          {
+            "id": "D002318",
+            "level": 1,
+            "name": "Cardiovascular Diseases",
+            "tree_numbers": [
+              "C14"
+            ]
+          },
+          {
+            "id": "D013568",
+            "level": 1,
+            "name": "Pathological Conditions, Signs and Symptoms",
+            "tree_numbers": [
+              "C23"
+            ]
+          },
+          {
+            "id": "D006331",
+            "level": 2,
+            "name": "Heart Diseases",
+            "tree_numbers": [
+              "C14.280"
+            ]
+          },
+          {
+            "id": "D010335",
+            "level": 2,
+            "name": "Pathologic Processes",
+            "tree_numbers": [
+              "C23.550"
+            ]
+          },
+          {
+            "id": "D014652",
+            "level": 2,
+            "name": "Vascular Diseases",
+            "tree_numbers": [
+              "C14.907"
+            ]
+          },
+          {
+            "id": "D007511",
+            "level": 3,
+            "name": "Ischemia",
+            "tree_numbers": [
+              "C23.550.513"
+            ]
+          },
+          {
+            "id": "D017202",
+            "level": 3,
+            "name": "Myocardial Ischemia",
+            "tree_numbers": [
+              "C14.280.647",
+              "C14.907.585"
+            ]
+          },
+          {
+            "id": "D009336",
+            "level": 3,
+            "name": "Necrosis",
+            "tree_numbers": [
+              "C23.550.717"
+            ]
+          },
+          {
+            "id": "D007238",
+            "level": 4,
+            "name": "Infarction",
+            "tree_numbers": [
+              "C23.550.513.355",
+              "C23.550.717.489"
+            ]
+          }
+        ],
+        "found": true,
+        "id": "D009203",
+        "mesh_year": "current",
+        "name": "Myocardial Infarction",
+        "parent_count": 2,
+        "parents": [
+          {
+            "id": "D007238",
+            "name": "Infarction",
+            "tree_numbers": [
+              "C23.550.513.355",
+              "C23.550.717.489"
+            ]
+          },
+          {
+            "id": "D017202",
+            "name": "Myocardial Ischemia",
+            "tree_numbers": [
+              "C14.280.647",
+              "C14.907.585"
+            ]
+          }
+        ],
+        "paths": [
+          {
+            "path": "Diseases > Cardiovascular Diseases > Heart Diseases > Myocardial Ischemia > Myocardial Infarction",
+            "tree_number": "C14.280.647.500"
+          },
+          {
+            "path": "Diseases > Cardiovascular Diseases > Vascular Diseases > Myocardial Ischemia > Myocardial Infarction",
+            "tree_number": "C14.907.585.500"
+          },
+          {
+            "path": "Diseases > Pathological Conditions, Signs and Symptoms > Pathologic Processes > Ischemia > Infarction > Myocardial Infarction",
+            "tree_number": "C23.550.513.355.750"
+          },
+          {
+            "path": "Diseases > Pathological Conditions, Signs and Symptoms > Pathologic Processes > Necrosis > Infarction > Myocardial Infarction",
+            "tree_number": "C23.550.717.489.750"
+          }
+        ],
+        "summary": "Myocardial Infarction (D009203) sits under Infarction; Myocardial Ischemia",
+        "tree_numbers": [
+          "C14.280.647.500",
+          "C14.907.585.500",
+          "C23.550.513.355.750",
+          "C23.550.717.489.750"
+        ],
+        "url": "https://meshb.nlm.nih.gov/record/ui?ui=D009203"
+      },
+      "name": "get_broader_headings",
+      "output_formatter": "formatting.format_get_broader_headings_output",
+      "parameters": [
+        {
+          "description": "The heading's MeSH ID, such as D009203, or its exact name. 'Search headings' finds either.",
+          "display_name": "Heading",
+          "examples": [
+            {
+              "label": "An ID",
+              "value": "D009203"
+            },
+            {
+              "label": "A name",
+              "value": "Myocardial Infarction"
+            }
+          ],
+          "name": "heading",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "current",
+          "description": "Which year's MeSH to read. Current by default; pick an earlier year to match work indexed with it.",
+          "display_name": "MeSH year",
+          "dynamic_source": "years",
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mesh/get-broader-headings",
+      "result_str_template": "{mesh_get_broader_headings,summary}.",
+      "returns": {
+        "properties": {
+          "ancestor_count": {
+            "description": "How many headings sit above it.",
+            "type": "number"
+          },
+          "ancestor_ids": {
+            "description": "The IDs of every heading above it, in the same order.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ancestors": {
+            "description": "Every heading above it, the top of each tree first.",
+            "items": {
+              "description": "A heading somewhere above this one.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "level": {
+                  "description": "How deep it sits: 1 for the top of a tree.",
+                  "type": "number"
+                },
+                "name": {
+                  "description": "Its name.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "tree_numbers": {
+                  "description": "Its tree numbers above this heading.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "found": {
+            "description": "True when MeSH has the record. False means it has none by that ID or name in the MeSH year read, and the other fields are empty.",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "The record's MeSH ID, such as D009203.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mesh_year": {
+            "description": "The MeSH read: 'current', or a year such as '2025'.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The heading's name.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parent_count": {
+            "description": "How many headings sit directly above it.",
+            "type": "number"
+          },
+          "parents": {
+            "description": "The headings directly above it.",
+            "items": {
+              "description": "A heading, with where it sits.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "tree_numbers": {
+                  "description": "Its tree numbers in the part of the tree concerned.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "paths": {
+            "description": "One path from the top of a tree for each tree number.",
+            "items": {
+              "description": "The way down one tree to this heading.",
+              "properties": {
+                "path": {
+                  "description": "Every heading from the top of the tree down to this one, separated by '>', with the tree's name first.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "tree_number": {
+                  "description": "This heading's tree number in that tree.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          },
+          "tree_numbers": {
+            "description": "The heading's own tree numbers.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "url": {
+            "description": "The record's page in NLM's MeSH Browser.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_heading": {
+      "description": "Get a MeSH heading in full: its definition (scope note), tree numbers, entry terms, allowed subheadings with their abbreviations, broader and see-also headings, pharmacological actions for a drug, previous indexing, NLM's notes, registry numbers and dates. A heading MeSH doesn't have comes back with found false.",
+      "display_name": "Get heading",
+      "display_str_template": "Get the MeSH heading {0}.",
+      "handler": "actions.get_heading",
+      "id": "mesh_get_heading",
+      "method": "POST",
+      "mock_response": {
+        "active": true,
+        "allowed_subheading_count": 35,
+        "allowed_subheadings": [
+          {
+            "abbreviation": "BL",
+            "id": "Q000097",
+            "name": "blood"
+          },
+          {
+            "abbreviation": "CF",
+            "id": "Q000134",
+            "name": "cerebrospinal fluid"
+          },
+          {
+            "abbreviation": "CI",
+            "id": "Q000139",
+            "name": "chemically induced"
+          },
+          {
+            "abbreviation": "CL",
+            "id": "Q000145",
+            "name": "classification"
+          },
+          {
+            "abbreviation": "CO",
+            "id": "Q000150",
+            "name": "complications"
+          },
+          {
+            "abbreviation": "CN",
+            "id": "Q000151",
+            "name": "congenital"
+          }
+        ],
+        "annotation": "do not coordinate with ACUTE DISEASE for \"acute infarct\"",
+        "broader_headings": [
+          {
+            "id": "D007238",
+            "name": "Infarction"
+          },
+          {
+            "id": "D017202",
+            "name": "Myocardial Ischemia"
+          }
+        ],
+        "cas_name": null,
+        "consider_also": null,
+        "date_created": null,
+        "date_established": null,
+        "date_introduced": "1966-01-01",
+        "date_revised": null,
+        "entry_terms": [
+          "Cardiovascular Stroke",
+          "Heart Attack",
+          "Myocardial Infarct"
+        ],
+        "found": true,
+        "history_note": "79; was MYOCARDIAL INFARCT 1963-78",
+        "id": "D009203",
+        "last_updated": "2019-07-01",
+        "mesh_year": "current",
+        "name": "Myocardial Infarction",
+        "nlm_classification_number": "WG 310",
+        "online_note": "use MYOCARDIAL INFARCTION to search MYOCARDIAL INFARCT 1966-78",
+        "pharmacological_actions": [],
+        "previous_indexing": [],
+        "public_mesh_note": "79; was MYOCARDIAL INFARCT 1963-78",
+        "registry_numbers": [],
+        "scope_note": "NECROSIS of the MYOCARDIUM caused by an obstruction of the blood supply to the heart (CORONARY CIRCULATION).",
+        "see_also": [
+          {
+            "id": "D006342",
+            "name": "Heart Rupture, Post-Infarction"
+          }
+        ],
+        "summary": "Myocardial Infarction (D009203), topical heading at C14.280.647.500, C14.907.585.500, C23.550.513.355.750, C23.550.717.489.750",
+        "tree_numbers": [
+          "C14.280.647.500",
+          "C14.907.585.500",
+          "C23.550.513.355.750",
+          "C23.550.717.489.750"
+        ],
+        "type": "Topical heading",
+        "url": "https://meshb.nlm.nih.gov/record/ui?ui=D009203"
+      },
+      "name": "get_heading",
+      "output_formatter": "formatting.format_get_heading_output",
+      "parameters": [
+        {
+          "description": "The heading's MeSH ID, such as D009203, or its exact name. 'Search headings' finds either.",
+          "display_name": "Heading",
+          "examples": [
+            {
+              "label": "An ID",
+              "value": "D009203"
+            },
+            {
+              "label": "A name",
+              "value": "Myocardial Infarction"
+            }
+          ],
+          "name": "heading",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "current",
+          "description": "Which year's MeSH to read. Current by default; pick an earlier year to match work indexed with it.",
+          "display_name": "MeSH year",
+          "dynamic_source": "years",
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mesh/get-heading",
+      "result_str_template": "{mesh_get_heading,summary}.",
+      "returns": {
+        "properties": {
+          "active": {
+            "description": "False for a heading NLM has retired.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "allowed_subheading_count": {
+            "description": "How many subheadings it allows.",
+            "type": "number"
+          },
+          "allowed_subheadings": {
+            "description": "The subheadings MeSH allows with it, by name.",
+            "items": {
+              "description": "A subheading (qualifier).",
+              "properties": {
+                "abbreviation": {
+                  "description": "Its two-letter abbreviation, such as AE.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "description": "Its MeSH ID, such as Q000009.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name, such as adverse effects.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "annotation": {
+            "description": "NLM's notes to indexers on how to use it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "broader_headings": {
+            "description": "The headings directly above it in the trees.",
+            "items": {
+              "description": "A MeSH record this one points to.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID, such as D007238.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "cas_name": {
+            "description": "For a chemical, its Chemical Abstracts systematic name.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consider_also": {
+            "description": "Word roots of related headings worth searching too.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_created": {
+            "description": "When the record was created, as YYYY-MM-DD, if NLM says.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_established": {
+            "description": "When it was established, as YYYY-MM-DD, if NLM says.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_introduced": {
+            "description": "When it entered MeSH, as YYYY-MM-DD.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_revised": {
+            "description": "When it was last revised, as YYYY-MM-DD, if NLM says.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entry_terms": {
+            "description": "Its synonyms and other names, which lead to it in searches.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "found": {
+            "description": "True when MeSH has the record. False means it has none by that ID or name in the MeSH year read, and the other fields are empty.",
+            "type": "boolean"
+          },
+          "history_note": {
+            "description": "How the heading has changed over the years.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "description": "The record's MeSH ID, such as D009203.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_updated": {
+            "description": "When NLM last updated it, as YYYY-MM-DD.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mesh_year": {
+            "description": "The MeSH read: 'current', or a year such as '2025'.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The heading's name, such as Myocardial Infarction.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nlm_classification_number": {
+            "description": "The NLM Classification shelf number, such as WG 310.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "online_note": {
+            "description": "NLM's advice for searching older articles.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pharmacological_actions": {
+            "description": "For a drug or chemical, what it does, as headings.",
+            "items": {
+              "description": "A MeSH record this one points to.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID, such as D007238.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "previous_indexing": {
+            "description": "Headings PubMed used for the subject before this one existed, with years.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "public_mesh_note": {
+            "description": "NLM's public note on its history.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registry_numbers": {
+            "description": "For a chemical, its CAS, UNII or EC numbers, some with a name after them.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "scope_note": {
+            "description": "NLM's definition of the heading.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "see_also": {
+            "description": "Related headings NLM points to.",
+            "items": {
+              "description": "A MeSH record this one points to.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID, such as D007238.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          },
+          "tree_numbers": {
+            "description": "Where it sits in the MeSH trees, such as C14.280.647.500; one per place.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": {
+            "description": "Its type in words: Topical heading, Geographic heading, Publication type, Check tag, Subheading, or a supplementary concept's type (Chemical, Disease, Organism, Population, Protocol, Anatomy).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "description": "The record's page in NLM's MeSH Browser.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_narrower_headings": {
+      "description": "List the headings below a heading in the MeSH trees: the level just below, or every heading below it, which is what PubMed searches when it explodes a heading. Each comes with its tree numbers. Useful for expanding a search or a tag to more specific subjects.",
+      "display_name": "Get narrower headings",
+      "display_str_template": "List the headings below {0} in MeSH.",
+      "handler": "actions.get_narrower_headings",
+      "id": "mesh_get_narrower_headings",
+      "method": "POST",
+      "mock_response": {
+        "count": 5,
+        "depth": "all",
+        "found": true,
+        "has_more": true,
+        "id": "D017202",
+        "mesh_year": "current",
+        "name": "Myocardial Ischemia",
+        "narrower": [
+          {
+            "id": "D054058",
+            "name": "Acute Coronary Syndrome",
+            "tree_numbers": [
+              "C14.280.647.124",
+              "C14.907.585.124"
+            ]
+          },
+          {
+            "id": "D000787",
+            "name": "Angina Pectoris",
+            "tree_numbers": [
+              "C14.280.647.187",
+              "C14.907.585.187"
+            ]
+          },
+          {
+            "id": "D000788",
+            "name": "Angina Pectoris, Variant",
+            "tree_numbers": [
+              "C14.280.647.187.150.150",
+              "C14.907.585.187.150.500"
+            ]
+          },
+          {
+            "id": "D060050",
+            "name": "Angina, Stable",
+            "tree_numbers": [
+              "C14.280.647.187.362",
+              "C14.907.585.187.362"
+            ]
+          },
+          {
+            "id": "D000789",
+            "name": "Angina, Unstable",
+            "tree_numbers": [
+              "C14.280.647.187.150",
+              "C14.907.585.187.150"
+            ]
+          }
+        ],
+        "narrower_ids": [
+          "D054058",
+          "D000787",
+          "D000788",
+          "D060050",
+          "D000789"
+        ],
+        "offset": 0,
+        "summary": "Myocardial Ischemia (D017202) has 5 headings below it on this page, and more after it",
+        "tree_numbers": [
+          "C14.280.647",
+          "C14.907.585"
+        ],
+        "url": "https://meshb.nlm.nih.gov/record/ui?ui=D017202"
+      },
+      "name": "get_narrower_headings",
+      "output_formatter": "formatting.format_get_narrower_headings_output",
+      "parameters": [
+        {
+          "description": "The heading's MeSH ID, such as D009203, or its exact name. 'Search headings' finds either.",
+          "display_name": "Heading",
+          "examples": [
+            {
+              "label": "An ID",
+              "value": "D009203"
+            },
+            {
+              "label": "A name",
+              "value": "Myocardial Infarction"
+            }
+          ],
+          "name": "heading",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "children",
+          "description": "The level just below the heading, or every heading below it. Defaults to the level just below.",
+          "display_name": "Depth",
+          "name": "depth",
+          "options": [
+            {
+              "label": "Direct children only",
+              "value": "children"
+            },
+            {
+              "label": "All descendants",
+              "value": "all"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 100,
+          "description": "The most headings to return, 1 to 500. Defaults to 100.",
+          "display_name": "Most results",
+          "maximum": 500,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many to skip, to page through a long list. Defaults to 0.",
+          "display_name": "Skip",
+          "maximum": 100000,
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "current",
+          "description": "Which year's MeSH to read. Current by default; pick an earlier year to match work indexed with it.",
+          "display_name": "MeSH year",
+          "dynamic_source": "years",
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mesh/get-narrower-headings",
+      "result_str_template": "{mesh_get_narrower_headings,summary}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many headings are in this page of the list.",
+            "type": "number"
+          },
+          "depth": {
+            "description": "children for the level below, or all for every heading below.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "found": {
+            "description": "True when MeSH has the record. False means it has none by that ID or name in the MeSH year read, and the other fields are empty.",
+            "type": "boolean"
+          },
+          "has_more": {
+            "description": "True when there are more after these: raise Skip to see them.",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "The record's MeSH ID, such as D009203.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mesh_year": {
+            "description": "The MeSH read: 'current', or a year such as '2025'.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The heading's name.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "narrower": {
+            "description": "The headings below it, in alphabetical order.",
+            "items": {
+              "description": "A heading, with where it sits.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "tree_numbers": {
+                  "description": "Its tree numbers in the part of the tree concerned.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "narrower_ids": {
+            "description": "Their IDs alone, in the same order.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "offset": {
+            "description": "How many were skipped before these.",
+            "type": "number"
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          },
+          "tree_numbers": {
+            "description": "The heading's own tree numbers.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "url": {
+            "description": "The record's page in NLM's MeSH Browser.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_subheading": {
+      "description": "Get a MeSH subheading (qualifier) in full: its abbreviation, what it is used with (scope note), its place in the subheading tree, its other names, NLM's notes and dates.",
+      "display_name": "Get subheading",
+      "display_str_template": "Get the MeSH subheading {0}.",
+      "handler": "actions.get_subheading",
+      "id": "mesh_get_subheading",
+      "method": "POST",
+      "mock_response": {
+        "abbreviation": "AE",
+        "active": true,
+        "annotation": "subheading only; see also /poisoning & /toxicity",
+        "broader_subheadings": [
+          {
+            "id": "Q000494",
+            "name": "pharmacology"
+          },
+          {
+            "id": "Q000627",
+            "name": "therapeutic use"
+          }
+        ],
+        "date_created": null,
+        "date_established": null,
+        "date_introduced": "1966-01-01",
+        "date_revised": null,
+        "entry_terms": [
+          "side effects"
+        ],
+        "found": true,
+        "history_note": "66; used with Category D, E & H 1966-69; D, E, H & J 1970-74; D, E, F4, H & J 1975-81; D, E, F4, G3, H & J 1982-87; D, E, F4, H, J, & SMOKING 1988; D, E, F4, H, J, & 1982-87; D, E, F4, H, J & SMOKING 1988; D, E, F4, H, J & SMOKING+ 1989; D, E & J 1990 forward",
+        "id": "Q000009",
+        "last_updated": "2017-07-05",
+        "mesh_year": "current",
+        "name": "adverse effects",
+        "online_note": "search policy: Online Manual; use: main heading/AE or AE (SH) or SUBS APPLY AE",
+        "scope_note": "Used with drugs, chemicals, or biological agents in accepted dosage - or with physical agents or manufactured products in normal usage - when intended for diagnostic, therapeutic, prophylactic, or anesthetic purposes. It is used also for adverse effects or complications of diagnostic, therapeutic, prophylactic, anesthetic, surgical, or other procedures.",
+        "summary": "adverse effects (Q000009, AE)",
+        "tree_numbers": [
+          "Y07.020",
+          "Y10.020"
+        ],
+        "url": "https://meshb.nlm.nih.gov/record/ui?ui=Q000009"
+      },
+      "name": "get_subheading",
+      "output_formatter": "formatting.format_get_subheading_output",
+      "parameters": [
+        {
+          "description": "Pick a subheading, or type its ID (Q000009), name (adverse effects) or abbreviation (AE).",
+          "display_name": "Subheading",
+          "dynamic_source": "subheadings",
+          "dynamic_source_allows_custom": true,
+          "name": "subheading",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "current",
+          "description": "Which year's MeSH to read. Current by default; pick an earlier year to match work indexed with it.",
+          "display_name": "MeSH year",
+          "dynamic_source": "years",
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mesh/get-subheading",
+      "result_str_template": "{mesh_get_subheading,summary}.",
+      "returns": {
+        "properties": {
+          "abbreviation": {
+            "description": "Its two-letter abbreviation, such as AE.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "active": {
+            "description": "False for a subheading NLM has retired.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "annotation": {
+            "description": "NLM's notes to indexers on how to use it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "broader_subheadings": {
+            "description": "The subheadings directly above it.",
+            "items": {
+              "description": "A MeSH record this one points to.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID, such as D007238.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "date_created": {
+            "description": "When the record was created, as YYYY-MM-DD, if NLM says.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_established": {
+            "description": "When it was established, as YYYY-MM-DD, if NLM says.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_introduced": {
+            "description": "When it entered MeSH, as YYYY-MM-DD.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_revised": {
+            "description": "When it was last revised, as YYYY-MM-DD, if NLM says.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entry_terms": {
+            "description": "Its other names.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "found": {
+            "description": "True when MeSH has the record. False means it has none by that ID or name in the MeSH year read, and the other fields are empty.",
+            "type": "boolean"
+          },
+          "history_note": {
+            "description": "How its use has changed over the years.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "description": "The subheading's MeSH ID, such as Q000009.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_updated": {
+            "description": "When NLM last updated it, as YYYY-MM-DD.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mesh_year": {
+            "description": "The MeSH read: 'current', or a year such as '2025'.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The subheading's name, such as adverse effects.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "online_note": {
+            "description": "NLM's advice for searching with it.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope_note": {
+            "description": "NLM's definition: what it is used with, and for.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          },
+          "tree_numbers": {
+            "description": "Where it sits in the subheading tree, such as Y07.020.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "url": {
+            "description": "The record's page in NLM's MeSH Browser.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "get_supplementary_concept": {
+      "description": "Get a MeSH supplementary concept record (a chemical, drug, rare disease or organism) in full: the headings it maps to, which are how PubMed indexes it, its pharmacological actions, synonyms, registry numbers, how many PubMed articles carry it, NLM's note and dates. A record MeSH doesn't have comes back with found false.",
+      "display_name": "Get supplementary concept",
+      "display_str_template": "Get the MeSH supplementary concept {0}.",
+      "handler": "actions.get_supplementary_concept",
+      "id": "mesh_get_supplementary_concept",
+      "method": "POST",
+      "mock_response": {
+        "active": true,
+        "date_created": null,
+        "date_established": null,
+        "date_introduced": "2021-07-19",
+        "date_revised": null,
+        "entry_terms": [
+          "(1R,2S,5S)-N-((1S)-1-cyano-2-((3S)-2-oxopyrrolidin-3-yl)ethyl)-6,6-dimethyl-3-(3-methyl-N-(trifluoroacetyl)-l-valyl)-3-azabicyclo(3.1.0)hexane-2-carboxamide",
+          "PF-07321332",
+          "PF07321332"
+        ],
+        "found": true,
+        "frequency": 41,
+        "id": "C000718217",
+        "indexer_consider_also": [],
+        "last_updated": "2022-01-06",
+        "mapped_heading_ids": [
+          "D007769",
+          "D007930",
+          "D009570",
+          "D011392"
+        ],
+        "mapped_to": [
+          {
+            "id": "D007769",
+            "name": "Lactams",
+            "preferred": true
+          },
+          {
+            "id": "D007930",
+            "name": "Leucine",
+            "preferred": true
+          },
+          {
+            "id": "D009570",
+            "name": "Nitriles",
+            "preferred": true
+          },
+          {
+            "id": "D011392",
+            "name": "Proline",
+            "preferred": true
+          }
+        ],
+        "mesh_year": "current",
+        "name": "nirmatrelvir",
+        "note": "component of COVID-19 drug Paxlovid",
+        "pharmacological_actions": [
+          {
+            "id": "D000084762",
+            "name": "Viral Protease Inhibitors"
+          }
+        ],
+        "previous_indexing": [],
+        "registry_numbers": [],
+        "sources": [
+          "Curr Opin Virol. 2021 Apr 27;49:36-40."
+        ],
+        "summary": "nirmatrelvir (C000718217), chemical, maps to Lactams; Leucine; Nitriles; Proline",
+        "type": "Chemical",
+        "url": "https://meshb.nlm.nih.gov/record/ui?ui=C000718217"
+      },
+      "name": "get_supplementary_concept",
+      "output_formatter": "formatting.format_get_supplementary_concept_output",
+      "parameters": [
+        {
+          "description": "The record's MeSH ID, such as C000718217, or its exact name. 'Search supplementary concepts' finds either.",
+          "display_name": "Supplementary concept",
+          "examples": [
+            {
+              "label": "An ID",
+              "value": "C000718217"
+            },
+            {
+              "label": "A name",
+              "value": "nirmatrelvir"
+            }
+          ],
+          "name": "concept",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "current",
+          "description": "Which year's MeSH to read. Current by default; pick an earlier year to match work indexed with it.",
+          "display_name": "MeSH year",
+          "dynamic_source": "years",
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mesh/get-supplementary-concept",
+      "result_str_template": "{mesh_get_supplementary_concept,summary}.",
+      "returns": {
+        "properties": {
+          "active": {
+            "description": "False for a record NLM has retired.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "date_created": {
+            "description": "When the record was created, as YYYY-MM-DD, if NLM says.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_established": {
+            "description": "When it was established, as YYYY-MM-DD, if NLM says.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_introduced": {
+            "description": "When it entered MeSH, as YYYY-MM-DD.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_revised": {
+            "description": "When it was last revised, as YYYY-MM-DD, if NLM says.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entry_terms": {
+            "description": "Its synonyms and other names, such as codes and brand names.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "found": {
+            "description": "True when MeSH has the record. False means it has none by that ID or name in the MeSH year read, and the other fields are empty.",
+            "type": "boolean"
+          },
+          "frequency": {
+            "description": "How many PubMed articles are indexed with it.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "id": {
+            "description": "The record's MeSH ID, such as C000718217.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "indexer_consider_also": {
+            "description": "Headings NLM suggests indexers also consider.",
+            "items": {
+              "description": "A MeSH record this one points to.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID, such as D007238.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "last_updated": {
+            "description": "When NLM last updated it, as YYYY-MM-DD.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mapped_heading_ids": {
+            "description": "The IDs of those headings alone, each once.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "mapped_to": {
+            "description": "The headings PubMed adds to an article indexed with this record: the way to search for it with headings.",
+            "items": {
+              "description": "A heading (or heading/subheading pair) the record maps to.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID, such as D007769, or D002164Q000031 for a pair.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name, such as Lactams.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "preferred": {
+                  "description": "True for the main headings NLM marks with an asterisk.",
+                  "type": "boolean"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "mesh_year": {
+            "description": "The MeSH read: 'current', or a year such as '2025'.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The record's name, such as nirmatrelvir.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "description": "NLM's note on the record.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pharmacological_actions": {
+            "description": "For a chemical, what it does, as headings.",
+            "items": {
+              "description": "A MeSH record this one points to.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID, such as D007238.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "previous_indexing": {
+            "description": "How PubMed indexed it before, with years.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "registry_numbers": {
+            "description": "Its CAS, UNII or EC numbers, when NLM has them.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sources": {
+            "description": "The article in which NLM first found it.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          },
+          "type": {
+            "description": "Chemical, Disease, Organism, Population, Protocol or Anatomy.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "description": "The record's page in NLM's MeSH Browser.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_allowed_subheadings": {
+      "description": "List the subheadings (qualifiers, such as adverse effects or drug therapy) MeSH allows with a heading, with their IDs and two-letter abbreviations.",
+      "display_name": "List allowed subheadings",
+      "display_str_template": "List the subheadings MeSH allows with {0}.",
+      "handler": "actions.list_allowed_subheadings",
+      "id": "mesh_list_allowed_subheadings",
+      "method": "POST",
+      "mock_response": {
+        "count": 25,
+        "found": true,
+        "id": "D015242",
+        "mesh_year": "current",
+        "name": "Ofloxacin",
+        "subheading_names": [
+          "administration & dosage",
+          "adverse effects",
+          "agonists",
+          "analogs & derivatives",
+          "analysis",
+          "antagonists & inhibitors"
+        ],
+        "subheadings": [
+          {
+            "abbreviation": "AD",
+            "id": "Q000008",
+            "name": "administration & dosage"
+          },
+          {
+            "abbreviation": "AE",
+            "id": "Q000009",
+            "name": "adverse effects"
+          },
+          {
+            "abbreviation": "AG",
+            "id": "Q000819",
+            "name": "agonists"
+          },
+          {
+            "abbreviation": "AA",
+            "id": "Q000031",
+            "name": "analogs & derivatives"
+          },
+          {
+            "abbreviation": "AN",
+            "id": "Q000032",
+            "name": "analysis"
+          },
+          {
+            "abbreviation": "AI",
+            "id": "Q000037",
+            "name": "antagonists & inhibitors"
+          }
+        ],
+        "summary": "Ofloxacin (D015242) takes 25 subheadings"
+      },
+      "name": "list_allowed_subheadings",
+      "output_formatter": "formatting.format_list_allowed_subheadings_output",
+      "parameters": [
+        {
+          "description": "The heading's MeSH ID, such as D009203, or its exact name. 'Search headings' finds either.",
+          "display_name": "Heading",
+          "examples": [
+            {
+              "label": "An ID",
+              "value": "D009203"
+            },
+            {
+              "label": "A name",
+              "value": "Myocardial Infarction"
+            }
+          ],
+          "name": "heading",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "current",
+          "description": "Which year's MeSH to read. Current by default; pick an earlier year to match work indexed with it.",
+          "display_name": "MeSH year",
+          "dynamic_source": "years",
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mesh/list-allowed-subheadings",
+      "result_str_template": "{mesh_list_allowed_subheadings,summary}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many subheadings it allows.",
+            "type": "number"
+          },
+          "found": {
+            "description": "True when MeSH has the record. False means it has none by that ID or name in the MeSH year read, and the other fields are empty.",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "The record's MeSH ID, such as D009203.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mesh_year": {
+            "description": "The MeSH read: 'current', or a year such as '2025'.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The heading's name.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subheading_names": {
+            "description": "Their names alone, in the same order.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subheadings": {
+            "description": "The subheadings MeSH allows with the heading, by name.",
+            "items": {
+              "description": "A subheading (qualifier).",
+              "properties": {
+                "abbreviation": {
+                  "description": "Its two-letter abbreviation, such as AE.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "description": "Its MeSH ID, such as Q000009.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name, such as adverse effects.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_pharmacological_actions": {
+      "description": "List what a drug or chemical does, as MeSH pharmacological actions: Ofloxacin is an Anti-Bacterial Agent and a Topoisomerase II Inhibitor, among others. Takes a heading or a supplementary concept.",
+      "display_name": "List pharmacological actions",
+      "display_str_template": "List the pharmacological actions of {0}.",
+      "handler": "actions.list_pharmacological_actions",
+      "id": "mesh_list_pharmacological_actions",
+      "method": "POST",
+      "mock_response": {
+        "action_ids": [
+          "D000900",
+          "D000892",
+          "D065609",
+          "D059005"
+        ],
+        "count": 4,
+        "found": true,
+        "id": "D015242",
+        "kind": "heading",
+        "mesh_year": "current",
+        "name": "Ofloxacin",
+        "pharmacological_actions": [
+          {
+            "id": "D000900",
+            "name": "Anti-Bacterial Agents"
+          },
+          {
+            "id": "D000892",
+            "name": "Anti-Infective Agents, Urinary"
+          },
+          {
+            "id": "D065609",
+            "name": "Cytochrome P-450 CYP1A2 Inhibitors"
+          },
+          {
+            "id": "D059005",
+            "name": "Topoisomerase II Inhibitors"
+          }
+        ],
+        "summary": "Ofloxacin (D015242) has 4 pharmacological actions",
+        "type": "Topical heading"
+      },
+      "name": "list_pharmacological_actions",
+      "output_formatter": "formatting.format_list_pharmacological_actions_output",
+      "parameters": [
+        {
+          "description": "The drug or chemical: a heading's ID (D015242), a supplementary concept's ID (C000718217), or either's exact name.",
+          "display_name": "Substance",
+          "examples": [
+            {
+              "label": "A heading",
+              "value": "D015242"
+            },
+            {
+              "label": "A name",
+              "value": "nirmatrelvir"
+            }
+          ],
+          "name": "substance",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "current",
+          "description": "Which year's MeSH to read. Current by default; pick an earlier year to match work indexed with it.",
+          "display_name": "MeSH year",
+          "dynamic_source": "years",
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mesh/list-pharmacological-actions",
+      "result_str_template": "{mesh_list_pharmacological_actions,summary}.",
+      "returns": {
+        "properties": {
+          "action_ids": {
+            "description": "Their IDs alone, in the same order.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many pharmacological actions it has.",
+            "type": "number"
+          },
+          "found": {
+            "description": "True when MeSH has the record. False means it has none by that ID or name in the MeSH year read, and the other fields are empty.",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "The record's MeSH ID, such as D009203.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "description": "heading or supplementary_concept.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mesh_year": {
+            "description": "The MeSH read: 'current', or a year such as '2025'.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The substance's name.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pharmacological_actions": {
+            "description": "What the substance does, as headings, in alphabetical order.",
+            "items": {
+              "description": "A MeSH record this one points to.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID, such as D007238.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          },
+          "type": {
+            "description": "Its type in words: Topical heading, Geographic heading, Publication type, Check tag, Subheading, or a supplementary concept's type (Chemical, Disease, Organism, Population, Protocol, Anatomy).",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "list_substances_with_action": {
+      "description": "List the drugs and chemicals MeSH files under a pharmacological action, such as every Anti-Bacterial Agent: headings, supplementary concepts, or both. Retired records are left out.",
+      "display_name": "List substances with an action",
+      "display_str_template": "List the substances MeSH files under {0}.",
+      "handler": "actions.list_substances_with_action",
+      "id": "mesh_list_substances_with_action",
+      "method": "POST",
+      "mock_response": {
+        "count": 5,
+        "found": true,
+        "has_more": true,
+        "id": "D000900",
+        "include": "headings",
+        "mesh_year": "current",
+        "name": "Anti-Bacterial Agents",
+        "offset": 0,
+        "substance_ids": [
+          "D019342",
+          "D000408",
+          "D000560",
+          "D000561",
+          "D000583"
+        ],
+        "substances": [
+          {
+            "id": "D019342",
+            "kind": "heading",
+            "name": "Acetic Acid",
+            "type": "Topical heading",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=D019342"
+          },
+          {
+            "id": "D000408",
+            "kind": "heading",
+            "name": "Alamethicin",
+            "type": "Topical heading",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=D000408"
+          },
+          {
+            "id": "D000560",
+            "kind": "heading",
+            "name": "Amdinocillin",
+            "type": "Topical heading",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=D000560"
+          },
+          {
+            "id": "D000561",
+            "kind": "heading",
+            "name": "Amdinocillin Pivoxil",
+            "type": "Topical heading",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=D000561"
+          },
+          {
+            "id": "D000583",
+            "kind": "heading",
+            "name": "Amikacin",
+            "type": "Topical heading",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=D000583"
+          }
+        ],
+        "summary": "5 substances filed under Anti-Bacterial Agents (D000900) on this page, and more after it"
+      },
+      "name": "list_substances_with_action",
+      "output_formatter": "formatting.format_list_substances_with_action_output",
+      "parameters": [
+        {
+          "description": "The action's heading ID, such as D000900, or its exact name, such as Anti-Bacterial Agents.",
+          "display_name": "Pharmacological action",
+          "examples": [
+            {
+              "label": "An ID",
+              "value": "D000900"
+            },
+            {
+              "label": "A name",
+              "value": "Anti-Bacterial Agents"
+            }
+          ],
+          "name": "pharmacological_action",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "all",
+          "description": "Which substances to list. Defaults to headings and supplementary concepts.",
+          "display_name": "Include",
+          "name": "include",
+          "options": [
+            {
+              "label": "Headings and supplementary concepts",
+              "value": "all"
+            },
+            {
+              "label": "Headings only",
+              "value": "headings"
+            },
+            {
+              "label": "Supplementary concepts only",
+              "value": "supplementary_concepts"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 100,
+          "description": "The most substances to return, 1 to 500. Defaults to 100.",
+          "display_name": "Most results",
+          "maximum": 500,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many to skip, to page through a long list. Defaults to 0.",
+          "display_name": "Skip",
+          "maximum": 100000,
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "current",
+          "description": "Which year's MeSH to read. Current by default; pick an earlier year to match work indexed with it.",
+          "display_name": "MeSH year",
+          "dynamic_source": "years",
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mesh/list-substances-with-action",
+      "result_str_template": "{mesh_list_substances_with_action,summary}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many substances are in this page of the list.",
+            "type": "number"
+          },
+          "found": {
+            "description": "True when MeSH has the record. False means it has none by that ID or name in the MeSH year read, and the other fields are empty.",
+            "type": "boolean"
+          },
+          "has_more": {
+            "description": "True when there are more after these: raise Skip to see them.",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "The pharmacological action's MeSH ID, such as D000900.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "include": {
+            "description": "all, headings or supplementary_concepts.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mesh_year": {
+            "description": "The MeSH read: 'current', or a year such as '2025'.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Its name, such as Anti-Bacterial Agents.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "offset": {
+            "description": "How many were skipped before these.",
+            "type": "number"
+          },
+          "substance_ids": {
+            "description": "Their IDs alone, in the same order.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "substances": {
+            "description": "The substances, in alphabetical order.",
+            "items": {
+              "description": "A drug or chemical with the action.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "description": "heading or supplementary_concept.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "type": {
+                  "description": "Topical heading, or Chemical for a supplementary concept.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "url": {
+                  "description": "The record's page in NLM's MeSH Browser.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "look_up_ids": {
+      "description": "Name up to 100 MeSH IDs at once, of any kind: headings (D...), subheadings (Q...), supplementary concepts (C...), heading/subheading pairs, concepts and terms. Each comes back with its name and type, or marked not found rather than failing the step.",
+      "display_name": "Look up MeSH IDs",
+      "display_str_template": "Look up the MeSH IDs {0}.",
+      "handler": "actions.look_up_ids",
+      "id": "mesh_look_up_ids",
+      "method": "POST",
+      "mock_response": {
+        "count": 6,
+        "found_count": 5,
+        "mesh_year": "current",
+        "not_found": [
+          "D999999"
+        ],
+        "records": [
+          {
+            "active": true,
+            "found": true,
+            "id": "D009203",
+            "kind": "heading",
+            "name": "Myocardial Infarction",
+            "type": "Topical heading",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=D009203"
+          },
+          {
+            "active": true,
+            "found": true,
+            "id": "Q000009",
+            "kind": "subheading",
+            "name": "adverse effects",
+            "type": "Subheading",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=Q000009"
+          },
+          {
+            "active": true,
+            "found": true,
+            "id": "C000718217",
+            "kind": "supplementary_concept",
+            "name": "nirmatrelvir",
+            "type": "Chemical",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=C000718217"
+          },
+          {
+            "active": true,
+            "found": true,
+            "id": "D015242Q000009",
+            "kind": "pair",
+            "name": "Ofloxacin/adverse effects",
+            "type": "Allowed heading/subheading pair",
+            "url": null
+          },
+          {
+            "active": true,
+            "found": true,
+            "id": "T000866941",
+            "kind": "term",
+            "name": "Heart Attack",
+            "type": "Term",
+            "url": null
+          },
+          {
+            "active": null,
+            "found": false,
+            "id": "D999999",
+            "kind": null,
+            "name": null,
+            "type": null,
+            "url": null
+          }
+        ],
+        "summary": "Named 5 of 6 IDs; the current MeSH has no D999999"
+      },
+      "name": "look_up_ids",
+      "output_formatter": "formatting.format_look_up_ids_output",
+      "parameters": [
+        {
+          "description": "The MeSH IDs, as a list from an earlier step or typed with commas, spaces or new lines between them.",
+          "display_name": "IDs",
+          "examples": [
+            {
+              "label": "Some IDs",
+              "value": "D009203, Q000009, C000718217"
+            }
+          ],
+          "name": "ids",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": "current",
+          "description": "Which year's MeSH to read. Current by default; pick an earlier year to match work indexed with it.",
+          "display_name": "MeSH year",
+          "dynamic_source": "years",
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mesh/look-up-ids",
+      "result_str_template": "{mesh_look_up_ids,summary}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many IDs were looked up.",
+            "type": "number"
+          },
+          "found_count": {
+            "description": "How many of them MeSH has.",
+            "type": "number"
+          },
+          "mesh_year": {
+            "description": "The MeSH read: 'current', or a year such as '2025'.",
+            "type": "string"
+          },
+          "not_found": {
+            "description": "The IDs MeSH has no record for.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "records": {
+            "description": "Every ID, in the order given, with what it names.",
+            "items": {
+              "description": "One ID and what it names.",
+              "properties": {
+                "active": {
+                  "description": "False for a record NLM has retired.",
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "found": {
+                  "description": "True when MeSH has a record with this ID.",
+                  "type": "boolean"
+                },
+                "id": {
+                  "description": "The ID as MeSH writes it.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "description": "What sort of record it is: heading, subheading, supplementary_concept, pair, concept or term.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "The record's name.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "type": {
+                  "description": "Its type in words, such as Topical heading or Chemical.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "url": {
+                  "description": "Its page in NLM's MeSH Browser, for headings, subheadings and concepts.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "look_up_tree_number": {
+      "description": "Find the heading at a MeSH tree number, such as C14.280.647, with the heading one level up and every heading one level down. Give a tree's letter, such as C for Diseases, to list the headings at the top of that tree.",
+      "display_name": "Look up tree number",
+      "display_str_template": "Look up the MeSH tree number {0}.",
+      "handler": "actions.look_up_tree_number",
+      "id": "mesh_look_up_tree_number",
+      "method": "POST",
+      "mock_response": {
+        "category": "C",
+        "category_name": "Diseases",
+        "child_count": 6,
+        "child_ids": [
+          "D054058",
+          "D000787",
+          "D003327",
+          "D000074962",
+          "D009203",
+          "D015428"
+        ],
+        "children": [
+          {
+            "id": "D054058",
+            "name": "Acute Coronary Syndrome",
+            "tree_number": "C14.280.647.124"
+          },
+          {
+            "id": "D000787",
+            "name": "Angina Pectoris",
+            "tree_number": "C14.280.647.187"
+          },
+          {
+            "id": "D003327",
+            "name": "Coronary Disease",
+            "tree_number": "C14.280.647.250"
+          },
+          {
+            "id": "D000074962",
+            "name": "Kounis Syndrome",
+            "tree_number": "C14.280.647.375"
+          },
+          {
+            "id": "D009203",
+            "name": "Myocardial Infarction",
+            "tree_number": "C14.280.647.500"
+          },
+          {
+            "id": "D015428",
+            "name": "Myocardial Reperfusion Injury",
+            "tree_number": "C14.280.647.625"
+          }
+        ],
+        "found": true,
+        "id": "D017202",
+        "kind": "heading",
+        "mesh_year": "current",
+        "name": "Myocardial Ischemia",
+        "parent_id": "D006331",
+        "parent_name": "Heart Diseases",
+        "parent_tree_number": "C14.280",
+        "summary": "C14.280.647 is Myocardial Ischemia (D017202), with 6 children",
+        "tree_number": "C14.280.647",
+        "url": "https://meshb.nlm.nih.gov/record/ui?ui=D017202"
+      },
+      "name": "look_up_tree_number",
+      "output_formatter": "formatting.format_look_up_tree_number_output",
+      "parameters": [
+        {
+          "description": "A tree number such as C14.280.647, or a tree's letter: A Anatomy, B Organisms, C Diseases, D Chemicals and Drugs, E Techniques and Equipment, F Psychiatry and Psychology, G Phenomena and Processes, and so on to Z Geographicals.",
+          "display_name": "Tree number",
+          "examples": [
+            {
+              "label": "A tree number",
+              "value": "C14.280.647"
+            },
+            {
+              "label": "A whole tree",
+              "value": "C"
+            }
+          ],
+          "name": "tree_number",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "current",
+          "description": "Which year's MeSH to read. Current by default; pick an earlier year to match work indexed with it.",
+          "display_name": "MeSH year",
+          "dynamic_source": "years",
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mesh/look-up-tree-number",
+      "result_str_template": "{mesh_look_up_tree_number,summary}.",
+      "returns": {
+        "properties": {
+          "category": {
+            "description": "The tree's letter, such as C.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category_name": {
+            "description": "The tree's name, such as Diseases.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "child_count": {
+            "description": "How many records sit one level below.",
+            "type": "number"
+          },
+          "child_ids": {
+            "description": "Their IDs alone, each once.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "children": {
+            "description": "The records one level below, in tree number order; for a letter, the headings at the top of that tree.",
+            "items": {
+              "description": "A record one level below.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "tree_number": {
+                  "description": "Its tree number.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "found": {
+            "description": "True when MeSH has the tree number (or, for a letter, the tree). False means it has none, and the other fields are empty.",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "The ID of the heading (or subheading) at that place; empty for a letter.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "description": "heading or subheading.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mesh_year": {
+            "description": "The MeSH read: 'current', or a year such as '2025'.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Its name.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parent_id": {
+            "description": "The ID of the record one level up.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parent_name": {
+            "description": "The name of the record one level up.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parent_tree_number": {
+            "description": "The tree number one level up; empty at the top.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          },
+          "tree_number": {
+            "description": "The tree number or letter looked up.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "description": "The record's page in NLM's MeSH Browser.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_headings": {
+      "description": "Find MeSH headings (descriptors, the subjects PubMed indexes articles under) by name: exactly, containing some text, or starting with it, in any letter case. Each comes back with its ID and MeSH Browser link. To find a heading from a synonym, use 'Search entry terms'.",
+      "display_name": "Search headings",
+      "display_str_template": "Search MeSH headings for {0}.",
+      "handler": "actions.search_headings",
+      "id": "mesh_search_headings",
+      "method": "POST",
+      "mock_response": {
+        "count": 5,
+        "headings": [
+          {
+            "id": "D006321",
+            "name": "Heart",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=D006321"
+          },
+          {
+            "id": "D006322",
+            "name": "Heart Aneurysm",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=D006322"
+          },
+          {
+            "id": "D006323",
+            "name": "Heart Arrest",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=D006323"
+          },
+          {
+            "id": "D006324",
+            "name": "Heart Arrest, Induced",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=D006324"
+          },
+          {
+            "id": "D006325",
+            "name": "Heart Atria",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=D006325"
+          }
+        ],
+        "ids": [
+          "D006321",
+          "D006322",
+          "D006323",
+          "D006324",
+          "D006325"
+        ],
+        "mesh_year": "current",
+        "summary": "5 headings starting with 'heart' in the current MeSH"
+      },
+      "name": "search_headings",
+      "output_formatter": "formatting.format_search_headings_output",
+      "parameters": [
+        {
+          "description": "The text to look for in heading names.",
+          "display_name": "Name",
+          "examples": [
+            {
+              "label": "An exact name",
+              "value": "Myocardial Infarction"
+            },
+            {
+              "label": "A word",
+              "value": "diabetes"
+            }
+          ],
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "exact",
+          "description": "How a heading's name must match the text. Defaults to exact name.",
+          "display_name": "Match",
+          "name": "match",
+          "options": [
+            {
+              "label": "Exact name",
+              "value": "exact"
+            },
+            {
+              "label": "Contains the text",
+              "value": "contains"
+            },
+            {
+              "label": "Starts with the text",
+              "value": "startswith"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 10,
+          "description": "The most headings to return, 1 to 50. Defaults to 10.",
+          "display_name": "Most results",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "current",
+          "description": "Which year's MeSH to read. Current by default; pick an earlier year to match work indexed with it.",
+          "display_name": "MeSH year",
+          "dynamic_source": "years",
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mesh/search-headings",
+      "result_str_template": "{mesh_search_headings,summary}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many headings were found.",
+            "type": "number"
+          },
+          "headings": {
+            "description": "The headings found, in the order NLM lists them.",
+            "items": {
+              "description": "A heading whose name matched.",
+              "properties": {
+                "id": {
+                  "description": "The heading's MeSH ID, such as D009203.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "The heading's name, such as Myocardial Infarction.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "url": {
+                  "description": "The record's page in NLM's MeSH Browser.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "ids": {
+            "description": "The headings' IDs alone, to pass to another step.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "mesh_year": {
+            "description": "The MeSH read: 'current', or a year such as '2025'.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_supplementary_concepts": {
+      "description": "Find MeSH supplementary concept records by name: the chemicals, drugs, rare diseases, organisms, population groups and drug protocols MeSH records outside its headings. Closest (shortest) names come first; pick a type to narrow the search.",
+      "display_name": "Search supplementary concepts",
+      "display_str_template": "Search MeSH supplementary concepts for {0}.",
+      "handler": "actions.search_supplementary_concepts",
+      "id": "mesh_search_supplementary_concepts",
+      "method": "POST",
+      "mock_response": {
+        "count": 5,
+        "has_more": true,
+        "ids": [
+          "C536136",
+          "C536848",
+          "C562378",
+          "C537071",
+          "C580012"
+        ],
+        "mesh_year": "current",
+        "offset": 0,
+        "summary": "5 supplementary concepts matching 'fibrosis' on this page, and more after it",
+        "supplementary_concepts": [
+          {
+            "id": "C536136",
+            "name": "Mediastinal Fibrosis",
+            "type": "Disease",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=C536136"
+          },
+          {
+            "id": "C536848",
+            "name": "Familial myelofibrosis",
+            "type": "Disease",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=C536848"
+          },
+          {
+            "id": "C562378",
+            "name": "Hepatic Fibrosis, Congenital",
+            "type": "Disease",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=C562378"
+          },
+          {
+            "id": "C537071",
+            "name": "Follicular hamartoma alopecia cystic fibrosis",
+            "type": "Disease",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=C537071"
+          },
+          {
+            "id": "C580012",
+            "name": "congenital fibrosis of the extraocular muscles",
+            "type": "Disease",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=C580012"
+          }
+        ]
+      },
+      "name": "search_supplementary_concepts",
+      "output_formatter": "formatting.format_search_supplementary_concepts_output",
+      "parameters": [
+        {
+          "description": "The text to look for in record names, in any letter case.",
+          "display_name": "Name",
+          "examples": [
+            {
+              "label": "A drug",
+              "value": "nirmatrelvir"
+            },
+            {
+              "label": "A word",
+              "value": "fibrosis"
+            }
+          ],
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "contains",
+          "description": "How a record's name must match the text. Defaults to contains the text.",
+          "display_name": "Match",
+          "name": "match",
+          "options": [
+            {
+              "label": "Exact name",
+              "value": "exact"
+            },
+            {
+              "label": "Contains the text",
+              "value": "contains"
+            },
+            {
+              "label": "Starts with the text",
+              "value": "startswith"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "any",
+          "description": "Only records of this type. Defaults to any type.",
+          "display_name": "Type",
+          "name": "concept_type",
+          "options": [
+            {
+              "label": "Any type",
+              "value": "any"
+            },
+            {
+              "label": "Chemicals and drugs",
+              "value": "chemical"
+            },
+            {
+              "label": "Diseases (mostly rare diseases)",
+              "value": "disease"
+            },
+            {
+              "label": "Organisms",
+              "value": "organism"
+            },
+            {
+              "label": "Population groups",
+              "value": "population"
+            },
+            {
+              "label": "Protocols (drug regimens)",
+              "value": "protocol"
+            },
+            {
+              "label": "Anatomy",
+              "value": "anatomy"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 20,
+          "description": "The most records to return, 1 to 100. Defaults to 20.",
+          "display_name": "Most results",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many to skip, to page through a long list. Defaults to 0.",
+          "display_name": "Skip",
+          "maximum": 100000,
+          "minimum": 0,
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "current",
+          "description": "Which year's MeSH to read. Current by default; pick an earlier year to match work indexed with it.",
+          "display_name": "MeSH year",
+          "dynamic_source": "years",
+          "name": "year",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mesh/search-supplementary-concepts",
+      "result_str_template": "{mesh_search_supplementary_concepts,summary}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many records are in this page of the list.",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "True when there are more after these: raise Skip to see them.",
+            "type": "boolean"
+          },
+          "ids": {
+            "description": "Their IDs alone, in the same order.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "mesh_year": {
+            "description": "The MeSH read: 'current', or a year such as '2025'.",
+            "type": "string"
+          },
+          "offset": {
+            "description": "How many were skipped before these.",
+            "type": "number"
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          },
+          "supplementary_concepts": {
+            "description": "The records found, shortest (closest) names first.",
+            "items": {
+              "description": "A supplementary concept record that matched.",
+              "properties": {
+                "id": {
+                  "description": "Its MeSH ID, such as C000718217.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Its name, such as nirmatrelvir.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "type": {
+                  "description": "Chemical, Disease, Organism, Population, Protocol or Anatomy.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "url": {
+                  "description": "The record's page in NLM's MeSH Browser.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "search_terms": {
+      "description": "Find MeSH entry terms (the synonyms, spellings, brand names and codes that lead to a heading) by text, and the heading, subheading or supplementary concept each one names: 'heart attack' leads to Myocardial Infarction, 'paracetamol' to Acetaminophen. Use it to map free text to official headings.",
+      "display_name": "Search entry terms",
+      "display_str_template": "Search MeSH entry terms for {0}.",
+      "handler": "actions.search_terms",
+      "id": "mesh_search_terms",
+      "method": "POST",
+      "mock_response": {
+        "count": 5,
+        "heading_ids": [
+          "D000082"
+        ],
+        "summary": "5 terms matching 'paracetamol'O-isopropyl acetaminophen; O-propyl acetaminophen; Acetaminophen; acetaminophen, butalbital, caffeine drug combination",
+        "terms": [
+          {
+            "is_preferred": true,
+            "record_id": "C063450",
+            "record_kind": "supplementary_concept",
+            "record_name": "3-(cystein-S-yl)paracetamol",
+            "record_type": "Chemical",
+            "term": "3-(cystein-S-yl)paracetamol",
+            "term_id": "T205149",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=C063450"
+          },
+          {
+            "is_preferred": false,
+            "record_id": "C067793",
+            "record_kind": "supplementary_concept",
+            "record_name": "O-isopropyl acetaminophen",
+            "record_type": "Chemical",
+            "term": "O-isopropyl paracetamol",
+            "term_id": "T215716",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=C067793"
+          },
+          {
+            "is_preferred": false,
+            "record_id": "C067792",
+            "record_kind": "supplementary_concept",
+            "record_name": "O-propyl acetaminophen",
+            "record_type": "Chemical",
+            "term": "O-propyl paracetamol",
+            "term_id": "T215714",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=C067792"
+          },
+          {
+            "is_preferred": false,
+            "record_id": "D000082",
+            "record_kind": "heading",
+            "record_name": "Acetaminophen",
+            "record_type": "Topical heading",
+            "term": "Paracetamol",
+            "term_id": "T000219",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=D000082"
+          },
+          {
+            "is_preferred": false,
+            "record_id": "C056076",
+            "record_kind": "supplementary_concept",
+            "record_name": "acetaminophen, butalbital, caffeine drug combination",
+            "record_type": "Chemical",
+            "term": "acetaminophen - caffeine - paracetamol",
+            "term_id": "T773555",
+            "url": "https://meshb.nlm.nih.gov/record/ui?ui=C056076"
+          }
+        ]
+      },
+      "name": "search_terms",
+      "output_formatter": "formatting.format_search_terms_output",
+      "parameters": [
+        {
+          "description": "The words to look for in entry terms, in any letter case.",
+          "display_name": "Text",
+          "examples": [
+            {
+              "label": "A synonym",
+              "value": "heart attack"
+            },
+            {
+              "label": "A drug name",
+              "value": "paracetamol"
+            }
+          ],
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "exact",
+          "description": "How a term must match the text. Defaults to exact name.",
+          "display_name": "Match",
+          "name": "match",
+          "options": [
+            {
+              "label": "Exact name",
+              "value": "exact"
+            },
+            {
+              "label": "Contains the text",
+              "value": "contains"
+            },
+            {
+              "label": "Starts with the text",
+              "value": "startswith"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 10,
+          "description": "The most terms to return, 1 to 50. Defaults to 10.",
+          "display_name": "Most results",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/mesh/search-terms",
+      "result_str_template": "{mesh_search_terms,summary}.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many terms were found.",
+            "type": "number"
+          },
+          "heading_ids": {
+            "description": "The IDs of the headings the terms name, each once.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "One line saying what came back.",
+            "type": "string"
+          },
+          "terms": {
+            "description": "The terms found, in the order NLM lists them.",
+            "items": {
+              "description": "An entry term that matched, and the record it names.",
+              "properties": {
+                "is_preferred": {
+                  "description": "True when the term is the record's own name.",
+                  "type": "boolean"
+                },
+                "record_id": {
+                  "description": "The ID of the heading, subheading or supplementary concept it names.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "record_kind": {
+                  "description": "heading, subheading or supplementary_concept.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "record_name": {
+                  "description": "That record's name, such as Myocardial Infarction.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "record_type": {
+                  "description": "The record's type in words, such as Topical heading or Chemical.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "term": {
+                  "description": "The term itself, such as Heart Attack.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "term_id": {
+                  "description": "The term's MeSH ID, such as T000866941.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "url": {
+                  "description": "The record's page in NLM's MeSH Browser.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "categories": [
+    "Research & Academia",
+    "Health & Fitness"
+  ],
+  "description": "Look up MeSH, the Medical Subject Headings the U.S. National Library of Medicine indexes PubMed with: the official heading for a subject, its tree numbers and place in the hierarchy, synonyms (entry terms), definition and allowed subheadings (qualifiers), plus supplementary concept records for chemicals, drugs and rare diseases with the headings they map to, and drugs' pharmacological actions. Use it to tag content with standard headings, expand a search with synonyms and narrower headings, or build a precise PubMed query. Every action reads; no account or API key required.",
+  "display_name": "MeSH",
+  "id": "mesh",
+  "logo": "https://www.lodol.com/app-icons/mesh-icon.jpg",
+  "triggers": {}
+}
