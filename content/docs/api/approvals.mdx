@@ -1,0 +1,176 @@
+---
+title: Approvals
+description: See which runs are waiting for someone to approve, reject or reply, and answer them from your own systems.
+icon: CircleCheck
+---
+
+A workflow's [Request approval](/docs/guides/approvals) step pauses its run until someone answers: approves or rejects it, or, when the step asks for one, replies in writing. While it waits, the run's status is `awaiting_approval`. These endpoints let your own system, such as a practice-management tool or an ERP, do the answering. An answer sent with an API key is recorded as that key's, by name, and the run carries on straight away.
+
+## The approval request object
+
+```json
+{
+  "id": "6ae123ec738a4977fdb31728",
+  "kind": "approval",
+  "status": "pending",
+  "title": "Pay the Acme invoice",
+  "details": "Invoice INV-7 for $1,200",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "workflow_name": "Pay bills",
+  "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
+  "step_index": 2,
+  "created_at": "2026-10-27T09:00:00+00:00",
+  "expires_at": "2026-10-30T09:00:00+00:00",
+  "on_timeout": "reject",
+  "decision": null
+}
+```
+
+<Fields title="Fields">
+<Field id="id" type="string" description="The request's ID." />
+<Field id="kind" type="string" description="approval, answered by approving or rejecting it; or reply, answered in writing." />
+<Field id="status" type="string" description="pending while it waits for an answer; approved, rejected or replied once answered; expired when nobody answered in time and the step was set to fail; or cancelled when the run was stopped, or its workflow deleted, first." />
+<Field id="title" type="string" description="What the step asks, as it wrote it." />
+<Field id="details" type="string" description="More about what's being asked, as the step wrote it." />
+<Field id="workflow_id" type="string" description="The ID of the workflow whose run asked. It stays the same when the workflow is edited." />
+<Field id="version_id" type="string" description="The ID of the version of the workflow that ran." />
+<Field id="workflow_name" type="string" description="The workflow's name." />
+<Field id="execution_id" type="string" description="The ID of the run that's waiting." />
+<Field id="step_index" type="integer" description="Which step of the workflow asked." />
+<Field id="created_at" type="string" description="When it asked, in ISO 8601." />
+<Field id="expires_at" type="string or null" description="When the step stops waiting, in ISO 8601, or null if it waits as long as it takes." />
+<Field id="on_timeout" type="string" description="What happens if nobody answers by then: the request is rejected or approved, or the run fails or carries on without a reply." />
+<Field id="decision" type="object or null" description="How it was answered: decision (approved, rejected or replied), comment, reply, decided_by (who answered, with their name), decided_at and via (app, email, api or timeout). Null until it's answered." />
+</Fields>
+
+A request also lists who may answer it in Lodol (`approvers`, `approver_group`), the member the run runs as (`requested_by`), and its history (`events`).
+
+---
+
+## List approval requests
+
+<Endpoint method="GET" path="/api/v1/approvals" />
+
+Returns approval requests, newest first, a page at a time. Requires the `executions:read` scope. Requests from workflows the key's member can't see are left out.
+
+<Fields title="Query parameters">
+<Field id="status" type="string" description="pending for the ones still waiting; decided for the ones answered, expired or withdrawn; or all." facts="Default: `pending`." />
+<Field id="execution_id" type="string" description="Only the requests one run made: the run's execution_id." />
+<Field id="workflow_id" type="string" description="Only requests from this workflow, from every version of it. Takes the workflow's id or the ID of any of its versions." />
+<Field id="limit" type="integer" description="How many requests to read for the page, from 1 to 100." facts="Default: `20`." />
+<Field id="before" type="string" description="For the next page: the next_before of the page you have." />
+</Fields>
+
+```bash tab="cURL" tab-group="lang"
+# The request a run you started is waiting on
+curl "https://api-prod.lodol.com/api/v1/approvals?execution_id=683b2c3d4e5f6a7b8c9d0e1f" \
+  -H "Authorization: Bearer $LODOL_API_KEY"
+```
+
+```js tab="JavaScript"
+const params = new URLSearchParams({ execution_id: '683b2c3d4e5f6a7b8c9d0e1f' });
+const response = await fetch(`https://api-prod.lodol.com/api/v1/approvals?${params}`, {
+  headers: { Authorization: `Bearer ${process.env.LODOL_API_KEY}` },
+});
+const { approvals } = await response.json();
+```
+
+```python tab="Python"
+response = requests.get(
+    "https://api-prod.lodol.com/api/v1/approvals",
+    headers={"Authorization": f"Bearer {os.environ['LODOL_API_KEY']}"},
+    params={"execution_id": "683b2c3d4e5f6a7b8c9d0e1f"},
+)
+approvals = response.json()["approvals"]
+```
+
+**Response `200`:** a page of [approval requests](#the-approval-request-object), and `next_before`, the cursor for the next page, or `null` when there are no more.
+
+```json
+{
+  "approvals": [
+    { "id": "6ae123ec738a4977fdb31728", "kind": "approval", "status": "pending", "...": "..." }
+  ],
+  "next_before": null
+}
+```
+
+A page can hold fewer requests than `limit`, even none, when some it read were from workflows the key's member can't see. Keep going while `next_before` isn't `null`.
+
+---
+
+## Get an approval request
+
+<Endpoint method="GET" path="/api/v1/approvals/:id" />
+
+Returns one [approval request](#the-approval-request-object). Requires the `executions:read` scope. A request from a workflow the key's member can't see returns `404`.
+
+```bash
+curl https://api-prod.lodol.com/api/v1/approvals/6ae123ec738a4977fdb31728 \
+  -H "Authorization: Bearer $LODOL_API_KEY"
+```
+
+---
+
+## Answer an approval request
+
+<Endpoint method="POST" path="/api/v1/approvals/:id/decision" />
+
+Approves or rejects a request, or replies to one that asks for a reply, so its run carries on. Requires the `workflows:execute` scope, and the member who created the key must be allowed to run workflows. An API key answers for the workspace, so it isn't held to the request's list of approvers. It is held to who may not answer: a key made by the member who prepared the item, or by the member the run runs as when the step needs someone else, gets `403`.
+
+<Fields title="Headers">
+<Field id="Idempotency-Key" type="string" description="Makes the request safe to retry: a repeat with the same key returns the first answer instead of a conflict with it. See Idempotency." />
+</Fields>
+
+<Fields title="Body" description="For a request whose kind is approval:">
+<Field id="decision" type="string" description="approved or rejected." facts="Required." />
+<Field id="comment" type="string" description="Why, for the record." />
+</Fields>
+
+<Fields title="Body" description="For a request whose kind is reply:">
+<Field id="reply" type="string" description="The answer, which the run carries on with." facts="Required." />
+</Fields>
+
+```bash tab="cURL" tab-group="lang"
+curl -X POST https://api-prod.lodol.com/api/v1/approvals/6ae123ec738a4977fdb31728/decision \
+  -H "Authorization: Bearer $LODOL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: approve-inv-7" \
+  -d '{"decision": "approved", "comment": "Matches the purchase order"}'
+```
+
+```js tab="JavaScript"
+await fetch('https://api-prod.lodol.com/api/v1/approvals/6ae123ec738a4977fdb31728/decision', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.LODOL_API_KEY}`,
+    'Content-Type': 'application/json',
+    'Idempotency-Key': 'approve-inv-7',
+  },
+  body: JSON.stringify({ decision: 'approved', comment: 'Matches the purchase order' }),
+});
+```
+
+```python tab="Python"
+requests.post(
+    "https://api-prod.lodol.com/api/v1/approvals/6ae123ec738a4977fdb31728/decision",
+    headers={
+        "Authorization": f"Bearer {os.environ['LODOL_API_KEY']}",
+        "Idempotency-Key": "approve-inv-7",
+    },
+    json={"decision": "approved", "comment": "Matches the purchase order"},
+)
+```
+
+**Response `200`:** the [approval request](#the-approval-request-object) as answered, with its `decision`.
+
+A request that's no longer waiting returns `409`, with a code saying why:
+
+| Code | Meaning |
+| --- | --- |
+| `approval_already_answered` | Someone answered it first. `decision` on [Get an approval request](#get-an-approval-request) says who and how |
+| `approval_expired` | Nobody answered in time: it closed, or its time limit answered it as the step was set to |
+| `approval_withdrawn` | The run was stopped, or its workflow deleted, before anyone answered |
+
+None of them is worth retrying: the request is settled.

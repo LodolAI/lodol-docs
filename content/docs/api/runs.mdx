@@ -1,6 +1,6 @@
 ---
 title: Runs
-description: Start a workflow run with inputs, follow it to what it hands back, list past runs, stop a run in progress, and delete one.
+description: Start a workflow run with inputs, follow it to what it hands back, list and search past runs, stop a run in progress, retry one that failed, and delete one.
 icon: Play
 ---
 
@@ -36,13 +36,15 @@ A run is one pass through a workflow. Runs start in the background: you start on
 <Field id="completed_at" type="string or null" description="When it finished, in ISO 8601, or null while it's still going." />
 <Field id="error" type="string or null" description="Why the run failed, or null." />
 <Field id="outputs" type="object" description="What the run handed back: one field per output its workflow declares, by name. Empty until the run succeeds, and for a workflow that declares none. An output the run never set is null. Only Get a run includes it." />
+<Field id="retry_of" type="string or null" description="For a retry, the execution_id of the run it retried; otherwise null. Only Get a run includes it." />
+<Field id="retry_options" type="object" description="Which retries a failed run offers: from_start, and from_failed_step for a run that kept where it failed. Both are false for a run that didn't fail. Only Get a run includes it. See Retry a run." />
 </Fields>
 
 ### Run statuses
 
 | Status | Meaning | Final? |
 | --- | --- | --- |
-| `queued` | Started, and about to begin | No |
+| `queued` | Started, and about to begin, or waiting for a place while as many runs are going as your plan allows at once | No |
 | `running` | Working through its steps | No |
 | `waiting` | Set aside by a Wait step until its time comes | No |
 | `awaiting_approval` | Waiting for someone to answer an [approval request](/docs/guides/approvals) | No |
@@ -64,7 +66,7 @@ A workflow that starts from its own trigger or schedule doesn't run to an end. R
 
 Starts a run in the background and returns its ID straight away; follow it with [Get a run](#get-a-run). Requires the `workflows:execute` scope, and the member who created the key must be allowed to run workflows (the **Run workflows** role permission).
 
-`:id` can be the workflow's `id` or the ID of any of its versions. Either way, the workflow runs as it is now. Each run counts as one of your plan's monthly runs; when they're used up, the request gets `429` with the code `monthly_run_limit` (see [Error codes](/docs/api/errors#error-codes)).
+`:id` can be the workflow's `id` or the ID of any of its versions. Either way, the workflow runs as it is now. Each run counts as one of your plan's monthly runs; when they're used up, the request gets `429` with the code `monthly_run_limit` (see [Error codes](/docs/api/errors#error-codes)). A run started while as many are going as your plan allows at once isn't refused: it's `queued`, and starts as soon as one of them finishes.
 
 <Fields title="Headers">
 <Field id="Idempotency-Key" type="string" description="Makes the request safe to retry: a repeat with the same key returns the first response instead of starting another run. Up to 256 characters, remembered for 24 hours. Reusing a key for a different request, such as the same workflow with different inputs, returns 422. See Idempotency." />
@@ -149,6 +151,7 @@ run = response.json()
   "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
   "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
   "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "workflow_name": "Monthly Client Report",
   "status": "queued",
   "is_trigger_listener": false,
   "created_at": "2026-01-15T10:30:00+00:00"
@@ -174,12 +177,20 @@ Returns the workspace's runs, newest first, a page at a time. Requires the `exec
 
 <Fields title="Query parameters">
 <Field id="workflow_id" type="string" description="Only runs of this workflow, from every version of it. Takes the workflow's id or the ID of any of its versions." />
+<Field id="status" type="string" description="Only runs in this status, such as failed. Repeat it for several: status=failed&status=stopped. A status that isn't one of the run statuses is ignored, so check the spelling: with none left, every run is listed." />
+<Field id="from" type="string" description="Only runs that started at or after this time, in ISO 8601, such as 2026-10-01 or 2026-10-01T09:00:00Z. A date alone is the start of that day; a time without an offset is UTC." />
+<Field id="to" type="string" description="Only runs that started before this time, in ISO 8601. It must be after from." />
+<Field id="search" type="string" description="Find runs by their workflow's name, or by a value in their data: the inputs or trigger event they started with, what they handed back, or their error." />
 <Field id="limit" type="integer" description="How many runs to return, from 1 to 100." facts="Default: `20`." />
 <Field id="after" type="string" description="For the next page: the execution_id of the last run on the page you have." />
 </Fields>
 
 ```bash tab="cURL" tab-group="lang"
 curl "https://api-prod.lodol.com/api/v1/executions?workflow_id=665f1a2b3c4d5e6f7a8b9c0d&limit=10" \
+  -H "Authorization: Bearer $LODOL_API_KEY"
+
+# Every run that failed since October 1
+curl "https://api-prod.lodol.com/api/v1/executions?status=failed&from=2026-10-01" \
   -H "Authorization: Bearer $LODOL_API_KEY"
 ```
 
@@ -295,10 +306,21 @@ run = response.json()
   "outputs": { "total": 1250, "summary": "A good month for Acme" },
   "steps": [
     { "index": 0, "status": "completed", "result": "..." },
-    { "index": 1, "status": "completed", "result": "..." }
+    { "index": 1, "status": "completed", "result": "...", "attempts": 2 }
   ]
 }
 ```
+
+Each entry in `steps` says how one step went. A step inside a loop reports its last pass.
+
+<Fields title="Step fields">
+<Field id="index" type="integer" description="The step's position in the workflow, from 0." />
+<Field id="status" type="string" description="completed; failed, which stopped the run; continued, when it failed but its setting let the run carry on; or skipped, for a step that's turned off." />
+<Field id="result" type="any" description="What the step produced. A skipped step has none." />
+<Field id="error" type="string" description="What went wrong, for a failed or continued step." />
+<Field id="reason" type="string" description="Why a skipped step was passed over." />
+<Field id="attempts" type="integer" description="How many tries the step took, when it retried." />
+</Fields>
 
 ---
 
@@ -331,14 +353,102 @@ requests.post(
 )
 ```
 
-**Response `200`:**
+**Response `200`:** the [run object](#the-run-object), as [Get a run](#get-a-run) returns it, with the status the stop left it in: `stopped`, or `stopping` while it finishes the step it was on.
 
 ```json
 {
   "execution_id": "683b2c3d4e5f6a7b8c9d0e1f",
-  "status": "stopped"
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "workflow_name": "Monthly Client Report",
+  "status": "stopping",
+  "is_trigger_listener": false,
+  "created_at": "2026-01-15T10:30:00+00:00",
+  "started_at": "2026-01-15T10:30:00+00:00",
+  "completed_at": null,
+  "error": null,
+  "outputs": {},
+  "retry_of": null,
+  "retry_options": { "from_start": false, "from_failed_step": false }
 }
 ```
+
+---
+
+## Retry a run
+
+<Endpoint method="POST" path="/api/v1/executions/:id/retry" />
+
+Starts a run that tries a failed one again, with the inputs or trigger event it started with. Requires the `workflows:execute` scope, and the member who created the key must be allowed to run workflows. The retry is a run of its own, which counts as one of your plan's monthly runs; the failed run stays as it was.
+
+<Fields title="Headers">
+<Field id="Idempotency-Key" type="string" description="Makes the request safe to retry, as for Run a workflow: a repeat with the same key returns the first retry instead of starting another." />
+</Fields>
+
+<Fields title="Body" description="Optional.">
+<Field id="from" type="string" description="failed_step to start again at the step that failed, without running the steps before it again; or start to run the whole workflow again." facts="Default: `failed_step`." />
+</Fields>
+
+A run's [`retry_options`](#the-run-object) say which it offers. These return `409` with the code `run_not_retryable`, and a message saying which:
+
+- a run that didn't fail
+- a run of a workflow another run called: retry the run that called it
+- a run whose workflow has been deleted
+- from the failed step, a run that failed before runs kept where they failed, or whose version is gone: retry it from the start
+
+```bash tab="cURL" tab-group="lang"
+curl -X POST https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f/retry \
+  -H "Authorization: Bearer $LODOL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: retry-683b2c3d" \
+  -d '{"from": "failed_step"}'
+```
+
+```js tab="JavaScript"
+const response = await fetch(
+  'https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f/retry',
+  {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.LODOL_API_KEY}`,
+      'Content-Type': 'application/json',
+      'Idempotency-Key': 'retry-683b2c3d',
+    },
+    body: JSON.stringify({ from: 'failed_step' }),
+  },
+);
+const retry = await response.json();
+```
+
+```python tab="Python"
+response = requests.post(
+    "https://api-prod.lodol.com/api/v1/executions/683b2c3d4e5f6a7b8c9d0e1f/retry",
+    headers={
+        "Authorization": f"Bearer {os.environ['LODOL_API_KEY']}",
+        "Idempotency-Key": "retry-683b2c3d",
+    },
+    json={"from": "failed_step"},
+)
+retry = response.json()
+```
+
+**Response `202`:** the new run, which you follow with [Get a run](#get-a-run).
+
+```json
+{
+  "execution_id": "683c4d5e6f7a8b9c0d1e2f3a",
+  "retry_of": "683b2c3d4e5f6a7b8c9d0e1f",
+  "workflow_id": "665f1a2b3c4d5e6f7a8b9c0d",
+  "version_id": "6683e1c4b2a9d7f0e5c3a1b2",
+  "workflow_name": "Monthly Client Report",
+  "from": "failed_step",
+  "version": "latest",
+  "failed_step": { "index": 1, "error_type": "error", "retryable": false },
+  "status": "queued"
+}
+```
+
+`version` says which version of the workflow the retry runs: `latest` when the workflow as it is now agrees with what ran up to the failed step, otherwise `original`, the version that failed. `failed_step` describes the step that failed the run, or is `null` for a run that failed before runs kept it.
 
 ---
 
