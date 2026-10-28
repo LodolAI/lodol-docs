@@ -171,7 +171,7 @@ workflow = response.json()
 
 Saves a new workflow, published, so it can be run straight away, and private to the member who created the key until they share it. Creating a workflow doesn't run it. Requires the `workflows:write` scope (**Create and edit workflows**, ticked by default), and the member who created the key must be allowed to create workflows.
 
-The workflow is checked as it is when your AI tool saves one: its program must be valid, and may use only the apps, connections and other workflows that member can use. A workflow that fails a check isn't saved: the request gets `400` with the code `invalid_workflow` and a message saying what to fix. [Validate a workflow](#validate-a-workflow) runs the same checks without saving.
+The workflow is checked as it is when your AI tool saves one: its program must be valid, and may use only the apps, connections and other workflows that member can use. A workflow that fails a check isn't saved: the request gets `400` with the code `invalid_workflow` and a message saying what to fix. [Validate a workflow](#validate-a-workflow) checks that the program is valid without saving it, but not what the member may use, so a workflow can pass it and still be refused here.
 
 <Fields title="Headers">
 <Field id="Idempotency-Key" type="string" description="Makes the request safe to retry: a repeat with the same key returns the first response instead of saving another workflow. See Idempotency." />
@@ -268,7 +268,7 @@ workflow = response.json()
 
 <Endpoint method="PUT" path="/api/v1/workflows/:id" />
 
-Replaces a workflow's program, its name, its description, or any of them, and saves it as a new version. It keeps its `id`, its publish state and who it's shared with. Requires the `workflows:write` scope; the member who created the key must be allowed to edit workflows, and have edit access to this one (otherwise `403` with the code `item_view_only`).
+Replaces a workflow's program, its name, its description, or any of them. It's saved as an edit in Lodol is: as a new version, or, if the workflow was saved within the last few minutes, over that version, so `version_id` stays the same. It keeps its `id`, its publish state and who it's shared with. Requires the `workflows:write` scope; the member who created the key must be allowed to edit workflows, and have edit access to this one (otherwise `403` with the code `item_view_only`).
 
 A new program is checked as for [Create a workflow](#create-a-workflow), and one that fails a check changes nothing. Sending a program with no steps for a workflow that has some is refused too, as it's far more often a mistake: leave `program` out to change only the name or description.
 
@@ -297,7 +297,7 @@ curl -X PUT https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d
 
 <Endpoint method="PATCH" path="/api/v1/workflows/:id" />
 
-Changes part of a workflow's program with [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902) operations, and optionally its name or description, and saves it as a new version. Use it instead of [Replace a workflow](#replace-a-workflow) for a change short of a rewrite. Requires what replacing a workflow does, and is checked the same way.
+Changes part of a workflow's program with [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902) operations, and optionally its name or description, and saves it the way [Replace a workflow](#replace-a-workflow) does. Use it instead of replacing for a change short of a rewrite. It requires what replacing a workflow does, and is checked the same way.
 
 <Fields title="Headers">
 <Field id="Idempotency-Key" type="string" description="Makes the request safe to retry, as for Create a workflow." />
@@ -328,6 +328,8 @@ When an edit touches several places in one list, put the operations from the hig
 
 Checks a program without saving anything, and previews what it would do: a dry run against stand-ins for its apps, its steps, and warnings about likely mistakes, such as a field it reads that the step before never returns. Requires the `workflows:write` scope.
 
+It checks the program itself: that it's valid, and uses only apps this workspace has. Saving checks more, so a program that passes can still be refused with `invalid_workflow` when you [create](#create-a-workflow) or change a workflow with it: it may use only the connections and other workflows the member who created the key can use.
+
 <Fields title="Body">
 <Field id="program" type="object" description="The program to check, in the format described in Workflow format." facts="Required." />
 </Fields>
@@ -339,7 +341,7 @@ curl -X POST https://api-prod.lodol.com/api/v1/workflows/validate \
   -d '{"program": {"kind": "Program", "version": 1, "body": [{"kind": "Nope"}]}}'
 ```
 
-**Response `200`:** `valid` says whether it would save. When it wouldn't, `error` says what to fix:
+**Response `200`:** `valid` says whether the program is valid. When it isn't, `error` says what to fix:
 
 ```json
 { "valid": false, "error": "Invalid Stmt kind: Nope (at /body/0)" }
