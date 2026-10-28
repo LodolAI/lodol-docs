@@ -1,5 +1,53 @@
 {
   "actions": {
+    "delete_price_alert": {
+      "description": "Stop the price alert CheapShark has for an email address and a game. It succeeds whether or not the address had an alert for the game, so it is safe to run more than once. No API key required.",
+      "display_name": "Delete a price alert",
+      "display_str_template": "Stop CheapShark emailing {0} about game {1}.",
+      "handler": "actions.delete_price_alert",
+      "id": "cheapshark_delete_price_alert",
+      "method": "POST",
+      "mock_response": {
+        "email": "player@example.com",
+        "game_id": "612"
+      },
+      "name": "delete_price_alert",
+      "output_formatter": "actions.format_alert_deleted_output",
+      "parameters": [
+        {
+          "description": "The address CheapShark emails about the game. Only use an address whose owner asked for the alert.",
+          "display_name": "Email address",
+          "name": "email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The CheapShark game id, for example 612. Search games finds it from the title.",
+          "display_name": "Game ID",
+          "name": "game_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/cheapshark/delete-price-alert",
+      "result_str_template": "CheapShark will no longer email {cheapshark_delete_price_alert,email} about the game.",
+      "returns": {
+        "properties": {
+          "email": {
+            "description": "The address CheapShark emails about the game.",
+            "type": "string"
+          },
+          "game_id": {
+            "description": "The CheapShark game id the alert is for.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "delete"
+      ]
+    },
     "get_deal": {
       "description": "Look up one deal by its id and get the game's full details, every store selling it for less right now, and the lowest price it has ever been. No API key required.",
       "display_name": "Get a deal",
@@ -42,6 +90,7 @@
         }
       },
       "name": "get_deal",
+      "output_formatter": "actions.format_deal_output",
       "parameters": [
         {
           "description": "The CheapShark deal id, as returned by List deals. Deal ids change as prices update, so look one up fresh rather than saving it.",
@@ -85,15 +134,21 @@
             "type": "array"
           },
           "cheapest_price": {
-            "description": "The lowest price the game has ever been, across all stores.",
+            "description": "The lowest price the game has ever been, across all stores. Both fields are null when CheapShark leaves it out, which Get a deal often does, for one when the deal is itself the lowest price yet; Get a game reports it for the same game.",
             "properties": {
               "date": {
-                "description": "When that price was seen, ISO 8601 in UTC.",
-                "type": "string"
+                "description": "When that price was seen, ISO 8601 in UTC. Null when none is recorded.",
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "price": {
-                "description": "The price in USD.",
-                "type": "number"
+                "description": "The price in USD. Null when none is recorded.",
+                "type": [
+                  "number",
+                  "null"
+                ]
               }
             },
             "type": "object"
@@ -115,23 +170,35 @@
               },
               "metacritic_score": {
                 "description": "Metacritic score out of 100. Null if the game has none.",
-                "type": "integer"
+                "type": [
+                  "integer",
+                  "null"
+                ]
               },
               "metacritic_url": {
-                "description": "The game's page on metacritic.com.",
-                "type": "string"
+                "description": "The game's page on metacritic.com, if it has one.",
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "name": {
                 "description": "Game title.",
                 "type": "string"
               },
               "publisher": {
-                "description": "Publisher, where CheapShark has it.",
-                "type": "string"
+                "description": "Publisher. Null where CheapShark doesn't know it.",
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "release_date": {
                 "description": "Release date, ISO 8601 in UTC. Null if unknown.",
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "retail_price": {
                 "description": "Full retail price in USD.",
@@ -143,7 +210,10 @@
               },
               "steam_app_id": {
                 "description": "Steam App ID, if it has one.",
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "steam_rating_count": {
                 "description": "How many Steam reviews the game has.",
@@ -151,15 +221,24 @@
               },
               "steam_rating_percent": {
                 "description": "Percentage of positive Steam reviews. Null if unrated.",
-                "type": "integer"
+                "type": [
+                  "integer",
+                  "null"
+                ]
               },
               "steam_rating_text": {
                 "description": "Steam review summary, e.g. Very Positive. Null if unrated.",
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "steamworks": {
-                "description": "Whether the purchase redeems on Steam (CheapShark's best guess).",
-                "type": "boolean"
+                "description": "Whether the purchase redeems on Steam, by CheapShark's best guess. Null when it can't tell.",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               },
               "store_id": {
                 "description": "The store this deal is at.",
@@ -208,6 +287,7 @@
         }
       },
       "name": "get_game",
+      "output_formatter": "actions.format_game_output",
       "parameters": [
         {
           "description": "The CheapShark game id, for example 612. Search games first if you only have the title.",
@@ -222,15 +302,21 @@
       "returns": {
         "properties": {
           "cheapest_price_ever": {
-            "description": "The lowest price the game has ever been, across all stores.",
+            "description": "The lowest price the game has ever been, across all stores. Both fields are null when CheapShark leaves it out, which Get a deal often does, for one when the deal is itself the lowest price yet; Get a game reports it for the same game.",
             "properties": {
               "date": {
-                "description": "When that price was seen, ISO 8601 in UTC.",
-                "type": "string"
+                "description": "When that price was seen, ISO 8601 in UTC. Null when none is recorded.",
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "price": {
-                "description": "The price in USD.",
-                "type": "number"
+                "description": "The price in USD. Null when none is recorded.",
+                "type": [
+                  "number",
+                  "null"
+                ]
               }
             },
             "type": "object"
@@ -273,7 +359,10 @@
             "properties": {
               "steam_app_id": {
                 "description": "Steam App ID, if it has one.",
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "thumb": {
                 "description": "Thumbnail image for the game.",
@@ -294,7 +383,7 @@
       ]
     },
     "get_games": {
-      "description": "Look up many games at once by their CheapShark ids and get each one's live deals and lowest price ever, one request instead of one per game. No API key required.",
+      "description": "Look up as many as 25 games at once by their CheapShark ids and get each one's live deals and lowest price ever, one request instead of one per game. No API key required.",
       "display_name": "Get several games",
       "display_str_template": "Get CheapShark games {0}.",
       "handler": "actions.get_games",
@@ -328,9 +417,10 @@
         ]
       },
       "name": "get_games",
+      "output_formatter": "actions.format_several_games_output",
       "parameters": [
         {
-          "description": "The CheapShark game ids to look up, for example 612 and 613. Search games first if you only have titles.",
+          "description": "The CheapShark game ids to look up, for example 612 and 146, at most 25. Search games first if you only have titles.",
           "display_name": "Game IDs",
           "name": "game_ids",
           "required": true,
@@ -350,15 +440,21 @@
             "items": {
               "properties": {
                 "cheapest_price_ever": {
-                  "description": "The lowest price the game has ever been, across all stores.",
+                  "description": "The lowest price the game has ever been, across all stores. Both fields are null when CheapShark leaves it out, which Get a deal often does, for one when the deal is itself the lowest price yet; Get a game reports it for the same game.",
                   "properties": {
                     "date": {
-                      "description": "When that price was seen, ISO 8601 in UTC.",
-                      "type": "string"
+                      "description": "When that price was seen, ISO 8601 in UTC. Null when none is recorded.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "price": {
-                      "description": "The price in USD.",
-                      "type": "number"
+                      "description": "The price in USD. Null when none is recorded.",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
                     }
                   },
                   "type": "object"
@@ -405,7 +501,10 @@
                   "properties": {
                     "steam_app_id": {
                       "description": "Steam App ID, if it has one.",
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "thumb": {
                       "description": "Thumbnail image for the game.",
@@ -431,7 +530,7 @@
       ]
     },
     "list_deals": {
-      "description": "Find current PC game deals across Steam, GOG, Fanatical, Green Man Gaming and dozens of other stores, filtered by title, store, price, discount, Metacritic score, or Steam rating. Each deal comes with a CheapShark link to send users to. No API key required.",
+      "description": "Find current PC game deals across Steam, GOG, Fanatical, Green Man Gaming and dozens of other stores, filtered by title, store, price, Metacritic score, Steam rating or how recently the price changed, and sorted by deal rating, discount, price and more. Each deal comes with a CheapShark link to send users to. No API key required.",
       "display_name": "List deals",
       "display_str_template": "Find CheapShark deals matching {0}.",
       "handler": "actions.list_deals",
@@ -467,6 +566,7 @@
         "total_page_count": 42
       },
       "name": "list_deals",
+      "output_formatter": "actions.format_deals_output",
       "parameters": [
         {
           "description": "Optional. Only deals whose game title contains this text, for example \"tomb raider\".",
@@ -559,8 +659,8 @@
           "type": "ParameterType.NUMBER"
         },
         {
-          "description": "Optional. Only deals first seen in the last this many hours, between 1 and 2500.",
-          "display_name": "Found within (hours)",
+          "description": "Optional. Only deals whose price changed in the last this many hours, between 1 and 2500. Use 24 for the past day's new prices.",
+          "display_name": "Price changed within (hours)",
           "maximum": 2500,
           "minimum": 1,
           "name": "max_age",
@@ -576,48 +676,48 @@
         },
         {
           "default": "DealRating",
-          "description": "Optional. How to order the results. Defaults to deal rating, CheapShark's own measure of how good a deal is.",
+          "description": "Optional. How to order the results. Defaults to deal rating, CheapShark's own measure of how good a deal is, best first.",
           "display_name": "Sort by",
           "name": "sort_by",
           "options": [
             {
-              "label": "Deal rating",
+              "label": "Deal rating, best first",
               "value": "DealRating"
             },
             {
-              "label": "Title",
+              "label": "Title, A to Z",
               "value": "Title"
             },
             {
-              "label": "Savings",
+              "label": "Discount, biggest first",
               "value": "Savings"
             },
             {
-              "label": "Price",
+              "label": "Price, lowest first",
               "value": "Price"
             },
             {
-              "label": "Metacritic score",
+              "label": "Metacritic score, highest first",
               "value": "Metacritic"
             },
             {
-              "label": "Steam review score",
+              "label": "Steam rating, highest first",
               "value": "Reviews"
             },
             {
-              "label": "Steam review count",
+              "label": "Number of Steam reviews, fewest first",
               "value": "ReviewCount"
             },
             {
-              "label": "Release date",
+              "label": "Release date, newest first",
               "value": "Release"
             },
             {
-              "label": "Store",
+              "label": "Store, in CheapShark's store order",
               "value": "Store"
             },
             {
-              "label": "Recently updated",
+              "label": "Price change, most recent first",
               "value": "Recent"
             }
           ],
@@ -626,7 +726,7 @@
         },
         {
           "default": false,
-          "description": "Optional. Sort descending instead of ascending. Off by default.",
+          "description": "Optional. Turn the chosen order round, so the worst deals or the highest prices come first. Off by default.",
           "display_name": "Reverse order",
           "name": "desc",
           "required": false,
@@ -669,7 +769,7 @@
                   "type": "string"
                 },
                 "deal_rating": {
-                  "description": "How good the deal is, on CheapShark's 0\u201310 scale.",
+                  "description": "How good the deal is, on CheapShark's scale of 0 to 10.",
                   "type": "number"
                 },
                 "deal_url": {
@@ -694,11 +794,17 @@
                 },
                 "metacritic_score": {
                   "description": "Metacritic score out of 100. Null if the game has none.",
-                  "type": "integer"
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
                 },
                 "metacritic_url": {
-                  "description": "The game's page on metacritic.com.",
-                  "type": "string"
+                  "description": "The game's page on metacritic.com, if it has one.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "normal_price": {
                   "description": "Full retail price in USD.",
@@ -706,7 +812,10 @@
                 },
                 "release_date": {
                   "description": "Release date, ISO 8601 in UTC. Null if unknown.",
-                  "type": "string"
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "sale_price": {
                   "description": "Current price in USD.",
@@ -718,7 +827,10 @@
                 },
                 "steam_app_id": {
                   "description": "Steam App ID, if it has one.",
-                  "type": "string"
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "steam_rating_count": {
                   "description": "How many Steam reviews the game has.",
@@ -726,11 +838,17 @@
                 },
                 "steam_rating_percent": {
                   "description": "Percentage of positive Steam reviews. Null if unrated.",
-                  "type": "integer"
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
                 },
                 "steam_rating_text": {
                   "description": "Steam review summary, e.g. Very Positive. Null if unrated.",
-                  "type": "string"
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "store_id": {
                   "description": "Which store this price is at. List stores maps ids to names.",
@@ -754,17 +872,17 @@
             "type": "integer"
           },
           "total_page_count": {
-            "description": "How many pages the filter matched in total.",
-            "type": "integer"
+            "description": "How many pages of this size the filter matched, so the last page is this minus one. 0 when nothing matched. CheapShark pages through about 3,000 deals at most.",
+            "type": [
+              "integer",
+              "null"
+            ]
           }
         },
         "type": "object"
       },
       "scopes": [
-        "read",
-        "write",
-        "modify",
-        "delete"
+        "read"
       ]
     },
     "list_games": {
@@ -790,6 +908,7 @@
         ]
       },
       "name": "list_games",
+      "output_formatter": "actions.format_games_output",
       "parameters": [
         {
           "description": "The game title to search for, for example \"batman\". Matches anywhere in the name unless Exact match is on. Required unless a Steam App ID is given.",
@@ -833,7 +952,7 @@
             "type": "integer"
           },
           "games": {
-            "description": "Matching games, best match first.",
+            "description": "Matching games, closest match first.",
             "items": {
               "properties": {
                 "cheapest_deal_id": {
@@ -858,7 +977,10 @@
                 },
                 "steam_app_id": {
                   "description": "Steam App ID, if it has one.",
-                  "type": "string"
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "thumb": {
                   "description": "Thumbnail image for the game.",
@@ -901,6 +1023,7 @@
         ]
       },
       "name": "list_stores",
+      "output_formatter": "actions.format_stores_output",
       "parameters": [],
       "path": "/actions/library/cheapshark/list-stores",
       "result_str_template": "Found {cheapshark_list_stores,count} stores.",
@@ -949,13 +1072,74 @@
       "scopes": [
         "read"
       ]
+    },
+    "set_price_alert": {
+      "description": "Have CheapShark email someone when a game drops to a price you choose at any store it tracks. CheapShark sends the email itself, from its own address. Setting an alert again for the same address and game changes its price. Only use an address whose owner asked for the alert. No API key required.",
+      "display_name": "Set a price alert",
+      "display_str_template": "Email {0} when CheapShark game {1} drops to ${2}.",
+      "handler": "actions.set_price_alert",
+      "id": "cheapshark_set_price_alert",
+      "method": "POST",
+      "mock_response": {
+        "email": "player@example.com",
+        "game_id": "612",
+        "price": 9.99
+      },
+      "name": "set_price_alert",
+      "output_formatter": "actions.format_alert_set_output",
+      "parameters": [
+        {
+          "description": "The address CheapShark emails about the game. Only use an address whose owner asked for the alert.",
+          "display_name": "Email address",
+          "name": "email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The CheapShark game id, for example 612. Search games finds it from the title.",
+          "display_name": "Game ID",
+          "name": "game_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The price to wait for, in USD. CheapShark emails when a store sells the game at this price or less. Use 0 to wait for the game to be free.",
+          "display_name": "Alert price",
+          "minimum": 0,
+          "name": "price",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/cheapshark/set-price-alert",
+      "result_str_template": "CheapShark will email {cheapshark_set_price_alert,email} when the game drops to ${cheapshark_set_price_alert,price}.",
+      "returns": {
+        "properties": {
+          "email": {
+            "description": "The address CheapShark emails about the game.",
+            "type": "string"
+          },
+          "game_id": {
+            "description": "The CheapShark game id the alert is for.",
+            "type": "string"
+          },
+          "price": {
+            "description": "The price the alert waits for, in USD.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
     }
   },
   "categories": [
     "Gaming",
     "E-Commerce"
   ],
-  "description": "Track PC game prices with CheapShark: find deals across Steam, GOG, Fanatical, Green Man Gaming and dozens of other stores, search the game catalogue, and see the cheapest a game has ever been. No account or API key required.",
+  "description": "Track PC game prices with CheapShark: find deals across Steam, GOG, Fanatical, Green Man Gaming and dozens of other stores, search the game catalogue, see the cheapest a game has ever been, and have CheapShark email someone when a game drops to their price. No account or API key required.",
   "display_name": "CheapShark",
   "id": "cheapshark",
   "logo": "https://www.lodol.com/app-icons/cheapshark-icon.png",
