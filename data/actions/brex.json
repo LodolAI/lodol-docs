@@ -173,6 +173,85 @@
         "read"
       ]
     },
+    "get_payment": {
+      "description": "Check where a Brex payment is: waiting for approval, scheduled, on its way, paid or not sent.",
+      "display_name": "Get a Brex payment",
+      "display_str_template": "Get Brex payment {payment_id}",
+      "handler": "actions.get_payment",
+      "id": "brex_get_payment",
+      "method": "POST",
+      "mock_response": {
+        "amount": {
+          "amount": 48000,
+          "currency": "USD"
+        },
+        "cancellation_reason": null,
+        "created_at": "2026-10-30",
+        "display_name": "Nextbridge - Invoice NX-16025",
+        "estimated_delivery_date": null,
+        "external_memo": "Invoice NX-16025",
+        "id": "dptx_mock123",
+        "payment_type": "ACH",
+        "status": "PROCESSED"
+      },
+      "name": "get_payment",
+      "output_formatter": "actions.format_payment_output",
+      "parameters": [
+        {
+          "description": "The ID Pay a Brex vendor returned.",
+          "display_name": "Payment ID",
+          "name": "payment_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/brex/get-payment",
+      "result_str_template": "Payment found.",
+      "returns": {
+        "properties": {
+          "amount": {
+            "description": "{amount, currency}, with amount in cents.",
+            "type": "object"
+          },
+          "cancellation_reason": {
+            "description": "Why a FAILED payment didn't go: USER_CANCELLED, INSUFFICIENT_FUNDS, APPROVAL_DENIED or BLOCKED_BY_POSITIVE_PAY.",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "When it was created.",
+            "type": "string"
+          },
+          "display_name": {
+            "description": "How Brex names the payment: the vendor and the memo.",
+            "type": "string"
+          },
+          "estimated_delivery_date": {
+            "description": "When Brex expects the money to arrive, once approved.",
+            "type": "string"
+          },
+          "external_memo": {
+            "description": "The memo the vendor sees.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The payment's ID. Use it in Get a Brex payment.",
+            "type": "string"
+          },
+          "payment_type": {
+            "description": "ACH, DOMESTIC_WIRE, CHEQUE or INTERNATIONAL_WIRE.",
+            "type": "string"
+          },
+          "status": {
+            "description": "PENDING_APPROVAL (waiting for a Brex admin), SCHEDULED, PROCESSING, PROCESSED (paid) or FAILED (cancelled, denied or not enough money).",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "list_card_transactions": {
       "description": "List settled transactions on the primary card account. Pending transactions are not included. Regular users can only see their own purchase, refund, and chargeback transactions.",
       "display_name": "List Brex card transactions",
@@ -694,6 +773,201 @@
         "delete"
       ]
     },
+    "list_vendors": {
+      "description": "List the vendors saved in Brex Payments and the ways each can be paid. Only the last four digits of each account number are shown.",
+      "display_name": "List Brex vendors",
+      "display_str_template": "List Brex vendors",
+      "handler": "actions.list_vendors",
+      "id": "brex_list_vendors",
+      "method": "POST",
+      "mock_response": {
+        "items": [
+          {
+            "company_name": "Nextbridge",
+            "email": "billing@nextbridge.example",
+            "id": "pdcont_mock123",
+            "payment_accounts": [
+              {
+                "account_last_four": "6789",
+                "method": "ACH",
+                "payment_instrument_id": "pdinstl_mock123"
+              }
+            ],
+            "phone": null
+          }
+        ],
+        "next_cursor": null
+      },
+      "name": "list_vendors",
+      "output_formatter": "actions.format_list_vendors_output",
+      "parameters": [
+        {
+          "description": "Only include vendors with this name.",
+          "display_name": "Vendor name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Cursor from a previous page's next_cursor.",
+          "display_name": "Cursor",
+          "name": "cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 50,
+          "description": "How many vendors to return, up to 100. Default is 50.",
+          "display_name": "Limit",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/brex/list-vendors",
+      "result_str_template": "Vendors listed.",
+      "returns": {
+        "properties": {
+          "items": {
+            "description": "The vendors on this page.",
+            "items": {
+              "properties": {
+                "company_name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "payment_accounts": {
+                  "description": "Each way to pay the vendor: {payment_instrument_id, method, account_last_four}. Pass payment_instrument_id to Pay a Brex vendor.",
+                  "type": "array"
+                },
+                "phone": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "description": "Pass as cursor for the next page; empty on the last.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "pay_vendor": {
+      "description": "Pay a vendor saved in Brex from your Brex business account. The payment waits in Brex until a Brex admin approves it, so no money moves until a person says so.",
+      "display_name": "Pay a Brex vendor",
+      "display_str_template": "Pay {amount} to a Brex vendor",
+      "handler": "actions.pay_vendor",
+      "id": "brex_pay_vendor",
+      "method": "POST",
+      "mock_response": {
+        "amount": {
+          "amount": 48000,
+          "currency": "USD"
+        },
+        "cancellation_reason": null,
+        "created_at": "2026-10-30",
+        "display_name": "Nextbridge - Invoice NX-16025",
+        "estimated_delivery_date": null,
+        "external_memo": "Invoice NX-16025",
+        "id": "dptx_mock123",
+        "payment_type": "ACH",
+        "status": "PENDING_APPROVAL"
+      },
+      "name": "pay_vendor",
+      "output_formatter": "actions.format_payment_output",
+      "parameters": [
+        {
+          "description": "The vendor, and how to pay them. Vendors and their bank details are added in Brex, under Payments.",
+          "display_name": "Pay to",
+          "dynamic_source": "payees",
+          "name": "payment_instrument_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How much to pay, in US dollars, such as 480.00.",
+          "display_name": "Amount",
+          "name": "amount",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "What the vendor sees with the payment, such as the invoice number. Up to 90 characters, or 40 for a check.",
+          "display_name": "Memo",
+          "name": "memo",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The Brex business account the money comes from. Leave it blank to use your primary account.",
+          "display_name": "Pay from",
+          "dynamic_source": "cash_accounts",
+          "name": "account_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/brex/pay-vendor",
+      "result_str_template": "Payment waiting for approval in Brex.",
+      "returns": {
+        "properties": {
+          "amount": {
+            "description": "{amount, currency}, with amount in cents.",
+            "type": "object"
+          },
+          "cancellation_reason": {
+            "description": "Why a FAILED payment didn't go: USER_CANCELLED, INSUFFICIENT_FUNDS, APPROVAL_DENIED or BLOCKED_BY_POSITIVE_PAY.",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "When it was created.",
+            "type": "string"
+          },
+          "display_name": {
+            "description": "How Brex names the payment: the vendor and the memo.",
+            "type": "string"
+          },
+          "estimated_delivery_date": {
+            "description": "When Brex expects the money to arrive, once approved.",
+            "type": "string"
+          },
+          "external_memo": {
+            "description": "The memo the vendor sees.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The payment's ID. Use it in Get a Brex payment.",
+            "type": "string"
+          },
+          "payment_type": {
+            "description": "ACH, DOMESTIC_WIRE, CHEQUE or INTERNATIONAL_WIRE.",
+            "type": "string"
+          },
+          "status": {
+            "description": "PENDING_APPROVAL (waiting for a Brex admin), SCHEDULED, PROCESSING, PROCESSED (paid) or FAILED (cancelled, denied or not enough money).",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
     "update_expense": {
       "description": "Update the memo on a card expense. The memo is the only field Brex allows this action to change.",
       "display_name": "Update a Brex expense",
@@ -815,7 +1089,7 @@
     "Payments & Billing",
     "Accounting & Finance"
   ],
-  "description": "Manage Brex card spend, expenses, transactions, and virtual cards.",
+  "description": "Manage Brex card spend, expenses, transactions and virtual cards, and pay vendors from your Brex business account.",
   "display_name": "Brex",
   "id": "brex",
   "logo": "https://www.lodol.com/app-icons/brex-icon.png",

@@ -1,0 +1,618 @@
+{
+  "actions": {
+    "converse": {
+      "description": "Send a prompt to a Bedrock chat model, such as Amazon Nova, Claude or Llama, and get its reply. Works the same for every model that supports Bedrock's Converse API.",
+      "display_name": "Send a message",
+      "display_str_template": "Send a message to the Bedrock model '{0}'.",
+      "handler": "actions.converse",
+      "id": "aws_bedrock_converse",
+      "method": "POST",
+      "mock_response": {
+        "model": "amazon.nova-micro-v1:0",
+        "stop_reason": "end_turn",
+        "text": "Hello! How can I help you today?",
+        "usage": {
+          "input_tokens": 12,
+          "output_tokens": 10,
+          "total_tokens": 22
+        }
+      },
+      "name": "converse",
+      "output_formatter": "actions.format_converse",
+      "parameters": [
+        {
+          "description": "The Bedrock model ID, such as amazon.nova-micro-v1:0. Newer models are often reached through an inference profile ID, which starts with a region group like us. or eu. (us.anthropic.claude-sonnet-4-20250514-v1:0). The model must be available to your account in the connection's region.",
+          "display_name": "Model",
+          "dynamic_source": "chat_models",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Amazon Nova Micro",
+              "value": "amazon.nova-micro-v1:0"
+            },
+            {
+              "label": "Amazon Nova Lite",
+              "value": "amazon.nova-lite-v1:0"
+            },
+            {
+              "label": "Amazon Nova Pro",
+              "value": "amazon.nova-pro-v1:0"
+            },
+            {
+              "label": "Claude Sonnet 4 (US inference profile)",
+              "value": "us.anthropic.claude-sonnet-4-20250514-v1:0"
+            },
+            {
+              "label": "Claude 3.5 Haiku (US inference profile)",
+              "value": "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+            },
+            {
+              "label": "Claude 3.5 Haiku",
+              "value": "anthropic.claude-3-5-haiku-20241022-v1:0"
+            },
+            {
+              "label": "Llama 3.1 8B Instruct",
+              "value": "meta.llama3-1-8b-instruct-v1:0"
+            },
+            {
+              "label": "Llama 3.1 8B Instruct (US inference profile)",
+              "value": "us.meta.llama3-1-8b-instruct-v1:0"
+            }
+          ],
+          "name": "model",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What to ask or tell the model.",
+          "display_name": "Prompt",
+          "multiline": true,
+          "name": "prompt",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Instructions that set how the model behaves, such as its role or the format of its answer.",
+          "display_name": "System prompt",
+          "multiline": true,
+          "name": "system",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The conversation so far, oldest first, as a list of {\"role\": \"user\" or \"assistant\", \"content\": \"...\"}. It must start with a user turn. The prompt is added after it.",
+          "display_name": "Earlier messages",
+          "name": "messages",
+          "required": false,
+          "schema": {
+            "items": {
+              "properties": {
+                "content": {
+                  "type": "string"
+                },
+                "role": {
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "role",
+                "content"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "The most tokens the reply may use (a token is about three quarters of a word). Leave empty for the model's own default.",
+          "display_name": "Maximum response length",
+          "minimum": 1,
+          "name": "max_tokens",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How varied the reply is, from 0 (focused and repeatable) to 1 (more creative).",
+          "display_name": "Temperature",
+          "maximum": 1,
+          "minimum": 0,
+          "name": "temperature",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only consider the likeliest words that together make up this share of the probability, from 0 to 1. Usually set this or temperature, not both.",
+          "display_name": "Top P",
+          "maximum": 1,
+          "minimum": 0,
+          "name": "top_p",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/aws-bedrock/converse",
+      "result_str_template": "Got a reply from Amazon Bedrock.",
+      "returns": {
+        "properties": {
+          "model": {
+            "description": "The model ID the step called.",
+            "type": "string"
+          },
+          "stop_reason": {
+            "description": "Why it stopped: end_turn (finished), max_tokens (hit the length limit), stop_sequence, guardrail_intervened or content_filtered.",
+            "type": "string"
+          },
+          "text": {
+            "description": "The model's reply.",
+            "type": "string"
+          },
+          "usage": {
+            "description": "How many tokens the call used, as Bedrock bills them.",
+            "properties": {
+              "input_tokens": {
+                "description": "Tokens read from the request.",
+                "type": "integer"
+              },
+              "output_tokens": {
+                "description": "Tokens written in the reply.",
+                "type": "integer"
+              },
+              "total_tokens": {
+                "description": "Both together.",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "create_embeddings": {
+      "description": "Turn text into an embedding, a list of numbers that places it by meaning, for search, matching or grouping. Uses Amazon Titan Text Embeddings V2 or Cohere Embed.",
+      "display_name": "Create embedding",
+      "display_str_template": "Create an embedding with Amazon Bedrock.",
+      "handler": "actions.create_embeddings",
+      "id": "aws_bedrock_create_embeddings",
+      "method": "POST",
+      "mock_response": {
+        "dimensions": 4,
+        "embedding": [
+          0.0123,
+          -0.0456,
+          0.0789,
+          0.0012
+        ],
+        "input_tokens": 7,
+        "model": "amazon.titan-embed-text-v2:0"
+      },
+      "name": "create_embeddings",
+      "output_formatter": "actions.format_create_embeddings",
+      "parameters": [
+        {
+          "description": "The text to embed: up to 50,000 characters for Titan, 2,048 for Cohere.",
+          "display_name": "Text",
+          "multiline": true,
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "amazon.titan-embed-text-v2:0",
+          "description": "The embedding model to use.",
+          "display_name": "Model",
+          "name": "model",
+          "options": [
+            {
+              "label": "Amazon Titan Text Embeddings V2",
+              "value": "amazon.titan-embed-text-v2:0"
+            },
+            {
+              "label": "Cohere Embed English v3",
+              "value": "cohere.embed-english-v3"
+            },
+            {
+              "label": "Cohere Embed Multilingual v3",
+              "value": "cohere.embed-multilingual-v3"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many numbers the embedding has, for Titan only. Leave empty for 1024.",
+          "display_name": "Dimensions",
+          "name": "dimensions",
+          "options": [
+            {
+              "label": "1024",
+              "value": "1024"
+            },
+            {
+              "label": "512",
+              "value": "512"
+            },
+            {
+              "label": "256",
+              "value": "256"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Scale the embedding to length 1, which suits cosine similarity. Titan only.",
+          "display_name": "Normalize",
+          "name": "normalize",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": "search_document",
+          "description": "What the text is for, for Cohere only: a document to search, a search query, or text to classify or cluster.",
+          "display_name": "Used for",
+          "name": "input_type",
+          "options": [
+            {
+              "label": "Document to search",
+              "value": "search_document"
+            },
+            {
+              "label": "Search query",
+              "value": "search_query"
+            },
+            {
+              "label": "Classification",
+              "value": "classification"
+            },
+            {
+              "label": "Clustering",
+              "value": "clustering"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/aws-bedrock/create-embeddings",
+      "result_str_template": "Created an embedding.",
+      "returns": {
+        "properties": {
+          "dimensions": {
+            "description": "How many numbers it has.",
+            "type": "integer"
+          },
+          "embedding": {
+            "description": "The embedding's numbers.",
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "input_tokens": {
+            "description": "Tokens read from the text, when reported, else null.",
+            "type": "integer"
+          },
+          "model": {
+            "description": "The model ID the step called.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
+    "invoke_model": {
+      "description": "Call a Bedrock model with a request in its own format, as its maker documents it, and get its answer back as JSON. For options 'Send a message' does not cover.",
+      "display_name": "Call a model (native request)",
+      "display_str_template": "Call the Bedrock model '{0}'.",
+      "handler": "actions.invoke_model",
+      "id": "aws_bedrock_invoke_model",
+      "method": "POST",
+      "mock_response": {
+        "content_type": "application/json",
+        "input_tokens": 5,
+        "model": "amazon.nova-micro-v1:0",
+        "output_tokens": 8,
+        "response": {
+          "output": {
+            "message": {
+              "content": [
+                {
+                  "text": "Hello! How can I help?"
+                }
+              ],
+              "role": "assistant"
+            }
+          },
+          "stopReason": "end_turn",
+          "usage": {
+            "inputTokens": 5,
+            "outputTokens": 8,
+            "totalTokens": 13
+          }
+        }
+      },
+      "name": "invoke_model",
+      "output_formatter": "actions.format_invoke_model",
+      "parameters": [
+        {
+          "description": "The Bedrock model ID, such as amazon.nova-micro-v1:0, or an inference profile ID starting with a region group like us. or eu. The body must be in this model's own format.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Amazon Nova Micro",
+              "value": "amazon.nova-micro-v1:0"
+            },
+            {
+              "label": "Amazon Nova Lite",
+              "value": "amazon.nova-lite-v1:0"
+            },
+            {
+              "label": "Amazon Nova Pro",
+              "value": "amazon.nova-pro-v1:0"
+            },
+            {
+              "label": "Claude Sonnet 4 (US inference profile)",
+              "value": "us.anthropic.claude-sonnet-4-20250514-v1:0"
+            },
+            {
+              "label": "Claude 3.5 Haiku (US inference profile)",
+              "value": "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+            },
+            {
+              "label": "Claude 3.5 Haiku",
+              "value": "anthropic.claude-3-5-haiku-20241022-v1:0"
+            },
+            {
+              "label": "Llama 3.1 8B Instruct",
+              "value": "meta.llama3-1-8b-instruct-v1:0"
+            },
+            {
+              "label": "Llama 3.1 8B Instruct (US inference profile)",
+              "value": "us.meta.llama3-1-8b-instruct-v1:0"
+            }
+          ],
+          "name": "model",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The model's own request as JSON. For Amazon Nova: {\"messages\": [{\"role\": \"user\", \"content\": [{\"text\": \"Hello\"}]}], \"inferenceConfig\": {\"maxTokens\": 200}}.",
+          "display_name": "Request body",
+          "name": "body",
+          "required": true,
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/aws-bedrock/invoke-model",
+      "result_str_template": "Called the Bedrock model.",
+      "returns": {
+        "properties": {
+          "content_type": {
+            "description": "The answer's media type.",
+            "type": "string"
+          },
+          "input_tokens": {
+            "description": "Tokens read, when Bedrock reports them, else null.",
+            "type": "integer"
+          },
+          "model": {
+            "description": "The model ID the step called.",
+            "type": "string"
+          },
+          "output_tokens": {
+            "description": "Tokens written, when Bedrock reports them, else null.",
+            "type": "integer"
+          },
+          "response": {
+            "description": "The model's answer, decoded from JSON, in the model's own format.",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "list_foundation_models": {
+      "description": "List the foundation models Bedrock offers in the connection's region, with what they read and write and how they can be run.",
+      "display_name": "List foundation models",
+      "display_str_template": "List Amazon Bedrock's foundation models.",
+      "handler": "actions.list_foundation_models",
+      "id": "aws_bedrock_list_foundation_models",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "models": [
+          {
+            "arn": "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-micro-v1:0",
+            "id": "amazon.nova-micro-v1:0",
+            "inference_types": [
+              "ON_DEMAND",
+              "INFERENCE_PROFILE"
+            ],
+            "input_modalities": [
+              "TEXT"
+            ],
+            "lifecycle_status": "ACTIVE",
+            "name": "Nova Micro",
+            "output_modalities": [
+              "TEXT"
+            ],
+            "provider": "Amazon",
+            "streaming": true
+          },
+          {
+            "arn": "arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v2:0",
+            "id": "amazon.titan-embed-text-v2:0",
+            "inference_types": [
+              "ON_DEMAND"
+            ],
+            "input_modalities": [
+              "TEXT"
+            ],
+            "lifecycle_status": "ACTIVE",
+            "name": "Titan Text Embeddings V2",
+            "output_modalities": [
+              "EMBEDDING"
+            ],
+            "provider": "Amazon",
+            "streaming": false
+          }
+        ],
+        "region": "us-east-1"
+      },
+      "name": "list_foundation_models",
+      "output_formatter": "actions.format_list_foundation_models",
+      "parameters": [
+        {
+          "description": "Only models from this company, such as Amazon, Anthropic or Meta. Leave empty for all.",
+          "display_name": "Provider",
+          "name": "provider",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only models that write this. Leave empty for all.",
+          "display_name": "Output",
+          "name": "output_modality",
+          "options": [
+            {
+              "label": "Text",
+              "value": "TEXT"
+            },
+            {
+              "label": "Images",
+              "value": "IMAGE"
+            },
+            {
+              "label": "Embeddings",
+              "value": "EMBEDDING"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only models that run this way: on demand (pay per use) or on provisioned throughput. Leave empty for all.",
+          "display_name": "Inference type",
+          "name": "inference_type",
+          "options": [
+            {
+              "label": "On demand",
+              "value": "ON_DEMAND"
+            },
+            {
+              "label": "Provisioned",
+              "value": "PROVISIONED"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/aws-bedrock/list-foundation-models",
+      "result_str_template": "Listed Bedrock models.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many models matched.",
+            "type": "integer"
+          },
+          "models": {
+            "description": "The models, as Bedrock lists them.",
+            "items": {
+              "properties": {
+                "arn": {
+                  "description": "The model's ARN.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The model ID to call it by.",
+                  "type": "string"
+                },
+                "inference_types": {
+                  "description": "How it can be run: ON_DEMAND (call it by its ID), INFERENCE_PROFILE (call it through a profile ID such as us.<model ID>) or PROVISIONED.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "input_modalities": {
+                  "description": "What it reads: TEXT, IMAGE and so on.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "lifecycle_status": {
+                  "description": "ACTIVE, or LEGACY for a model being retired.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The model's name.",
+                  "type": "string"
+                },
+                "output_modalities": {
+                  "description": "What it writes: TEXT, IMAGE or EMBEDDING.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "provider": {
+                  "description": "The company that makes it, such as Anthropic.",
+                  "type": "string"
+                },
+                "streaming": {
+                  "description": "True when it can stream its answer.",
+                  "type": "boolean"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "region": {
+            "description": "The region listed.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    }
+  },
+  "categories": [
+    "AI Models",
+    "Amazon"
+  ],
+  "description": "Run the foundation models in your AWS account through Amazon Bedrock: chat with Amazon Nova, Claude, Llama and more, call any model with its own request, make text embeddings and list the models in your region.",
+  "display_name": "Amazon Bedrock",
+  "id": "aws_bedrock",
+  "logo": "https://www.lodol.com/app-icons/aws-bedrock-icon.svg",
+  "triggers": {}
+}
