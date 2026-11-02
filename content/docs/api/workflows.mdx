@@ -1,6 +1,6 @@
 ---
 title: Workflows
-description: List the workspace's workflows, read one with its steps, create or change one, check a workflow before saving it, or delete one for good.
+description: List the workspace's workflows, read one with its steps, create or change one, check a workflow before saving it, or delete one.
 icon: Workflow
 ---
 
@@ -38,7 +38,7 @@ icon: Workflow
 <Field id="last_run_at" type="string or null" description="When it last ran, in ISO 8601." />
 <Field id="publish_state" type="string" description="published, or draft for a workflow that can't be run until it's published in Lodol." />
 <Field id="starts_from_trigger" type="boolean" description="Whether it starts from its own trigger or schedule. Running one turns it on rather than running it to an end: see Workflows that start themselves." />
-<Field id="inputs" type="array" description="The inputs the workflow declares, which a run can give values for. Empty if it declares none, and for a workflow that starts from a trigger or a schedule, which takes no inputs." />
+<Field id="inputs" type="array" description="The inputs the workflow declares, which a run can give values for. Empty if it declares none. A workflow that starts from a trigger or a schedule takes no inputs when run, whatever it declares." />
 <Field id="outputs" type="array" description="The outputs the workflow declares: what a run that succeeds hands back, in the run's outputs. Empty if it declares none." />
 </Fields>
 
@@ -72,7 +72,7 @@ Editing a workflow can save a new version of it, but its `id` stays the same, so
 
 <Endpoint method="GET" path="/api/v1/workflows" />
 
-Returns every workflow in the workspace the API key belongs to. Requires the `workflows:read` scope.
+Returns the workflows in the workspace the API key belongs to that the member who created the key can see. Requires the `workflows:read` scope.
 
 ```bash tab="cURL" tab-group="lang"
 curl https://api-prod.lodol.com/api/v1/workflows \
@@ -347,7 +347,7 @@ curl -X POST https://api-prod.lodol.com/api/v1/workflows/validate \
 { "valid": false, "error": "Invalid Stmt kind: Nope (at /body/0)" }
 ```
 
-When it would, the response has the preview: `preview` (the dry run), `steps`, `actions` (the app actions it calls), `has_trigger`, and `warnings` when there are any.
+When it is, the response has the preview: `preview` (the dry run), `steps`, `actions` (the app actions it calls), `has_trigger`, and `warnings` when there are any.
 
 ---
 
@@ -355,14 +355,13 @@ When it would, the response has the preview: `preview` (the dry run), `steps`, `
 
 <Endpoint method="DELETE" path="/api/v1/workflows/:id" />
 
-Deletes a workflow and every version of it, as deleting it in Lodol does. This can't be undone. Requires the `workflows:delete` scope, and the member who created the key must be allowed to delete workflows (the **Delete workflows** role permission); otherwise the request gets `403`.
+Moves a workflow and every version of it to the Trash, as deleting it in Lodol does. It can be restored from the **Trash**, on the **Workflows** page, for 30 days; after that it's deleted for good. Requires the `workflows:delete` scope, and the member who created the key must be allowed to delete workflows (the **Delete workflows** role permission); otherwise the request gets `403`.
 
 Deleting a workflow:
 
 - stops any run of it in progress
 - stops its trigger or schedule from listening
-- removes it from its folders
-- detaches the secrets and values scoped to it, without deleting them
+- keeps its folder, its sharing, and the secrets and values scoped to it, so restoring it puts it back as it was
 - keeps its past runs, which you can still read under [Runs](/docs/api/runs)
 
 `:id` can be the workflow's `id` or the ID of any of its versions.
@@ -392,8 +391,10 @@ requests.delete(
 {
   "id": "665f1a2b3c4d5e6f7a8b9c0d",
   "name": "Monthly Client Report",
-  "deleted": true
+  "deleted": true,
+  "in_trash": true,
+  "restorable_until": "2026-04-16T10:30:00+00:00"
 }
 ```
 
-A workflow that doesn't exist, or is already deleted, returns `404`. A delete that fails returns `500` and leaves the workflow as it was. Deleting takes no `Idempotency-Key`, so if a delete times out, check with [Get a workflow](#get-a-workflow) before sending it again: it may have gone through.
+`restorable_until` is when it leaves the Trash for good. A workflow that doesn't exist, or is already deleted, returns `404`. A delete that fails returns `500` and leaves the workflow as it was. Deleting takes no `Idempotency-Key`, so if a delete times out, check with [Get a workflow](#get-a-workflow) before sending it again: it may have gone through.

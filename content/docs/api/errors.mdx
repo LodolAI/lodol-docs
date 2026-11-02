@@ -54,6 +54,7 @@ These name a problem precisely, so your code can handle each its own way:
 | `api_key_owner_inactive` | `403` | The member who made the key has left the workspace, or has no role in it | Make a new key |
 | `item_view_only` | `403` | The key's member can see this workflow but not run or change it | Ask for edit access to it |
 | `workspace_ip_not_allowed` | `403` | The workspace only accepts requests from certain networks | Send the request from an allowed network |
+| `workspace_policy_unavailable` | `403` | Lodol couldn't read the workspace's security policy to check the request against it | Retry after a short wait: the request itself is fine |
 | `invalid_inputs` | `400` | The run's inputs don't match what the workflow declares, or it takes none | Fix the inputs; the message names the one at fault |
 | `workflow_not_runnable` | `400` | The workflow is a draft, or isn't finished | Publish or fix it in Lodol |
 | `run_already_finished` | `400` | [Stop a run](/docs/api/runs#stop-a-run) on a run that has already finished | Nothing: the run is over. [Get it](/docs/api/runs#get-a-run) to see how it ended |
@@ -129,18 +130,18 @@ Any other error has the code for its kind of problem: `invalid_request` (`400`),
 
 ## Retry safely
 
-Retry `5xx`, `409` with the code `request_in_progress`, and `429` with the code `rate_limited`, waiting longer each time. When the response has a `Retry-After` header, wait that many seconds; otherwise back off exponentially. Don't retry other `4xx` responses: the request itself needs fixing, or, like an approval request that's already been answered, there's nothing left to do. Nor `429` with `monthly_run_limit`, which clears only when the month's runs come back.
+Retry `5xx`, `403` with the code `workspace_policy_unavailable`, `409` with the code `request_in_progress`, and `429` with the code `rate_limited`, waiting longer each time. When the response has a `Retry-After` header, wait that many seconds; otherwise back off exponentially. Don't retry other `4xx` responses: the request itself needs fixing, or, like an approval request that's already been answered, there's nothing left to do. Nor `429` with `monthly_run_limit`, which clears only when the month's runs come back.
 
 ```js tab="JavaScript" tab-group="lang"
 async function lodolRequest(url, options = {}, maxRetries = 3) {
   for (let attempt = 0; ; attempt++) {
     const response = await fetch(url, options);
-    const code =
-      response.status === 409 || response.status === 429
-        ? (await response.clone().json()).error_code
-        : null;
+    const code = [403, 409, 429].includes(response.status)
+      ? (await response.clone().json()).error_code
+      : null;
     const retryable =
-      response.status >= 500 || code === 'request_in_progress' || code === 'rate_limited';
+      response.status >= 500 ||
+      ['workspace_policy_unavailable', 'request_in_progress', 'rate_limited'].includes(code);
     if (!retryable || attempt === maxRetries) return response;
 
     const retryAfter = Number(response.headers.get('Retry-After'));
@@ -159,10 +160,11 @@ def lodol_request(method, url, max_retries=3, **kwargs):
         response = requests.request(method, url, **kwargs)
         code = (
             response.json().get("error_code")
-            if response.status_code in (409, 429)
+            if response.status_code in (403, 409, 429)
             else None
         )
         retryable = response.status_code >= 500 or code in (
+            "workspace_policy_unavailable",
             "request_in_progress",
             "rate_limited",
         )
@@ -176,7 +178,7 @@ Retry a request that starts a run or saves a workflow only with an idempotency k
 
 ## Idempotency
 
-Requests that do something, [Run a workflow](/docs/api/runs#run-a-workflow), [Stop a run](/docs/api/runs#stop-a-run), [Retry a run](/docs/api/runs#retry-a-run), [Answer an approval request](/docs/api/approvals#answer-an-approval-request) and [creating](/docs/api/workflows#create-a-workflow), [replacing](/docs/api/workflows#replace-a-workflow) or [editing](/docs/api/workflows#edit-a-workflow) a workflow, accept an `Idempotency-Key` header. Lodol remembers the response to the first request with each key, and returns that same response to any later request with the same key, instead of doing the work again.
+Requests that do something, [Run a workflow](/docs/api/runs#run-a-workflow), [Stop a run](/docs/api/runs#stop-a-run), [Retry a run](/docs/api/runs#retry-a-run), [Answer an approval request](/docs/api/approvals#answer-an-approval-request) and [creating](/docs/api/workflows#create-a-workflow), [replacing](/docs/api/workflows#replace-a-workflow) or [editing](/docs/api/workflows#edit-a-workflow) a workflow, accept an `Idempotency-Key` header. Lodol remembers the response to the first request with each key that succeeds, and returns that same response to any later request with the same key, instead of doing the work again. A request that fails isn't remembered, so retrying it with the same key does the work.
 
 ```bash
 curl -X POST https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d/run-async \
@@ -185,7 +187,7 @@ curl -X POST https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0
 ```
 
 - **Make the key from what the run is for,** such as your own order or event ID, so a retry of the same work always sends the same key. Keys can be up to 256 characters.
-- **Responses are kept for 24 hours.** A repeated request in that time gets the first response back, with an `X-Idempotent-Replayed: true` header.
+- **Successful responses are kept for 24 hours.** A repeated request in that time gets the first response back, with an `X-Idempotent-Replayed: true` header.
 - **Requests in flight return `409`.** If the first request with a key is still being processed, a second one gets `409 Conflict` with `Retry-After: 5`.
 - **A key belongs to one request.** Reusing a key for a different request, such as the same workflow with different inputs, returns `422`.
 
