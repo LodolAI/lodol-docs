@@ -2,7 +2,7 @@ import { IntegrationIcon } from '@/components/integration-icon';
 import { cn } from '@/lib/cn';
 
 interface PreviewStep {
-  /** The step's name, as the editor shows it: "Append row". */
+  /** The step's name, as the editor shows it: "Add row". */
   step: string;
   /** The app it belongs to; leave out for a built-in step. */
   app?: string;

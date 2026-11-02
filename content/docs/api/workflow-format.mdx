@@ -73,6 +73,7 @@ The Stripe example from these docs, as a program: a trigger, then two app action
           {
             "kind": "Literal",
             "value": {
+              "channel_id": "C0123456789",
               "text": {
                 "kind": "BinaryExpr",
                 "op": "+",
@@ -112,7 +113,7 @@ There are 14 kinds of statement:
 
 ### Try sections
 
-A `TryStmt` runs `tryBranch`. If a step inside it fails, the rest of `tryBranch` is skipped and `catchBranch` runs instead, with the failure bound under `errorName` (`error` unless set) as `{ "type": …, "message": … }`. The `type` is `action`, `http`, `timeout`, `variable` or `error`. An empty `catchBranch` lets the run carry on after the failure. A `StopStmt` inside a try still ends the run. See [Handle failures](/docs/guides/failures#let-steps-fail-without-stopping-the-run).
+A `TryStmt` runs `tryBranch`. If a step inside it fails, the rest of `tryBranch` is skipped and `catchBranch` runs instead, with the failure bound under `errorName` (`error` unless set) as `{ "type": …, "message": … }`. The `type` is `action`, `http`, `timeout`, `variable`, `blocked` (an AI agent step stopped by its prompt-injection check) or `error`. An empty `catchBranch` lets the run carry on after the failure. A `StopStmt` inside a try still ends the run. See [Handle failures](/docs/guides/failures#let-steps-fail-without-stopping-the-run).
 
 ### Schedules
 
@@ -141,7 +142,7 @@ Expressions produce values:
 
 ### App actions
 
-An app action is a `NativeCallExpr` named `api.request` with three arguments: the method, the action's path, and a payload of its inputs. The path names the app and the action: `/actions/library/google-sheets/append-row` is Google Sheets' **Append row**. The keys of the payload are the action's inputs, as listed on its [integration page](/docs/integrations).
+An app action is a `NativeCallExpr` named `api.request` with three arguments: the method, the action's path, and a payload of its inputs. The path names the app and the action: `/actions/library/google-sheets/append-row` is Google Sheets' **Add row**. The keys of the payload are the action's inputs, as listed on its [integration page](/docs/integrations).
 
 In the payload, a fixed value is written as plain JSON, and a value worked out at run time is an expression node in its place, like `row_values` and `text` above. Any object in the payload with a string `kind` is evaluated, at any depth.
 
@@ -206,7 +207,7 @@ A built-in function is a node whose `kind` ends in `BuiltIn`, with named fields 
     | `kind` | Fields | In the editor |
     | --- | --- | --- |
     | `RoundBuiltIn` | `value`, `mode`, `decimals?` | Round number. `mode` is `nearest`, `up` or `down`. |
-    | `FormatNumberBuiltIn` | `value`, `style`, `decimals?` | Format number. `style` is `plain`, `thousands`, `usd`, `eur`, `gbp` or `jpy`. |
+    | `FormatNumberBuiltIn` | `value`, `style`, `currency?`, `decimals?`, `separators?` | Format number. `style` is `plain`, `thousands`, `usd`, `eur`, `gbp`, `jpy`, `currency` (with a three-letter `currency` code, such as `CAD`) or `percent` (a ratio: `0.125` is `12.50%`). `separators` is `comma_period` (the default), `period_comma`, `space_comma` or `apostrophe_period`. |
     | `TotalBuiltIn` | `value` | Calculate total |
     | `MeanBuiltIn` | `value` | Calculate average |
     | `MedianBuiltIn` | `value` | Find middle value |
@@ -236,10 +237,10 @@ A built-in function is a node whose `kind` ends in `BuiltIn`, with named fields 
     | `kind` | Fields | In the editor |
     | --- | --- | --- |
     | `AgentBuiltIn` | `task`, `model`, `instructions?`, `tools?`, `output_schema?`, `files?`, `max_steps?`, `fallback_model?`, `memory_key?`, `memory_window?` | [Run an AI agent](/docs/guides/ai-agents) |
-    | `CallWorkflowBuiltIn` | `workflow_id`, `workflow_name?`, `inputs?` | [Run a workflow](/docs/guides/sub-workflows) |
-    | `HttpRequestBuiltIn` | `url`, `method?`, `headers?`, `query?`, `body?`, `body_format?`, `response_format?`, `on_error?` | [Call an API](/docs/guides/http-and-code#call-an-api) |
-    | `RunPythonBuiltIn` | `code`, `inputs?`, `output_type?` | [Run Python code](/docs/guides/http-and-code#run-python-code) |
+    | `CallWorkflowBuiltIn` | `workflow_id`, `workflow_name?`, `inputs?`, `wait?` (`true` unless set; `false` starts it as a run of its own) | [Run a workflow](/docs/guides/sub-workflows) |
+    | `HttpRequestBuiltIn` | `url`, `method?`, `headers?`, `query?`, `body?`, `body_format?`, `response_format?`, `on_error?`, `connection_id?`, `paging?`, `paging_items?`, `paging_next?`, `paging_param?`, `paging_max_pages?` | [Call an API](/docs/guides/http-and-code#call-an-api) |
+    | `RunPythonBuiltIn` | `code`, `inputs?`, `output_type?`, `language?` (`python`, the default, or `javascript`) | [Run code](/docs/guides/http-and-code#run-code) |
     | `WaitBuiltIn` | `seconds`, `unit?` | Wait. `seconds` is the amount, in `unit`. |
-    | `DisplayBuiltIn` | `value` | Output value |
+    | `DisplayBuiltIn` | `value` | Show in the output |
   </Accordion>
 </Accordions>

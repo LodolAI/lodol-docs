@@ -338,6 +338,28 @@ class EscapeMdxTests(unittest.TestCase):
         self.assertEqual(ren._escape_mdx("\\` ![](x) `"), "\\` !\\[](x) `")
 
 
+class RelativeLinkTests(unittest.TestCase):
+    def test_a_link_relative_to_the_apps_own_docs_keeps_only_its_words(self):
+        self.assertEqual(
+            ren._without_relative_links(
+                "See the [setup guide](/docs/v3/guides/setup), [sources](ref:sources) "
+                'and [Get job](#operation/getJob "Get job").'
+            ),
+            "See the setup guide, sources and Get job.",
+        )
+
+    def test_links_to_a_web_or_email_address_stay(self):
+        text = "See [the guide](https://example.com/guide) or [email us](mailto:a@example.com)."
+        self.assertEqual(ren._without_relative_links(text), text)
+
+    def test_leaves_code_spans_images_and_escaped_brackets_alone(self):
+        text = "Write `[a](/b)`, mention ![](@U123), or type \\[c](/d)."
+        self.assertEqual(ren._without_relative_links(text), text)
+
+    def test_none_returns_empty(self):
+        self.assertEqual(ren._without_relative_links(None), "")
+
+
 class YamlQuoteTests(unittest.TestCase):
     def test_basic_quote(self):
         self.assertEqual(ren._yaml_quote("hello"), '"hello"')
@@ -545,6 +567,15 @@ class GenerateActionSectionTests(unittest.TestCase):
         self.assertNotIn("{key:", out)
         self.assertIn("&#123;key:", out)
         self.assertIn("&lt;value>&#125;", out)
+
+    def test_a_link_relative_to_the_apps_own_docs_is_not_a_link_here(self):
+        action = self._action(
+            description="Create a campaign, as the [setup guide](/docs/v3/setup) describes."
+        )
+        out = ren.generate_action_section("x", action)
+        self.assertIn("Create a campaign, as the setup guide describes.", out)
+        markdown = ren.generate_action_section("x", action, markdown=True)
+        self.assertIn("Create a campaign, as the setup guide describes.", markdown)
 
     def test_parameter_descriptions_keep_markup_characters_as_written(self):
         action = self._action()
@@ -767,6 +798,12 @@ class GenerateProviderMdxTests(unittest.TestCase):
         self.assertIn("## Actions\n\n| Action | What it does |", out)
         self.assertIn("| [Act A](#act-a) | Does thing 0. |", out)
 
+    def test_the_overview_drops_links_relative_to_the_apps_own_docs(self):
+        provider = _provider(n=3)
+        provider["actions"]["act_0"]["description"] = "Does [thing](/guides/thing) 0."
+        out = ren.generate_provider_mdx(provider)
+        self.assertIn("| [Act A](#act-a) | Does thing 0. |", out)
+
     def test_fewer_than_three_actions_need_no_overview(self):
         self.assertNotIn("## Actions", ren.generate_provider_mdx(_provider(n=2)))
 
@@ -865,6 +902,12 @@ class TriggerSectionTests(unittest.TestCase):
             {"display_name": "New transaction", "output": {"amount": "Amount in dollars."}}
         )
         self.assertIn('<Field id="amount" description="Amount in dollars." />', out)
+
+    def test_a_link_relative_to_the_apps_own_docs_is_not_a_link_here(self):
+        out = ren.generate_trigger_section(
+            {"display_name": "New card", "description": "Runs on a [new card](/webhooks#card)."}
+        )
+        self.assertEqual(out, "### New card\n\nRuns on a new card.\n")
 
     def test_a_trigger_known_only_by_name(self):
         out = ren.generate_trigger_section(

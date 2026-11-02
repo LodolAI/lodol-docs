@@ -60,3 +60,9 @@ export function getCatalog(): Catalog {
   }
   return cached;
 }
+
+/** How many apps there are, rounded down to the hundred: 1,609 is "1,600+". */
+export function appCountLabel(apps: number): string {
+  if (apps < 100) return String(apps);
+  return `${(Math.floor(apps / 100) * 100).toLocaleString('en-US')}+`;
+}

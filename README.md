@@ -4,7 +4,8 @@ Documentation site for Lodol, built with [Next.js](https://nextjs.org/) and [Fum
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20.19+ (Next.js 16 and ESLint 10 need it; CI and the Docker
+  image use Node 22)
 - npm
 - Python 3 (used by the integrations reference renderer)
 

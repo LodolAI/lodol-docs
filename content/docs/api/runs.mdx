@@ -69,7 +69,7 @@ Starts a run in the background and returns its ID straight away; follow it with 
 `:id` can be the workflow's `id` or the ID of any of its versions. Either way, the workflow runs as it is now. Each run counts as one of your plan's monthly runs; when they're used up, the request gets `429` with the code `monthly_run_limit` (see [Error codes](/docs/api/errors#error-codes)). A run started while as many are going as your plan allows at once isn't refused: it's `queued`, and starts as soon as one of them finishes.
 
 <Fields title="Headers">
-<Field id="Idempotency-Key" type="string" description="Makes the request safe to retry: a repeat with the same key returns the first response instead of starting another run. Up to 256 characters, remembered for 24 hours. Reusing a key for a different request, such as the same workflow with different inputs, returns 422. See Idempotency." />
+<Field id="Idempotency-Key" type="string" description="Makes the request safe to retry: a repeat with the same key returns the first response instead of starting another run. Up to 256 characters. A successful response is remembered for 24 hours; a request that fails isn't, so a retry with the same key runs again. Reusing a remembered key for a different request, such as the same workflow with different inputs, returns 422. See Idempotency." />
 </Fields>
 
 <Fields title="Body" description="Optional. To give values for the inputs the workflow declares, send a JSON object of at most 500 KB whose only field is inputs.">
@@ -393,7 +393,8 @@ A run's [`retry_options`](#the-run-object) say which it offers. These return `40
 
 - a run that didn't fail
 - a run of a workflow another run called: retry the run that called it
-- a run whose workflow has been deleted
+- a run whose workflow is in the Trash: restore the workflow first
+- a run whose workflow has been deleted for good, from before runs kept a copy of what they ran
 - from the failed step, a run that failed before runs kept where they failed, or whose version is gone: retry it from the start
 
 ```bash tab="cURL" tab-group="lang"
@@ -448,7 +449,7 @@ retry = response.json()
 }
 ```
 
-`version` says which version of the workflow the retry runs: `latest` when the workflow as it is now agrees with what ran up to the failed step, otherwise `original`, the version that failed. `failed_step` describes the step that failed the run, or is `null` for a run that failed before runs kept it.
+`version` says which version of the workflow the retry runs. From the start, it's `latest`, the workflow as it is now, unless it no longer has a published version to run, when it's `original`, the version that failed. From the failed step, it's `latest` when the workflow as it is now is published and agrees with what ran up to the failed step, otherwise `original`. `failed_step` describes the step that failed the run, or is `null` for a run that failed before runs kept it.
 
 ---
 
