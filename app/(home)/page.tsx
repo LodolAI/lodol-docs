@@ -28,8 +28,8 @@ const ADD_TO = [
 const ASK = 'Use Lodol: when a Stripe payment comes in, add it to our revenue sheet and post it in #sales.';
 const EXAMPLE_STEPS = [
   { step: 'New Stripe payment', app: 'Stripe', trigger: true },
-  { step: 'Append row', app: 'Google Sheets' },
-  { step: 'Send a message to a channel', app: 'Slack' },
+  { step: 'Add row', app: 'Google Sheets' },
+  { step: 'Send message to channel', app: 'Slack' },
 ];
 const RUN_CALL = [
   'API=https://api-prod.lodol.com/api/v1',
