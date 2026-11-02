@@ -1,0 +1,982 @@
+{
+  "actions": {
+    "get_airport_status": {
+      "description": "Check one US airport with the FAA: whether it has a ground stop, a ground delay program, arrival or departure delays, a closure or deicing right now, with the reason, how long the delays are and when it should end, plus the runways in use. An airport with nothing going on comes back as 'No delays' rather than failing the step.",
+      "display_name": "Get airport status",
+      "display_str_template": "Get the FAA's status for {0}.",
+      "handler": "actions.get_airport_status",
+      "id": "faa_airport_status_get_airport_status",
+      "method": "POST",
+      "mock_response": {
+        "airport_code": "PVD",
+        "airport_name": "Theodore Francis Green State",
+        "arrival_rate": null,
+        "arrival_runways": null,
+        "departure_runways": null,
+        "event_count": 1,
+        "events": [
+          {
+            "advisory_url": null,
+            "airport_code": "PVD",
+            "airport_name": "Theodore Francis Green State",
+            "average_delay_minutes": null,
+            "details": "except HEL",
+            "end_time": "2026-11-02T10:00:00Z",
+            "event_type": "closure",
+            "event_type_label": "Airport closure",
+            "id": "PVD|closure|2026-11-02T05:15:00Z",
+            "in_effect": true,
+            "latitude": 41.7245,
+            "longitude": -71.4303,
+            "max_delay_minutes": null,
+            "min_delay_minutes": null,
+            "notam": "!PVD 11/003 PVD AD AP CLSD EXC HEL 2611020515-2611021000",
+            "probability_of_extension": null,
+            "reason": null,
+            "start_time": "2026-11-02T05:15:00Z",
+            "summary": "Theodore Francis Green State (PVD) is closed except HEL until Nov 2, 10:00 UTC.",
+            "trend": null,
+            "updated_at": "2026-11-01T20:03:16Z"
+          }
+        ],
+        "has_delays": false,
+        "latitude": 41.7245,
+        "longitude": -71.4303,
+        "status": "closed",
+        "status_label": "Closed",
+        "summary": "Theodore Francis Green State (PVD) is closed except HEL until Nov 2, 10:00 UTC."
+      },
+      "name": "get_airport_status",
+      "output_formatter": "actions.format_airport_status_output",
+      "parameters": [
+        {
+          "description": "The airport to check: pick one of the FAA's major airports, or type any US airport's three-letter code (ATL) or its ICAO code starting with K (KATL).",
+          "display_name": "Airport",
+          "dynamic_source": "major_airports",
+          "dynamic_source_allows_custom": true,
+          "examples": [
+            {
+              "label": "Atlanta Hartsfield-Jackson",
+              "value": "ATL"
+            },
+            {
+              "label": "Chicago O'Hare, by its ICAO code",
+              "value": "KORD"
+            }
+          ],
+          "name": "airport",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/faa-airport-status/get-airport-status",
+      "result_str_template": "{faa_airport_status_get_airport_status,summary}",
+      "returns": {
+        "properties": {
+          "airport_code": {
+            "description": "The airport's three-letter FAA code, e.g. 'ATL'.",
+            "type": "string"
+          },
+          "airport_name": {
+            "description": "The airport's name. Empty when the FAA lists nothing there, since its name comes with its events.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "arrival_rate": {
+            "description": "How many arrivals an hour the airport is accepting. Given only while the airport has an event.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "arrival_runways": {
+            "description": "The runways landing aircraft are using, e.g. '17C/17L'. Given only while the airport has an event.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "departure_runways": {
+            "description": "The runways departing aircraft are using, e.g. '18R/17R'. Given only while the airport has an event.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "event_count": {
+            "description": "How many events the FAA lists there.",
+            "type": "number"
+          },
+          "events": {
+            "description": "Every event at the airport, most disruptive first.",
+            "items": {
+              "properties": {
+                "advisory_url": {
+                  "description": "For a ground stop or delay program, the link to the FAA's advisory with its full details.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "airport_code": {
+                  "description": "The airport's three-letter FAA code, e.g. 'DFW'.",
+                  "type": "string"
+                },
+                "airport_name": {
+                  "description": "The airport's name, e.g. 'Dallas/Ft Worth International'.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "average_delay_minutes": {
+                  "description": "A ground delay program's average delay, in minutes.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "details": {
+                  "description": "For a closure, what it covers or exempts, in the notice's words, e.g. 'except HEL' (helicopters) or 'TO NON SKED TRANSIENT GA ACFT'.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "end_time": {
+                  "description": "When the FAA expects it to end (UTC, ISO 8601): the end of a ground stop or program, or when a closed airport reopens.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "event_type": {
+                  "description": "What is happening: closure, ground_stop, ground_delay_program, arrival_delay, departure_delay, partial_closure (closed to some flights, such as private planes without permission) or deicing.",
+                  "type": "string"
+                },
+                "event_type_label": {
+                  "description": "The kind of event in words, e.g. 'Ground delay program'.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Names this event: the airport, the kind of event and when it began, e.g. 'DFW|ground_delay_program|2026-10-01T12:00:00Z'. The same event keeps the same id while the FAA lists it, so it is what to compare to tell a new event from one already handled.",
+                  "type": "string"
+                },
+                "in_effect": {
+                  "description": "True while the event is under way. False for one the FAA has announced that hasn't started yet, such as a closure tonight.",
+                  "type": "boolean"
+                },
+                "latitude": {
+                  "description": "The airport's latitude.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "longitude": {
+                  "description": "The airport's longitude.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "max_delay_minutes": {
+                  "description": "The longest delay, in minutes: a ground delay program's maximum, or the top of an arrival or departure delay's band.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "min_delay_minutes": {
+                  "description": "An arrival or departure delay's shortest delay, in minutes. The FAA reports these delays as a 15-minute band, e.g. 16 to 30.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "notam": {
+                  "description": "For a closure, the notice to air missions (NOTAM) that closed the airport, as the FAA published it.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "probability_of_extension": {
+                  "description": "How likely the FAA thinks a ground stop is to be extended: 'low' (under 30%), 'medium' (30 to 60%) or 'high' (over 60%).",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "reason": {
+                  "description": "Why, as the FAA gives it: the weather or condition behind a ground stop or delay program (e.g. 'Thunderstorms', 'Low ceilings'), or the FAA's code for an arrival or departure delay (e.g. 'TM Initiatives:MIT:VOL'). Empty for closures and deicing.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "start_time": {
+                  "description": "When it began or begins (UTC, ISO 8601). For a ground delay program, when the program began, even if the FAA has revised it since. Empty for arrival and departure delays.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "summary": {
+                  "description": "One sentence saying what it means for flights, e.g. 'Ground delay program at Dallas/Ft Worth International (DFW) because of thunderstorms: flights to it are delayed 79 minutes on average and up to 147 minutes, until Oct 2, 02:59 UTC.'",
+                  "type": "string"
+                },
+                "trend": {
+                  "description": "Whether an arrival or departure delay is 'increasing' or 'decreasing'.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "updated_at": {
+                  "description": "When the FAA last updated it (UTC, ISO 8601).",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "has_delays": {
+            "description": "True when a ground stop, ground delay program or arrival or departure delay is under way there.",
+            "type": "boolean"
+          },
+          "latitude": {
+            "description": "The airport's latitude, when the FAA lists it.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "longitude": {
+            "description": "The airport's longitude, when the FAA lists it.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "status": {
+            "description": "The airport's status, from the most disruptive event under way: closed, ground_stop, ground_delay_program, delays, partially_closed, deicing, or no_delays.",
+            "type": "string"
+          },
+          "status_label": {
+            "description": "The status in words, e.g. 'Ground stop' or 'No delays'.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "What is going on, in a sentence for each event, or that the FAA reports no delays there.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_national_status": {
+      "description": "See every US airport where the FAA is holding up or turning away traffic right now: ground stops, ground delay programs with their average and longest delays, arrival and departure delays and whether they are growing, closures, partial closures and deicing. Each event comes with its airport, reason, start and end times and a sentence saying what it means for flights. Narrow it to the kinds of event you care about. No delays anywhere is an answer, not a failure.",
+      "display_name": "Get national airport status",
+      "display_str_template": "Get the FAA's airport status across the US.",
+      "handler": "actions.get_national_status",
+      "id": "faa_airport_status_get_national_status",
+      "method": "POST",
+      "mock_response": {
+        "airport_count": 4,
+        "airports": [
+          "LAS",
+          "LAX",
+          "PVD",
+          "SAN"
+        ],
+        "counts": {
+          "arrival_delay": 0,
+          "closure": 1,
+          "deicing": 0,
+          "departure_delay": 0,
+          "ground_delay_program": 0,
+          "ground_stop": 0,
+          "partial_closure": 3
+        },
+        "event_count": 4,
+        "events": [
+          {
+            "advisory_url": null,
+            "airport_code": "PVD",
+            "airport_name": "Theodore Francis Green State",
+            "average_delay_minutes": null,
+            "details": "except HEL",
+            "end_time": "2026-11-02T10:00:00Z",
+            "event_type": "closure",
+            "event_type_label": "Airport closure",
+            "id": "PVD|closure|2026-11-02T05:15:00Z",
+            "in_effect": true,
+            "latitude": 41.7245,
+            "longitude": -71.4303,
+            "max_delay_minutes": null,
+            "min_delay_minutes": null,
+            "notam": "!PVD 11/003 PVD AD AP CLSD EXC HEL 2611020515-2611021000",
+            "probability_of_extension": null,
+            "reason": null,
+            "start_time": "2026-11-02T05:15:00Z",
+            "summary": "Theodore Francis Green State (PVD) is closed except HEL until Nov 2, 10:00 UTC.",
+            "trend": null,
+            "updated_at": "2026-11-01T20:03:16Z"
+          },
+          {
+            "advisory_url": null,
+            "airport_code": "LAS",
+            "airport_name": "Harry Reid International",
+            "average_delay_minutes": null,
+            "details": "TO NON SKED TRANSIENT GA ACFT EXC 24HR PPR 702-261-7775",
+            "end_time": "2027-01-27T23:00:00Z",
+            "event_type": "partial_closure",
+            "event_type_label": "Partial closure",
+            "id": "LAS|partial_closure|2026-10-28T19:26:00Z",
+            "in_effect": true,
+            "latitude": 36.084,
+            "longitude": -115.1537,
+            "max_delay_minutes": null,
+            "min_delay_minutes": null,
+            "notam": "!LAS 10/160 LAS AD AP CLSD TO NON SKED TRANSIENT GA ACFT EXC 24HR PPR 702-261-7775 2610281926-2701272300",
+            "probability_of_extension": null,
+            "reason": null,
+            "start_time": "2026-10-28T19:26:00Z",
+            "summary": "Harry Reid International (LAS) is closed to some flights until Jan 27, 23:00 UTC: TO NON SKED TRANSIENT GA ACFT EXC 24HR PPR 702-261-7775.",
+            "trend": null,
+            "updated_at": "2026-10-28T19:30:18Z"
+          },
+          {
+            "advisory_url": null,
+            "airport_code": "LAX",
+            "airport_name": "Los Angeles International",
+            "average_delay_minutes": null,
+            "details": "TO NON SKED TRANSIENT GA ACFT EXC 24HR PPR CTC ATLANTIC AVIATION 310-258-9884 OR SIGNATURE AVIATION 310-410-9605",
+            "end_time": "2027-05-28T16:00:00Z",
+            "event_type": "partial_closure",
+            "event_type_label": "Partial closure",
+            "id": "LAX|partial_closure|2026-05-27T18:26:00Z",
+            "in_effect": true,
+            "latitude": 33.9416,
+            "longitude": -118.4085,
+            "max_delay_minutes": null,
+            "min_delay_minutes": null,
+            "notam": "!LAX 05/277 LAX AD AP CLSD TO NON SKED TRANSIENT GA ACFT EXC 24HR PPR CTC ATLANTIC AVIATION 310-258-9884 OR SIGNATURE AVIATION 310-410-9605 2605271826-2705281600",
+            "probability_of_extension": null,
+            "reason": null,
+            "start_time": "2026-05-27T18:26:00Z",
+            "summary": "Los Angeles International (LAX) is closed to some flights until May 28, 16:00 UTC: TO NON SKED TRANSIENT GA ACFT EXC 24HR PPR CTC ATLANTIC AVIATION 310-258-9884 OR SIGNATURE AVIATION 310-410-9605.",
+            "trend": null,
+            "updated_at": "2026-05-27T18:31:49Z"
+          },
+          {
+            "advisory_url": null,
+            "airport_code": "SAN",
+            "airport_name": "San Diego-Lindbergh Field",
+            "average_delay_minutes": null,
+            "details": "TO NON SKED TRANSIENT GA ACFT EXC PPR 619-298-7704",
+            "end_time": "2027-01-01T08:00:00Z",
+            "event_type": "partial_closure",
+            "event_type_label": "Partial closure",
+            "id": "SAN|partial_closure|2026-10-01T16:33:00Z",
+            "in_effect": true,
+            "latitude": 32.7338,
+            "longitude": -117.1933,
+            "max_delay_minutes": null,
+            "min_delay_minutes": null,
+            "notam": "!SAN 10/004 SAN AD AP CLSD TO NON SKED TRANSIENT GA ACFT EXC PPR 619-298-7704 2610011633-2701010800",
+            "probability_of_extension": null,
+            "reason": null,
+            "start_time": "2026-10-01T16:33:00Z",
+            "summary": "San Diego-Lindbergh Field (SAN) is closed to some flights until Jan 1, 08:00 UTC: TO NON SKED TRANSIENT GA ACFT EXC PPR 619-298-7704.",
+            "trend": null,
+            "updated_at": "2026-10-01T16:35:24Z"
+          }
+        ],
+        "summary": "4 events at 4 airports: 1 airport closure and 3 partial closures."
+      },
+      "name": "get_national_status",
+      "output_formatter": "actions.format_national_status_output",
+      "parameters": [
+        {
+          "description": "Only these kinds of event. Leave everything unticked for all of them.",
+          "display_name": "Kinds of event",
+          "multi_select": true,
+          "name": "event_types",
+          "options": [
+            {
+              "label": "Airport closures",
+              "value": "closure"
+            },
+            {
+              "label": "Ground stops",
+              "value": "ground_stop"
+            },
+            {
+              "label": "Ground delay programs",
+              "value": "ground_delay_program"
+            },
+            {
+              "label": "Arrival delays",
+              "value": "arrival_delay"
+            },
+            {
+              "label": "Departure delays",
+              "value": "departure_delay"
+            },
+            {
+              "label": "Partial closures (closed to some flights)",
+              "value": "partial_closure"
+            },
+            {
+              "label": "Deicing",
+              "value": "deicing"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/faa-airport-status/get-national-status",
+      "result_str_template": "{faa_airport_status_get_national_status,summary}",
+      "returns": {
+        "properties": {
+          "airport_count": {
+            "description": "How many airports they are at.",
+            "type": "number"
+          },
+          "airports": {
+            "description": "The codes of the airports with events, A to Z.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "counts": {
+            "description": "How many events there are of each kind.",
+            "properties": {
+              "arrival_delay": {
+                "description": "Airports with arrival delays.",
+                "type": "number"
+              },
+              "closure": {
+                "description": "Airports closed.",
+                "type": "number"
+              },
+              "deicing": {
+                "description": "Airports deicing aircraft.",
+                "type": "number"
+              },
+              "departure_delay": {
+                "description": "Airports with departure delays.",
+                "type": "number"
+              },
+              "ground_delay_program": {
+                "description": "Ground delay programs.",
+                "type": "number"
+              },
+              "ground_stop": {
+                "description": "Ground stops.",
+                "type": "number"
+              },
+              "partial_closure": {
+                "description": "Airports closed to some flights.",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "event_count": {
+            "description": "How many events there are.",
+            "type": "number"
+          },
+          "events": {
+            "description": "Every event, most disruptive first (closures, ground stops, ground delay programs, arrival and departure delays, partial closures, deicing), then by airport.",
+            "items": {
+              "properties": {
+                "advisory_url": {
+                  "description": "For a ground stop or delay program, the link to the FAA's advisory with its full details.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "airport_code": {
+                  "description": "The airport's three-letter FAA code, e.g. 'DFW'.",
+                  "type": "string"
+                },
+                "airport_name": {
+                  "description": "The airport's name, e.g. 'Dallas/Ft Worth International'.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "average_delay_minutes": {
+                  "description": "A ground delay program's average delay, in minutes.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "details": {
+                  "description": "For a closure, what it covers or exempts, in the notice's words, e.g. 'except HEL' (helicopters) or 'TO NON SKED TRANSIENT GA ACFT'.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "end_time": {
+                  "description": "When the FAA expects it to end (UTC, ISO 8601): the end of a ground stop or program, or when a closed airport reopens.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "event_type": {
+                  "description": "What is happening: closure, ground_stop, ground_delay_program, arrival_delay, departure_delay, partial_closure (closed to some flights, such as private planes without permission) or deicing.",
+                  "type": "string"
+                },
+                "event_type_label": {
+                  "description": "The kind of event in words, e.g. 'Ground delay program'.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Names this event: the airport, the kind of event and when it began, e.g. 'DFW|ground_delay_program|2026-10-01T12:00:00Z'. The same event keeps the same id while the FAA lists it, so it is what to compare to tell a new event from one already handled.",
+                  "type": "string"
+                },
+                "in_effect": {
+                  "description": "True while the event is under way. False for one the FAA has announced that hasn't started yet, such as a closure tonight.",
+                  "type": "boolean"
+                },
+                "latitude": {
+                  "description": "The airport's latitude.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "longitude": {
+                  "description": "The airport's longitude.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "max_delay_minutes": {
+                  "description": "The longest delay, in minutes: a ground delay program's maximum, or the top of an arrival or departure delay's band.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "min_delay_minutes": {
+                  "description": "An arrival or departure delay's shortest delay, in minutes. The FAA reports these delays as a 15-minute band, e.g. 16 to 30.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "notam": {
+                  "description": "For a closure, the notice to air missions (NOTAM) that closed the airport, as the FAA published it.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "probability_of_extension": {
+                  "description": "How likely the FAA thinks a ground stop is to be extended: 'low' (under 30%), 'medium' (30 to 60%) or 'high' (over 60%).",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "reason": {
+                  "description": "Why, as the FAA gives it: the weather or condition behind a ground stop or delay program (e.g. 'Thunderstorms', 'Low ceilings'), or the FAA's code for an arrival or departure delay (e.g. 'TM Initiatives:MIT:VOL'). Empty for closures and deicing.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "start_time": {
+                  "description": "When it began or begins (UTC, ISO 8601). For a ground delay program, when the program began, even if the FAA has revised it since. Empty for arrival and departure delays.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "summary": {
+                  "description": "One sentence saying what it means for flights, e.g. 'Ground delay program at Dallas/Ft Worth International (DFW) because of thunderstorms: flights to it are delayed 79 minutes on average and up to 147 minutes, until Oct 2, 02:59 UTC.'",
+                  "type": "string"
+                },
+                "trend": {
+                  "description": "Whether an arrival or departure delay is 'increasing' or 'decreasing'.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "updated_at": {
+                  "description": "When the FAA last updated it (UTC, ISO 8601).",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "One sentence summing it up, e.g. '4 events at 4 airports: 1 airport closure and 3 partial closures.', or that there are none.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_operations_plan": {
+      "description": "Read the FAA Command Center's plan for the rest of the day: the ground stops and delay programs it thinks are possible, probable or expected at airports, and the reroutes and route closures it expects en route, each with its time (UTC) and the airports it names. Useful for warning travellers before the delays start.",
+      "display_name": "Get today's operations plan",
+      "display_str_template": "Get the FAA's operations plan for today.",
+      "handler": "actions.get_operations_plan",
+      "id": "faa_airport_status_get_operations_plan",
+      "method": "POST",
+      "mock_response": {
+        "advisory_number": 24,
+        "advisory_url": "https://www.fly.faa.gov/adv/adv_otherdis.jsp?advn=24&adv_date=11022026&facId=ATCSCC&title=ATCSCC%20ADVZY%20024%20DCC%2011/02/2026%20OPERATIONS%20PLAN&titleDate=11/02/2026",
+        "date": "2026-11-02",
+        "item_count": 14,
+        "items": [
+          {
+            "airports": [
+              "MIA",
+              "FLL"
+            ],
+            "likelihood": "possible",
+            "section": "terminal",
+            "section_label": "Airports",
+            "subject": "MIA/FLL GROUND STOP/DELAY PROGRAM",
+            "text": "After 12:00 UTC: MIA/FLL GROUND STOP/DELAY PROGRAM (possible)",
+            "time_utc": "12:00",
+            "timing": "after"
+          },
+          {
+            "airports": [
+              "SAN"
+            ],
+            "likelihood": "possible",
+            "section": "terminal",
+            "section_label": "Airports",
+            "subject": "SAN GROUND STOP/DELAY PROGRAM",
+            "text": "After 16:00 UTC: SAN GROUND STOP/DELAY PROGRAM (possible)",
+            "time_utc": "16:00",
+            "timing": "after"
+          },
+          {
+            "airports": [
+              "BOS"
+            ],
+            "likelihood": "expected",
+            "section": "terminal",
+            "section_label": "Airports",
+            "subject": "BOS GROUND STOP/DELAY PROGRAM",
+            "text": "After 17:00 UTC: BOS GROUND STOP/DELAY PROGRAM (expected)",
+            "time_utc": "17:00",
+            "timing": "after"
+          },
+          {
+            "airports": [],
+            "likelihood": "possible",
+            "section": "en_route",
+            "section_label": "En route",
+            "subject": "LAKE ERIE ROUTES",
+            "text": "After 11:00 UTC: LAKE ERIE ROUTES (possible)",
+            "time_utc": "11:00",
+            "timing": "after"
+          },
+          {
+            "airports": [
+              "MIA",
+              "FLL"
+            ],
+            "likelihood": "possible",
+            "section": "en_route",
+            "section_label": "En route",
+            "subject": "MIA/FLL CDRS/SWAP",
+            "text": "After 12:00 UTC: MIA/FLL CDRS/SWAP (possible)",
+            "time_utc": "12:00",
+            "timing": "after"
+          },
+          {
+            "airports": [
+              "DFW",
+              "DAL"
+            ],
+            "likelihood": "possible",
+            "section": "en_route",
+            "section_label": "En route",
+            "subject": "DFW/DAL CDRS/SWAP/ARRIVAL ROUTES",
+            "text": "After 13:00 UTC: DFW/DAL CDRS/SWAP/ARRIVAL ROUTES (possible)",
+            "time_utc": "13:00",
+            "timing": "after"
+          },
+          {
+            "airports": [],
+            "likelihood": "possible",
+            "section": "en_route",
+            "section_label": "En route",
+            "subject": "GULF ROUTE CLOSURES",
+            "text": "After 14:00 UTC: GULF ROUTE CLOSURES (possible)",
+            "time_utc": "14:00",
+            "timing": "after"
+          },
+          {
+            "airports": [],
+            "likelihood": "possible",
+            "section": "en_route",
+            "section_label": "En route",
+            "subject": "OCEANIC ROUTE CLOSURES",
+            "text": "After 14:00 UTC: OCEANIC ROUTE CLOSURES (possible)",
+            "time_utc": "14:00",
+            "timing": "after"
+          },
+          {
+            "airports": [],
+            "likelihood": "possible",
+            "section": "en_route",
+            "section_label": "En route",
+            "subject": "CAPPING/TUNNELING/TRANSCON/REGIONAL ROUTES",
+            "text": "After 16:00 UTC: CAPPING/TUNNELING/TRANSCON/REGIONAL ROUTES (possible)",
+            "time_utc": "16:00",
+            "timing": "after"
+          },
+          {
+            "airports": [
+              "MCO",
+              "TPA"
+            ],
+            "likelihood": "possible",
+            "section": "en_route",
+            "section_label": "En route",
+            "subject": "MCO/TPA CDRS/SWAP",
+            "text": "After 17:00 UTC: MCO/TPA CDRS/SWAP (possible)",
+            "time_utc": "17:00",
+            "timing": "after"
+          },
+          {
+            "airports": [
+              "MSP"
+            ],
+            "likelihood": "possible",
+            "section": "en_route",
+            "section_label": "En route",
+            "subject": "MSP CDRS/SWAP/ARRIVAL ROUTES",
+            "text": "After 18:00 UTC: MSP CDRS/SWAP/ARRIVAL ROUTES (possible)",
+            "time_utc": "18:00",
+            "timing": "after"
+          },
+          {
+            "airports": [],
+            "likelihood": "possible",
+            "section": "en_route",
+            "section_label": "En route",
+            "subject": "AR/Y ROUTE CLOSURES",
+            "text": "After 20:00 UTC: AR/Y ROUTE CLOSURES (possible)",
+            "time_utc": "20:00",
+            "timing": "after"
+          },
+          {
+            "airports": [
+              "DEN"
+            ],
+            "likelihood": "possible",
+            "section": "en_route",
+            "section_label": "En route",
+            "subject": "DEN CDRS/SWAP/ARRIVAL ROUTES",
+            "text": "After 22:00 UTC: DEN CDRS/SWAP/ARRIVAL ROUTES (possible)",
+            "time_utc": "22:00",
+            "timing": "after"
+          },
+          {
+            "airports": [
+              "ORD",
+              "MDW"
+            ],
+            "likelihood": "possible",
+            "section": "en_route",
+            "section_label": "En route",
+            "subject": "ORD/MDW CDRS/SWAP/ARRIVAL ROUTES",
+            "text": "After 00:00 UTC: ORD/MDW CDRS/SWAP/ARRIVAL ROUTES (possible)",
+            "time_utc": "00:00",
+            "timing": "after"
+          }
+        ],
+        "summary": "The FAA plans 3 airport initiatives and 11 en route initiatives for Nov 2."
+      },
+      "name": "get_operations_plan",
+      "output_formatter": "actions.format_operations_plan_output",
+      "parameters": [],
+      "path": "/actions/library/faa-airport-status/get-operations-plan",
+      "result_str_template": "{faa_airport_status_get_operations_plan,summary}",
+      "returns": {
+        "properties": {
+          "advisory_number": {
+            "description": "The number of the advisory the plan was issued as.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "advisory_url": {
+            "description": "The link to the full advisory on the FAA's site.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "description": "The day the plan was issued for (UTC), e.g. '2026-11-02'.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "item_count": {
+            "description": "How many initiatives the plan lists.",
+            "type": "number"
+          },
+          "items": {
+            "description": "Every planned initiative, airports first, in time order.",
+            "items": {
+              "properties": {
+                "airports": {
+                  "description": "The codes of the airports it names, e.g. ['MIA', 'FLL'].",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "likelihood": {
+                  "description": "How likely the FAA thinks it is: 'possible' (under 30%), 'probable' (30 to 60%) or 'expected'.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "section": {
+                  "description": "'terminal' for an airport initiative (a possible ground stop or delay program), 'en_route' for one in the airspace between (reroutes, route closures).",
+                  "type": "string"
+                },
+                "section_label": {
+                  "description": "The section in words: 'Airports' or 'En route'.",
+                  "type": "string"
+                },
+                "subject": {
+                  "description": "What is planned, in the FAA's words, e.g. 'BOS GROUND STOP/DELAY PROGRAM'.",
+                  "type": "string"
+                },
+                "text": {
+                  "description": "The line as one sentence, e.g. 'After 17:00 UTC: BOS GROUND STOP/DELAY PROGRAM (expected)'.",
+                  "type": "string"
+                },
+                "time_utc": {
+                  "description": "The time it applies from or until, UTC, e.g. '17:00'.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "timing": {
+                  "description": "Whether it applies 'after' or 'until' the time, as the plan says.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "One sentence, e.g. 'The FAA plans 3 airport initiatives and 11 en route initiatives for Nov 2.'",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    }
+  },
+  "categories": [
+    "Maps & Travel",
+    "Government & Public Data"
+  ],
+  "description": "Live US airport delays from the Federal Aviation Administration: ground stops, ground delay programs, arrival and departure delays, closures and deicing at every US airport, one airport's status and runways, the FAA's plan for later in the day, and a trigger for each new delay. No account or API key required.",
+  "display_name": "FAA Airport Status",
+  "id": "faa_airport_status",
+  "logo": "https://www.lodol.com/app-icons/faa-airport-status-icon.png",
+  "triggers": {
+    "faa_airport_status_new_delay_trigger": {
+      "description": "Runs when the FAA posts a new ground stop, ground delay program, arrival or departure delay, closure or deicing at a US airport. Optionally only at some airports, or only some kinds.",
+      "display_name": "New FAA airport delay",
+      "id": "faa_airport_status_new_delay_trigger",
+      "output": {
+        "advisory_url": "For a ground stop or delay program, the link to the FAA's advisory with its full details.",
+        "airport_code": "The airport's three-letter FAA code, e.g. 'DFW'.",
+        "airport_name": "The airport's name, e.g. 'Dallas/Ft Worth International'.",
+        "average_delay_minutes": "A ground delay program's average delay, in minutes.",
+        "details": "For a closure, what it covers or exempts, in the notice's words, e.g. 'except HEL' (helicopters) or 'TO NON SKED TRANSIENT GA ACFT'.",
+        "end_time": "When the FAA expects it to end (UTC, ISO 8601): the end of a ground stop or program, or when a closed airport reopens.",
+        "event_type": "What is happening: closure, ground_stop, ground_delay_program, arrival_delay, departure_delay, partial_closure (closed to some flights, such as private planes without permission) or deicing.",
+        "event_type_label": "The kind of event in words, e.g. 'Ground delay program'.",
+        "id": "Names this event: the airport, the kind of event and when it began, e.g. 'DFW|ground_delay_program|2026-10-01T12:00:00Z'. The same event keeps the same id while the FAA lists it, so it is what to compare to tell a new event from one already handled.",
+        "in_effect": "True while the event is under way. False for one the FAA has announced that hasn't started yet, such as a closure tonight.",
+        "latitude": "The airport's latitude.",
+        "longitude": "The airport's longitude.",
+        "max_delay_minutes": "The longest delay, in minutes: a ground delay program's maximum, or the top of an arrival or departure delay's band.",
+        "min_delay_minutes": "An arrival or departure delay's shortest delay, in minutes. The FAA reports these delays as a 15-minute band, e.g. 16 to 30.",
+        "notam": "For a closure, the notice to air missions (NOTAM) that closed the airport, as the FAA published it.",
+        "probability_of_extension": "How likely the FAA thinks a ground stop is to be extended: 'low' (under 30%), 'medium' (30 to 60%) or 'high' (over 60%).",
+        "reason": "Why, as the FAA gives it: the weather or condition behind a ground stop or delay program (e.g. 'Thunderstorms', 'Low ceilings'), or the FAA's code for an arrival or departure delay (e.g. 'TM Initiatives:MIT:VOL'). Empty for closures and deicing.",
+        "start_time": "When it began or begins (UTC, ISO 8601). For a ground delay program, when the program began, even if the FAA has revised it since. Empty for arrival and departure delays.",
+        "summary": "One sentence saying what it means for flights, e.g. 'Ground delay program at Dallas/Ft Worth International (DFW) because of thunderstorms: flights to it are delayed 79 minutes on average and up to 147 minutes, until Oct 2, 02:59 UTC.'",
+        "trend": "Whether an arrival or departure delay is 'increasing' or 'decreasing'.",
+        "updated_at": "When the FAA last updated it (UTC, ISO 8601)."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only events at these airports: their codes, separated by commas, such as ATL, ORD or KJFK. Leave blank for every US airport.",
+          "display_name": "Airports",
+          "name": "airports",
+          "required": false
+        },
+        {
+          "arg_index": 1,
+          "description": "any (the default), delays (ground stops, delay programs and arrival or departure delays), ground_stops, ground_delay_programs, closures (full or partial) or deicing.",
+          "display_name": "Kinds of event",
+          "name": "event_type",
+          "required": false
+        }
+      ]
+    }
+  }
+}
