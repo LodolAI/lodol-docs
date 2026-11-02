@@ -335,6 +335,96 @@
         "read"
       ]
     },
+    "list_payments": {
+      "description": "Every Stripe payment made in a period, with the figures a sales report needs worked out: how many, the total in dollars (or the account's currency, not cents) and who paid the most. Payments are listed with their amounts in cents, as the New Stripe payment trigger gives them. Use it for a weekly or monthly sales summary.",
+      "display_name": "List Stripe payments",
+      "display_str_template": "List Stripe payments since {0}",
+      "handler": "actions.list_payments",
+      "id": "stripe_list_payments",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "currency": "usd",
+        "payments": [
+          {
+            "amount": 5000,
+            "created": 1767225600,
+            "currency": "usd",
+            "customer_email": "customer@example.com",
+            "customer_name": "Example Customer",
+            "description": "",
+            "payment_intent_id": "pi_123",
+            "status": "succeeded"
+          }
+        ],
+        "top_customer": "Example Customer",
+        "top_customer_total": 50.0,
+        "total": 50.0
+      },
+      "name": "list_payments",
+      "output_formatter": "actions.format_list_payments_output",
+      "parameters": [
+        {
+          "description": "Only payments created at or after this moment.",
+          "display_name": "Paid on or after",
+          "name": "created_after",
+          "required": true,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Optional upper bound, exclusive. Leave empty to run the period up to now.",
+          "display_name": "Paid before",
+          "name": "created_before",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": "succeeded",
+          "description": "Only payments in this Stripe status. Leave empty for succeeded payments, which are the ones that brought in money.",
+          "display_name": "Payment status",
+          "name": "status",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/stripe/list-payments",
+      "result_str_template": "{stripe_list_payments,count} payment(s) found.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many payments.",
+            "type": "number"
+          },
+          "currency": {
+            "description": "The currency the total is in (the first payment's).",
+            "type": "string"
+          },
+          "payments": {
+            "description": "Each payment with payment_intent_id, status, amount (in cents), currency, created, customer_name, customer_email and description.",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "top_customer": {
+            "description": "Who paid the most in the period, by name or email.",
+            "type": "string"
+          },
+          "top_customer_total": {
+            "description": "What the top customer paid, in dollars.",
+            "type": "number"
+          },
+          "total": {
+            "description": "Revenue in the currency's usual units, such as dollars.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "refund_payment": {
       "description": "Refund a payment, in full or in part.",
       "display_name": "Refund a Stripe payment",
@@ -513,7 +603,7 @@
       "parameters": []
     },
     "stripe_new_payment_trigger": {
-      "description": "Runs when a new payment is created in Stripe. The event gives the amount (in cents, so 5000 is $50), currency and status, and who paid as customer_name and customer_email, which are blank when Stripe doesn't know them (a guest checkout may have neither).",
+      "description": "Runs when a new payment is created in Stripe or, with a status set, when a payment reaches that status. The event gives the amount (in cents, so 5000 is $50), currency and status, and who paid as customer_name and customer_email, which are blank when Stripe doesn't know them (a guest checkout may have neither).",
       "display_name": "New Stripe payment",
       "id": "stripe_new_payment_trigger",
       "output": {
