@@ -289,7 +289,9 @@ curl -X PUT https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0d
   -d '{"name": "Monthly Client Report (EU)"}'
 ```
 
-**Response `200`:** the workflow as saved, as for [Create a workflow](#create-a-workflow), and `trigger_paused`. Saving a workflow that starts from its own trigger pauses its trigger, and `trigger_paused` is `true` when it was listening: [run it](/docs/api/runs#run-a-workflow) again to turn it on with the new version.
+**Response `200`:** the workflow as saved, as for [Create a workflow](#create-a-workflow), and `trigger_paused`, which is `true` when the workflow was listening for its trigger before the save.
+
+A workflow that's on runs as the member who turned it on. A change to its steps saved with that member's key keeps it on, listening with the new version. A change to its steps saved with anyone else's key turns it off, as does saving it as a draft or a change that leaves its trigger unable to start. A change to only its name or description keeps it on. To turn it back on with the new version, [run it](/docs/api/runs#run-a-workflow).
 
 ---
 
@@ -361,8 +363,11 @@ Deleting a workflow:
 
 - stops any run of it in progress
 - stops its trigger or schedule from listening
-- keeps its folder, its sharing, and the secrets and values scoped to it, so restoring it puts it back as it was
+- turns off its public link, if it has one
+- keeps its folder, its sharing, and the secrets and values scoped to it
 - keeps its past runs, which you can still read under [Runs](/docs/api/runs)
+
+Restoring it puts it back in its folder, or at the top level if the folder has been deleted since. Its public link comes back on if the workspace still allows public links. If it was on, it's turned back on as the member who turned it on, unless it no longer can be, such as when its connection has been removed.
 
 `:id` can be the workflow's `id` or the ID of any of its versions.
 
@@ -393,8 +398,8 @@ requests.delete(
   "name": "Monthly Client Report",
   "deleted": true,
   "in_trash": true,
-  "restorable_until": "2026-04-16T10:30:00+00:00"
+  "restorable_until": "2026-04-16T10:30:00.635758+00:00"
 }
 ```
 
-`restorable_until` is when it leaves the Trash for good. A workflow that doesn't exist, or is already deleted, returns `404`. A delete that fails returns `500` and leaves the workflow as it was. Deleting takes no `Idempotency-Key`, so if a delete times out, check with [Get a workflow](#get-a-workflow) before sending it again: it may have gone through.
+`restorable_until` is when it leaves the Trash for good. A workflow that doesn't exist, is already in the Trash, or that the member who created the key can't see returns `404`. One they can see but not edit returns `403` with the code `item_view_only`. A delete that fails returns `500` and leaves the workflow as it was. Deleting takes no `Idempotency-Key`, so if a delete times out, check with [Get a workflow](#get-a-workflow) before sending it again: it may have gone through.

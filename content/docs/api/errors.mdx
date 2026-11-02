@@ -37,7 +37,7 @@ When something goes wrong and you contact Lodol's support, quote it: it finds th
 | `403` | The key lacks a scope, its creator's role doesn't allow the action, or the plan doesn't include it | Use a key with the right scope, or change the creator's role |
 | `404` | The workflow, run or approval request doesn't exist, or was deleted | Check the ID |
 | `409` | A request with the same `Idempotency-Key` is still being processed, a run to delete hasn't finished, a run can't be retried, or an approval request has already been settled | Depends on the `error_code`: see [Error codes](#error-codes) |
-| `422` | The `Idempotency-Key` was already used for a different request | Use a new key for a new request |
+| `422` | The `Idempotency-Key` was already used for a different request that Lodol still remembers or is still processing | Use a new key for a new request |
 | `429` | Too many requests, or the month's runs are used up | Depends on the `error_code`: see [Error codes](#error-codes) |
 | `500` | Something went wrong on Lodol's side | Retry with backoff |
 
@@ -65,7 +65,7 @@ These name a problem precisely, so your code can handle each its own way:
 | `approval_expired` | `409` | Nobody answered the request in time: it closed, or its time limit answered it | Nothing: the step has moved on as it was set to |
 | `approval_withdrawn` | `409` | The run was stopped, or its workflow deleted, before anyone answered | Nothing: there's no run waiting for an answer |
 | `request_in_progress` | `409` | A request with this `Idempotency-Key` is still being worked on | Retry after the `Retry-After` header's seconds |
-| `idempotency_key_reused` | `422` | This `Idempotency-Key` was already used for a different request | Use a new key for a new request |
+| `idempotency_key_reused` | `422` | This `Idempotency-Key` was already used for a different request that Lodol still remembers or is still processing | Use a new key for a new request |
 | `rate_limited` | `429` | Too many requests in the last minute | Retry after the `Retry-After` header's seconds |
 | `monthly_run_limit` | `429` | The month's runs are used up | Runs come back at `resets_at`; add runs or turn on extra runs in **Billing** to go on now |
 
@@ -189,6 +189,6 @@ curl -X POST https://api-prod.lodol.com/api/v1/workflows/665f1a2b3c4d5e6f7a8b9c0
 - **Make the key from what the run is for,** such as your own order or event ID, so a retry of the same work always sends the same key. Keys can be up to 256 characters.
 - **Successful responses are kept for 24 hours.** A repeated request in that time gets the first response back, with an `X-Idempotent-Replayed: true` header.
 - **Requests in flight return `409`.** If the first request with a key is still being processed, a second one gets `409 Conflict` with `Retry-After: 5`.
-- **A key belongs to one request.** Reusing a key for a different request, such as the same workflow with different inputs, returns `422`.
+- **A key belongs to one request.** Reusing a key for a different request, such as the same workflow with different inputs, returns `422` while Lodol remembers the key or the first request with it is still in flight.
 
 `DELETE` requests take no idempotency key. Deleting a workflow or a run that's already gone returns `404`, so check with [Get a workflow](/docs/api/workflows#get-a-workflow) or [Get a run](/docs/api/runs#get-a-run) before retrying a delete that timed out.
