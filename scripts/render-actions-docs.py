@@ -417,6 +417,36 @@ def _escape_mdx(text: Any) -> str:
     )
 
 
+#: A Markdown link, ``[words](target)``, or something to leave as it is: an
+#: escaped character, a code span, or an image.
+_LINK_OR_LITERAL_RE = re.compile(
+    r"\\.|(?<!`)(`+)(?!`).*?(?<!`)\1(?!`)|!\[|\[([^\]\n]*)\]\(([^()\s]*)(?:\s+\"[^\"\n]*\")?\)"
+)
+
+#: Where a link can lead from this site's pages: a web or email address.
+_ABSOLUTE_TARGET_RE = re.compile(r"(?:https?:|mailto:)", re.IGNORECASE)
+
+
+def _without_relative_links(text: Any) -> str:
+    """``text`` with its links that can't work here reduced to their words.
+
+    Many actions' descriptions come from the app's own API reference, whose
+    links are relative to the app's docs site: ``/guides/webhooks``,
+    ``#operation/getJob`` or ``ref:sources``. On these pages they lead
+    nowhere, so only links to a web or email address stay links.
+    """
+    if not text:
+        return ""
+
+    def replace(match: re.Match[str]) -> str:
+        target = match.group(3)
+        if target is None or _ABSOLUTE_TARGET_RE.match(target):
+            return match.group(0)
+        return match.group(2)
+
+    return _LINK_OR_LITERAL_RE.sub(replace, str(text))
+
+
 def _escape_mdx_cell(text: Any) -> str:
     return (
         _escape_mdx(text)
@@ -698,7 +728,7 @@ def generate_action_section(
     example of what it returns. As MDX for the site, or as Markdown with
     its heading at ``level``."""
     display = action.get("display_name", action_name.replace("_", " ").title())
-    desc = action.get("description", "")
+    desc = _without_relative_links(action.get("description", ""))
     raw_params = action.get("parameters", [])
     mock = action.get("mock_response")
     text = (lambda t: t) if markdown else _escape_mdx
@@ -753,7 +783,7 @@ def generate_trigger_section(trigger: dict, markdown: bool = False) -> str:
     the event a run starts with. A trigger known only by name shows that."""
     text = (lambda t: t) if markdown else _escape_mdx
     lines = [f"### {text(_trigger_name(trigger))}", ""]
-    description = _one_line(trigger.get("description"))
+    description = _without_relative_links(_one_line(trigger.get("description")))
     if description:
         lines += [text(description), ""]
     params = [p for p in trigger.get("params") or [] if isinstance(p, dict) and p.get("name")]
@@ -884,7 +914,11 @@ def generate_provider_mdx(provider: dict, app: dict | None = None) -> str:
     for action_name, action in actions:
         display_name = _action_name(action_name, action)
         rows.append(
-            (display_name, slugger.slug(display_name), action.get("description", ""))
+            (
+                display_name,
+                slugger.slug(display_name),
+                _without_relative_links(action.get("description", "")),
+            )
         )
         sections.append(generate_action_section(action_name, action))
 
