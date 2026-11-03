@@ -49,10 +49,11 @@
         "format": "geojson"
       },
       "name": "get_airmets",
+      "output_formatter": "actions.format_airmets_output",
       "parameters": [
         {
           "default": "geojson",
-          "description": "Output format. Defaults to GeoJSON, which comes back as one row per advisory in 'entries', each with the area it covers. This endpoint's plain JSON output is the one format on this API that answers an empty result with nothing at all rather than an empty list, so GeoJSON is the dependable structured choice here. IWXXM is returned verbatim in 'content'.",
+          "description": "Output format. Defaults to GeoJSON, which comes back as one row per advisory in 'entries', each with the area it covers. JSON gives the same rows without their areas. IWXXM is returned verbatim in 'content'.",
           "display_name": "Format",
           "name": "format",
           "options": [
@@ -98,7 +99,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Only return advisories that touch this level, as a flight level in hundreds of feet (300 means 30,000 ft). The API searches a window of plus or minus 3,000 ft around it.",
+          "description": "Only return advisories that touch this level, as a flight level in hundreds of feet (300 means 30,000 ft). The API searches a window of plus or minus 3,000 ft around it, and takes whole levels only, so a fraction is rounded to the nearest one.",
           "display_name": "Flight level",
           "maximum": 900,
           "minimum": 0,
@@ -156,7 +157,7 @@
       ]
     },
     "get_airport_info": {
-      "description": "Look up airports: name, position, elevation, magnetic variation, ownership, and the runways with their dimensions and surface. Airport IDs or a bounding box are required.",
+      "description": "Look up airports: name, position, elevation, magnetic variation, ownership, tower, radio frequencies, and the runways with their dimensions and surface. Airport IDs or a bounding box are required.",
       "display_name": "Get airport info",
       "display_str_template": "Get airport info.",
       "handler": "actions.get_airport_info",
@@ -168,30 +169,34 @@
         "entries": [
           {
             "country": "US",
-            "elev": "313",
+            "elev": 313,
             "faaId": "MCI",
+            "freqs": "LCL/P,128.2;D-ATIS,128.375",
             "iataId": "MCI",
             "icaoId": "KMCI",
-            "lat": "39.2976",
-            "lon": "-94.7139",
+            "lat": 39.2976,
+            "lon": -94.7139,
             "magdec": "02E",
             "name": "KANSAS CITY/KANSAS CITY INTL",
             "owner": "P",
             "runways": [
               {
+                "alignment": 13,
                 "dimension": "10801x150",
                 "id": "01L/19R",
-                "surface": "CONC"
+                "surface": "C"
               }
             ],
             "source": "FAA",
             "state": "MO",
+            "tower": "T",
             "type": "ARP"
           }
         ],
         "format": "json"
       },
       "name": "get_airport_info",
+      "output_formatter": "actions.format_airports_output",
       "parameters": [
         {
           "description": "Airport IDs to look up, separated by commas. Leave blank if you are using a bounding box.",
@@ -211,7 +216,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative.",
+          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative. The service returns at most 400 rows, so a large box can come back cut short.",
           "display_name": "Bounding box",
           "examples": [
             {
@@ -295,6 +300,7 @@
         "format": "text"
       },
       "name": "get_area_forecast",
+      "output_formatter": "actions.format_bulletin_output",
       "parameters": [
         {
           "default": "aknorth",
@@ -378,18 +384,33 @@
         "count": 1,
         "entries": [
           {
-            "cwaText": "ZKC1 CWA 041735 VALID UNTIL 041935 AREA OF EMBEDDED TS MOV FROM 24020KT TOPS TO FL410",
-            "cwsu": "ZKC",
+            "base": null,
+            "coords": [
+              {
+                "lat": "24.740",
+                "lon": "-69.675"
+              },
+              {
+                "lat": "23.358",
+                "lon": "-72.628"
+              }
+            ],
+            "cwsu": "ZMA",
             "hazard": "TS",
-            "issueTime": "2023-11-04 17:35:00.000Z",
-            "series": 1,
-            "validTimeFrom": 1699119300,
-            "validTimeTo": 1699126500
+            "name": "Miami",
+            "qualifier": "",
+            "rawText": "ZMA CWA 101 VALID UNTIL 030300\nFROM 215NNE GTK-155NNE ZIN-235E ZQA-215NNE GTK\nAREA TS MOV FM 19010KT. TOPS EST TO FL380.",
+            "receiptTime": "2026-11-03T01:20:22.453Z",
+            "seriesId": "101",
+            "top": 38000,
+            "validTimeFrom": 1793668800,
+            "validTimeTo": 1793674800
           }
         ],
         "format": "json"
       },
       "name": "get_center_advisories",
+      "output_formatter": "actions.format_center_advisories_output",
       "parameters": [
         {
           "description": "Only return advisories for this hazard.",
@@ -531,10 +552,11 @@
               "type": "Polygon"
             },
             "properties": {
-              "conf": "HIGH",
-              "coverage": "SCT",
-              "tops": 420,
-              "valid": "2023-11-04T18:00:00Z"
+              "confidence": "high",
+              "coverage": "sparse",
+              "issueTime": "20261103_0200",
+              "tops": "390",
+              "validTime": "20261103_0600"
             },
             "type": "Feature"
           }
@@ -542,6 +564,7 @@
         "format": "geojson"
       },
       "name": "get_convective_forecast",
+      "output_formatter": "actions.format_convective_forecast_output",
       "parameters": [
         {
           "default": "geojson",
@@ -594,7 +617,7 @@
       ]
     },
     "get_domestic_sigmets": {
-      "description": "Read the SIGMETs in force over the contiguous United States in domestic format: convective SIGMETs and the non-convective ones for turbulence, icing, and IFR conditions. For SIGMETs the US issues in international format, use 'Get international SIGMETs' instead.",
+      "description": "Read the SIGMETs in force over the contiguous United States in domestic format: convective SIGMETs and the non-convective ones for turbulence, icing, and IFR conditions. For SIGMETs the US issues in international format, use 'Get international SIGMETs' instead. The Aviation Weather Center is phasing out this list in favor of one combined list, so prefer 'Get SIGMETs', which has these and the international ones together.",
       "display_name": "Get domestic SIGMETs",
       "display_str_template": "Get domestic SIGMETs.",
       "handler": "actions.get_domestic_sigmets",
@@ -642,6 +665,7 @@
         "format": "geojson"
       },
       "name": "get_domestic_sigmets",
+      "output_formatter": "actions.format_sigmets_output",
       "parameters": [
         {
           "default": "json",
@@ -699,7 +723,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Only return advisories that touch this level, as a flight level in hundreds of feet (300 means 30,000 ft). The API searches a window of plus or minus 3,000 ft around it.",
+          "description": "Only return advisories that touch this level, as a flight level in hundreds of feet (300 means 30,000 ft). The API searches a window of plus or minus 3,000 ft around it, and takes whole levels only, so a fraction is rounded to the nearest one.",
           "display_name": "Flight level",
           "maximum": 900,
           "minimum": 0,
@@ -740,7 +764,7 @@
       ]
     },
     "get_features": {
-      "description": "Look up the additional geographic features the Aviation Weather Center charts inside a bounding box, such as the named points and boundaries advisories are described against.",
+      "description": "Look up the landmarks the Aviation Weather Center charts inside a bounding box: stadiums, mountain peaks, mountain passes, and volcanoes, each with its name, type, position, and elevation in meters.",
       "display_name": "Get geographic features",
       "display_str_template": "Get geographic features.",
       "handler": "actions.get_features",
@@ -751,18 +775,22 @@
         "count": 1,
         "entries": [
           {
-            "id": "CHI",
-            "lat": 41.88,
-            "lon": -87.63,
-            "name": "Chicago"
+            "country": "US",
+            "elev": 175,
+            "lat": 41.862,
+            "lon": -87.617,
+            "name": "Soldier_Fld/NFL_Bears",
+            "state": "IL",
+            "type": "STD"
           }
         ],
         "format": "json"
       },
       "name": "get_features",
+      "output_formatter": "actions.format_features_output",
       "parameters": [
         {
-          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative. Required for this action, which only ever searches an area.",
+          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative. Required for this action, which only ever searches an area. The service returns at most 400 rows, so keep the box small enough to stay under that.",
           "display_name": "Bounding box",
           "examples": [
             {
@@ -853,6 +881,7 @@
         "format": "json"
       },
       "name": "get_fixes",
+      "output_formatter": "actions.format_fixes_output",
       "parameters": [
         {
           "description": "Five-letter fix names to look up, separated by commas. Leave blank if you are using a bounding box.",
@@ -872,7 +901,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative.",
+          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative. The service returns at most 400 rows, so a large box can come back cut short.",
           "display_name": "Bounding box",
           "examples": [
             {
@@ -956,9 +985,10 @@
         "format": "text"
       },
       "name": "get_forecast_discussion",
+      "output_formatter": "actions.format_discussion_output",
       "parameters": [
         {
-          "description": "Which Weather Forecast Office's discussion to read, by the four-letter identifier of the office itself: KEAX for Kansas City, KLOT for Chicago, KSEW for Seattle. That is the office's three-letter County Warning Area code with its K prefix (EAX becomes KEAX), and the bare three-letter code is not accepted. Leave blank for every office.",
+          "description": "Which Weather Forecast Office's discussion to read, one office per step, by the four-letter identifier of the office itself: KEAX for Kansas City, KLOT for Chicago, KSEW for Seattle. That is the office's three-letter County Warning Area code with its K prefix (EAX becomes KEAX), and the bare three-letter code is not accepted.",
           "display_name": "Forecast office",
           "examples": [
             {
@@ -975,7 +1005,7 @@
             }
           ],
           "name": "cwa",
-          "required": false,
+          "required": true,
           "type": "ParameterType.STRING"
         },
         {
@@ -1077,6 +1107,7 @@
         "format": "geojson"
       },
       "name": "get_gairmets",
+      "output_formatter": "actions.format_gairmets_output",
       "parameters": [
         {
           "description": "Which AIRMET product to read: Sierra (IFR and mountain obscuration), Tango (turbulence and winds), or Zulu (icing and freezing level).",
@@ -1101,17 +1132,13 @@
         },
         {
           "default": "json",
-          "description": "Output format. Defaults to JSON, which comes back as decoded rows in 'entries'. GeoJSON returns those rows as features with geometry; raw and XML are returned verbatim in 'content'.",
+          "description": "Output format. Defaults to JSON, which comes back as decoded rows in 'entries'. GeoJSON returns those rows as features with geometry; XML is returned verbatim in 'content'. Raw text is no longer offered for this product.",
           "display_name": "Format",
           "name": "format",
           "options": [
             {
               "label": "JSON (decoded rows)",
               "value": "json"
-            },
-            {
-              "label": "Raw text (as issued)",
-              "value": "raw"
             },
             {
               "label": "GeoJSON (rows with geometry)",
@@ -1245,7 +1272,7 @@
       ]
     },
     "get_international_sigmets": {
-      "description": "Read SIGMETs issued worldwide in the international format, decoded with their hazard, altitude band, valid period, and area. Does not include the convective and non-convective SIGMETs the United States issues in its own domestic format.",
+      "description": "Read SIGMETs issued worldwide in the international format, decoded with their hazard, altitude band, valid period, and area. Does not include the convective and non-convective SIGMETs the United States issues in its own domestic format. The Aviation Weather Center is phasing out this list in favor of one combined list, so prefer 'Get SIGMETs', which has these and the domestic ones together.",
       "display_name": "Get international SIGMETs",
       "display_str_template": "Get international SIGMETs.",
       "handler": "actions.get_international_sigmets",
@@ -1293,6 +1320,7 @@
         "format": "geojson"
       },
       "name": "get_international_sigmets",
+      "output_formatter": "actions.format_sigmets_output",
       "parameters": [
         {
           "default": "json",
@@ -1330,19 +1358,43 @@
           "name": "hazard",
           "options": [
             {
+              "label": "Thunderstorms",
+              "value": "ts"
+            },
+            {
               "label": "Turbulence",
               "value": "turb"
             },
             {
+              "label": "Mountain waves",
+              "value": "mtw"
+            },
+            {
               "label": "Icing",
               "value": "ice"
+            },
+            {
+              "label": "Dust storms",
+              "value": "ds"
+            },
+            {
+              "label": "Sand storms",
+              "value": "ss"
+            },
+            {
+              "label": "Tropical cyclones",
+              "value": "tc"
+            },
+            {
+              "label": "Volcanic ash",
+              "value": "va"
             }
           ],
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Only return advisories that touch this level, as a flight level in hundreds of feet (300 means 30,000 ft). The API searches a window of plus or minus 3,000 ft around it.",
+          "description": "Only return advisories that touch this level, as a flight level in hundreds of feet (300 means 30,000 ft). The API searches a window of plus or minus 3,000 ft around it, and takes whole levels only, so a fraction is rounded to the nearest one.",
           "display_name": "Flight level",
           "maximum": 900,
           "minimum": 0,
@@ -1446,9 +1498,10 @@
         "format": "json"
       },
       "name": "get_metars",
+      "output_formatter": "actions.format_metars_output",
       "parameters": [
         {
-          "description": "Station IDs, separated by commas. Two group shorthands also work here: @IL for every station in a US state, and ~US for every station in a country. Write the @ form in quotes and on its own, as \"@IL\", because a bare @ starts a variable reference in the builder and would be read as a variable named IL; the ~ form needs no quotes. A country is a lot of weather: ~US answers with every US station, which is around 170 KB of observations or 1.4 MB of forecasts, so prefer a state or a bounding box unless you really want all of it. Leave blank if you are using a bounding box.",
+          "description": "Station IDs, separated by commas. The shorthand @IL also works here, for every station in a US state. Write it in quotes and on its own, as \"@IL\", because a bare @ starts a variable reference in the builder and would be read as a variable named IL. The service no longer answers a whole country (~US), so use a state or a bounding box for a wide area. Leave blank if you are using a bounding box.",
           "display_name": "Stations",
           "examples": [
             {
@@ -1462,10 +1515,6 @@
             {
               "label": "A whole state",
               "value": "\"@IL\""
-            },
-            {
-              "label": "A whole country",
-              "value": "~US"
             }
           ],
           "name": "ids",
@@ -1473,7 +1522,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative.",
+          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative. The service returns at most 400 rows, so a large box can come back cut short.",
           "display_name": "Bounding box",
           "examples": [
             {
@@ -1525,17 +1574,16 @@
         },
         {
           "default": false,
-          "description": "Also return each station's current Terminal Aerodrome Forecast alongside its observation. Defaults to off.",
+          "description": "Also return each station's current Terminal Aerodrome Forecast: as a rawTaf field on each row in JSON and GeoJSON, or after the observation in raw text. XML, IWXXM, and decoded text leave it out. Defaults to off.",
           "display_name": "Include TAF",
           "name": "taf",
           "required": false,
           "type": "ParameterType.BOOLEAN"
         },
         {
-          "default": 1.5,
-          "description": "How many hours of observations to return, counting back from now. Defaults to 1.5, which is the most recent observation for most stations.",
+          "description": "How many hours of observations to return, counting back from now, up to 750 (about a month). Leave blank for only the latest observation from each station. An hour or more returns every observation in that time, including the special ones a station issues when the weather changes, so a station can appear several times. The service takes whole hours only, so a fraction is rounded down: 1.5 reads as 1.",
           "display_name": "Hours back",
-          "maximum": 1000,
+          "maximum": 750,
           "minimum": 0,
           "name": "hours",
           "required": false,
@@ -1591,9 +1639,9 @@
       ]
     },
     "get_meteorological_information_statements": {
-      "description": "Read the Meteorological Information Statements (MIS) issued by a Center Weather Service Unit: the longer-range outlook of conditions expected to affect an air route traffic control center, issued ahead of any advisory. A CWSU issues one only when it has something to flag, so a count of 0 is a common and correct answer rather than a failure.",
-      "display_name": "Get meteorological information statements",
-      "display_str_template": "Get meteorological information statements.",
+      "description": "Read the Meteorological Impact Statements (MIS) issued by a Center Weather Service Unit: the longer-range outlook of conditions expected to affect an air route traffic control center, issued ahead of any advisory. A CWSU issues one only when it has something to flag, so a count of 0 is a common and correct answer rather than a failure.",
+      "display_name": "Get meteorological impact statements",
+      "display_str_template": "Get meteorological impact statements.",
       "handler": "actions.get_meteorological_information_statements",
       "id": "aviation_weather_center_information_statements",
       "method": "POST",
@@ -1612,9 +1660,10 @@
         "format": "json"
       },
       "name": "get_meteorological_information_statements",
+      "output_formatter": "actions.format_statements_output",
       "parameters": [
         {
-          "description": "Which CWSU's statements to read, by its center identifier such as ZKC or ZNY. Leave blank for every center.",
+          "description": "Which CWSU's statements to read, by its center identifier such as ZKC or ZNY, one center per step. Leave blank for every center.",
           "display_name": "Center",
           "examples": [
             {
@@ -1650,7 +1699,7 @@
         }
       ],
       "path": "/actions/library/aviation-weather-center/information-statements",
-      "result_str_template": "Meteorological information statements retrieved.",
+      "result_str_template": "Meteorological impact statements retrieved.",
       "returns": {
         "properties": {
           "content": {
@@ -1681,7 +1730,7 @@
       ]
     },
     "get_navaids": {
-      "description": "Look up navigational aids (VORs, VORTACs, NDBs and the like) with their type, frequency, position, elevation, and magnetic variation. Navaid IDs or a bounding box are required. Be aware that the Aviation Weather Center is publishing no navaid data at present: this endpoint answers every query, by identifier or by area, with an empty list, which is a gap in their data rather than anything to fix in the step. 'Get navigational fixes' covers waypoints and does return results.",
+      "description": "Look up navigational aids (VORs, VORTACs, NDBs and the like) with their type, frequency, position, elevation, and magnetic variation. Navaid IDs or a bounding box are required.",
       "display_name": "Get navigational aids",
       "display_str_template": "Get navigational aids.",
       "handler": "actions.get_navaids",
@@ -1707,16 +1756,27 @@
         "format": "json"
       },
       "name": "get_navaids",
+      "output_formatter": "actions.format_navaids_output",
       "parameters": [
         {
-          "description": "Navaid identifiers to look up, separated by commas, such as MCI or OJC. Leave blank if you are using a bounding box. Note that the source dataset behind this action is currently empty, so no identifier returns anything today.",
+          "description": "Navaid identifiers to look up, separated by commas, such as MCI or ANX. Leave blank if you are using a bounding box.",
           "display_name": "Navaids",
+          "examples": [
+            {
+              "label": "One navaid",
+              "value": "MCI"
+            },
+            {
+              "label": "Several navaids",
+              "value": "MCI,ANX"
+            }
+          ],
           "name": "ids",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative.",
+          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative. The service returns at most 400 rows, so a large box can come back cut short.",
           "display_name": "Bounding box",
           "examples": [
             {
@@ -1787,7 +1847,7 @@
       ]
     },
     "get_obstacles": {
-      "description": "Look up the charted obstacles inside a bounding box (towers, stacks, and other tall structures) with their position and height.",
+      "description": "Look up the charted obstacles inside a bounding box (towers, wind turbines, tanks, and other tall structures) with their type, position, elevation, and height.",
       "display_name": "Get obstacles",
       "display_str_template": "Get obstacles.",
       "handler": "actions.get_obstacles",
@@ -1798,19 +1858,21 @@
         "count": 1,
         "entries": [
           {
-            "agl": 449,
-            "elev": 1105,
-            "lat": 41.7402,
-            "lon": -87.9711,
-            "type": "TOWER"
+            "elev": "285",
+            "height": "95",
+            "lat": 41.509,
+            "lon": -88.139,
+            "name": "TOWER/LGT-R",
+            "type": "TWRM"
           }
         ],
         "format": "json"
       },
       "name": "get_obstacles",
+      "output_formatter": "actions.format_obstacles_output",
       "parameters": [
         {
-          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative. Required for this action, which only ever searches an area.",
+          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative. Required for this action, which only ever searches an area. The service returns at most 400 rows, so keep the box small enough to stay under that.",
           "display_name": "Bounding box",
           "examples": [
             {
@@ -1908,6 +1970,7 @@
         "format": "json"
       },
       "name": "get_pireps",
+      "output_formatter": "actions.format_pireps_output",
       "parameters": [
         {
           "description": "Station to search around. Use together with 'Radius'. Leave blank if you are using a bounding box.",
@@ -1923,7 +1986,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "How far around that station to search, in statute miles.",
+          "description": "How far around that station to search, in whole statute miles. A fraction is rounded up.",
           "display_name": "Radius",
           "maximum": 5000,
           "minimum": 0,
@@ -1932,7 +1995,7 @@
           "type": "ParameterType.NUMBER"
         },
         {
-          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative.",
+          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative. The service returns at most 400 rows, so a large box can come back cut short.",
           "display_name": "Bounding box",
           "examples": [
             {
@@ -1988,7 +2051,7 @@
           "type": "ParameterType.NUMBER"
         },
         {
-          "description": "Only return advisories that touch this level, as a flight level in hundreds of feet (300 means 30,000 ft). The API searches a window of plus or minus 3,000 ft around it.",
+          "description": "Only return advisories that touch this level, as a flight level in hundreds of feet (300 means 30,000 ft). The API searches a window of plus or minus 3,000 ft around it, and takes whole levels only, so a fraction is rounded to the nearest one.",
           "display_name": "Flight level",
           "maximum": 900,
           "minimum": 0,
@@ -2066,6 +2129,183 @@
         "read"
       ]
     },
+    "get_sigmets": {
+      "description": "Read every SIGMET in force worldwide in one list: the convective and non-convective SIGMETs the United States issues in its own format, and the international SIGMETs every other country issues, each decoded with its hazard, altitude band, valid period, area, and the bulletin as issued. Filter by hazard or flight level. This list replaces the separate domestic and international ones.",
+      "display_name": "Get SIGMETs",
+      "display_str_template": "Get SIGMETs.",
+      "handler": "actions.get_sigmets",
+      "id": "aviation_weather_center_get_sigmets",
+      "method": "POST",
+      "mock_response": {
+        "content": "",
+        "count": 1,
+        "entries": [
+          {
+            "base": 30000,
+            "coords": [
+              {
+                "lat": 43.941,
+                "lon": -121.473
+              },
+              {
+                "lat": 39.529,
+                "lon": -119.229
+              }
+            ],
+            "firId": "KSFO",
+            "firName": "US WEST",
+            "geom": "AREA",
+            "hazard": "TURB",
+            "icaoId": "KKCI",
+            "issueTime": "2026-11-02T22:49:00.000Z",
+            "qualifier": "OCNL SEV",
+            "rawSigmet": "WSUS06 KKCI 022249\nSFOU WS 022249\nSIGMET UNIFORM 1 VALID UNTIL 030249\nOR CA NV AND CSTL WTRS\nOCNL SEV TURB BTN FL300 AND FL400.",
+            "receiptTime": "2026-11-02T22:49:39.262Z",
+            "seriesId": "UNIFORM 1",
+            "sigmetType": "OBS",
+            "top": 40000,
+            "validTimeFrom": 1793659740,
+            "validTimeTo": 1793674140
+          }
+        ],
+        "format": "json"
+      },
+      "name": "get_sigmets",
+      "output_formatter": "actions.format_sigmets_output",
+      "parameters": [
+        {
+          "default": "json",
+          "description": "Output format. Defaults to JSON, which comes back as decoded rows in 'entries'. GeoJSON returns those rows as features with geometry; raw, XML, and IWXXM are returned verbatim in 'content'.",
+          "display_name": "Format",
+          "name": "format",
+          "options": [
+            {
+              "label": "JSON (decoded rows)",
+              "value": "json"
+            },
+            {
+              "label": "Raw text (the bulletin as issued)",
+              "value": "raw"
+            },
+            {
+              "label": "GeoJSON (rows with geometry)",
+              "value": "geojson"
+            },
+            {
+              "label": "XML",
+              "value": "xml"
+            },
+            {
+              "label": "IWXXM (ICAO XML)",
+              "value": "iwxxm"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only return SIGMETs for this hazard. Thunderstorms are the international SIGMETs for them; convection is the US convective SIGMETs.",
+          "display_name": "Hazard",
+          "name": "hazard",
+          "options": [
+            {
+              "label": "Thunderstorms",
+              "value": "ts"
+            },
+            {
+              "label": "Convection (US convective SIGMETs)",
+              "value": "conv"
+            },
+            {
+              "label": "Turbulence",
+              "value": "turb"
+            },
+            {
+              "label": "Mountain waves",
+              "value": "mtw"
+            },
+            {
+              "label": "Icing",
+              "value": "ice"
+            },
+            {
+              "label": "Dust storms",
+              "value": "ds"
+            },
+            {
+              "label": "Sand storms",
+              "value": "ss"
+            },
+            {
+              "label": "Tropical cyclones",
+              "value": "tc"
+            },
+            {
+              "label": "Volcanic ash",
+              "value": "va"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only return advisories that touch this level, as a flight level in hundreds of feet (300 means 30,000 ft). The API searches a window of plus or minus 3,000 ft around it, and takes whole levels only, so a fraction is rounded to the nearest one.",
+          "display_name": "Flight level",
+          "maximum": 900,
+          "minimum": 0,
+          "name": "level",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Point in time to read the products as of, either as the API's own yyyymmdd_hhmm or as an ISO 8601 timestamp. Leave blank for the latest products.",
+          "display_name": "As of",
+          "examples": [
+            {
+              "label": "API format",
+              "value": "20231103_2151"
+            },
+            {
+              "label": "ISO 8601",
+              "value": "2023-11-03T21:51:00Z"
+            }
+          ],
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/aviation-weather-center/get-sigmets",
+      "result_str_template": "SIGMETs retrieved.",
+      "returns": {
+        "properties": {
+          "content": {
+            "description": "The response verbatim for the raw, decoded, XML, IWXXM, CSV, and plain-text formats. Empty for JSON and GeoJSON.",
+            "type": "string"
+          },
+          "count": {
+            "description": "Number of rows in 'entries'; 0 when a text format was asked for",
+            "type": "number"
+          },
+          "entries": {
+            "description": "One row per product for the JSON and GeoJSON formats (GeoJSON rows are features, each with its own geometry). Empty for every other format.",
+            "items": {
+              "description": "One decoded product, whose fields depend on the product this action reads",
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "format": {
+            "description": "The format the products were requested in",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "get_station_info": {
       "description": "Look up the weather stations behind the reports: position, elevation, state and country, the ICAO, IATA, and FAA identifiers, and which products the site issues. Station IDs or a bounding box are required.",
       "display_name": "Get station info",
@@ -2083,20 +2323,23 @@
             "faaId": "ORD",
             "iataId": "ORD",
             "icaoId": "KORD",
-            "lat": 41.9602,
-            "lon": -87.9316,
-            "priority": 1,
+            "id": "KORD",
+            "lat": 41.96017,
+            "lon": -87.93161,
+            "priority": 0,
             "site": "Chicago/O'Hare Intl",
             "siteType": [
               "METAR",
               "TAF"
             ],
-            "state": "IL"
+            "state": "IL",
+            "wmoId": "72530"
           }
         ],
         "format": "json"
       },
       "name": "get_station_info",
+      "output_formatter": "actions.format_stations_output",
       "parameters": [
         {
           "description": "Station IDs, separated by commas. To cover a region rather than a list of airports, leave this blank and give a bounding box instead: this endpoint matches identifiers one station at a time, with no shorthand for a whole state.",
@@ -2116,7 +2359,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative.",
+          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative. The service returns at most 400 rows, so a large box can come back cut short.",
           "display_name": "Bounding box",
           "examples": [
             {
@@ -2134,17 +2377,13 @@
         },
         {
           "default": "json",
-          "description": "Output format. Defaults to JSON, which comes back as decoded rows in 'entries'. GeoJSON returns those rows as features with geometry; raw and XML are returned verbatim in 'content'.",
+          "description": "Output format. Defaults to JSON, which comes back as decoded rows in 'entries'. GeoJSON returns those rows as features with geometry; XML is returned verbatim in 'content'. Raw text is no longer offered for this product.",
           "display_name": "Format",
           "name": "format",
           "options": [
             {
               "label": "JSON (decoded rows)",
               "value": "json"
-            },
-            {
-              "label": "Raw text (as issued)",
-              "value": "raw"
             },
             {
               "label": "GeoJSON (rows with geometry)",
@@ -2235,9 +2474,10 @@
         "format": "json"
       },
       "name": "get_tafs",
+      "output_formatter": "actions.format_tafs_output",
       "parameters": [
         {
-          "description": "Station IDs, separated by commas. Two group shorthands also work here: @IL for every station in a US state, and ~US for every station in a country. Write the @ form in quotes and on its own, as \"@IL\", because a bare @ starts a variable reference in the builder and would be read as a variable named IL; the ~ form needs no quotes. A country is a lot of weather: ~US answers with every US station, which is around 170 KB of observations or 1.4 MB of forecasts, so prefer a state or a bounding box unless you really want all of it. Leave blank if you are using a bounding box.",
+          "description": "Station IDs, separated by commas. The shorthand @IL also works here, for every station in a US state. Write it in quotes and on its own, as \"@IL\", because a bare @ starts a variable reference in the builder and would be read as a variable named IL. The service no longer answers a whole country (~US), so use a state or a bounding box for a wide area. Leave blank if you are using a bounding box.",
           "display_name": "Stations",
           "examples": [
             {
@@ -2251,10 +2491,6 @@
             {
               "label": "A whole state",
               "value": "\"@IL\""
-            },
-            {
-              "label": "A whole country",
-              "value": "~US"
             }
           ],
           "name": "ids",
@@ -2262,7 +2498,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative.",
+          "description": "Bounding box to search, as lat0, lon0, lat1, lon1: the south-west corner followed by the north-east corner. Longitudes in the Americas are negative. The service returns at most 400 rows, so a large box can come back cut short.",
           "display_name": "Bounding box",
           "examples": [
             {
@@ -2310,7 +2546,7 @@
         },
         {
           "default": false,
-          "description": "Also return each station's current observation alongside its forecast. Defaults to off.",
+          "description": "Also return each station's current observation, printed ahead of its forecast. Only the raw text format carries it; the other formats leave it out. Defaults to off.",
           "display_name": "Include METAR",
           "name": "metar",
           "required": false,
@@ -2397,6 +2633,7 @@
         "format": "text"
       },
       "name": "get_winds_aloft",
+      "output_formatter": "actions.format_bulletin_output",
       "parameters": [
         {
           "description": "Which region's bulletin to read.",
@@ -2448,7 +2685,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Low altitudes (up to 24,000 ft) or high altitudes (above them).",
+          "description": "Low covers the levels from 3,000 ft up to 39,000 ft. High covers the levels above them, which over the contiguous US are 45,000 and 53,000 ft.",
           "display_name": "Altitude band",
           "name": "level",
           "options": [
@@ -2525,12 +2762,13 @@
       "id": "aviation_weather_center_data_server",
       "method": "POST",
       "mock_response": {
-        "content": "No errors\nNo warnings\n2 ms\ndata source=metars\nraw_text,station_id,observation_time,latitude,longitude\n\"KORD 032151Z 23006KT 10SM BKN110 OVC250 14/03 A3000\",KORD,2023-11-03T21:51:00Z,41.96,-87.93",
+        "content": "raw_text,station_id,observation_time,latitude,longitude\n\"KORD 032151Z 23006KT 10SM BKN110 OVC250 14/03 A3000\",KORD,2023-11-03T21:51:00Z,41.96,-87.93",
         "count": 0,
         "entries": [],
         "format": "csv"
       },
       "name": "query_data_server",
+      "output_formatter": "actions.format_data_server_output",
       "parameters": [
         {
           "default": "metars",
@@ -2589,7 +2827,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Beginning of the window to query, as yyyymmdd_hhmm or an ISO 8601 timestamp. Give this together with an end time to pull a specific past window; leave both blank to use 'Hours back' instead.",
+          "description": "Beginning of the window to query, as yyyymmdd_hhmm or an ISO 8601 timestamp. Give this together with an end time to pull a specific past window; leave both blank to use 'Hours back' instead. The service keeps about the last 30 days.",
           "display_name": "Start time",
           "name": "startTime",
           "required": false,
