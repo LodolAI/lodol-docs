@@ -1,9 +1,9 @@
 {
   "actions": {
     "confirm_payment_intent": {
-      "description": "Complete a payment by confirming it with a payment method.",
-      "display_name": "Confirm a Stripe payment",
-      "display_str_template": "Confirm payment '{0}'",
+      "description": "Charge a payment set up with Create a payment to a saved card or other payment method.",
+      "display_name": "Confirm a payment",
+      "display_str_template": "Confirm {payment_intent_id}.",
       "handler": "actions.confirm_payment_intent",
       "id": "stripe_confirm_payment_intent",
       "method": "POST",
@@ -15,14 +15,17 @@
       "output_formatter": "actions.format_confirm_payment_intent_output",
       "parameters": [
         {
-          "description": "The ID of the Stripe payment to confirm.",
-          "display_name": "Payment ID",
+          "description": "The payment to confirm.",
+          "display_name": "Payment",
+          "dynamic_source": "payments",
+          "dynamic_source_allows_custom": true,
+          "label_source": "payment_names",
           "name": "payment_intent_id",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The ID of the payment method to charge, for example pm_card_visa in test mode.",
+          "description": "The saved card or other payment method to charge, which starts with pm_. In test mode, pm_card_visa is a test card.",
           "display_name": "Payment method",
           "name": "payment_method",
           "required": true,
@@ -32,7 +35,7 @@
       "path": "/actions/library/stripe/confirm-payment-intent",
       "result_str_template": "Payment confirmed.",
       "returns": {
-        "description": "Stripe payment intent object with status updated to 'succeeded'.",
+        "description": "The payment, with its status now succeeded.",
         "type": "object"
       },
       "scopes": [
@@ -43,9 +46,9 @@
       ]
     },
     "create_customer": {
-      "description": "Create a new Stripe customer with contact details.",
-      "display_name": "Create a Stripe customer",
-      "display_str_template": "Create Stripe customer '{0}'",
+      "description": "Add a customer to Stripe with their email and, if you like, their name, phone number and a note.",
+      "display_name": "Create a customer",
+      "display_str_template": "Create the customer '{email}'.",
       "handler": "actions.create_customer",
       "id": "stripe_create_customer",
       "method": "POST",
@@ -58,29 +61,29 @@
       "output_formatter": "actions.format_create_customer_output",
       "parameters": [
         {
-          "description": "Customer email",
+          "description": "The customer's email address.",
           "display_name": "Email",
           "name": "email",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Customer name",
+          "description": "The customer's full name or business name.",
           "display_name": "Name",
           "name": "name",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Customer description",
-          "display_name": "Description",
+          "description": "A note about the customer. Only your team sees it, in Stripe.",
+          "display_name": "Note",
           "multiline": true,
           "name": "description",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Customer phone number",
+          "description": "The customer's phone number.",
           "display_name": "Phone",
           "name": "phone",
           "required": false,
@@ -90,7 +93,7 @@
       "path": "/actions/library/stripe/create-customer",
       "result_str_template": "Customer created.",
       "returns": {
-        "description": "Stripe customer object returned by the Stripe API containing customer details.",
+        "description": "The new customer: their id, email, name and the rest of what Stripe keeps about them.",
         "type": "object"
       },
       "scopes": [
@@ -98,9 +101,9 @@
       ]
     },
     "create_payment_intent": {
-      "description": "Set up a payment to charge a customer a custom amount.",
-      "display_name": "Create a Stripe payment",
-      "display_str_template": "Create payment for {0} {1}",
+      "description": "Set up a card payment of any amount, optionally for a customer. No money moves until the payment is confirmed with Confirm a payment.",
+      "display_name": "Create a payment",
+      "display_str_template": "Set up a payment of {amount} {currency}.",
       "handler": "actions.create_payment_intent",
       "id": "stripe_create_payment_intent",
       "method": "POST",
@@ -113,28 +116,31 @@
       "output_formatter": "actions.format_create_payment_intent_output",
       "parameters": [
         {
-          "description": "The amount to charge, in the smallest currency unit, for example cents for USD (500 means $5.00).",
-          "display_name": "Amount",
+          "description": "The amount in cents, not dollars: 5000 is $50.00. For a currency with no cents, such as yen, the whole amount.",
+          "display_name": "Amount in cents",
           "name": "amount",
           "required": true,
           "type": "ParameterType.NUMBER"
         },
         {
-          "description": "The three-letter currency code, for example usd.",
+          "description": "The three-letter currency code, such as usd or eur.",
           "display_name": "Currency",
           "name": "currency",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The ID of a customer to link this payment to (optional).",
-          "display_name": "Customer ID",
+          "description": "The customer paying, if you know them.",
+          "display_name": "Customer",
+          "dynamic_source": "customers",
+          "dynamic_source_allows_custom": true,
+          "label_source": "customer_names",
           "name": "customer_id",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "A short note describing what the payment is for.",
+          "description": "A short note saying what the payment is for.",
           "display_name": "Description",
           "multiline": true,
           "name": "description",
@@ -145,7 +151,7 @@
       "path": "/actions/library/stripe/create-payment-intent",
       "result_str_template": "Payment created.",
       "returns": {
-        "description": "Stripe payment intent object returned by the Stripe API containing payment details.",
+        "description": "The new payment: its id, amount in cents, currency and status.",
         "type": "object"
       },
       "scopes": [
@@ -153,9 +159,9 @@
       ]
     },
     "create_payment_link": {
-      "description": "Generate a payment link for a price.",
-      "display_name": "Create a Stripe payment link",
-      "display_str_template": "Create payment link for price '{0}'",
+      "description": "Make a link to a Stripe checkout page where anyone can pay a price.",
+      "display_name": "Create a payment link",
+      "display_str_template": "Create a payment link for {price_id}.",
       "handler": "actions.create_payment_link",
       "id": "stripe_create_payment_link",
       "method": "POST",
@@ -167,14 +173,17 @@
       "output_formatter": "actions.format_create_payment_link_output",
       "parameters": [
         {
-          "description": "Stripe price ID",
-          "display_name": "Price ID",
+          "description": "The price the link charges.",
+          "display_name": "Price",
+          "dynamic_source": "prices",
+          "dynamic_source_allows_custom": true,
+          "label_source": "price_names",
           "name": "price_id",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Quantity to purchase",
+          "description": "How many the customer buys. Leave empty for one.",
           "display_name": "Quantity",
           "name": "quantity",
           "required": false,
@@ -184,7 +193,7 @@
       "path": "/actions/library/stripe/create-payment-link",
       "result_str_template": "Payment link created.",
       "returns": {
-        "description": "Stripe payment link object returned by the Stripe API containing the generated link URL.",
+        "description": "The new payment link: its id and its url to share.",
         "type": "object"
       },
       "scopes": [
@@ -192,9 +201,9 @@
       ]
     },
     "create_price": {
-      "description": "Create a one-time or recurring price for a product.",
-      "display_name": "Create a Stripe price",
-      "display_str_template": "Create Stripe price for product '{0}'",
+      "description": "Set what a product costs, once or on a repeating schedule such as monthly.",
+      "display_name": "Create a price",
+      "display_str_template": "Price {product_id} at {unit_amount} {currency}.",
       "handler": "actions.create_price",
       "id": "stripe_create_price",
       "method": "POST",
@@ -207,35 +216,38 @@
       "output_formatter": "actions.format_create_price_output",
       "parameters": [
         {
-          "description": "Stripe product ID",
-          "display_name": "Product ID",
+          "description": "The product this price is for.",
+          "display_name": "Product",
+          "dynamic_source": "products",
+          "dynamic_source_allows_custom": true,
+          "label_source": "product_names",
           "name": "product_id",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The price in the smallest currency unit, for example cents for USD (500 means $5.00).",
-          "display_name": "Price amount",
+          "description": "The price in cents, not dollars: 5000 is $50.00. For a currency with no cents, such as yen, the whole amount.",
+          "display_name": "Amount in cents",
           "name": "unit_amount",
           "required": true,
           "type": "ParameterType.NUMBER"
         },
         {
-          "description": "The three-letter currency code, for example usd.",
+          "description": "The three-letter currency code, such as usd or eur.",
           "display_name": "Currency",
           "name": "currency",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "How often the customer is billed: day, week, month, or year.",
+          "description": "For a repeating price, how often the customer pays: day, week, month or year. Leave empty for a one-off price.",
           "display_name": "Billing interval",
           "name": "interval",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The number of billing intervals between charges. For example, 3 with a monthly interval charges every 3 months.",
+          "description": "How many intervals between payments. For example, 3 with a monthly interval charges every 3 months.",
           "display_name": "Number of intervals",
           "name": "interval_count",
           "required": false,
@@ -245,7 +257,7 @@
       "path": "/actions/library/stripe/create-price",
       "result_str_template": "Price created.",
       "returns": {
-        "description": "Stripe price object returned by the Stripe API containing pricing details.",
+        "description": "The new price: its id, amount in cents, currency and how often it repeats.",
         "type": "object"
       },
       "scopes": [
@@ -253,9 +265,9 @@
       ]
     },
     "create_product": {
-      "description": "Create a product to sell with Stripe.",
-      "display_name": "Create a Stripe product",
-      "display_str_template": "Create Stripe product '{0}'",
+      "description": "Add something you sell. Give it a price with Create a price before you charge for it.",
+      "display_name": "Create a product",
+      "display_str_template": "Create the product '{name}'.",
       "handler": "actions.create_product",
       "id": "stripe_create_product",
       "method": "POST",
@@ -267,14 +279,14 @@
       "output_formatter": "actions.format_create_product_output",
       "parameters": [
         {
-          "description": "Product name",
+          "description": "The product's name, as customers see it.",
           "display_name": "Name",
           "name": "name",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Product description",
+          "description": "What the product is, as customers see it.",
           "display_name": "Description",
           "multiline": true,
           "name": "description",
@@ -285,7 +297,7 @@
       "path": "/actions/library/stripe/create-product",
       "result_str_template": "Product created.",
       "returns": {
-        "description": "Stripe product object returned by the Stripe API containing product details.",
+        "description": "The new product: its id, name and other details.",
         "type": "object"
       },
       "scopes": [
@@ -293,9 +305,9 @@
       ]
     },
     "list_customers": {
-      "description": "List your most recent Stripe customers.",
-      "display_name": "List Stripe customers",
-      "display_str_template": "List up to {0} Stripe customers",
+      "description": "List your newest customers, most recent first.",
+      "display_name": "List customers",
+      "display_str_template": "List customers.",
       "handler": "actions.list_customers",
       "id": "stripe_list_customers",
       "method": "POST",
@@ -314,8 +326,8 @@
       "parameters": [
         {
           "default": 10,
-          "description": "Maximum customers to return",
-          "display_name": "Limit",
+          "description": "How many customers to list, at most 100.",
+          "display_name": "How many",
           "name": "limit",
           "required": false,
           "type": "ParameterType.NUMBER"
@@ -324,9 +336,9 @@
       "path": "/actions/library/stripe/list-customers",
       "result_str_template": "Customers listed.",
       "returns": {
-        "description": "Array of Stripe customer objects returned by the Stripe API.",
+        "description": "The customers, newest first.",
         "items": {
-          "description": "Stripe customer object with customer details from the Stripe API.",
+          "description": "A customer: their id, email, name and other details.",
           "type": "object"
         },
         "type": "array"
@@ -336,9 +348,9 @@
       ]
     },
     "list_payments": {
-      "description": "Every Stripe payment made in a period, with the figures a sales report needs worked out: how many, the total in dollars (or the account's currency, not cents) and who paid the most. Payments are listed with their amounts in cents, as the New Stripe payment trigger gives them. Use it for a weekly or monthly sales summary.",
-      "display_name": "List Stripe payments",
-      "display_str_template": "List Stripe payments since {0}",
+      "description": "List the payments made in a period, with how many there were, the total in dollars (or your currency) and who paid the most. Use it for a weekly or monthly sales summary.",
+      "display_name": "List payments",
+      "display_str_template": "List payments since {created_after}.",
       "handler": "actions.list_payments",
       "id": "stripe_list_payments",
       "method": "POST",
@@ -359,20 +371,22 @@
         ],
         "top_customer": "Example Customer",
         "top_customer_total": 50.0,
-        "total": 50.0
+        "top_customer_total_display": "$50.00",
+        "total": 50.0,
+        "total_display": "$50.00"
       },
       "name": "list_payments",
       "output_formatter": "actions.format_list_payments_output",
       "parameters": [
         {
-          "description": "Only payments created at or after this moment.",
+          "description": "The start of the period.",
           "display_name": "Paid on or after",
           "name": "created_after",
           "required": true,
           "type": "ParameterType.DATETIME"
         },
         {
-          "description": "Optional upper bound, exclusive. Leave empty to run the period up to now.",
+          "description": "The end of the period. Leave empty to run the period up to now.",
           "display_name": "Paid before",
           "name": "created_before",
           "required": false,
@@ -380,9 +394,39 @@
         },
         {
           "default": "succeeded",
-          "description": "Only payments in this Stripe status. Leave empty for succeeded payments, which are the ones that brought in money.",
+          "description": "Only payments in this state. Succeeded payments are the ones that brought in money.",
           "display_name": "Payment status",
           "name": "status",
+          "options": [
+            {
+              "label": "Succeeded",
+              "value": "succeeded"
+            },
+            {
+              "label": "Processing",
+              "value": "processing"
+            },
+            {
+              "label": "Waiting for a card",
+              "value": "requires_payment_method"
+            },
+            {
+              "label": "Waiting to be confirmed",
+              "value": "requires_confirmation"
+            },
+            {
+              "label": "Waiting for the customer",
+              "value": "requires_action"
+            },
+            {
+              "label": "Waiting to be captured",
+              "value": "requires_capture"
+            },
+            {
+              "label": "Canceled",
+              "value": "canceled"
+            }
+          ],
           "required": false,
           "type": "ParameterType.STRING"
         }
@@ -400,7 +444,7 @@
             "type": "string"
           },
           "payments": {
-            "description": "Each payment with payment_intent_id, status, amount (in cents), currency, created, customer_name, customer_email and description.",
+            "description": "Each payment, with its id, status, amount in cents (5000 is $50.00), currency, when it was made, who paid (name and email) and its description.",
             "items": {
               "type": "object"
             },
@@ -414,9 +458,17 @@
             "description": "What the top customer paid, in dollars.",
             "type": "number"
           },
+          "top_customer_total_display": {
+            "description": "What the top customer paid as a person writes it, such as $1,234.50. Use it in a message.",
+            "type": "string"
+          },
           "total": {
             "description": "Revenue in the currency's usual units, such as dollars.",
             "type": "number"
+          },
+          "total_display": {
+            "description": "The total as a person writes it, such as $1,234.50. Use it in a message.",
+            "type": "string"
           }
         },
         "type": "object"
@@ -426,9 +478,9 @@
       ]
     },
     "list_payouts": {
-      "description": "The payouts Stripe sent to your bank in a period, each with the date it reaches the bank and its amount in dollars (or the account's currency, not cents), so they can be checked against your bank statement.",
-      "display_name": "List Stripe payouts",
-      "display_str_template": "List Stripe payouts since {0}",
+      "description": "List the money Stripe sent to your bank in a period, with the day each payout reaches the bank and its amount in dollars (or your currency), to check against your bank statement.",
+      "display_name": "List payouts",
+      "display_str_template": "List payouts since {arrived_after}.",
       "handler": "actions.list_payouts",
       "id": "stripe_list_payouts",
       "method": "POST",
@@ -449,14 +501,14 @@
       "output_formatter": "actions.format_list_payouts_output",
       "parameters": [
         {
-          "description": "Only payouts due in the bank at or after this moment.",
+          "description": "The start of the period, by the day money reaches the bank.",
           "display_name": "Arrives on or after",
           "name": "arrived_after",
           "required": true,
           "type": "ParameterType.DATETIME"
         },
         {
-          "description": "Optional upper bound, exclusive. Leave empty to include every payout from the start date on.",
+          "description": "The end of the period. Leave empty to include every payout from the start on.",
           "display_name": "Arrives before",
           "name": "arrived_before",
           "required": false,
@@ -472,7 +524,7 @@
             "type": "number"
           },
           "payouts": {
-            "description": "Each payout with payout_id, amount (in dollars), currency, status, arrival_date (YYYY-MM-DD) and description.",
+            "description": "Each payout, with its id, amount in dollars (or your currency), currency, status, the day it reaches the bank (YYYY-MM-DD) and the text on your bank statement.",
             "items": {
               "type": "object"
             },
@@ -486,9 +538,9 @@
       ]
     },
     "refund_payment": {
-      "description": "Refund a payment, in full or in part.",
-      "display_name": "Refund a Stripe payment",
-      "display_str_template": "Refund payment '{0}'",
+      "description": "Give back all or part of a payment.",
+      "display_name": "Refund a payment",
+      "display_str_template": "Refund {payment_intent_id}.",
       "handler": "actions.refund_payment",
       "id": "stripe_refund_payment",
       "method": "POST",
@@ -500,15 +552,18 @@
       "output_formatter": "actions.format_refund_payment_output",
       "parameters": [
         {
-          "description": "The ID of the Stripe payment to refund.",
-          "display_name": "Payment ID",
+          "description": "The payment to refund.",
+          "display_name": "Payment",
+          "dynamic_source": "payments",
+          "dynamic_source_allows_custom": true,
+          "label_source": "payment_names",
           "name": "payment_intent_id",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The amount to refund, in the smallest currency unit, for example cents for USD (200 means $2.00). Leave blank to refund the full payment.",
-          "display_name": "Amount",
+          "description": "How much to give back, in cents, not dollars: 200 is $2.00. Leave empty to refund the whole payment.",
+          "display_name": "Amount in cents",
           "name": "amount",
           "required": false,
           "type": "ParameterType.NUMBER"
@@ -517,7 +572,7 @@
       "path": "/actions/library/stripe/refund-payment",
       "result_str_template": "Refund created.",
       "returns": {
-        "description": "Stripe refund object returned by the Stripe API containing refund details.",
+        "description": "The refund: its id, amount in cents and status.",
         "type": "object"
       },
       "scopes": [
@@ -525,9 +580,9 @@
       ]
     },
     "retrieve_customer": {
-      "description": "Look up a Stripe customer by their ID. Fails the step when the ID is empty, as it is for a guest checkout (a payment with no customer), so look up only payments that have a customer.",
-      "display_name": "Retrieve a Stripe customer",
-      "display_str_template": "Retrieve Stripe customer '{0}'",
+      "description": "Get a customer's details, such as their name and email. The step fails when no customer is given, as for a guest checkout, so use it only for payments that have a customer.",
+      "display_name": "Get a customer",
+      "display_str_template": "Get {customer_id}.",
       "handler": "actions.retrieve_customer",
       "id": "stripe_retrieve_customer",
       "method": "POST",
@@ -539,8 +594,11 @@
       "output_formatter": "actions.format_retrieve_customer_output",
       "parameters": [
         {
-          "description": "Stripe customer ID",
-          "display_name": "Customer ID",
+          "description": "The customer to get.",
+          "display_name": "Customer",
+          "dynamic_source": "customers",
+          "dynamic_source_allows_custom": true,
+          "label_source": "customer_names",
           "name": "customer_id",
           "required": true,
           "type": "ParameterType.STRING"
@@ -549,7 +607,7 @@
       "path": "/actions/library/stripe/retrieve-customer",
       "result_str_template": "Customer retrieved.",
       "returns": {
-        "description": "Stripe customer object returned by the Stripe API for the requested customer ID.",
+        "description": "The customer: their id, email, name and the rest of what Stripe keeps about them.",
         "type": "object"
       },
       "scopes": [
@@ -561,14 +619,14 @@
     "Payments & Billing",
     "E-Commerce"
   ],
-  "description": "Accept payments and automate billing workflows with Stripe.",
+  "description": "Take payments, send payment links, issue refunds and follow customers and subscriptions.",
   "display_name": "Stripe",
   "id": "stripe",
   "logo": "https://www.lodol.com/app-icons/stripe-icon.jpeg",
   "triggers": {
     "stripe_checkout_completed_trigger": {
-      "description": "Runs when a customer completes a Stripe Checkout page or Payment Link. Check payment_status: it is unpaid while a delayed method such as a bank debit is still clearing.",
-      "display_name": "Stripe checkout completed",
+      "description": "Runs when a customer finishes a Stripe checkout page or payment link. Money from a bank debit may still be clearing.",
+      "display_name": "Checkout completed",
       "id": "stripe_checkout_completed_trigger",
       "output": {
         "amount_total": "The total, in the currency's smallest unit (cents).",
@@ -584,14 +642,14 @@
         "mode": "payment, subscription or setup.",
         "payment_intent": "The payment's id, for a one-off payment.",
         "payment_link": "The Payment Link's id, when the checkout came from one.",
-        "payment_status": "paid, unpaid (a delayed payment method) or no_payment_required.",
+        "payment_status": "paid; unpaid while a slower method such as a bank debit is still clearing; or no_payment_required.",
         "subscription": "The subscription's id, when the checkout started one."
       },
       "parameters": []
     },
     "stripe_invoice_paid_trigger": {
-      "description": "Runs when an invoice is paid in Stripe, including each renewal of a subscription and an invoice marked paid outside Stripe. Amounts are in the currency's smallest unit, so 5000 is $50.",
-      "display_name": "Stripe invoice paid",
+      "description": "Runs when an invoice is paid in Stripe, including each subscription renewal and an invoice marked paid outside Stripe.",
+      "display_name": "Invoice paid",
       "id": "stripe_invoice_paid_trigger",
       "output": {
         "amount_due": "The amount due, in the currency's smallest unit (cents).",
@@ -600,7 +658,7 @@
         "amount_paid_display": "The amount paid as a person writes it, such as $12.50.",
         "amount_remaining": "What is still owed, in the currency's smallest unit.",
         "amount_remaining_display": "What is still owed as a person writes it, such as $12.50.",
-        "attempt_count": "How many times Stripe has tried to collect payment.",
+        "attempt_count": "Which try this was: how many times Stripe has tried to collect payment.",
         "created": "When the invoice was created, as a Unix timestamp.",
         "currency": "The three-letter currency code, such as usd.",
         "customer": "The customer's id.",
@@ -618,8 +676,8 @@
       "parameters": []
     },
     "stripe_invoice_payment_failed_trigger": {
-      "description": "Runs each time Stripe fails to collect an invoice, such as a declined card on a subscription renewal. attempt_count says which try it was, and next_payment_attempt when Stripe tries again.",
-      "display_name": "Stripe invoice payment failed",
+      "description": "Runs each time Stripe fails to collect an invoice, such as when a card is declined on a subscription renewal.",
+      "display_name": "Invoice payment failed",
       "id": "stripe_invoice_payment_failed_trigger",
       "output": {
         "amount_due": "The amount due, in the currency's smallest unit (cents).",
@@ -628,7 +686,7 @@
         "amount_paid_display": "The amount paid as a person writes it, such as $12.50.",
         "amount_remaining": "What is still owed, in the currency's smallest unit.",
         "amount_remaining_display": "What is still owed as a person writes it, such as $12.50.",
-        "attempt_count": "How many times Stripe has tried to collect payment.",
+        "attempt_count": "Which try this was: how many times Stripe has tried to collect payment.",
         "created": "When the invoice was created, as a Unix timestamp.",
         "currency": "The three-letter currency code, such as usd.",
         "customer": "The customer's id.",
@@ -646,8 +704,8 @@
       "parameters": []
     },
     "stripe_new_customer_trigger": {
-      "description": "Runs when a customer is created in Stripe, by a checkout, an invoice, the dashboard or the API.",
-      "display_name": "New Stripe customer",
+      "description": "Runs when a customer is added in Stripe, whether by a checkout, an invoice, your team or another app.",
+      "display_name": "New customer",
       "id": "stripe_new_customer_trigger",
       "output": {
         "created": "When the customer was created, as a Unix timestamp.",
@@ -663,32 +721,33 @@
       "parameters": []
     },
     "stripe_new_payment_trigger": {
-      "description": "Runs when a new payment is created in Stripe or, with a status set, when a payment reaches that status. The event gives the amount (in cents, so 5000 is $50), the same amount written for a message as amount_display ($50.00), currency and status, and who paid as customer_name and customer_email, which are blank when Stripe doesn't know them (a guest checkout may have neither).",
-      "display_name": "New Stripe payment",
+      "description": "Runs when someone pays you in Stripe or, with a status chosen, when a payment reaches that status.",
+      "display_name": "New payment",
       "id": "stripe_new_payment_trigger",
       "output": {
-        "amount": "number",
-        "amount_display": "string",
-        "created": "number",
-        "currency": "string",
-        "customer": "string",
-        "customer_email": "string",
-        "customer_name": "string",
-        "description": "string",
-        "payment_intent_id": "string",
-        "status": "string"
+        "amount": "The amount in cents (or the currency's smallest unit), so 5000 is $50.00.",
+        "amount_display": "The amount as a person writes it, such as $50.00.",
+        "created": "When the payment was made, as a Unix timestamp.",
+        "currency": "The three-letter currency code, such as usd.",
+        "customer": "The customer's id, empty for a guest checkout.",
+        "customer_email": "The payer's email, blank when Stripe doesn't know.",
+        "customer_name": "Who paid, blank when Stripe doesn't know.",
+        "description": "The note saved on the payment, if any.",
+        "payer": "Who paid, ready to put in a message: their name, else their email, else 'a guest customer'.",
+        "payment_intent_id": "The payment's id in Stripe (pi_...).",
+        "status": "The payment's state, such as succeeded or processing."
       },
       "parameters": [
         {
           "arg_index": 0,
-          "description": "Only run for payments in this Stripe status, such as succeeded. Leave empty to run for every payment, including ones still waiting for the customer to pay.",
+          "description": "Only run for payments in this state, such as succeeded. Leave empty to run once for every new payment, including ones still waiting for the customer to pay.",
           "display_name": "Status",
           "name": "status",
           "required": false
         },
         {
           "arg_index": 1,
-          "description": "Only run for payments of at least this much, written as a person would (1000 for $1,000). Use it for a 'big payments' workflow instead of testing the amount in a step. Leave empty to run for every amount.",
+          "description": "Only run for payments of at least this much, in dollars (or your currency), not cents: 1000 means $1,000. Leave empty to run for every amount.",
           "display_name": "Payment of at least",
           "name": "minimum_amount",
           "required": false
@@ -696,15 +755,15 @@
       ]
     },
     "stripe_new_subscription_trigger": {
-      "description": "Runs when a subscription is started in Stripe, including one that starts with a free trial.",
-      "display_name": "New Stripe subscription",
+      "description": "Runs when a subscription starts in Stripe, including one that starts with a free trial.",
+      "display_name": "New subscription",
       "id": "stripe_new_subscription_trigger",
       "output": {
         "cancel_at_period_end": "Whether it is set to end when the period it is in ends.",
         "canceled_at": "When it was canceled, as a Unix timestamp, if it was.",
         "cancellation_details": "Why it ended: reason (cancellation_requested when the customer chose to leave, payment_failed when their payments kept failing, or payment_disputed), plus comment and feedback when the customer gave any. Read reason to tell a customer who left from one whose card failed.",
         "created": "When the subscription was created, as a Unix timestamp.",
-        "customer": "The customer's id; use 'Retrieve a Stripe customer' for the rest.",
+        "customer": "The customer's id; use Get a customer for the rest.",
         "ended_at": "When it ended, as a Unix timestamp, if it has.",
         "event_created": "When the event happened, as a Unix timestamp.",
         "event_id": "The id of the Stripe event (evt_...).",
@@ -716,15 +775,15 @@
       "parameters": []
     },
     "stripe_subscription_ended_trigger": {
-      "description": "Runs when a subscription ends in Stripe: canceled straight away, at the end of its period, or after payment kept failing. One set to cancel later runs this when it actually ends.",
-      "display_name": "Stripe subscription ended",
+      "description": "Runs when a subscription ends in Stripe: canceled straight away, at the end of its period, or after payments kept failing.",
+      "display_name": "Subscription ended",
       "id": "stripe_subscription_ended_trigger",
       "output": {
         "cancel_at_period_end": "Whether it is set to end when the period it is in ends.",
         "canceled_at": "When it was canceled, as a Unix timestamp, if it was.",
         "cancellation_details": "Why it ended: reason (cancellation_requested when the customer chose to leave, payment_failed when their payments kept failing, or payment_disputed), plus comment and feedback when the customer gave any. Read reason to tell a customer who left from one whose card failed.",
         "created": "When the subscription was created, as a Unix timestamp.",
-        "customer": "The customer's id; use 'Retrieve a Stripe customer' for the rest.",
+        "customer": "The customer's id; use Get a customer for the rest.",
         "ended_at": "When it ended, as a Unix timestamp, if it has.",
         "event_created": "When the event happened, as a Unix timestamp.",
         "event_id": "The id of the Stripe event (evt_...).",
