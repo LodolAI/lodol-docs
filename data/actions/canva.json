@@ -1,9 +1,9 @@
 {
   "actions": {
     "create_design": {
-      "description": "Create a new design in Canva with a specified type, dimensions, and optional title.",
-      "display_name": "Create a Canva design",
-      "display_str_template": "Create a '{0}' design in Canva.",
+      "description": "Start a new, empty design in your Canva account: a presentation, doc, whiteboard or one of a size you choose. You get its edit and view links.",
+      "display_name": "Create a design",
+      "display_str_template": "Create the design '{title}'.",
       "handler": "actions.create_design",
       "id": "canva_create_design",
       "method": "POST",
@@ -20,36 +20,64 @@
       "parameters": [
         {
           "default": "presentation",
-          "description": "The type of design to create: 'doc', 'whiteboard', 'presentation', or 'custom'. Custom designs need a width and height. Leave it empty for a presentation.",
+          "description": "What kind of design to make. A custom size needs a width and height.",
           "display_name": "Design type",
           "name": "design_type",
+          "options": [
+            {
+              "label": "Presentation",
+              "value": "presentation"
+            },
+            {
+              "label": "Doc",
+              "value": "doc"
+            },
+            {
+              "label": "Whiteboard",
+              "value": "whiteboard"
+            },
+            {
+              "label": "Custom size",
+              "value": "custom"
+            }
+          ],
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Optional title for the design (1-255 characters).",
+          "description": "The design's name in Canva, up to 255 characters. Leave blank to let Canva name it.",
           "display_name": "Title",
           "name": "title",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Width in pixels (40-8000) for custom design type.",
+          "description": "Width in pixels, from 40 to 8000.",
           "display_name": "Width",
           "name": "width",
           "required": false,
-          "type": "ParameterType.NUMBER"
+          "type": "ParameterType.NUMBER",
+          "visible_when": {
+            "design_type": [
+              "custom"
+            ]
+          }
         },
         {
-          "description": "Height in pixels (40-8000) for custom design type.",
+          "description": "Height in pixels, from 40 to 8000.",
           "display_name": "Height",
           "name": "height",
           "required": false,
-          "type": "ParameterType.NUMBER"
+          "type": "ParameterType.NUMBER",
+          "visible_when": {
+            "design_type": [
+              "custom"
+            ]
+          }
         },
         {
-          "description": "Optional ID of an image already uploaded to Canva to add to the design.",
-          "display_name": "Asset ID",
+          "description": "The ID of an image already uploaded to Canva, to put in the new design. Leave blank for an empty design.",
+          "display_name": "Image",
           "name": "asset_id",
           "required": false,
           "type": "ParameterType.STRING"
@@ -60,15 +88,15 @@
       "returns": {
         "properties": {
           "id": {
-            "description": "The unique ID of the created design.",
+            "description": "The new design's ID.",
             "type": "string"
           },
           "title": {
-            "description": "The title of the design.",
+            "description": "The design's title.",
             "type": "string"
           },
           "urls": {
-            "description": "URLs associated with the design (edit, view).",
+            "description": "Links to edit and to view the design.",
             "type": "object"
           }
         },
@@ -79,58 +107,90 @@
       ]
     },
     "export_design": {
-      "description": "Export a Canva design to a file format like PDF, PNG, JPG, or MP4.",
-      "display_name": "Export a Canva design",
-      "display_str_template": "Export design '{0}' as {1}.",
+      "description": "Make a file from a design, such as a PDF, PNG, JPG or MP4, and get its download links. The step waits up to two minutes for Canva to finish the file.",
+      "display_name": "Export a design",
+      "display_str_template": "Export {design_id} as {format_type}.",
       "handler": "actions.export_design",
       "id": "canva_export_design",
       "method": "POST",
       "mock_response": {
         "design_id": "DAFVcK_N123",
         "job_id": "export_job_123abc",
-        "status": "in_progress"
+        "status": "success",
+        "urls": [
+          "https://export.canva.com/export_job_123abc/design.png"
+        ]
       },
       "name": "export_design",
       "output_formatter": "actions.format_export_design_output",
       "parameters": [
         {
-          "description": "The ID of the design to export.",
-          "display_name": "Design ID",
+          "description": "The design. Pick one, or use a design ID from an earlier step.",
+          "display_name": "Design",
+          "dynamic_source": "designs",
+          "dynamic_source_allows_custom": true,
+          "label_source": "design_names",
           "name": "design_id",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
           "default": "png",
-          "description": "The file format to export to: 'pdf', 'jpg', 'png', 'gif', 'pptx', or 'mp4'.",
+          "description": "The kind of file to make.",
           "display_name": "File format",
           "name": "format_type",
+          "options": [
+            {
+              "label": "PNG",
+              "value": "png"
+            },
+            {
+              "label": "JPG",
+              "value": "jpg"
+            },
+            {
+              "label": "PDF",
+              "value": "pdf"
+            },
+            {
+              "label": "GIF",
+              "value": "gif"
+            },
+            {
+              "label": "PowerPoint",
+              "value": "pptx"
+            },
+            {
+              "label": "MP4 video",
+              "value": "mp4"
+            }
+          ],
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Quality of the exported file: 'regular' or 'pro'. Applies to JPG and PDF exports.",
+          "description": "For a JPG or PDF: 'regular', or 'pro' to keep elements that need a paid Canva plan. Leave blank for regular.",
           "display_name": "Quality",
           "name": "quality",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Optional export width (respects aspect ratio).",
+          "description": "Width of the file in pixels. Leave blank to keep the design's size; the shape stays the same either way.",
           "display_name": "Width",
           "name": "width",
           "required": false,
           "type": "ParameterType.NUMBER"
         },
         {
-          "description": "Optional export height (respects aspect ratio).",
+          "description": "Height of the file in pixels. Leave blank to keep the design's size; the shape stays the same either way.",
           "display_name": "Height",
           "name": "height",
           "required": false,
           "type": "ParameterType.NUMBER"
         },
         {
-          "description": "Optional list of page numbers to export. The first page is 1.",
+          "description": "Which pages to export, as numbers where the first page is 1. Leave blank for every page.",
           "display_name": "Pages",
           "name": "pages",
           "required": false,
@@ -138,20 +198,27 @@
         }
       ],
       "path": "/actions/library/canva/export-design",
-      "result_str_template": "Export job '{job_id}' started with status '{status}'.",
+      "result_str_template": "Exported design '{design_id}'.",
       "returns": {
         "properties": {
           "design_id": {
-            "description": "The ID of the design being exported.",
+            "description": "The ID of the design that was exported.",
             "type": "string"
           },
           "job_id": {
-            "description": "The export job ID to check status.",
+            "description": "The export's ID, for the step 'Get export job status'.",
             "type": "string"
           },
           "status": {
-            "description": "Current status of the export job.",
+            "description": "'success' once the file is ready.",
             "type": "string"
+          },
+          "urls": {
+            "description": "Download links for the file, one per page for an image. Canva keeps them working for 24 hours.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -164,9 +231,9 @@
       ]
     },
     "get_design": {
-      "description": "Retrieve details about a specific Canva design.",
+      "description": "Get a design's title, its edit and view links, who owns it, and when it was made and last changed.",
       "display_name": "Get design details",
-      "display_str_template": "Get details for design '{0}'.",
+      "display_str_template": "Get {design_id}.",
       "handler": "actions.get_design",
       "id": "canva_get_design",
       "method": "POST",
@@ -188,8 +255,11 @@
       "output_formatter": "actions.format_get_design_output",
       "parameters": [
         {
-          "description": "The ID of the design to retrieve.",
-          "display_name": "Design ID",
+          "description": "The design. Pick one, or use a design ID from an earlier step.",
+          "display_name": "Design",
+          "dynamic_source": "designs",
+          "dynamic_source_allows_custom": true,
+          "label_source": "design_names",
           "name": "design_id",
           "required": true,
           "type": "ParameterType.STRING"
@@ -200,27 +270,27 @@
       "returns": {
         "properties": {
           "created_at": {
-            "description": "Creation timestamp.",
+            "description": "When the design was made.",
             "type": "string"
           },
           "id": {
-            "description": "The design ID.",
+            "description": "The design's ID.",
             "type": "string"
           },
           "owner": {
-            "description": "Owner information.",
+            "description": "Who owns the design: their user and team IDs.",
             "type": "object"
           },
           "title": {
-            "description": "The design title.",
+            "description": "The design's title.",
             "type": "string"
           },
           "updated_at": {
-            "description": "Last update timestamp.",
+            "description": "When the design was last changed.",
             "type": "string"
           },
           "urls": {
-            "description": "URLs for the design.",
+            "description": "Links to edit and to view the design.",
             "type": "object"
           }
         },
@@ -231,9 +301,9 @@
       ]
     },
     "get_export_job": {
-      "description": "Check the status and results of a Canva export job.",
+      "description": "Check on an export that was still running when 'Export a design' stopped waiting, and get its download links once it's done.",
       "display_name": "Get export job status",
-      "display_str_template": "Check export job '{0}' status.",
+      "display_str_template": "Check on export {job_id}.",
       "handler": "actions.get_export_job",
       "id": "canva_get_export_job",
       "method": "POST",
@@ -248,8 +318,8 @@
       "output_formatter": "actions.format_get_export_job_output",
       "parameters": [
         {
-          "description": "The export job ID returned by the 'Export a Canva design' action.",
-          "display_name": "Job ID",
+          "description": "The export's ID, as 'Export a design' gave it in its results or its error.",
+          "display_name": "Export",
           "name": "job_id",
           "required": true,
           "type": "ParameterType.STRING"
@@ -260,15 +330,15 @@
       "returns": {
         "properties": {
           "job_id": {
-            "description": "The export job ID.",
+            "description": "The export's ID.",
             "type": "string"
           },
           "status": {
-            "description": "Job status: 'in_progress', 'success', or 'failed'.",
+            "description": "'in_progress' while Canva is still making the file, then 'success' or 'failed'.",
             "type": "string"
           },
           "urls": {
-            "description": "Download URLs when export is complete.",
+            "description": "Download links once the export has succeeded. Canva keeps them working for 24 hours.",
             "items": {
               "type": "string"
             },
@@ -282,9 +352,9 @@
       ]
     },
     "list_designs": {
-      "description": "List the designs in your connected Canva account.",
-      "display_name": "List Canva designs",
-      "display_str_template": "List Canva designs{0}.",
+      "description": "List the designs in your Canva account and those shared with you, or only the ones that match words you search for.",
+      "display_name": "List designs",
+      "display_str_template": "List your designs.",
       "handler": "actions.list_designs",
       "id": "canva_list_designs",
       "method": "POST",
@@ -311,15 +381,15 @@
       "output_formatter": "actions.format_list_designs_output",
       "parameters": [
         {
-          "description": "Optional text to search for to narrow down the list of designs.",
+          "description": "Words to look for in your designs. Leave blank to list them all.",
           "display_name": "Search for",
           "name": "query",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "To get the next page of results, pass the 'continuation' value returned by the previous run.",
-          "display_name": "Next page token",
+          "description": "Leave blank for the first page. For the page after, use the Next page value this step gave last time.",
+          "display_name": "Next page",
           "name": "continuation",
           "required": false,
           "type": "ParameterType.STRING"
@@ -330,11 +400,11 @@
       "returns": {
         "properties": {
           "continuation": {
-            "description": "Token for fetching the next page of results.",
+            "description": "The Next page value to get more designs. Empty when there are no more.",
             "type": "string"
           },
           "designs": {
-            "description": "List of design objects.",
+            "description": "The designs on this page, each with its ID, title, links and thumbnail.",
             "items": {
               "type": "object"
             },
@@ -351,14 +421,14 @@
   "categories": [
     "Images & Design"
   ],
-  "description": "Create, edit, and publish designs in Canva.",
+  "description": "Make designs in Canva, export them as PDF, PNG, JPG, PowerPoint or video files, and look up the designs in your account.",
   "display_name": "Canva",
   "id": "canva",
   "logo": "https://www.lodol.com/app-icons/canva-icon.jpeg",
   "triggers": {
     "canva_export_complete_trigger": {
-      "description": "Runs when a Canva design export finishes",
-      "display_name": "Canva Export Complete",
+      "description": "Starts the workflow when an export that was still running finishes, with its download links.",
+      "display_name": "Export finished",
       "id": "canva_export_complete_trigger",
       "output": {
         "job_id": "string",
