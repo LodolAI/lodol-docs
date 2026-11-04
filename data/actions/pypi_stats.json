@@ -1,5 +1,371 @@
 {
   "actions": {
+    "check_download_milestone": {
+      "description": "Check whether a package's downloads in a day, any 7 days or any 30 days have reached a number, such as a million a month, and on which day they got there. 'newly_reached' is true only on the first day the total reaches it in the days PyPI Stats keeps, so a workflow that runs daily celebrates once, not again each time a quiet weekend takes the total back under and the next day lifts it over. Also says how far there is to go and the best total in the days PyPI Stats keeps. Counted from the daily figures without mirror traffic. PyPI Stats keeps about six months, so all-time totals are out of reach. No API key required.",
+      "display_name": "Check a download milestone",
+      "display_str_template": "Check {package} against a PyPI download milestone.",
+      "handler": "actions.check_download_milestone",
+      "id": "pypi_stats_check_download_milestone",
+      "method": "POST",
+      "mock_response": {
+        "best_date": "2026-08-21",
+        "best_total": 1814192430,
+        "checked_from": "2026-05-07",
+        "date": "2026-11-02",
+        "days_at_or_above": 14,
+        "last_updated": "2026-11-02",
+        "newly_reached": false,
+        "package": "requests",
+        "percent_of_target": 107.56,
+        "period": "month",
+        "reached": true,
+        "reached_on": "2026-10-20",
+        "remaining": 0,
+        "target": 1300000000,
+        "total": 1398320602,
+        "url": "https://pypistats.org/packages/requests"
+      },
+      "name": "check_download_milestone",
+      "output_formatter": "actions.format_milestone_output",
+      "parameters": [
+        {
+          "description": "The PyPI package to read. Spell it however you like: Zope.Interface, zope_interface and zope-interface all reach the same package. Use __all__ for the totals across the whole of PyPI.",
+          "display_name": "Package",
+          "examples": [
+            {
+              "label": "A widely used package",
+              "value": "requests"
+            },
+            {
+              "label": "A name with a dot in it",
+              "value": "zope.interface"
+            },
+            {
+              "label": "The whole of PyPI",
+              "value": "__all__"
+            }
+          ],
+          "name": "package",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The number of downloads to check for, as a whole number.",
+          "display_name": "Milestone",
+          "examples": [
+            {
+              "label": "A hundred thousand",
+              "value": "100000"
+            },
+            {
+              "label": "A million",
+              "value": "1000000"
+            }
+          ],
+          "minimum": 1,
+          "name": "target",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "month",
+          "description": "Whether the milestone is for a single day, any 7 days in a row or any 30 days in a row. Defaults to 30 days, the way PyPI Stats counts a month.",
+          "display_name": "Counted over",
+          "name": "period",
+          "options": [
+            {
+              "label": "A single day",
+              "value": "day"
+            },
+            {
+              "label": "Any 7 days in a row",
+              "value": "week"
+            },
+            {
+              "label": "Any 30 days in a row",
+              "value": "month"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/pypi-stats/check-download-milestone",
+      "result_str_template": "{pypi_stats_check_download_milestone,total} downloads against {pypi_stats_check_download_milestone,target}.",
+      "returns": {
+        "properties": {
+          "best_date": {
+            "description": "The day that total ended on.",
+            "type": "string"
+          },
+          "best_total": {
+            "description": "The highest such total in the days PyPI Stats holds.",
+            "type": "integer"
+          },
+          "checked_from": {
+            "description": "The earliest day a total could be worked out for.",
+            "type": "string"
+          },
+          "date": {
+            "description": "The latest day counted.",
+            "type": "string"
+          },
+          "days_at_or_above": {
+            "description": "How many days in a row the total has been at or above it.",
+            "type": "integer"
+          },
+          "last_updated": {
+            "description": "The latest day PyPI Stats has counted.",
+            "type": "string"
+          },
+          "newly_reached": {
+            "description": "Whether the latest day is the first, in the days PyPI Stats keeps, that the total reached the milestone. True on one day only, so a daily alert that checks it fires once.",
+            "type": "boolean"
+          },
+          "package": {
+            "description": "The package, as PyPI Stats names it.",
+            "type": "string"
+          },
+          "percent_of_target": {
+            "description": "The total as a percentage of the milestone.",
+            "type": "number"
+          },
+          "period": {
+            "description": "What the total covers: 'day', 'week' (7 days) or 'month' (30 days).",
+            "type": "string"
+          },
+          "reached": {
+            "description": "Whether that total is at or above the milestone.",
+            "type": "boolean"
+          },
+          "reached_on": {
+            "description": "The day the total got there and has stayed since, or empty.",
+            "type": "string"
+          },
+          "remaining": {
+            "description": "Downloads still needed, or 0 once reached.",
+            "type": "integer"
+          },
+          "target": {
+            "description": "The milestone checked against.",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Downloads in the day, 7 days or 30 days up to that date.",
+            "type": "integer"
+          },
+          "url": {
+            "description": "The package's page on pypistats.org.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "check_unusual_downloads": {
+      "description": "Check whether a package's latest downloads are out of the ordinary, for an alert: a sudden spike when a big project starts depending on it, or a drop when an install breaks. The latest day is compared with the same weekday in earlier weeks, because downloads always fall at the weekend, or the latest 7 days with the weeks before. Comes back with the change in percent and a status of spike, drop or normal, so a condition only has to check 'unusual'. Mirror traffic is left out. No API key required.",
+      "display_name": "Check for unusual downloads",
+      "display_str_template": "Check {package} for unusual PyPI downloads.",
+      "handler": "actions.check_unusual_downloads",
+      "id": "pypi_stats_check_unusual_downloads",
+      "method": "POST",
+      "mock_response": {
+        "baseline": [
+          {
+            "downloads": 51837769,
+            "end_date": "2026-10-26",
+            "start_date": "2026-10-26"
+          },
+          {
+            "downloads": 49455120,
+            "end_date": "2026-10-19",
+            "start_date": "2026-10-19"
+          },
+          {
+            "downloads": 45752052,
+            "end_date": "2026-10-12",
+            "start_date": "2026-10-12"
+          },
+          {
+            "downloads": 45763581,
+            "end_date": "2026-10-05",
+            "start_date": "2026-10-05"
+          }
+        ],
+        "baseline_downloads": 48202130.5,
+        "baseline_periods": 4,
+        "change": 6338028.5,
+        "change_percent": 13.15,
+        "compare": "day",
+        "downloads": 54540159,
+        "end_date": "2026-11-02",
+        "last_updated": "2026-11-02",
+        "package": "requests",
+        "start_date": "2026-11-02",
+        "status": "normal",
+        "threshold_percent": 30.0,
+        "unusual": false,
+        "url": "https://pypistats.org/packages/requests",
+        "weekday": "Monday"
+      },
+      "name": "check_unusual_downloads",
+      "output_formatter": "actions.format_unusual_output",
+      "parameters": [
+        {
+          "description": "The PyPI package to read. Spell it however you like: Zope.Interface, zope_interface and zope-interface all reach the same package. Use __all__ for the totals across the whole of PyPI.",
+          "display_name": "Package",
+          "examples": [
+            {
+              "label": "A widely used package",
+              "value": "requests"
+            },
+            {
+              "label": "A name with a dot in it",
+              "value": "zope.interface"
+            },
+            {
+              "label": "The whole of PyPI",
+              "value": "__all__"
+            }
+          ],
+          "name": "package",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "day",
+          "description": "Whether to check the latest day or the latest 7 days. A day reacts first; a week smooths out a quiet or busy day. Defaults to the latest day.",
+          "display_name": "Check",
+          "name": "compare",
+          "options": [
+            {
+              "label": "The latest day, against the same weekday in earlier weeks",
+              "value": "day"
+            },
+            {
+              "label": "The latest 7 days, against the weeks before",
+              "value": "week"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 4,
+          "description": "How many earlier weeks make up the usual level, from 1 to 12. More weeks are steadier; fewer follow a package that is growing. Defaults to 4.",
+          "display_name": "Weeks to compare with",
+          "maximum": 12,
+          "minimum": 1,
+          "name": "baseline_weeks",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 30,
+          "description": "How far above or below the usual level, in percent, counts as unusual. Downloads drift by several percent from week to week on their own, more for a small package, so 30 is a sensible start. A drop can be at most 100%, so above that only spikes are flagged. Defaults to 30.",
+          "display_name": "Unusual at (%)",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "threshold_percent",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/pypi-stats/check-unusual-downloads",
+      "result_str_template": "Downloads are {pypi_stats_check_unusual_downloads,status}.",
+      "returns": {
+        "properties": {
+          "baseline": {
+            "description": "The earlier stretches compared with, newest first.",
+            "items": {
+              "properties": {
+                "downloads": {
+                  "description": "Its downloads.",
+                  "type": "integer"
+                },
+                "end_date": {
+                  "description": "Its last day.",
+                  "type": "string"
+                },
+                "start_date": {
+                  "description": "Its first day.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "baseline_downloads": {
+            "description": "The usual level: the average of the earlier stretches.",
+            "type": "number"
+          },
+          "baseline_periods": {
+            "description": "How many earlier stretches that average is over.",
+            "type": "integer"
+          },
+          "change": {
+            "description": "Downloads less the usual level.",
+            "type": "number"
+          },
+          "change_percent": {
+            "description": "That change as a percentage of the usual level.",
+            "type": "number"
+          },
+          "compare": {
+            "description": "What was checked: 'day' or 'week'.",
+            "type": "string"
+          },
+          "downloads": {
+            "description": "Downloads in what was checked.",
+            "type": "integer"
+          },
+          "end_date": {
+            "description": "The last day checked, which is the latest day counted.",
+            "type": "string"
+          },
+          "last_updated": {
+            "description": "The latest day PyPI Stats has counted.",
+            "type": "string"
+          },
+          "package": {
+            "description": "The package, as PyPI Stats names it.",
+            "type": "string"
+          },
+          "start_date": {
+            "description": "The first day checked; the same as end_date for a day.",
+            "type": "string"
+          },
+          "status": {
+            "description": "'spike', 'drop', 'normal' or 'not_enough_data'.",
+            "type": "string"
+          },
+          "threshold_percent": {
+            "description": "The change, either way, that counts as unusual.",
+            "type": "number"
+          },
+          "unusual": {
+            "description": "True for a spike or a drop: the field an alert checks.",
+            "type": "boolean"
+          },
+          "url": {
+            "description": "The package's page on pypistats.org.",
+            "type": "string"
+          },
+          "weekday": {
+            "description": "That day's weekday, e.g. 'Monday', when a day was checked.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "compare_packages": {
       "description": "Compare the recent downloads of several packages side by side, ranked biggest first with each one's share of the total. Answers 'are we still ahead of them?' in one step rather than several. Between two and ten packages; a package PyPI Stats has no figures for is listed as missing rather than failing the step. No API key required.",
       "display_name": "Compare packages",
@@ -433,6 +799,304 @@
             "type": "integer"
           },
           "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_download_summary": {
+      "description": "Get everything a maintainer's weekly or monthly report needs about a package in one step: downloads in the last day, week and month; the total and daily average over the days you choose, and how that compares with the same number of days before; the share coming from Python 3 and from Python 2, every Python version's share; and every operating system's share. Two requests, made one after another. Every number, the last day, 7 days and 30 days included, is added up from PyPI Stats' daily figures and ends on the latest day it has counted, because its own figures for the last week and month can lag weeks behind. Mirror traffic is left out. No API key required.",
+      "display_name": "Get download summary",
+      "display_str_template": "Summarise PyPI downloads for {package}.",
+      "handler": "actions.get_download_summary",
+      "id": "pypi_stats_get_download_summary",
+      "method": "POST",
+      "mock_response": {
+        "average_per_day": 46610686.73,
+        "date_range": {
+          "days": 30,
+          "first_date": "2026-10-04",
+          "last_date": "2026-11-02"
+        },
+        "found": true,
+        "last_day": 54540159,
+        "last_month": 1398320602,
+        "last_updated": "2026-11-02",
+        "last_week": 359652048,
+        "package": "requests",
+        "previous_period": {
+          "change": 203028875,
+          "change_percent": 16.99,
+          "comparable": true,
+          "downloads": 1195291727,
+          "end_date": "2026-10-03",
+          "start_date": "2026-09-04"
+        },
+        "python_2_percent": 0.3,
+        "python_3_percent": 97.09,
+        "python_versions": [
+          {
+            "category": "3.12",
+            "downloads": 473481712,
+            "label": "3.12",
+            "percent": 33.86
+          },
+          {
+            "category": "3.11",
+            "downloads": 265200684,
+            "label": "3.11",
+            "percent": 18.97
+          },
+          {
+            "category": "3.13",
+            "downloads": 223121941,
+            "label": "3.13",
+            "percent": 15.96
+          },
+          {
+            "category": "null",
+            "downloads": 36436462,
+            "label": "Unknown",
+            "percent": 2.61
+          },
+          {
+            "category": "2.7",
+            "downloads": 4233205,
+            "label": "2.7",
+            "percent": 0.3
+          }
+        ],
+        "systems": [
+          {
+            "category": "Linux",
+            "downloads": 1338797028,
+            "label": "Linux",
+            "percent": 95.74
+          },
+          {
+            "category": "Windows",
+            "downloads": 33158133,
+            "label": "Windows",
+            "percent": 2.37
+          },
+          {
+            "category": "Darwin",
+            "downloads": 15882818,
+            "label": "macOS",
+            "percent": 1.14
+          }
+        ],
+        "top_python_version": "3.12",
+        "top_python_version_percent": 33.86,
+        "top_system": "Linux",
+        "total_downloads": 1398320602,
+        "url": "https://pypistats.org/packages/requests"
+      },
+      "name": "get_download_summary",
+      "output_formatter": "actions.format_summary_output",
+      "parameters": [
+        {
+          "description": "The PyPI package to read. Spell it however you like: Zope.Interface, zope_interface and zope-interface all reach the same package. Use __all__ for the totals across the whole of PyPI.",
+          "display_name": "Package",
+          "examples": [
+            {
+              "label": "A widely used package",
+              "value": "requests"
+            },
+            {
+              "label": "A name with a dot in it",
+              "value": "zope.interface"
+            },
+            {
+              "label": "The whole of PyPI",
+              "value": "__all__"
+            }
+          ],
+          "name": "package",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 30,
+          "description": "How many of the latest days the total, the shares and the comparison cover, from 1 to 180. Defaults to 30, a month.",
+          "display_name": "Days to cover",
+          "examples": [
+            {
+              "label": "A week",
+              "value": "7"
+            },
+            {
+              "label": "A quarter",
+              "value": "90"
+            }
+          ],
+          "maximum": 180,
+          "minimum": 1,
+          "name": "days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/pypi-stats/get-download-summary",
+      "result_str_template": "{pypi_stats_get_download_summary,last_month} downloads last month.",
+      "returns": {
+        "properties": {
+          "average_per_day": {
+            "description": "The window's daily average.",
+            "type": "number"
+          },
+          "date_range": {
+            "description": "The days the window covers.",
+            "properties": {
+              "days": {
+                "description": "How many days that is.",
+                "type": "integer"
+              },
+              "first_date": {
+                "description": "Its first day.",
+                "type": "string"
+              },
+              "last_date": {
+                "description": "Its last day.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "found": {
+            "description": "Whether any daily figures fell inside the window.",
+            "type": "boolean"
+          },
+          "last_day": {
+            "description": "Downloads on the latest day counted.",
+            "type": "integer"
+          },
+          "last_month": {
+            "description": "Downloads in the 30 days to the latest day counted.",
+            "type": "integer"
+          },
+          "last_updated": {
+            "description": "The latest day PyPI Stats has counted.",
+            "type": "string"
+          },
+          "last_week": {
+            "description": "Downloads in the 7 days to the latest day counted.",
+            "type": "integer"
+          },
+          "package": {
+            "description": "The package, as PyPI Stats names it.",
+            "type": "string"
+          },
+          "previous_period": {
+            "description": "The same number of days immediately before, for comparison.",
+            "properties": {
+              "change": {
+                "description": "The window's downloads less theirs.",
+                "type": "integer"
+              },
+              "change_percent": {
+                "description": "That change as a percentage of theirs.",
+                "type": "number"
+              },
+              "comparable": {
+                "description": "Whether PyPI Stats still holds those days in full.",
+                "type": "boolean"
+              },
+              "downloads": {
+                "description": "Downloads in them.",
+                "type": "integer"
+              },
+              "end_date": {
+                "description": "Their last day.",
+                "type": "string"
+              },
+              "start_date": {
+                "description": "Their first day.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "python_2_percent": {
+            "description": "The share made from Python 2.",
+            "type": "number"
+          },
+          "python_3_percent": {
+            "description": "The share of the window's downloads made from Python 3.",
+            "type": "number"
+          },
+          "python_versions": {
+            "description": "Every Python version's downloads and share, most first.",
+            "items": {
+              "properties": {
+                "category": {
+                  "description": "The category as PyPI Stats stores it, e.g. '3.12' or 'Darwin'.",
+                  "type": "string"
+                },
+                "downloads": {
+                  "description": "Its downloads in the window.",
+                  "type": "integer"
+                },
+                "label": {
+                  "description": "A readable name for it, e.g. 'macOS' or 'Unknown'.",
+                  "type": "string"
+                },
+                "percent": {
+                  "description": "Its share of the window, in percent.",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "systems": {
+            "description": "Every operating system's downloads and share, most first.",
+            "items": {
+              "properties": {
+                "category": {
+                  "description": "The category as PyPI Stats stores it, e.g. '3.12' or 'Darwin'.",
+                  "type": "string"
+                },
+                "downloads": {
+                  "description": "Its downloads in the window.",
+                  "type": "integer"
+                },
+                "label": {
+                  "description": "A readable name for it, e.g. 'macOS' or 'Unknown'.",
+                  "type": "string"
+                },
+                "percent": {
+                  "description": "Its share of the window, in percent.",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "top_python_version": {
+            "description": "The Python version with the most downloads, e.g. '3.12'.",
+            "type": "string"
+          },
+          "top_python_version_percent": {
+            "description": "That version's share, in percent.",
+            "type": "number"
+          },
+          "top_system": {
+            "description": "The operating system with the most downloads, e.g. 'Linux'.",
+            "type": "string"
+          },
+          "total_downloads": {
+            "description": "Downloads in the window, added up from the daily figures.",
+            "type": "integer"
+          },
+          "url": {
+            "description": "The package's page on pypistats.org.",
             "type": "string"
           }
         },
@@ -1449,7 +2113,7 @@
     "Analytics",
     "Code Repositories"
   ],
-  "description": "Read PyPI download statistics from a workflow. Get a package's downloads over the last day, week and month, or its full daily series over the 180 days PyPI Stats keeps, with the total, the average per day, the busiest day and how the window compares with the one before it. Split those downloads by Python major version, by minor version to see whether 3.9 can be dropped, or by operating system to see which wheels are worth building. Compare several packages side by side, ranked with each one's share. Mirror traffic is excluded by default, so the figures are real installs. Every action reads: nothing here changes anything. No account or API key required.",
+  "description": "Read PyPI download statistics from a workflow. Get a package's downloads over the last day, week and month, or its full daily series over the 180 days PyPI Stats keeps, with the total, the average per day, the busiest day and how the window compares with the one before it. Split those downloads by Python major version, by minor version to see whether 3.9 can be dropped, or by operating system to see which wheels are worth building. Compare several packages side by side, ranked with each one's share. Get a maintainer's summary in one step, check whether the latest downloads are a spike or a drop for an alert, and check when a package reaches a download milestone. Mirror traffic is excluded by default, so the figures are real installs. Every action reads: nothing here changes anything. No account or API key required.",
   "display_name": "PyPI Stats",
   "id": "pypi_stats",
   "logo": "https://www.lodol.com/app-icons/pypi-stats-icon.svg",
