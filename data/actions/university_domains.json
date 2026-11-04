@@ -1,18 +1,19 @@
 {
   "actions": {
     "find_universities_by_domain": {
-      "description": "Find the universities that use a domain, or an ending of one. 'ac.uk' returns the British universities, 'edu.tr' the Turkish ones, and an exact domain returns whoever holds it, which is more than one university for four domains in the list. A suffix only counts at a dot, so 'ac.uk' cannot match a domain that merely ends in those letters. Use this to work out what an academic domain looks like in a country before you write a rule about it. No API key required.",
+      "description": "Find the universities that use a domain, or an ending of one. 'ac.uk' returns the British universities, 'edu.tr' the Turkish ones, and an exact domain returns whoever holds it, which is more than one university for four domains in the list. A suffix only counts at a dot, so 'ac.uk' cannot match a domain that merely ends in those letters, and a long answer, such as the 2,500 or so universities under 'edu', pages with a limit and an offset. Use this to work out what an academic domain looks like in a country before you write a rule about it. No API key required.",
       "display_name": "Find universities by domain",
       "display_str_template": "Find universities using the domain '{0}'.",
       "handler": "actions.find_universities_by_domain",
       "id": "university_domains_find_universities_by_domain",
       "method": "POST",
       "mock_response": {
-        "catalog_size": 10259,
+        "catalog_size": 10272,
         "count": 1,
         "country": null,
         "match": "suffix",
         "match_count": 177,
+        "offset": 0,
         "query": "ac.uk",
         "source_url": "https://github.com/Hipo/university-domains-list",
         "truncated": true,
@@ -103,11 +104,20 @@
         },
         {
           "default": 25,
-          "description": "How many universities to return. The default of 25 keeps a step's result readable; raise it when a later step needs the whole set.",
+          "description": "How many universities to return, up to 500. The default of 25 keeps a step's result readable; raise it when a later step needs the whole set, and page with 'Skip this many' when that is more than 500.",
           "display_name": "How many to return",
           "maximum": 500,
           "minimum": 1,
           "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many to skip before returning, for paging through an answer the limit cut short. The United States holds over 2,300 universities, so a second step at an offset of 500 continues where a first step with a limit of 500 left off. Leave at 0 to start at the beginning.",
+          "display_name": "Skip this many",
+          "minimum": 0,
+          "name": "offset",
           "required": false,
           "type": "ParameterType.NUMBER"
         }
@@ -126,6 +136,7 @@
           },
           "country": {
             "description": "The country the filter resolved to, or null if none was given",
+            "nullable": true,
             "properties": {
               "country": {
                 "description": "The name the list writes",
@@ -154,7 +165,11 @@
             "type": "string"
           },
           "match_count": {
-            "description": "How many matched before the limit",
+            "description": "How many matched before limit and offset",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "How many were skipped",
             "type": "integer"
           },
           "query": {
@@ -166,11 +181,11 @@
             "type": "string"
           },
           "truncated": {
-            "description": "Whether the limit cut the answer short",
+            "description": "Whether there are more after this page",
             "type": "boolean"
           },
           "universities": {
-            "description": "The matches, in domain order, each saying which of its domains matched",
+            "description": "The matches on this page, in domain order, each saying which of its domains matched",
             "items": {
               "properties": {
                 "country": {
@@ -205,6 +220,7 @@
                 },
                 "state_province": {
                   "description": "State or province, or null. Empty on most records; the list's own 'state-province' field, renamed so it can be chained",
+                  "nullable": true,
                   "type": "string"
                 },
                 "web_page": {
@@ -243,17 +259,17 @@
       "mock_response": {
         "country_count": 200,
         "data_url": "https://raw.githubusercontent.com/Hipo/university-domains-list/master/world_universities_and_domains.json",
-        "domain_count": 10578,
+        "domain_count": 10591,
         "multi_domain_count": 281,
         "shared_domain_count": 4,
-        "shared_name_count": 89,
+        "shared_name_count": 90,
         "source_url": "https://github.com/Hipo/university-domains-list",
         "top_countries": [
           {
             "country": "United States",
             "country_code": "US",
             "share_percent": 22.9,
-            "university_count": 2348
+            "university_count": 2353
           },
           {
             "country": "Japan",
@@ -264,7 +280,7 @@
         ],
         "top_domain_suffixes": [
           {
-            "domain_count": 2618,
+            "domain_count": 2624,
             "suffix": "edu"
           },
           {
@@ -272,8 +288,8 @@
             "suffix": "ac.jp"
           }
         ],
-        "total_universities": 10259,
-        "with_state_province": 1373
+        "total_universities": 10272,
+        "with_state_province": 1386
       },
       "name": "get_dataset_summary",
       "output_formatter": "actions.format_summary_output",
@@ -326,9 +342,11 @@
             "items": {
               "properties": {
                 "country": {
+                  "description": "The name the list writes",
                   "type": "string"
                 },
                 "country_code": {
+                  "description": "ISO 3166 alpha-2 code",
                   "type": "string"
                 },
                 "share_percent": {
@@ -336,6 +354,7 @@
                   "type": "number"
                 },
                 "university_count": {
+                  "description": "How many universities the list holds for it",
                   "type": "integer"
                 }
               },
@@ -384,7 +403,7 @@
       "method": "POST",
       "mock_response": {
         "asked_for": "Middle East Technical University",
-        "catalog_size": 10259,
+        "catalog_size": 10272,
         "country": null,
         "found": true,
         "source_url": "https://github.com/Hipo/university-domains-list",
@@ -455,6 +474,7 @@
           },
           "country": {
             "description": "The country the filter resolved to, or null if none was given",
+            "nullable": true,
             "properties": {
               "country": {
                 "description": "The name the list writes",
@@ -514,6 +534,7 @@
               },
               "state_province": {
                 "description": "State or province, or null. Empty on most records; the list's own 'state-province' field, renamed so it can be chained",
+                "nullable": true,
                 "type": "string"
               },
               "web_page": {
@@ -545,7 +566,7 @@
       "id": "university_domains_identify_university_by_email",
       "method": "POST",
       "mock_response": {
-        "catalog_size": 10259,
+        "catalog_size": 10272,
         "checked_domains": [
           "cs.usc.edu",
           "usc.edu"
@@ -685,6 +706,7 @@
                 },
                 "state_province": {
                   "description": "State or province, or null. Empty on most records; the list's own 'state-province' field, renamed so it can be chained",
+                  "nullable": true,
                   "type": "string"
                 },
                 "web_page": {
@@ -705,6 +727,7 @@
           },
           "university": {
             "description": "The matching university, or null. The first of 'universities' when a domain is shared",
+            "nullable": true,
             "properties": {
               "country": {
                 "description": "Country name as the list writes it, e.g. 'Turkiye'",
@@ -731,6 +754,7 @@
               },
               "state_province": {
                 "description": "State or province, or null. Empty on most records; the list's own 'state-province' field, renamed so it can be chained",
+                "nullable": true,
                 "type": "string"
               },
               "web_page": {
@@ -758,7 +782,7 @@
       ]
     },
     "list_countries": {
-      "description": "List the countries the data covers, with how many universities, domains and states each one holds. This is also how you find the spelling a country filter wants: the list writes names in ISO 3166 long form, so it holds 'Turkiye' rather than 'Turkey' and 'Korea, Republic of' rather than 'South Korea'. Search by name or by alpha-2 code to check one. No API key required.",
+      "description": "List the countries the data covers, with how many universities, domains and states each one holds. This is also how you find the spelling a country filter wants: the list writes names in ISO 3166 long form, so it holds 'Turkiye' rather than 'Turkey' and 'Korea, Republic of' rather than 'South Korea'. Search by part of a name, by alpha-2 code, or by the name you would write, such as 'Turkey' or 'UK', and the country a country filter would take it to comes first. No API key required.",
       "display_name": "List countries",
       "display_str_template": "List the countries the university list covers.",
       "handler": "actions.list_countries",
@@ -770,10 +794,10 @@
           {
             "country": "United States",
             "country_code": "US",
-            "domain_count": 2393,
+            "domain_count": 2398,
             "other_spellings": [],
             "state_count": 38,
-            "university_count": 2348
+            "university_count": 2353
           },
           {
             "country": "Viet Nam",
@@ -791,14 +815,14 @@
         "query": null,
         "sort_by": "universities",
         "source_url": "https://github.com/Hipo/university-domains-list",
-        "total_universities": 10259,
+        "total_universities": 10272,
         "truncated": true
       },
       "name": "list_countries",
       "output_formatter": "actions.format_countries_output",
       "parameters": [
         {
-          "description": "Only countries whose name contains this text, or whose alpha-2 code is exactly it. Case and accents are ignored. Leave empty for all of them.",
+          "description": "Only countries whose name contains this text, plus the country it names outright: its alpha-2 code, or a common name such as 'Turkey' or 'UK' that every country field also takes. That country comes first, whatever the order below. Case and accents are ignored. Leave empty for all of them.",
           "display_name": "Search for",
           "examples": [
             {
@@ -808,6 +832,10 @@
             {
               "label": "A code",
               "value": "TR"
+            },
+            {
+              "label": "A name the list does not use",
+              "value": "Turkey"
             }
           ],
           "name": "query",
@@ -856,7 +884,7 @@
             "type": "integer"
           },
           "countries": {
-            "description": "The countries, in the order asked for",
+            "description": "The countries: the one the search names outright first, then the rest in the order asked for",
             "items": {
               "properties": {
                 "country": {
@@ -901,6 +929,7 @@
           },
           "query": {
             "description": "The text searched for, or null",
+            "nullable": true,
             "type": "string"
           },
           "sort_by": {
@@ -937,7 +966,7 @@
       "id": "university_domains_list_universities_by_country",
       "method": "POST",
       "mock_response": {
-        "catalog_size": 10259,
+        "catalog_size": 10272,
         "count": 1,
         "country": {
           "country": "Turkiye",
@@ -994,7 +1023,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Only universities in this state or province. Matched loosely and without regard to case or accents, because the field is free text written by whoever added the record. It is empty on 8,886 of the 10,259 records, so treat it as an extra rather than as coverage you can rely on; 'List universities in a country' reports the ones a country actually names. Leave empty for all of them.",
+          "description": "Only universities in this state or province. Matched loosely and without regard to case or accents, because the field is free text written by whoever added the record. It is empty on about six records in seven, so treat it as an extra rather than as coverage you can rely on; 'List universities in a country' reports the ones a country actually names. Leave empty for all of them.",
           "display_name": "State or province",
           "examples": [
             {
@@ -1038,7 +1067,7 @@
         },
         {
           "default": 25,
-          "description": "How many universities to return. The default of 25 keeps a step's result readable; raise it when a later step needs the whole set.",
+          "description": "How many universities to return, up to 500. The default of 25 keeps a step's result readable; raise it when a later step needs the whole set, and page with 'Skip this many' when that is more than 500.",
           "display_name": "How many to return",
           "maximum": 500,
           "minimum": 1,
@@ -1048,7 +1077,7 @@
         },
         {
           "default": 0,
-          "description": "How many to skip before returning, for paging through a large country. The United States holds 2,348 universities, so a second step at an offset of 500 continues where the first left off.",
+          "description": "How many to skip before returning, for paging through an answer the limit cut short. The United States holds over 2,300 universities, so a second step at an offset of 500 continues where a first step with a limit of 500 left off. Leave at 0 to start at the beginning.",
           "display_name": "Skip this many",
           "minimum": 0,
           "name": "offset",
@@ -1070,6 +1099,7 @@
           },
           "country": {
             "description": "The country the filter resolved to, or null if none was given",
+            "nullable": true,
             "properties": {
               "country": {
                 "description": "The name the list writes",
@@ -1111,6 +1141,7 @@
           },
           "state_province": {
             "description": "The state filter used, or null",
+            "nullable": true,
             "type": "string"
           },
           "states": {
@@ -1153,6 +1184,7 @@
                 },
                 "state_province": {
                   "description": "State or province, or null. Empty on most records; the list's own 'state-province' field, renamed so it can be chained",
+                  "nullable": true,
                   "type": "string"
                 },
                 "web_page": {
@@ -1179,14 +1211,14 @@
       ]
     },
     "search_universities": {
-      "description": "Search the list by university name and get the closest matches first: the exact name, then the ones that start with the text, then the ones where every word appears. Accents and punctuation are folded, so 'santa maria' finds Universidad Tecnica Federico Santa Maria. Narrow by country or by state as well. Use this when you know roughly what the university is called but not how the list spells it. No API key required.",
+      "description": "Search the list by university name and get the closest matches first: the exact name, then the ones that start with the text, then the ones where every word appears. Accents and punctuation are folded, so 'santa maria' finds Universidad Tecnica Federico Santa Maria. Narrow by country or by state as well, and page through a long answer, such as every name containing 'technology', with a limit and an offset. Use this when you know roughly what the university is called but not how the list spells it. No API key required.",
       "display_name": "Search universities by name",
       "display_str_template": "Search universities for '{0}'.",
       "handler": "actions.search_universities",
       "id": "university_domains_search_universities",
       "method": "POST",
       "mock_response": {
-        "catalog_size": 10259,
+        "catalog_size": 10272,
         "count": 1,
         "country": {
           "country": "Turkiye",
@@ -1196,6 +1228,7 @@
         },
         "match": "contains",
         "match_count": 1,
+        "offset": 0,
         "query": "middle east",
         "source_url": "https://github.com/Hipo/university-domains-list",
         "state_province": null,
@@ -1259,7 +1292,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Only universities in this state or province. Matched loosely and without regard to case or accents, because the field is free text written by whoever added the record. It is empty on 8,886 of the 10,259 records, so treat it as an extra rather than as coverage you can rely on; 'List universities in a country' reports the ones a country actually names. Leave empty for all of them.",
+          "description": "Only universities in this state or province. Matched loosely and without regard to case or accents, because the field is free text written by whoever added the record. It is empty on about six records in seven, so treat it as an extra rather than as coverage you can rely on; 'List universities in a country' reports the ones a country actually names. Leave empty for all of them.",
           "display_name": "State or province",
           "examples": [
             {
@@ -1303,11 +1336,20 @@
         },
         {
           "default": 25,
-          "description": "How many universities to return. The default of 25 keeps a step's result readable; raise it when a later step needs the whole set.",
+          "description": "How many universities to return, up to 500. The default of 25 keeps a step's result readable; raise it when a later step needs the whole set, and page with 'Skip this many' when that is more than 500.",
           "display_name": "How many to return",
           "maximum": 500,
           "minimum": 1,
           "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 0,
+          "description": "How many to skip before returning, for paging through an answer the limit cut short. The United States holds over 2,300 universities, so a second step at an offset of 500 continues where a first step with a limit of 500 left off. Leave at 0 to start at the beginning.",
+          "display_name": "Skip this many",
+          "minimum": 0,
+          "name": "offset",
           "required": false,
           "type": "ParameterType.NUMBER"
         }
@@ -1326,6 +1368,7 @@
           },
           "country": {
             "description": "The country the filter resolved to, or null if none was given",
+            "nullable": true,
             "properties": {
               "country": {
                 "description": "The name the list writes",
@@ -1354,7 +1397,11 @@
             "type": "string"
           },
           "match_count": {
-            "description": "How many matched before the limit",
+            "description": "How many matched before limit and offset",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "How many were skipped",
             "type": "integer"
           },
           "query": {
@@ -1367,14 +1414,15 @@
           },
           "state_province": {
             "description": "The state filter used, or null",
+            "nullable": true,
             "type": "string"
           },
           "truncated": {
-            "description": "Whether the limit cut the answer short",
+            "description": "Whether there are more after this page",
             "type": "boolean"
           },
           "universities": {
-            "description": "The matches, closest first",
+            "description": "The matches on this page, closest first",
             "items": {
               "properties": {
                 "country": {
@@ -1402,6 +1450,7 @@
                 },
                 "state_province": {
                   "description": "State or province, or null. Empty on most records; the list's own 'state-province' field, renamed so it can be chained",
+                  "nullable": true,
                   "type": "string"
                 },
                 "web_page": {
@@ -1439,7 +1488,7 @@
       "method": "POST",
       "mock_response": {
         "all_passed": false,
-        "catalog_size": 10259,
+        "catalog_size": 10272,
         "checked": 2,
         "fail_count": 1,
         "failed": [
@@ -1563,6 +1612,7 @@
           },
           "required_country": {
             "description": "The country the filter resolved to, or null if none was given",
+            "nullable": true,
             "properties": {
               "country": {
                 "description": "The name the list writes",
@@ -1632,6 +1682,7 @@
                 },
                 "state_province": {
                   "description": "Its state or province, or null",
+                  "nullable": true,
                   "type": "string"
                 },
                 "university": {
