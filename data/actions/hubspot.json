@@ -948,6 +948,126 @@
         "delete"
       ]
     },
+    "find_contacts": {
+      "description": "Look up contacts by a name, email address, phone number or company, best match first, the way HubSpot's own search box does.",
+      "display_name": "Find contacts by name, email or company",
+      "display_str_template": "Find contacts matching {query}.",
+      "handler": "actions.find_contacts",
+      "id": "hubspot_find_contacts",
+      "method": "POST",
+      "mock_response": {
+        "has_more": false,
+        "results": [
+          {
+            "archived": false,
+            "createdAt": "2026-08-24T14:22:07.005Z",
+            "id": "703",
+            "properties": {
+              "company": "Meridian Health",
+              "email": "rae.lindqvist@example.com",
+              "firstname": "Rae",
+              "lastname": "Lindqvist"
+            },
+            "updatedAt": "2026-08-24T14:22:07.005Z"
+          }
+        ],
+        "total": 1
+      },
+      "name": "find_contacts",
+      "parameters": [
+        {
+          "description": "A name, email address, phone number or company to look for, such as Rae Lindqvist or Meridian.",
+          "display_name": "Search for",
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 10,
+          "description": "How many contacts to return (default 10, maximum 100).",
+          "display_name": "How many",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/hubspot/find-contacts",
+      "result_str_template": "Contacts found.",
+      "returns": {
+        "properties": {
+          "has_more": {
+            "type": "boolean"
+          },
+          "results": {
+            "items": {
+              "properties": {
+                "archived": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "properties": {
+                  "properties": {
+                    "company": {
+                      "type": "string"
+                    },
+                    "createdate": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "firstname": {
+                      "type": "string"
+                    },
+                    "hs_analytics_source": {
+                      "type": "string"
+                    },
+                    "hs_lead_status": {
+                      "type": "string"
+                    },
+                    "jobtitle": {
+                      "type": "string"
+                    },
+                    "lastname": {
+                      "type": "string"
+                    },
+                    "lifecyclestage": {
+                      "type": "string"
+                    },
+                    "phone": {
+                      "type": "string"
+                    },
+                    "website": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "get_company": {
       "description": "Get one company and its details.",
       "display_name": "Get a company",
@@ -1664,6 +1784,12 @@
       "id": "hubspot_search_deals",
       "method": "POST",
       "mock_response": {
+        "biggest_deal": {
+          "amount": 8500.0,
+          "amount_display": "$8,500",
+          "name": "Meridian Health - pilot",
+          "owner_name": "Dana Whitfield"
+        },
         "by_owner": [
           {
             "amount": 8500.0,
@@ -1698,7 +1824,7 @@
       "name": "search_deals",
       "parameters": [
         {
-          "description": "Only return deals created at or after this moment. Required unless you choose a stage below or fill in Not updated since.",
+          "description": "Only return deals created at or after this moment. Required unless you choose a stage below or fill in Not updated since or turn on Open deals closing this month.",
           "display_name": "Created after",
           "name": "created_after",
           "required": false,
@@ -1710,6 +1836,13 @@
           "name": "created_before",
           "required": false,
           "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Beta. Turn on to get the open deals whose expected close date is in the current month, soonest first, with how many there are and what they are worth together. Needs no dates; replaces the dates below.",
+          "display_name": "Open deals closing this month",
+          "name": "closing_this_month",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         },
         {
           "description": "Beta. Only deals created in the last this many whole days, up to but not including today: 7 on a Monday is last week, Monday to Sunday, and never counts a deal in two reports. Use it for a weekly or daily recap instead of working out the dates in earlier steps. Created after and Created before win when given.",
@@ -1778,6 +1911,24 @@
       "result_str_template": "Deals found.",
       "returns": {
         "properties": {
+          "biggest_deal": {
+            "description": "The most valuable of the returned deals: name, amount_display ($8,500) and owner_name, empty when no deal has an amount. Use it for a recap's biggest deal instead of sorting the results.",
+            "properties": {
+              "amount": {
+                "type": "number"
+              },
+              "amount_display": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "owner_name": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
           "by_owner": {
             "description": "Each owner's number of deals and total value among the returned deals, biggest total first, with the total ready to read ($8,500). Use it for a leaderboard or a recap per rep.",
             "items": {
@@ -1864,10 +2015,11 @@
             "type": "number"
           },
           "total_amount": {
+            "description": "What the returned deals are worth together, as a plain number for a comparison. To show it to a person, use total_amount_display.",
             "type": "number"
           },
           "total_amount_display": {
-            "description": "What the returned deals are worth together, ready to put in a message ($12,500).",
+            "description": "What the returned deals are worth together, ready to put in a message ($12,500), so a message needs no formatting step.",
             "type": "string"
           }
         },

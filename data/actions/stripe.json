@@ -347,6 +347,105 @@
         "read"
       ]
     },
+    "list_invoices": {
+      "description": "List the invoices created in a period, with each invoice's number, customer, amount due and paid in dollars (or your currency), status and due date. Use it for a daily or weekly invoice summary or to chase unpaid invoices.",
+      "display_name": "List invoices",
+      "display_str_template": "List invoices since {created_after}.",
+      "handler": "actions.list_invoices",
+      "id": "stripe_list_invoices",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "invoices": [
+          {
+            "amount_due": 120.0,
+            "amount_paid": 0.0,
+            "created": "2026-11-04",
+            "currency": "usd",
+            "customer_email": "customer@example.com",
+            "customer_name": "Example Customer",
+            "due_date": "2026-11-18",
+            "hosted_invoice_url": "https://invoice.stripe.com/i/example",
+            "invoice_id": "in_123",
+            "number": "INV-0001",
+            "status": "open"
+          }
+        ]
+      },
+      "name": "list_invoices",
+      "output_formatter": "actions.format_list_invoices_output",
+      "parameters": [
+        {
+          "description": "The start of the period.",
+          "display_name": "Created on or after",
+          "name": "created_after",
+          "required": true,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "The end of the period. Leave empty to run the period up to now.",
+          "display_name": "Created before",
+          "name": "created_before",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": "all",
+          "description": "Only invoices in this state.",
+          "display_name": "Invoice status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Any status",
+              "value": "all"
+            },
+            {
+              "label": "Draft",
+              "value": "draft"
+            },
+            {
+              "label": "Sent, waiting to be paid",
+              "value": "open"
+            },
+            {
+              "label": "Paid",
+              "value": "paid"
+            },
+            {
+              "label": "Written off",
+              "value": "uncollectible"
+            },
+            {
+              "label": "Voided",
+              "value": "void"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/stripe/list-invoices",
+      "result_str_template": "{stripe_list_invoices,count} invoice(s) found.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many invoices.",
+            "type": "number"
+          },
+          "invoices": {
+            "description": "Each invoice, with its id, number, status, amount due and amount paid in dollars (or your currency), currency, customer name and email, the day it was created and when it is due (YYYY-MM-DD), and a link the customer can open.",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "list_payments": {
       "description": "List the payments made in a period, with how many there were, the total in dollars (or your currency) and who paid the most. Use it for a weekly or monthly sales summary.",
       "display_name": "List payments",
@@ -369,6 +468,7 @@
             "status": "succeeded"
           }
         ],
+        "period": "October 2026",
         "top_customer": "Example Customer",
         "top_customer_total": 50.0,
         "top_customer_total_display": "$50.00",
@@ -379,11 +479,36 @@
       "output_formatter": "actions.format_list_payments_output",
       "parameters": [
         {
-          "description": "The start of the period.",
+          "description": "The start of the period. Required unless you use Paid in the last days.",
           "display_name": "Paid on or after",
           "name": "created_after",
-          "required": true,
+          "required": false,
           "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Beta. Only payments from the last this many whole days up to now: 7 on a Friday at 4pm is the week since last Friday at 4pm, so two weekly reports never count a payment twice. Use it for a daily, weekly or monthly summary instead of working out the dates in earlier steps. Paid on or after wins when given.",
+          "display_name": "Paid in the last days",
+          "minimum": 1,
+          "name": "created_in_last_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Beta. Only payments from the whole of last month or this month so far, for a monthly report that runs on the 1st: no dates to work out in earlier steps, and the month's name comes back as period (October 2026). Replaces the dates above when chosen.",
+          "display_name": "Calendar month",
+          "name": "calendar_month",
+          "options": [
+            {
+              "label": "Last month",
+              "value": "last"
+            },
+            {
+              "label": "This month so far",
+              "value": "this"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
         },
         {
           "description": "The end of the period. Leave empty to run the period up to now.",
@@ -449,6 +574,10 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "period": {
+            "description": "The calendar month reported, such as October 2026, when Calendar month is chosen; blank otherwise.",
+            "type": "string"
           },
           "top_customer": {
             "description": "Who paid the most in the period, by name or email.",
@@ -671,6 +800,7 @@
         "invoice_pdf": "A link to download the invoice as a PDF.",
         "next_payment_attempt": "When Stripe tries again, as a Unix timestamp, if it will.",
         "number": "The invoice number customers see.",
+        "payer": "Who the customer is, ready to put in a message: their name, else their email, else 'a customer'. Customer name is blank for some customers.",
         "status": "The status, such as paid or open."
       },
       "parameters": []
@@ -699,6 +829,7 @@
         "invoice_pdf": "A link to download the invoice as a PDF.",
         "next_payment_attempt": "When Stripe tries again, as a Unix timestamp, if it will.",
         "number": "The invoice number customers see.",
+        "payer": "Who the customer is, ready to put in a message: their name, else their email, else 'a customer'. Customer name is blank for some customers.",
         "status": "The status, such as paid or open."
       },
       "parameters": []
@@ -727,11 +858,12 @@
       "output": {
         "amount": "The amount in cents (or the currency's smallest unit), so 5000 is $50.00.",
         "amount_display": "The amount as a person writes it, such as $50.00.",
-        "created": "When the payment was made, as a Unix timestamp.",
+        "created": "When the payment was made, as a Unix timestamp. Make it a readable date before it goes in a sheet, email or message.",
+        "created_display": "Beta. The day of the payment as a person writes it, such as Nov 6, 2026, ready for a sheet, email or message with no date step.",
         "currency": "The three-letter currency code, such as usd.",
         "customer": "The customer's id, empty for a guest checkout.",
         "customer_email": "The payer's email, blank when Stripe doesn't know.",
-        "customer_name": "Who paid, blank when Stripe doesn't know.",
+        "customer_name": "Who paid, blank when Stripe doesn't know. To name the payer in a message or sheet, use payer instead.",
         "description": "The note saved on the payment, if any.",
         "payer": "Who paid, ready to put in a message: their name, else their email, else 'a guest customer'.",
         "payment_intent_id": "The payment's id in Stripe (pi_...).",
@@ -763,13 +895,16 @@
         "canceled_at": "When it was canceled, as a Unix timestamp, if it was.",
         "cancellation_details": "Why it ended: reason (cancellation_requested when the customer chose to leave, payment_failed when their payments kept failing, or payment_disputed), plus comment and feedback when the customer gave any. Read reason to tell a customer who left from one whose card failed.",
         "created": "When the subscription was created, as a Unix timestamp.",
-        "customer": "The customer's id; use Get a customer for the rest.",
+        "customer": "The customer's id.",
+        "customer_email": "The customer's email address, blank when Stripe has none.",
+        "customer_name": "The customer's name, blank when Stripe has none.",
         "ended_at": "When it ended, as a Unix timestamp, if it has.",
         "event_created": "When the event happened, as a Unix timestamp.",
         "event_id": "The id of the Stripe event (evt_...).",
         "id": "The subscription's id (sub_...).",
         "items": "What is subscribed to: each item's price, product and quantity.",
         "metadata": "Your own key-value data saved on the subscription.",
+        "payer": "Who the customer is, ready to put in a message: their name, else their email, else 'a customer'.",
         "status": "The status, such as active, trialing or canceled."
       },
       "parameters": []
@@ -783,13 +918,16 @@
         "canceled_at": "When it was canceled, as a Unix timestamp, if it was.",
         "cancellation_details": "Why it ended: reason (cancellation_requested when the customer chose to leave, payment_failed when their payments kept failing, or payment_disputed), plus comment and feedback when the customer gave any. Read reason to tell a customer who left from one whose card failed.",
         "created": "When the subscription was created, as a Unix timestamp.",
-        "customer": "The customer's id; use Get a customer for the rest.",
+        "customer": "The customer's id.",
+        "customer_email": "The customer's email address, blank when Stripe has none.",
+        "customer_name": "The customer's name, blank when Stripe has none.",
         "ended_at": "When it ended, as a Unix timestamp, if it has.",
         "event_created": "When the event happened, as a Unix timestamp.",
         "event_id": "The id of the Stripe event (evt_...).",
         "id": "The subscription's id (sub_...).",
         "items": "What is subscribed to: each item's price, product and quantity.",
         "metadata": "Your own key-value data saved on the subscription.",
+        "payer": "Who the customer is, ready to put in a message: their name, else their email, else 'a customer'.",
         "status": "The status, such as active, trialing or canceled."
       },
       "parameters": []
