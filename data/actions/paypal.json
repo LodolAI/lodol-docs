@@ -1,5 +1,54 @@
 {
   "actions": {
+    "cancel_invoice": {
+      "description": "Cancel a PayPal invoice that was sent and isn't paid, so the customer can no longer pay it.",
+      "display_name": "Cancel invoice",
+      "display_str_template": "Cancel invoice {0}.",
+      "handler": "actions.cancel_invoice",
+      "id": "paypal_cancel_invoice",
+      "method": "POST",
+      "mock_response": {
+        "id": "INV2-Z56S-5LLA-Q52L-CPZ5",
+        "status": "CANCELLED"
+      },
+      "name": "cancel_invoice",
+      "output_formatter": "actions.format_cancel_invoice_output",
+      "parameters": [
+        {
+          "description": "The invoice, by the ID Send invoice gave back, such as INV2-Z56S-5LLA-Q52L-CPZ5.",
+          "display_name": "Invoice ID",
+          "name": "invoice_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Tell the customer by email that the invoice was cancelled.",
+          "display_name": "Email the customer",
+          "name": "notify_recipient",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/paypal/cancel-invoice",
+      "result_str_template": "Invoice cancelled.",
+      "returns": {
+        "properties": {
+          "id": {
+            "description": "The invoice's ID.",
+            "type": "string"
+          },
+          "status": {
+            "description": "CANCELLED once PayPal has cancelled it.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
     "capture_order": {
       "description": "Collect (capture) the payment for an approved PayPal order.",
       "display_name": "Collect payment for an order",
@@ -184,6 +233,82 @@
         "write"
       ]
     },
+    "get_invoice": {
+      "description": "Look up a PayPal invoice: whether it's been paid, how much is still due, and who it went to.",
+      "display_name": "Get invoice",
+      "display_str_template": "Get invoice {0}.",
+      "handler": "actions.get_invoice",
+      "id": "paypal_get_invoice",
+      "method": "POST",
+      "mock_response": {
+        "amount": "49.99",
+        "amount_due": "0.00",
+        "currency": "USD",
+        "due_date": "2026-12-31",
+        "id": "INV2-Z56S-5LLA-Q52L-CPZ5",
+        "invoice_number": "0042",
+        "invoice_url": "https://www.paypal.com/invoice/p/#INV2-Z56S-5LLA-Q52L-CPZ5",
+        "recipient_email": "customer@example.com",
+        "status": "PAID"
+      },
+      "name": "get_invoice",
+      "output_formatter": "actions.format_invoice_output",
+      "parameters": [
+        {
+          "description": "The invoice, by the ID Send invoice gave back, such as INV2-Z56S-5LLA-Q52L-CPZ5.",
+          "display_name": "Invoice ID",
+          "name": "invoice_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/paypal/get-invoice",
+      "result_str_template": "Invoice retrieved.",
+      "returns": {
+        "properties": {
+          "amount": {
+            "description": "The invoice total, such as 49.99.",
+            "type": "string"
+          },
+          "amount_due": {
+            "description": "How much is still to pay, empty when PayPal doesn't say.",
+            "type": "string"
+          },
+          "currency": {
+            "description": "The currency code, such as USD.",
+            "type": "string"
+          },
+          "due_date": {
+            "description": "The due date, empty when it's due on receipt.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The invoice's ID (INV2-...).",
+            "type": "string"
+          },
+          "invoice_number": {
+            "description": "The number printed on the invoice.",
+            "type": "string"
+          },
+          "invoice_url": {
+            "description": "The page where the customer views and pays it.",
+            "type": "string"
+          },
+          "recipient_email": {
+            "description": "The email address it was sent to.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Where the invoice is, such as DRAFT, SENT, PAID, PARTIALLY_PAID or CANCELLED.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "get_order": {
       "description": "Look up the current status and details of a PayPal order.",
       "display_name": "Get order",
@@ -255,12 +380,125 @@
       "scopes": [
         "modify"
       ]
+    },
+    "send_invoice": {
+      "description": "Email a customer a PayPal invoice for one amount, which they can pay online by PayPal or card. It's due when received unless you give a due date.",
+      "display_name": "Send invoice",
+      "display_str_template": "Send an invoice for {2} {3} to {0}.",
+      "handler": "actions.send_invoice",
+      "id": "paypal_send_invoice",
+      "method": "POST",
+      "mock_response": {
+        "amount": "49.99",
+        "amount_due": "0.00",
+        "currency": "USD",
+        "due_date": "2026-12-31",
+        "id": "INV2-Z56S-5LLA-Q52L-CPZ5",
+        "invoice_number": "0042",
+        "invoice_url": "https://www.paypal.com/invoice/p/#INV2-Z56S-5LLA-Q52L-CPZ5",
+        "recipient_email": "customer@example.com",
+        "status": "SENT"
+      },
+      "name": "send_invoice",
+      "output_formatter": "actions.format_invoice_output",
+      "parameters": [
+        {
+          "description": "The email address to send the invoice to.",
+          "display_name": "Customer email",
+          "name": "recipient_email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The line on the invoice, such as 'Website design, May'.",
+          "display_name": "What it's for",
+          "name": "item_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The amount to bill, such as 49.99.",
+          "display_name": "Amount",
+          "minimum": 0.01,
+          "name": "amount",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Currency code (e.g. USD).",
+          "display_name": "Currency",
+          "name": "currency",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional message shown on the invoice.",
+          "display_name": "Note to the customer",
+          "multiline": true,
+          "name": "note",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional date the invoice is due. Leave blank for due on receipt.",
+          "display_name": "Due date",
+          "name": "due_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        }
+      ],
+      "path": "/actions/library/paypal/send-invoice",
+      "result_str_template": "Invoice sent.",
+      "returns": {
+        "properties": {
+          "amount": {
+            "description": "The invoice total, such as 49.99.",
+            "type": "string"
+          },
+          "amount_due": {
+            "description": "How much is still to pay, empty when PayPal doesn't say.",
+            "type": "string"
+          },
+          "currency": {
+            "description": "The currency code, such as USD.",
+            "type": "string"
+          },
+          "due_date": {
+            "description": "The due date, empty when it's due on receipt.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The invoice's ID (INV2-...).",
+            "type": "string"
+          },
+          "invoice_number": {
+            "description": "The number printed on the invoice.",
+            "type": "string"
+          },
+          "invoice_url": {
+            "description": "The page where the customer views and pays it.",
+            "type": "string"
+          },
+          "recipient_email": {
+            "description": "The email address it was sent to.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Where the invoice is, such as DRAFT, SENT, PAID, PARTIALLY_PAID or CANCELLED.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
     }
   },
   "categories": [
     "Payments & Billing"
   ],
-  "description": "Accept payments, manage catalog products, and automate billing with PayPal.",
+  "description": "Accept payments, send invoices, manage catalog products, and automate billing with PayPal.",
   "display_name": "PayPal",
   "id": "paypal",
   "logo": "https://www.lodol.com/app-icons/paypal-icon.png",

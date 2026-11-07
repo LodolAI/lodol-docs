@@ -1,5 +1,126 @@
 {
   "actions": {
+    "cancel_order": {
+      "description": "Cancel an order, and choose whether to refund the customer, put its items back in stock and email them. Shopify finishes the cancellation a moment later. An order that has shipped can't be cancelled.",
+      "display_name": "Cancel an order",
+      "display_str_template": "Cancel {order_id}.",
+      "handler": "actions.cancel_order",
+      "id": "shopify_cancel_order",
+      "method": "POST",
+      "mock_response": {
+        "done": false,
+        "job_id": "gid://shopify/Job/7c1b0a7e-1f7e-4c55-9d3e-1d2a3b4c5d6e",
+        "order_id": "gid://shopify/Order/5001234567890"
+      },
+      "name": "cancel_order",
+      "output_formatter": "actions.format_cancellation_output",
+      "parameters": [
+        {
+          "description": "The order, from an earlier step, or the number at the end of its page's address in the Shopify admin (not the #1001 customers see).",
+          "display_name": "Order",
+          "examples": [
+            {
+              "label": "From the Shopify admin",
+              "value": "5001234567890"
+            },
+            {
+              "label": "From an earlier step",
+              "value": "gid://shopify/Order/5001234567890"
+            }
+          ],
+          "label_source": "order_names",
+          "name": "order_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Why the order is being cancelled.",
+          "display_name": "Reason",
+          "name": "reason",
+          "options": [
+            {
+              "label": "The customer asked to cancel",
+              "value": "CUSTOMER"
+            },
+            {
+              "label": "Out of stock",
+              "value": "INVENTORY"
+            },
+            {
+              "label": "Payment was declined",
+              "value": "DECLINED"
+            },
+            {
+              "label": "Suspected fraud",
+              "value": "FRAUD"
+            },
+            {
+              "label": "A staff mistake",
+              "value": "STAFF"
+            },
+            {
+              "label": "Something else",
+              "value": "OTHER"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "On, what they paid goes back to the card or other way they paid. Off, nothing is refunded; a payment that was only authorized is released either way.",
+          "display_name": "Refund the customer",
+          "name": "refund",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": true,
+          "description": "On, the order's items go back into stock.",
+          "display_name": "Put items back in stock",
+          "name": "restock",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "On, Shopify emails the customer that the order was cancelled.",
+          "display_name": "Email the customer",
+          "name": "notify_customer",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "A note for your team about the cancellation, up to 255 characters. The customer doesn't see it.",
+          "display_name": "Staff note",
+          "name": "staff_note",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/shopify/cancel-order",
+      "result_str_template": "Order cancellation started.",
+      "returns": {
+        "properties": {
+          "done": {
+            "description": "Whether the cancellation had already finished; usually false, as Shopify finishes it a moment later",
+            "type": "boolean"
+          },
+          "job_id": {
+            "description": "Shopify's job that carries out the cancellation",
+            "type": "string"
+          },
+          "order_id": {
+            "description": "The order being cancelled",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
     "complete_draft_order": {
       "description": "Turn a draft order into a real order. Leave it unpaid for an invoice the customer still has to pay, or mark it paid when the money came in another way.",
       "display_name": "Complete a draft order",
@@ -1354,6 +1475,199 @@
         "write",
         "modify",
         "delete"
+      ]
+    },
+    "get_customer": {
+      "description": "Get one customer's name, email, phone, note, tags, default address, how many orders they've placed and how much they've spent.",
+      "display_name": "Get a customer",
+      "display_str_template": "Get {customer_id}.",
+      "handler": "actions.get_customer",
+      "id": "shopify_get_customer",
+      "method": "POST",
+      "mock_response": {
+        "customer": {
+          "amountSpent": {
+            "amount": "163.80",
+            "currencyCode": "USD"
+          },
+          "createdAt": "2026-01-19T11:20:00Z",
+          "displayName": "Avery Chen",
+          "email": "avery@example.com",
+          "firstName": "Avery",
+          "id": "gid://shopify/Customer/7001234567890",
+          "lastName": "Chen",
+          "legacyResourceId": "7001234567890",
+          "note": null,
+          "numberOfOrders": "3",
+          "phone": null,
+          "state": "ENABLED",
+          "tags": [
+            "newsletter"
+          ],
+          "updatedAt": "2026-08-30T14:02:11Z",
+          "verifiedEmail": true
+        }
+      },
+      "name": "get_customer",
+      "output_formatter": "actions.format_customer_output",
+      "parameters": [
+        {
+          "description": "The customer, from an earlier step or List customers, or the number at the end of their page's address in the Shopify admin.",
+          "display_name": "Customer",
+          "examples": [
+            {
+              "label": "From an earlier step",
+              "value": "gid://shopify/Customer/7001234567890"
+            }
+          ],
+          "label_source": "customer_names",
+          "name": "customer_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/shopify/get-customer",
+      "result_str_template": "Customer retrieved.",
+      "returns": {
+        "properties": {
+          "customer": {
+            "description": "The customer",
+            "properties": {
+              "amountSpent": {
+                "description": "What they have spent in total",
+                "properties": {
+                  "amount": {
+                    "description": "The amount, as a decimal string",
+                    "type": "string"
+                  },
+                  "currencyCode": {
+                    "description": "Currency, e.g. 'USD'",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "createdAt": {
+                "description": "When they were created",
+                "type": "string"
+              },
+              "defaultAddress": {
+                "description": "Their default address",
+                "properties": {
+                  "address1": {
+                    "description": "Street address",
+                    "type": "string"
+                  },
+                  "address2": {
+                    "description": "Apartment, suite or unit",
+                    "type": "string"
+                  },
+                  "city": {
+                    "description": "City",
+                    "type": "string"
+                  },
+                  "company": {
+                    "description": "Company, when there is one",
+                    "type": "string"
+                  },
+                  "country": {
+                    "description": "Country name",
+                    "type": "string"
+                  },
+                  "countryCodeV2": {
+                    "description": "Two-letter country code",
+                    "type": "string"
+                  },
+                  "firstName": {
+                    "description": "First name on the address",
+                    "type": "string"
+                  },
+                  "lastName": {
+                    "description": "Last name on the address",
+                    "type": "string"
+                  },
+                  "phone": {
+                    "description": "Phone number on the address",
+                    "type": "string"
+                  },
+                  "province": {
+                    "description": "State, province or region",
+                    "type": "string"
+                  },
+                  "provinceCode": {
+                    "description": "Short state/province code",
+                    "type": "string"
+                  },
+                  "zip": {
+                    "description": "Postal or ZIP code",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "displayName": {
+                "description": "Full name",
+                "type": "string"
+              },
+              "email": {
+                "description": "Email address",
+                "type": "string"
+              },
+              "firstName": {
+                "description": "First name",
+                "type": "string"
+              },
+              "id": {
+                "description": "Shopify id, e.g. 'gid://shopify/Customer/123'",
+                "type": "string"
+              },
+              "lastName": {
+                "description": "Last name",
+                "type": "string"
+              },
+              "legacyResourceId": {
+                "description": "The bare numeric id",
+                "type": "string"
+              },
+              "note": {
+                "description": "Staff note on the customer",
+                "type": "string"
+              },
+              "numberOfOrders": {
+                "description": "How many orders they have placed",
+                "type": "string"
+              },
+              "phone": {
+                "description": "Phone number",
+                "type": "string"
+              },
+              "state": {
+                "description": "Account state: ENABLED, DISABLED, INVITED or DECLINED",
+                "type": "string"
+              },
+              "tags": {
+                "description": "Tags on the customer",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "updatedAt": {
+                "description": "When they last changed",
+                "type": "string"
+              },
+              "verifiedEmail": {
+                "description": "Whether the email address has been verified",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
       ]
     },
     "get_order": {
@@ -3198,6 +3512,7 @@
             "total": 48.0
           }
         ],
+        "top_products_display": "1. Everyday Cotton T-Shirt (2 sold)",
         "total_refunded": 0.0,
         "total_sales": 48.0,
         "total_sales_display": "$48.00"
@@ -3788,6 +4103,10 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "top_products_display": {
+            "description": "Beta. With the products included: the three best sellers as numbered lines such as '1. Mug (40 sold)', ready to put in an email or message. Fewer lines when fewer products sold.",
+            "type": "string"
           },
           "total_refunded": {
             "description": "What has been refunded across the orders on this page, ready for a refunds report.",
@@ -5834,6 +6153,28 @@
           "required": false
         }
       ]
+    },
+    "shopify_new_product_trigger": {
+      "description": "Runs when a product is added to your store, whether it's published straight away or saved as a draft, with its title, price and stock.",
+      "display_name": "New product",
+      "id": "shopify_new_product_trigger",
+      "output": {
+        "createdAt": "When it was added.",
+        "descriptionHtml": "Its description, as HTML.",
+        "featuredMedia": "Its main image.",
+        "handle": "The end of its web address, such as cotton-t-shirt.",
+        "id": "The product's ID (gid://shopify/Product/...).",
+        "legacyResourceId": "The product's number in the admin's address bar.",
+        "onlineStoreUrl": "Its page in your online store, empty until published.",
+        "priceRangeV2": "Its lowest and highest variant prices.",
+        "productType": "Its product type.",
+        "status": "ACTIVE, DRAFT or ARCHIVED.",
+        "tags": "Its tags.",
+        "title": "Its title.",
+        "totalInventory": "How many are in stock across all locations.",
+        "vendor": "Its vendor."
+      },
+      "parameters": []
     },
     "shopify_order_fulfilled_trigger": {
       "description": "Runs when everything on an order in your store has shipped. An order shipped in parts runs it once, when the last part goes.",
