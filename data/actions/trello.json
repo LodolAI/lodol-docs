@@ -51,6 +51,61 @@
         "write"
       ]
     },
+    "archive_card": {
+      "description": "Archive a Trello card, taking it off its board. It can be brought back from the board's archive.",
+      "display_name": "Archive a card",
+      "display_str_template": "Archive {card_id}.",
+      "handler": "actions.archive_card",
+      "id": "trello_archive_card",
+      "method": "POST",
+      "mock_response": {
+        "card": {
+          "archived": true,
+          "id": "5e8b9d1234567890abcdef03",
+          "name": "Fix the gate"
+        }
+      },
+      "name": "archive_card",
+      "output_formatter": "actions.format_archive_card_output",
+      "parameters": [
+        {
+          "description": "The card to archive, as an earlier step gave it, or its ID.",
+          "display_name": "Card",
+          "label_source": "card_names",
+          "name": "card_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/trello/archive-card",
+      "result_str_template": "Card archived.",
+      "returns": {
+        "properties": {
+          "card": {
+            "description": "The archived card.",
+            "properties": {
+              "archived": {
+                "description": "True once the card is archived.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "Trello card ID.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Card title.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
     "create_card": {
       "description": "Add a card to a list, with a description, due date and labels if you like.",
       "display_name": "Create a card",
@@ -315,6 +370,116 @@
         "read"
       ]
     },
+    "get_card": {
+      "description": "Look up a Trello card: its title, description, due date, labels, and the list and board it is on.",
+      "display_name": "Get a card",
+      "display_str_template": "Get {card_id}.",
+      "handler": "actions.get_card",
+      "id": "trello_get_card",
+      "method": "POST",
+      "mock_response": {
+        "card": {
+          "archived": false,
+          "board_id": "5e8b9d1234567890abcdef01",
+          "board_name": "Garden",
+          "description": "The latch is loose.",
+          "due": "2026-07-15T09:00:00.000Z",
+          "due_complete": false,
+          "id": "5e8b9d1234567890abcdef03",
+          "labels": [
+            "Urgent"
+          ],
+          "last_activity": "2026-07-10T12:00:00.000Z",
+          "list_id": "5e8b9d1234567890abcdef02",
+          "list_name": "Doing",
+          "name": "Fix the gate",
+          "url": "https://trello.com/c/AbCd1234/1-fix-the-gate"
+        }
+      },
+      "name": "get_card",
+      "output_formatter": "actions.format_get_card_output",
+      "parameters": [
+        {
+          "description": "The card to look up, as an earlier step gave it, or its ID.",
+          "display_name": "Card",
+          "label_source": "card_names",
+          "name": "card_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/trello/get-card",
+      "result_str_template": "Got the Trello card.",
+      "returns": {
+        "properties": {
+          "card": {
+            "description": "A Trello card.",
+            "properties": {
+              "archived": {
+                "description": "Whether it is archived.",
+                "type": "boolean"
+              },
+              "board_id": {
+                "description": "The ID of its board.",
+                "type": "string"
+              },
+              "board_name": {
+                "description": "The name of its board.",
+                "type": "string"
+              },
+              "description": {
+                "description": "Card description.",
+                "type": "string"
+              },
+              "due": {
+                "description": "When it is due, as a timestamp; empty when it has no due date.",
+                "type": "string"
+              },
+              "due_complete": {
+                "description": "Whether its due date is marked complete.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "Trello card ID.",
+                "type": "string"
+              },
+              "labels": {
+                "description": "Its labels, by name (or colour, for an unnamed one).",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "last_activity": {
+                "description": "When anything last happened on the card.",
+                "type": "string"
+              },
+              "list_id": {
+                "description": "The ID of its list.",
+                "type": "string"
+              },
+              "list_name": {
+                "description": "The name of its list.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Card title.",
+                "type": "string"
+              },
+              "url": {
+                "description": "The card's page in Trello.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "list_boards": {
       "description": "List your open boards, with each one's name and link.",
       "display_name": "List boards",
@@ -551,11 +716,46 @@
   "categories": [
     "Project Management"
   ],
-  "description": "Add, move and update cards on your Trello boards.",
+  "description": "Add, find, move, update and archive cards on your Trello boards.",
   "display_name": "Trello",
   "id": "trello",
   "logo": "https://www.lodol.com/app-icons/trello-icon.png",
   "triggers": {
+    "trello_card_moved_trigger": {
+      "description": "Runs when a card moves from one list to another on a board, such as from Doing to Done, or only when it moves into one list.",
+      "display_name": "Card moved",
+      "id": "trello_card_moved_trigger",
+      "output": {
+        "board_id": "The board's ID.",
+        "board_name": "The board's name.",
+        "card_id": "The card's ID.",
+        "card_name": "The card's title.",
+        "card_url": "The card's page in Trello.",
+        "from_list_id": "The ID of the list it moved from.",
+        "from_list_name": "The name of the list it moved from.",
+        "move_id": "The ID of the move in the board's activity.",
+        "moved_at": "When it moved.",
+        "moved_by": "Who moved it.",
+        "to_list_id": "The ID of the list it moved to.",
+        "to_list_name": "The name of the list it moved to."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The board to watch.",
+          "display_name": "Board",
+          "name": "board_id",
+          "required": true
+        },
+        {
+          "arg_index": 1,
+          "description": "Only run for cards moved into this list. Leave empty for every move on the board.",
+          "display_name": "Moved to list",
+          "name": "list_id",
+          "required": false
+        }
+      ]
+    },
     "trello_new_card_trigger": {
       "description": "Runs for each new card on a board, or only for those added to one list.",
       "display_name": "New card",

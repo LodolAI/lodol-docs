@@ -1,0 +1,3043 @@
+{
+  "actions": {
+    "activate_deployment": {
+      "description": "Turn an inactive deployment back on so it serves requests. Baseten bills for the hardware while it runs. Nothing changes if it is already active.",
+      "display_name": "Activate deployment",
+      "display_str_template": "Activate deployment {deployment_id} of {model_id}.",
+      "handler": "actions.activate_deployment",
+      "id": "baseten_activate_deployment",
+      "method": "POST",
+      "mock_response": {
+        "already_active": false,
+        "deployment": {
+          "active_replica_count": 1,
+          "autoscaling_settings": {
+            "autoscaling_window": 60,
+            "concurrency_target": 2,
+            "max_replica": 2,
+            "min_replica": 0,
+            "scale_down_delay": 900,
+            "target_utilization_percentage": 70
+          },
+          "created_at": "2026-11-01T09:00:00Z",
+          "environment": "production",
+          "id": "qwer5678",
+          "instance_type_name": "1x L4",
+          "is_development": false,
+          "is_production": true,
+          "labels": {},
+          "model_id": "abcd1234",
+          "name": "deployment-2",
+          "status": "ACTIVE"
+        }
+      },
+      "name": "activate_deployment",
+      "output_formatter": "_format_deployment",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The deployment: the model's production or development deployment, or one by its ID from an earlier step.",
+          "display_name": "Deployment",
+          "dynamic_source": "deployments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "deployment_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/activate-deployment",
+      "result_str_template": "Deployment activated.",
+      "returns": {
+        "properties": {
+          "already_active": {
+            "description": "True if it was already active",
+            "type": "boolean"
+          },
+          "deployment": {
+            "description": "The deployment, as it is now",
+            "properties": {
+              "active_replica_count": {
+                "description": "How many replicas are running",
+                "type": "number"
+              },
+              "autoscaling_settings": {
+                "description": "Its autoscaling settings (empty while deploying)",
+                "properties": {
+                  "autoscaling_window": {
+                    "description": "Seconds of traffic looked at when scaling",
+                    "type": "number"
+                  },
+                  "concurrency_target": {
+                    "description": "Requests per replica before another is added",
+                    "type": "number"
+                  },
+                  "max_replica": {
+                    "description": "Most replicas it may run",
+                    "type": "number"
+                  },
+                  "min_replica": {
+                    "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                    "type": "number"
+                  },
+                  "scale_down_delay": {
+                    "description": "Seconds to wait before removing a replica",
+                    "type": "number"
+                  },
+                  "target_utilization_percentage": {
+                    "description": "Share of the concurrency target to aim for, in percent",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "created_at": {
+                "description": "When it was created (ISO 8601)",
+                "type": "string"
+              },
+              "environment": {
+                "description": "The environment it serves, if any",
+                "type": "string"
+              },
+              "id": {
+                "description": "The deployment's ID, for the deployment actions",
+                "type": "string"
+              },
+              "instance_type_name": {
+                "description": "The hardware it runs on",
+                "type": "string"
+              },
+              "is_development": {
+                "description": "True if it is the model's development deployment",
+                "type": "boolean"
+              },
+              "is_production": {
+                "description": "True if it is the model's production deployment",
+                "type": "boolean"
+              },
+              "labels": {
+                "description": "Labels given to it",
+                "type": "object"
+              },
+              "model_id": {
+                "description": "The model it belongs to",
+                "type": "string"
+              },
+              "name": {
+                "description": "The deployment's name",
+                "type": "string"
+              },
+              "status": {
+                "description": "ACTIVE, SCALED_TO_ZERO, WAKING_UP, INACTIVE, BUILDING, DEPLOYING, LOADING_MODEL, UPDATING, DEACTIVATING, UNHEALTHY, BUILD_FAILED, BUILD_STOPPED, DEPLOY_FAILED or FAILED",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "call_model": {
+      "description": "Send input to one of your deployed models and get its answer, such as a summary or a transcript. Baseten bills for the time it runs.",
+      "display_name": "Call model",
+      "display_str_template": "Call model {model_id}.",
+      "handler": "actions.call_model",
+      "id": "baseten_call_model",
+      "method": "POST",
+      "mock_response": {
+        "called": "production environment",
+        "output": {
+          "summary": "The customer wants a refund."
+        },
+        "request_id": "a1b2c3d4e5"
+      },
+      "name": "call_model",
+      "output_formatter": "_format_call",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The JSON the model expects, such as {\"prompt\": \"Hello\"}. Each model defines its own.",
+          "display_name": "Input",
+          "name": "model_input",
+          "required": true,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "The environment to call. Defaults to production.",
+          "display_name": "Environment",
+          "dynamic_source": "environments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "environment",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A deployment to call instead of an environment, such as the development deployment. Leave empty to use the environment.",
+          "display_name": "Deployment",
+          "dynamic_source": "deployments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "deployment_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/call-model",
+      "result_str_template": "Model answered.",
+      "returns": {
+        "properties": {
+          "called": {
+            "description": "What was called, such as production environment",
+            "type": "string"
+          },
+          "output": {
+            "description": "What the model answered",
+            "type": "object"
+          },
+          "request_id": {
+            "description": "Baseten's ID for the request, to find it in the logs",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
+    "create_environment": {
+      "description": "Add an environment to a model, such as staging, with an address of its own that deployments can be promoted to.",
+      "display_name": "Create environment",
+      "display_str_template": "Create environment {name} on {model_id}.",
+      "handler": "actions.create_environment",
+      "id": "baseten_create_environment",
+      "method": "POST",
+      "mock_response": {
+        "environment": {
+          "autoscaling_settings": {
+            "autoscaling_window": 60,
+            "concurrency_target": 2,
+            "max_replica": 2,
+            "min_replica": 0,
+            "scale_down_delay": 900,
+            "target_utilization_percentage": 70
+          },
+          "candidate_deployment": {
+            "active_replica_count": 1,
+            "autoscaling_settings": {
+              "autoscaling_window": 60,
+              "concurrency_target": 2,
+              "max_replica": 2,
+              "min_replica": 0,
+              "scale_down_delay": 900,
+              "target_utilization_percentage": 70
+            },
+            "created_at": "2026-11-01T09:00:00Z",
+            "environment": "production",
+            "id": "zxcv9012",
+            "instance_type_name": "1x L4",
+            "is_development": false,
+            "is_production": true,
+            "labels": {},
+            "model_id": "abcd1234",
+            "name": "deployment-2",
+            "status": "DEPLOYING"
+          },
+          "created_at": "2026-11-02T09:00:00Z",
+          "current_deployment": {
+            "active_replica_count": 1,
+            "autoscaling_settings": {
+              "autoscaling_window": 60,
+              "concurrency_target": 2,
+              "max_replica": 2,
+              "min_replica": 0,
+              "scale_down_delay": 900,
+              "target_utilization_percentage": 70
+            },
+            "created_at": "2026-11-01T09:00:00Z",
+            "environment": "production",
+            "id": "qwer5678",
+            "instance_type_name": "1x L4",
+            "is_development": false,
+            "is_production": true,
+            "labels": {},
+            "model_id": "abcd1234",
+            "name": "deployment-2",
+            "status": "ACTIVE"
+          },
+          "in_progress_promotion": {
+            "percent_traffic_to_new_version": 0,
+            "status": "RELEASING"
+          },
+          "instance_type": {
+            "id": "L4x4x16",
+            "name": "1x L4"
+          },
+          "model_id": "abcd1234",
+          "name": "staging",
+          "promotion_settings": {
+            "rolling_deploy": true
+          }
+        }
+      },
+      "name": "create_environment",
+      "output_formatter": "_format_environment",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The new environment's name, such as staging.",
+          "display_name": "Name",
+          "examples": [
+            {
+              "label": "A name",
+              "value": "staging"
+            }
+          ],
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The fewest copies of the model kept running. 0 lets it scale to zero when idle.",
+          "display_name": "Minimum replicas",
+          "maximum": 1000,
+          "minimum": 0,
+          "name": "min_replica",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The most copies of the model it may run at busy times.",
+          "display_name": "Maximum replicas",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "max_replica",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/baseten/create-environment",
+      "result_str_template": "Environment created.",
+      "returns": {
+        "properties": {
+          "environment": {
+            "description": "The environment",
+            "properties": {
+              "autoscaling_settings": {
+                "description": "Its autoscaling settings",
+                "properties": {
+                  "autoscaling_window": {
+                    "description": "Seconds of traffic looked at when scaling",
+                    "type": "number"
+                  },
+                  "concurrency_target": {
+                    "description": "Requests per replica before another is added",
+                    "type": "number"
+                  },
+                  "max_replica": {
+                    "description": "Most replicas it may run",
+                    "type": "number"
+                  },
+                  "min_replica": {
+                    "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                    "type": "number"
+                  },
+                  "scale_down_delay": {
+                    "description": "Seconds to wait before removing a replica",
+                    "type": "number"
+                  },
+                  "target_utilization_percentage": {
+                    "description": "Share of the concurrency target to aim for, in percent",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "candidate_deployment": {
+                "description": "The deployment being promoted to it, if any",
+                "properties": {
+                  "active_replica_count": {
+                    "description": "How many replicas are running",
+                    "type": "number"
+                  },
+                  "autoscaling_settings": {
+                    "description": "Its autoscaling settings (empty while deploying)",
+                    "properties": {
+                      "autoscaling_window": {
+                        "description": "Seconds of traffic looked at when scaling",
+                        "type": "number"
+                      },
+                      "concurrency_target": {
+                        "description": "Requests per replica before another is added",
+                        "type": "number"
+                      },
+                      "max_replica": {
+                        "description": "Most replicas it may run",
+                        "type": "number"
+                      },
+                      "min_replica": {
+                        "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                        "type": "number"
+                      },
+                      "scale_down_delay": {
+                        "description": "Seconds to wait before removing a replica",
+                        "type": "number"
+                      },
+                      "target_utilization_percentage": {
+                        "description": "Share of the concurrency target to aim for, in percent",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "created_at": {
+                    "description": "When it was created (ISO 8601)",
+                    "type": "string"
+                  },
+                  "environment": {
+                    "description": "The environment it serves, if any",
+                    "type": "string"
+                  },
+                  "id": {
+                    "description": "The deployment's ID, for the deployment actions",
+                    "type": "string"
+                  },
+                  "instance_type_name": {
+                    "description": "The hardware it runs on",
+                    "type": "string"
+                  },
+                  "is_development": {
+                    "description": "True if it is the model's development deployment",
+                    "type": "boolean"
+                  },
+                  "is_production": {
+                    "description": "True if it is the model's production deployment",
+                    "type": "boolean"
+                  },
+                  "labels": {
+                    "description": "Labels given to it",
+                    "type": "object"
+                  },
+                  "model_id": {
+                    "description": "The model it belongs to",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "The deployment's name",
+                    "type": "string"
+                  },
+                  "status": {
+                    "description": "ACTIVE, SCALED_TO_ZERO, WAKING_UP, INACTIVE, BUILDING, DEPLOYING, LOADING_MODEL, UPDATING, DEACTIVATING, UNHEALTHY, BUILD_FAILED, BUILD_STOPPED, DEPLOY_FAILED or FAILED",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "created_at": {
+                "description": "When it was created (ISO 8601)",
+                "type": "string"
+              },
+              "current_deployment": {
+                "description": "The deployment it serves now, if any",
+                "properties": {
+                  "active_replica_count": {
+                    "description": "How many replicas are running",
+                    "type": "number"
+                  },
+                  "autoscaling_settings": {
+                    "description": "Its autoscaling settings (empty while deploying)",
+                    "properties": {
+                      "autoscaling_window": {
+                        "description": "Seconds of traffic looked at when scaling",
+                        "type": "number"
+                      },
+                      "concurrency_target": {
+                        "description": "Requests per replica before another is added",
+                        "type": "number"
+                      },
+                      "max_replica": {
+                        "description": "Most replicas it may run",
+                        "type": "number"
+                      },
+                      "min_replica": {
+                        "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                        "type": "number"
+                      },
+                      "scale_down_delay": {
+                        "description": "Seconds to wait before removing a replica",
+                        "type": "number"
+                      },
+                      "target_utilization_percentage": {
+                        "description": "Share of the concurrency target to aim for, in percent",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "created_at": {
+                    "description": "When it was created (ISO 8601)",
+                    "type": "string"
+                  },
+                  "environment": {
+                    "description": "The environment it serves, if any",
+                    "type": "string"
+                  },
+                  "id": {
+                    "description": "The deployment's ID, for the deployment actions",
+                    "type": "string"
+                  },
+                  "instance_type_name": {
+                    "description": "The hardware it runs on",
+                    "type": "string"
+                  },
+                  "is_development": {
+                    "description": "True if it is the model's development deployment",
+                    "type": "boolean"
+                  },
+                  "is_production": {
+                    "description": "True if it is the model's production deployment",
+                    "type": "boolean"
+                  },
+                  "labels": {
+                    "description": "Labels given to it",
+                    "type": "object"
+                  },
+                  "model_id": {
+                    "description": "The model it belongs to",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "The deployment's name",
+                    "type": "string"
+                  },
+                  "status": {
+                    "description": "ACTIVE, SCALED_TO_ZERO, WAKING_UP, INACTIVE, BUILDING, DEPLOYING, LOADING_MODEL, UPDATING, DEACTIVATING, UNHEALTHY, BUILD_FAILED, BUILD_STOPPED, DEPLOY_FAILED or FAILED",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "in_progress_promotion": {
+                "description": "A promotion under way: status and traffic share",
+                "type": "object"
+              },
+              "instance_type": {
+                "description": "The hardware it runs on",
+                "type": "object"
+              },
+              "model_id": {
+                "description": "The model it belongs to",
+                "type": "string"
+              },
+              "name": {
+                "description": "The environment's name",
+                "type": "string"
+              },
+              "promotion_settings": {
+                "description": "How promotions to it are rolled out",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
+    "deactivate_deployment": {
+      "description": "Turn a deployment off: it stops serving requests and costing money until it is activated again.",
+      "display_name": "Deactivate deployment",
+      "display_str_template": "Deactivate deployment {deployment_id} of {model_id}.",
+      "handler": "actions.deactivate_deployment",
+      "id": "baseten_deactivate_deployment",
+      "method": "POST",
+      "mock_response": {
+        "already_inactive": false,
+        "deployment": {
+          "active_replica_count": 1,
+          "autoscaling_settings": {
+            "autoscaling_window": 60,
+            "concurrency_target": 2,
+            "max_replica": 2,
+            "min_replica": 0,
+            "scale_down_delay": 900,
+            "target_utilization_percentage": 70
+          },
+          "created_at": "2026-11-01T09:00:00Z",
+          "environment": "production",
+          "id": "qwer5678",
+          "instance_type_name": "1x L4",
+          "is_development": false,
+          "is_production": true,
+          "labels": {},
+          "model_id": "abcd1234",
+          "name": "deployment-2",
+          "status": "DEACTIVATING"
+        }
+      },
+      "name": "deactivate_deployment",
+      "output_formatter": "_format_deployment",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The deployment: the model's production or development deployment, or one by its ID from an earlier step.",
+          "display_name": "Deployment",
+          "dynamic_source": "deployments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "deployment_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/deactivate-deployment",
+      "result_str_template": "Deployment deactivated.",
+      "returns": {
+        "properties": {
+          "already_inactive": {
+            "description": "True if it was already inactive",
+            "type": "boolean"
+          },
+          "deployment": {
+            "description": "The deployment, as it is now",
+            "properties": {
+              "active_replica_count": {
+                "description": "How many replicas are running",
+                "type": "number"
+              },
+              "autoscaling_settings": {
+                "description": "Its autoscaling settings (empty while deploying)",
+                "properties": {
+                  "autoscaling_window": {
+                    "description": "Seconds of traffic looked at when scaling",
+                    "type": "number"
+                  },
+                  "concurrency_target": {
+                    "description": "Requests per replica before another is added",
+                    "type": "number"
+                  },
+                  "max_replica": {
+                    "description": "Most replicas it may run",
+                    "type": "number"
+                  },
+                  "min_replica": {
+                    "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                    "type": "number"
+                  },
+                  "scale_down_delay": {
+                    "description": "Seconds to wait before removing a replica",
+                    "type": "number"
+                  },
+                  "target_utilization_percentage": {
+                    "description": "Share of the concurrency target to aim for, in percent",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "created_at": {
+                "description": "When it was created (ISO 8601)",
+                "type": "string"
+              },
+              "environment": {
+                "description": "The environment it serves, if any",
+                "type": "string"
+              },
+              "id": {
+                "description": "The deployment's ID, for the deployment actions",
+                "type": "string"
+              },
+              "instance_type_name": {
+                "description": "The hardware it runs on",
+                "type": "string"
+              },
+              "is_development": {
+                "description": "True if it is the model's development deployment",
+                "type": "boolean"
+              },
+              "is_production": {
+                "description": "True if it is the model's production deployment",
+                "type": "boolean"
+              },
+              "labels": {
+                "description": "Labels given to it",
+                "type": "object"
+              },
+              "model_id": {
+                "description": "The model it belongs to",
+                "type": "string"
+              },
+              "name": {
+                "description": "The deployment's name",
+                "type": "string"
+              },
+              "status": {
+                "description": "ACTIVE, SCALED_TO_ZERO, WAKING_UP, INACTIVE, BUILDING, DEPLOYING, LOADING_MODEL, UPDATING, DEACTIVATING, UNHEALTHY, BUILD_FAILED, BUILD_STOPPED, DEPLOY_FAILED or FAILED",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "delete_deployment": {
+      "description": "Delete a deployment for good, such as an old version nobody uses. It can't be undone.",
+      "display_name": "Delete deployment",
+      "display_str_template": "Delete deployment {deployment_id} of {model_id}.",
+      "handler": "actions.delete_deployment",
+      "id": "baseten_delete_deployment",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "deployment_id": "zxcv9012",
+        "model_id": "abcd1234"
+      },
+      "name": "delete_deployment",
+      "output_formatter": "_format_done",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The deployment: the model's production or development deployment, or one by its ID from an earlier step.",
+          "display_name": "Deployment",
+          "dynamic_source": "deployments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "deployment_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/delete-deployment",
+      "result_str_template": "Deployment deleted.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Always true once done",
+            "type": "boolean"
+          },
+          "deployment_id": {
+            "description": "The deployment deleted",
+            "type": "string"
+          },
+          "model_id": {
+            "description": "Its model",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "delete"
+      ]
+    },
+    "delete_environment": {
+      "description": "Delete an environment other than production. The deployment it served scales down to zero but is kept.",
+      "display_name": "Delete environment",
+      "display_str_template": "Delete environment {environment} of {model_id}.",
+      "handler": "actions.delete_environment",
+      "id": "baseten_delete_environment",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "environment": "staging",
+        "model_id": "abcd1234"
+      },
+      "name": "delete_environment",
+      "output_formatter": "_format_done",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The environment, such as production or staging.",
+          "display_name": "Environment",
+          "dynamic_source": "environments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "environment",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/delete-environment",
+      "result_str_template": "Environment deleted.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Always true once done",
+            "type": "boolean"
+          },
+          "environment": {
+            "description": "The environment deleted",
+            "type": "string"
+          },
+          "model_id": {
+            "description": "Its model",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "delete"
+      ]
+    },
+    "delete_secret": {
+      "description": "Delete a secret. Models that read it no longer get it.",
+      "display_name": "Delete secret",
+      "display_str_template": "Delete secret {secret_name}.",
+      "handler": "actions.delete_secret",
+      "id": "baseten_delete_secret",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "secret_name": "hf_access_token"
+      },
+      "name": "delete_secret",
+      "output_formatter": "_format_done",
+      "parameters": [
+        {
+          "description": "The secret. Pick one, or give its name.",
+          "display_name": "Secret",
+          "dynamic_source": "secrets",
+          "dynamic_source_allows_custom": true,
+          "name": "secret_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/delete-secret",
+      "result_str_template": "Secret deleted.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "Always true once done",
+            "type": "boolean"
+          },
+          "secret_name": {
+            "description": "The secret deleted",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "delete"
+      ]
+    },
+    "get_deployment": {
+      "description": "Get one deployment: its status (such as active or scaled to zero), running replicas, hardware and autoscaling settings.",
+      "display_name": "Get deployment",
+      "display_str_template": "Get deployment {deployment_id} of {model_id}.",
+      "handler": "actions.get_deployment",
+      "id": "baseten_get_deployment",
+      "method": "POST",
+      "mock_response": {
+        "deployment": {
+          "active_replica_count": 1,
+          "autoscaling_settings": {
+            "autoscaling_window": 60,
+            "concurrency_target": 2,
+            "max_replica": 2,
+            "min_replica": 0,
+            "scale_down_delay": 900,
+            "target_utilization_percentage": 70
+          },
+          "created_at": "2026-11-01T09:00:00Z",
+          "environment": "production",
+          "id": "qwer5678",
+          "instance_type_name": "1x L4",
+          "is_development": false,
+          "is_production": true,
+          "labels": {},
+          "model_id": "abcd1234",
+          "name": "deployment-2",
+          "status": "ACTIVE"
+        }
+      },
+      "name": "get_deployment",
+      "output_formatter": "_format_deployment",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The deployment: the model's production or development deployment, or one by its ID from an earlier step.",
+          "display_name": "Deployment",
+          "dynamic_source": "deployments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "deployment_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/get-deployment",
+      "result_str_template": "Deployment retrieved.",
+      "returns": {
+        "properties": {
+          "deployment": {
+            "description": "The deployment",
+            "properties": {
+              "active_replica_count": {
+                "description": "How many replicas are running",
+                "type": "number"
+              },
+              "autoscaling_settings": {
+                "description": "Its autoscaling settings (empty while deploying)",
+                "properties": {
+                  "autoscaling_window": {
+                    "description": "Seconds of traffic looked at when scaling",
+                    "type": "number"
+                  },
+                  "concurrency_target": {
+                    "description": "Requests per replica before another is added",
+                    "type": "number"
+                  },
+                  "max_replica": {
+                    "description": "Most replicas it may run",
+                    "type": "number"
+                  },
+                  "min_replica": {
+                    "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                    "type": "number"
+                  },
+                  "scale_down_delay": {
+                    "description": "Seconds to wait before removing a replica",
+                    "type": "number"
+                  },
+                  "target_utilization_percentage": {
+                    "description": "Share of the concurrency target to aim for, in percent",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "created_at": {
+                "description": "When it was created (ISO 8601)",
+                "type": "string"
+              },
+              "environment": {
+                "description": "The environment it serves, if any",
+                "type": "string"
+              },
+              "id": {
+                "description": "The deployment's ID, for the deployment actions",
+                "type": "string"
+              },
+              "instance_type_name": {
+                "description": "The hardware it runs on",
+                "type": "string"
+              },
+              "is_development": {
+                "description": "True if it is the model's development deployment",
+                "type": "boolean"
+              },
+              "is_production": {
+                "description": "True if it is the model's production deployment",
+                "type": "boolean"
+              },
+              "labels": {
+                "description": "Labels given to it",
+                "type": "object"
+              },
+              "model_id": {
+                "description": "The model it belongs to",
+                "type": "string"
+              },
+              "name": {
+                "description": "The deployment's name",
+                "type": "string"
+              },
+              "status": {
+                "description": "ACTIVE, SCALED_TO_ZERO, WAKING_UP, INACTIVE, BUILDING, DEPLOYING, LOADING_MODEL, UPDATING, DEACTIVATING, UNHEALTHY, BUILD_FAILED, BUILD_STOPPED, DEPLOY_FAILED or FAILED",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_deployment_logs": {
+      "description": "Get a deployment's log lines, such as why it failed to start. Without a time window, the last 30 minutes.",
+      "display_name": "Get deployment logs",
+      "display_str_template": "Get logs of deployment {deployment_id} of {model_id}.",
+      "handler": "actions.get_deployment_logs",
+      "id": "baseten_get_deployment_logs",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "logs": [
+          {
+            "level": "INFO",
+            "message": "Model loaded",
+            "replica": "a1b2c",
+            "request_id": "",
+            "time": "2026-11-06T09:00:00.000Z",
+            "timestamp": "1793955600000000000"
+          }
+        ]
+      },
+      "name": "get_deployment_logs",
+      "output_formatter": "_format_logs",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The deployment: the model's production or development deployment, or one by its ID from an earlier step.",
+          "display_name": "Deployment",
+          "dynamic_source": "deployments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "deployment_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Logs from this time. Defaults to 30 minutes before 'To'.",
+          "display_name": "From",
+          "name": "start",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Logs up to this time, at most 7 days after 'From'. Defaults to now.",
+          "display_name": "To",
+          "name": "end",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Only lines at this level or more serious. Defaults to every line.",
+          "display_name": "Level",
+          "name": "min_level",
+          "options": [
+            {
+              "label": "Debug and up",
+              "value": "DEBUG"
+            },
+            {
+              "label": "Info and up",
+              "value": "INFO"
+            },
+            {
+              "label": "Warnings and errors",
+              "value": "WARNING"
+            },
+            {
+              "label": "Errors only",
+              "value": "ERROR"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only lines containing this text (capitals matter).",
+          "display_name": "Containing",
+          "name": "contains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many lines at most, 1 to 1000. Defaults to 500.",
+          "display_name": "Most lines",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "List the newest lines first.",
+          "display_name": "Newest first",
+          "name": "newest_first",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/baseten/get-deployment-logs",
+      "result_str_template": "Logs retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many",
+            "type": "number"
+          },
+          "logs": {
+            "description": "The log lines",
+            "items": {
+              "description": "One line of a deployment's logs",
+              "properties": {
+                "level": {
+                  "description": "DEBUG, INFO, WARNING or ERROR, when known",
+                  "type": "string"
+                },
+                "message": {
+                  "description": "What it says",
+                  "type": "string"
+                },
+                "replica": {
+                  "description": "The replica that wrote it",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "The inference request it belongs to, if any",
+                  "type": "string"
+                },
+                "time": {
+                  "description": "When it was written (ISO 8601 UTC)",
+                  "type": "string"
+                },
+                "timestamp": {
+                  "description": "When it was written, in nanoseconds since 1970",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_environment": {
+      "description": "Get one environment: the deployment it serves, any promotion under way, and its autoscaling settings.",
+      "display_name": "Get environment",
+      "display_str_template": "Get environment {environment} of {model_id}.",
+      "handler": "actions.get_environment",
+      "id": "baseten_get_environment",
+      "method": "POST",
+      "mock_response": {
+        "environment": {
+          "autoscaling_settings": {
+            "autoscaling_window": 60,
+            "concurrency_target": 2,
+            "max_replica": 2,
+            "min_replica": 0,
+            "scale_down_delay": 900,
+            "target_utilization_percentage": 70
+          },
+          "candidate_deployment": {
+            "active_replica_count": 1,
+            "autoscaling_settings": {
+              "autoscaling_window": 60,
+              "concurrency_target": 2,
+              "max_replica": 2,
+              "min_replica": 0,
+              "scale_down_delay": 900,
+              "target_utilization_percentage": 70
+            },
+            "created_at": "2026-11-01T09:00:00Z",
+            "environment": "production",
+            "id": "zxcv9012",
+            "instance_type_name": "1x L4",
+            "is_development": false,
+            "is_production": true,
+            "labels": {},
+            "model_id": "abcd1234",
+            "name": "deployment-2",
+            "status": "DEPLOYING"
+          },
+          "created_at": "2026-11-02T09:00:00Z",
+          "current_deployment": {
+            "active_replica_count": 1,
+            "autoscaling_settings": {
+              "autoscaling_window": 60,
+              "concurrency_target": 2,
+              "max_replica": 2,
+              "min_replica": 0,
+              "scale_down_delay": 900,
+              "target_utilization_percentage": 70
+            },
+            "created_at": "2026-11-01T09:00:00Z",
+            "environment": "production",
+            "id": "qwer5678",
+            "instance_type_name": "1x L4",
+            "is_development": false,
+            "is_production": true,
+            "labels": {},
+            "model_id": "abcd1234",
+            "name": "deployment-2",
+            "status": "ACTIVE"
+          },
+          "in_progress_promotion": {
+            "percent_traffic_to_new_version": 0,
+            "status": "RELEASING"
+          },
+          "instance_type": {
+            "id": "L4x4x16",
+            "name": "1x L4"
+          },
+          "model_id": "abcd1234",
+          "name": "staging",
+          "promotion_settings": {
+            "rolling_deploy": true
+          }
+        }
+      },
+      "name": "get_environment",
+      "output_formatter": "_format_environment",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The environment, such as production or staging.",
+          "display_name": "Environment",
+          "dynamic_source": "environments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "environment",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/get-environment",
+      "result_str_template": "Environment retrieved.",
+      "returns": {
+        "properties": {
+          "environment": {
+            "description": "The environment",
+            "properties": {
+              "autoscaling_settings": {
+                "description": "Its autoscaling settings",
+                "properties": {
+                  "autoscaling_window": {
+                    "description": "Seconds of traffic looked at when scaling",
+                    "type": "number"
+                  },
+                  "concurrency_target": {
+                    "description": "Requests per replica before another is added",
+                    "type": "number"
+                  },
+                  "max_replica": {
+                    "description": "Most replicas it may run",
+                    "type": "number"
+                  },
+                  "min_replica": {
+                    "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                    "type": "number"
+                  },
+                  "scale_down_delay": {
+                    "description": "Seconds to wait before removing a replica",
+                    "type": "number"
+                  },
+                  "target_utilization_percentage": {
+                    "description": "Share of the concurrency target to aim for, in percent",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "candidate_deployment": {
+                "description": "The deployment being promoted to it, if any",
+                "properties": {
+                  "active_replica_count": {
+                    "description": "How many replicas are running",
+                    "type": "number"
+                  },
+                  "autoscaling_settings": {
+                    "description": "Its autoscaling settings (empty while deploying)",
+                    "properties": {
+                      "autoscaling_window": {
+                        "description": "Seconds of traffic looked at when scaling",
+                        "type": "number"
+                      },
+                      "concurrency_target": {
+                        "description": "Requests per replica before another is added",
+                        "type": "number"
+                      },
+                      "max_replica": {
+                        "description": "Most replicas it may run",
+                        "type": "number"
+                      },
+                      "min_replica": {
+                        "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                        "type": "number"
+                      },
+                      "scale_down_delay": {
+                        "description": "Seconds to wait before removing a replica",
+                        "type": "number"
+                      },
+                      "target_utilization_percentage": {
+                        "description": "Share of the concurrency target to aim for, in percent",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "created_at": {
+                    "description": "When it was created (ISO 8601)",
+                    "type": "string"
+                  },
+                  "environment": {
+                    "description": "The environment it serves, if any",
+                    "type": "string"
+                  },
+                  "id": {
+                    "description": "The deployment's ID, for the deployment actions",
+                    "type": "string"
+                  },
+                  "instance_type_name": {
+                    "description": "The hardware it runs on",
+                    "type": "string"
+                  },
+                  "is_development": {
+                    "description": "True if it is the model's development deployment",
+                    "type": "boolean"
+                  },
+                  "is_production": {
+                    "description": "True if it is the model's production deployment",
+                    "type": "boolean"
+                  },
+                  "labels": {
+                    "description": "Labels given to it",
+                    "type": "object"
+                  },
+                  "model_id": {
+                    "description": "The model it belongs to",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "The deployment's name",
+                    "type": "string"
+                  },
+                  "status": {
+                    "description": "ACTIVE, SCALED_TO_ZERO, WAKING_UP, INACTIVE, BUILDING, DEPLOYING, LOADING_MODEL, UPDATING, DEACTIVATING, UNHEALTHY, BUILD_FAILED, BUILD_STOPPED, DEPLOY_FAILED or FAILED",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "created_at": {
+                "description": "When it was created (ISO 8601)",
+                "type": "string"
+              },
+              "current_deployment": {
+                "description": "The deployment it serves now, if any",
+                "properties": {
+                  "active_replica_count": {
+                    "description": "How many replicas are running",
+                    "type": "number"
+                  },
+                  "autoscaling_settings": {
+                    "description": "Its autoscaling settings (empty while deploying)",
+                    "properties": {
+                      "autoscaling_window": {
+                        "description": "Seconds of traffic looked at when scaling",
+                        "type": "number"
+                      },
+                      "concurrency_target": {
+                        "description": "Requests per replica before another is added",
+                        "type": "number"
+                      },
+                      "max_replica": {
+                        "description": "Most replicas it may run",
+                        "type": "number"
+                      },
+                      "min_replica": {
+                        "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                        "type": "number"
+                      },
+                      "scale_down_delay": {
+                        "description": "Seconds to wait before removing a replica",
+                        "type": "number"
+                      },
+                      "target_utilization_percentage": {
+                        "description": "Share of the concurrency target to aim for, in percent",
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "created_at": {
+                    "description": "When it was created (ISO 8601)",
+                    "type": "string"
+                  },
+                  "environment": {
+                    "description": "The environment it serves, if any",
+                    "type": "string"
+                  },
+                  "id": {
+                    "description": "The deployment's ID, for the deployment actions",
+                    "type": "string"
+                  },
+                  "instance_type_name": {
+                    "description": "The hardware it runs on",
+                    "type": "string"
+                  },
+                  "is_development": {
+                    "description": "True if it is the model's development deployment",
+                    "type": "boolean"
+                  },
+                  "is_production": {
+                    "description": "True if it is the model's production deployment",
+                    "type": "boolean"
+                  },
+                  "labels": {
+                    "description": "Labels given to it",
+                    "type": "object"
+                  },
+                  "model_id": {
+                    "description": "The model it belongs to",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "The deployment's name",
+                    "type": "string"
+                  },
+                  "status": {
+                    "description": "ACTIVE, SCALED_TO_ZERO, WAKING_UP, INACTIVE, BUILDING, DEPLOYING, LOADING_MODEL, UPDATING, DEACTIVATING, UNHEALTHY, BUILD_FAILED, BUILD_STOPPED, DEPLOY_FAILED or FAILED",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "in_progress_promotion": {
+                "description": "A promotion under way: status and traffic share",
+                "type": "object"
+              },
+              "instance_type": {
+                "description": "The hardware it runs on",
+                "type": "object"
+              },
+              "model_id": {
+                "description": "The model it belongs to",
+                "type": "string"
+              },
+              "name": {
+                "description": "The environment's name",
+                "type": "string"
+              },
+              "promotion_settings": {
+                "description": "How promotions to it are rolled out",
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_model": {
+      "description": "Get one model: its name, how many deployments it has and which ones are in production and development.",
+      "display_name": "Get model",
+      "display_str_template": "Get model {model_id}.",
+      "handler": "actions.get_model",
+      "id": "baseten_get_model",
+      "method": "POST",
+      "mock_response": {
+        "model": {
+          "created_at": "2026-10-01T09:00:00Z",
+          "deployments_count": 2,
+          "development_deployment_id": "zxcv9012",
+          "id": "abcd1234",
+          "instance_type_name": "1x L4",
+          "name": "Support summarizer",
+          "production_deployment_id": "qwer5678",
+          "team_name": "Default"
+        }
+      },
+      "name": "get_model",
+      "output_formatter": "_format_model",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/get-model",
+      "result_str_template": "Model retrieved.",
+      "returns": {
+        "properties": {
+          "model": {
+            "description": "The model",
+            "properties": {
+              "created_at": {
+                "description": "When it was created (ISO 8601)",
+                "type": "string"
+              },
+              "deployments_count": {
+                "description": "How many deployments it has",
+                "type": "number"
+              },
+              "development_deployment_id": {
+                "description": "Its development deployment's ID, if any",
+                "type": "string"
+              },
+              "id": {
+                "description": "The model's ID, for the model and deployment actions",
+                "type": "string"
+              },
+              "instance_type_name": {
+                "description": "The hardware its production deployment runs on",
+                "type": "string"
+              },
+              "name": {
+                "description": "The model's name",
+                "type": "string"
+              },
+              "production_deployment_id": {
+                "description": "Its production deployment's ID, if any",
+                "type": "string"
+              },
+              "team_name": {
+                "description": "The team it belongs to",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_deployments": {
+      "description": "List a model's deployments with their status, running replicas and autoscaling settings.",
+      "display_name": "List deployments",
+      "display_str_template": "List deployments of {model_id}.",
+      "handler": "actions.list_deployments",
+      "id": "baseten_list_deployments",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "deployments": [
+          {
+            "active_replica_count": 1,
+            "autoscaling_settings": {
+              "autoscaling_window": 60,
+              "concurrency_target": 2,
+              "max_replica": 2,
+              "min_replica": 0,
+              "scale_down_delay": 900,
+              "target_utilization_percentage": 70
+            },
+            "created_at": "2026-11-01T09:00:00Z",
+            "environment": "production",
+            "id": "qwer5678",
+            "instance_type_name": "1x L4",
+            "is_development": false,
+            "is_production": true,
+            "labels": {},
+            "model_id": "abcd1234",
+            "name": "deployment-2",
+            "status": "ACTIVE"
+          }
+        ]
+      },
+      "name": "list_deployments",
+      "output_formatter": "_format_deployments",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only deployments in this status.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Active",
+              "value": "ACTIVE"
+            },
+            {
+              "label": "Scaled to zero",
+              "value": "SCALED_TO_ZERO"
+            },
+            {
+              "label": "Waking up",
+              "value": "WAKING_UP"
+            },
+            {
+              "label": "Inactive",
+              "value": "INACTIVE"
+            },
+            {
+              "label": "Building",
+              "value": "BUILDING"
+            },
+            {
+              "label": "Deploying",
+              "value": "DEPLOYING"
+            },
+            {
+              "label": "Loading model",
+              "value": "LOADING_MODEL"
+            },
+            {
+              "label": "Updating",
+              "value": "UPDATING"
+            },
+            {
+              "label": "Deactivating",
+              "value": "DEACTIVATING"
+            },
+            {
+              "label": "Unhealthy",
+              "value": "UNHEALTHY"
+            },
+            {
+              "label": "Build failed",
+              "value": "BUILD_FAILED"
+            },
+            {
+              "label": "Build stopped",
+              "value": "BUILD_STOPPED"
+            },
+            {
+              "label": "Deploy failed",
+              "value": "DEPLOY_FAILED"
+            },
+            {
+              "label": "Failed",
+              "value": "FAILED"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only the deployment with exactly this name.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/list-deployments",
+      "result_str_template": "Deployments retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many",
+            "type": "number"
+          },
+          "deployments": {
+            "description": "The deployments",
+            "items": {
+              "description": "A deployment (version) of a model",
+              "properties": {
+                "active_replica_count": {
+                  "description": "How many replicas are running",
+                  "type": "number"
+                },
+                "autoscaling_settings": {
+                  "description": "Its autoscaling settings (empty while deploying)",
+                  "properties": {
+                    "autoscaling_window": {
+                      "description": "Seconds of traffic looked at when scaling",
+                      "type": "number"
+                    },
+                    "concurrency_target": {
+                      "description": "Requests per replica before another is added",
+                      "type": "number"
+                    },
+                    "max_replica": {
+                      "description": "Most replicas it may run",
+                      "type": "number"
+                    },
+                    "min_replica": {
+                      "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                      "type": "number"
+                    },
+                    "scale_down_delay": {
+                      "description": "Seconds to wait before removing a replica",
+                      "type": "number"
+                    },
+                    "target_utilization_percentage": {
+                      "description": "Share of the concurrency target to aim for, in percent",
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "created_at": {
+                  "description": "When it was created (ISO 8601)",
+                  "type": "string"
+                },
+                "environment": {
+                  "description": "The environment it serves, if any",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The deployment's ID, for the deployment actions",
+                  "type": "string"
+                },
+                "instance_type_name": {
+                  "description": "The hardware it runs on",
+                  "type": "string"
+                },
+                "is_development": {
+                  "description": "True if it is the model's development deployment",
+                  "type": "boolean"
+                },
+                "is_production": {
+                  "description": "True if it is the model's production deployment",
+                  "type": "boolean"
+                },
+                "labels": {
+                  "description": "Labels given to it",
+                  "type": "object"
+                },
+                "model_id": {
+                  "description": "The model it belongs to",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The deployment's name",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "ACTIVE, SCALED_TO_ZERO, WAKING_UP, INACTIVE, BUILDING, DEPLOYING, LOADING_MODEL, UPDATING, DEACTIVATING, UNHEALTHY, BUILD_FAILED, BUILD_STOPPED, DEPLOY_FAILED or FAILED",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_environments": {
+      "description": "List a model's environments, such as production and staging, with the deployment each one serves.",
+      "display_name": "List environments",
+      "display_str_template": "List environments of {model_id}.",
+      "handler": "actions.list_environments",
+      "id": "baseten_list_environments",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "environments": [
+          {
+            "autoscaling_settings": {
+              "autoscaling_window": 60,
+              "concurrency_target": 2,
+              "max_replica": 2,
+              "min_replica": 0,
+              "scale_down_delay": 900,
+              "target_utilization_percentage": 70
+            },
+            "candidate_deployment": {
+              "active_replica_count": 1,
+              "autoscaling_settings": {
+                "autoscaling_window": 60,
+                "concurrency_target": 2,
+                "max_replica": 2,
+                "min_replica": 0,
+                "scale_down_delay": 900,
+                "target_utilization_percentage": 70
+              },
+              "created_at": "2026-11-01T09:00:00Z",
+              "environment": "production",
+              "id": "zxcv9012",
+              "instance_type_name": "1x L4",
+              "is_development": false,
+              "is_production": true,
+              "labels": {},
+              "model_id": "abcd1234",
+              "name": "deployment-2",
+              "status": "DEPLOYING"
+            },
+            "created_at": "2026-11-02T09:00:00Z",
+            "current_deployment": {
+              "active_replica_count": 1,
+              "autoscaling_settings": {
+                "autoscaling_window": 60,
+                "concurrency_target": 2,
+                "max_replica": 2,
+                "min_replica": 0,
+                "scale_down_delay": 900,
+                "target_utilization_percentage": 70
+              },
+              "created_at": "2026-11-01T09:00:00Z",
+              "environment": "production",
+              "id": "qwer5678",
+              "instance_type_name": "1x L4",
+              "is_development": false,
+              "is_production": true,
+              "labels": {},
+              "model_id": "abcd1234",
+              "name": "deployment-2",
+              "status": "ACTIVE"
+            },
+            "in_progress_promotion": {
+              "percent_traffic_to_new_version": 0,
+              "status": "RELEASING"
+            },
+            "instance_type": {
+              "id": "L4x4x16",
+              "name": "1x L4"
+            },
+            "model_id": "abcd1234",
+            "name": "staging",
+            "promotion_settings": {
+              "rolling_deploy": true
+            }
+          }
+        ]
+      },
+      "name": "list_environments",
+      "output_formatter": "_format_environments",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/list-environments",
+      "result_str_template": "Environments retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many",
+            "type": "number"
+          },
+          "environments": {
+            "description": "The environments",
+            "items": {
+              "description": "An environment of a model, such as production or staging",
+              "properties": {
+                "autoscaling_settings": {
+                  "description": "Its autoscaling settings",
+                  "properties": {
+                    "autoscaling_window": {
+                      "description": "Seconds of traffic looked at when scaling",
+                      "type": "number"
+                    },
+                    "concurrency_target": {
+                      "description": "Requests per replica before another is added",
+                      "type": "number"
+                    },
+                    "max_replica": {
+                      "description": "Most replicas it may run",
+                      "type": "number"
+                    },
+                    "min_replica": {
+                      "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                      "type": "number"
+                    },
+                    "scale_down_delay": {
+                      "description": "Seconds to wait before removing a replica",
+                      "type": "number"
+                    },
+                    "target_utilization_percentage": {
+                      "description": "Share of the concurrency target to aim for, in percent",
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "candidate_deployment": {
+                  "description": "The deployment being promoted to it, if any",
+                  "properties": {
+                    "active_replica_count": {
+                      "description": "How many replicas are running",
+                      "type": "number"
+                    },
+                    "autoscaling_settings": {
+                      "description": "Its autoscaling settings (empty while deploying)",
+                      "properties": {
+                        "autoscaling_window": {
+                          "description": "Seconds of traffic looked at when scaling",
+                          "type": "number"
+                        },
+                        "concurrency_target": {
+                          "description": "Requests per replica before another is added",
+                          "type": "number"
+                        },
+                        "max_replica": {
+                          "description": "Most replicas it may run",
+                          "type": "number"
+                        },
+                        "min_replica": {
+                          "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                          "type": "number"
+                        },
+                        "scale_down_delay": {
+                          "description": "Seconds to wait before removing a replica",
+                          "type": "number"
+                        },
+                        "target_utilization_percentage": {
+                          "description": "Share of the concurrency target to aim for, in percent",
+                          "type": "number"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "created_at": {
+                      "description": "When it was created (ISO 8601)",
+                      "type": "string"
+                    },
+                    "environment": {
+                      "description": "The environment it serves, if any",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "The deployment's ID, for the deployment actions",
+                      "type": "string"
+                    },
+                    "instance_type_name": {
+                      "description": "The hardware it runs on",
+                      "type": "string"
+                    },
+                    "is_development": {
+                      "description": "True if it is the model's development deployment",
+                      "type": "boolean"
+                    },
+                    "is_production": {
+                      "description": "True if it is the model's production deployment",
+                      "type": "boolean"
+                    },
+                    "labels": {
+                      "description": "Labels given to it",
+                      "type": "object"
+                    },
+                    "model_id": {
+                      "description": "The model it belongs to",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The deployment's name",
+                      "type": "string"
+                    },
+                    "status": {
+                      "description": "ACTIVE, SCALED_TO_ZERO, WAKING_UP, INACTIVE, BUILDING, DEPLOYING, LOADING_MODEL, UPDATING, DEACTIVATING, UNHEALTHY, BUILD_FAILED, BUILD_STOPPED, DEPLOY_FAILED or FAILED",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "created_at": {
+                  "description": "When it was created (ISO 8601)",
+                  "type": "string"
+                },
+                "current_deployment": {
+                  "description": "The deployment it serves now, if any",
+                  "properties": {
+                    "active_replica_count": {
+                      "description": "How many replicas are running",
+                      "type": "number"
+                    },
+                    "autoscaling_settings": {
+                      "description": "Its autoscaling settings (empty while deploying)",
+                      "properties": {
+                        "autoscaling_window": {
+                          "description": "Seconds of traffic looked at when scaling",
+                          "type": "number"
+                        },
+                        "concurrency_target": {
+                          "description": "Requests per replica before another is added",
+                          "type": "number"
+                        },
+                        "max_replica": {
+                          "description": "Most replicas it may run",
+                          "type": "number"
+                        },
+                        "min_replica": {
+                          "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                          "type": "number"
+                        },
+                        "scale_down_delay": {
+                          "description": "Seconds to wait before removing a replica",
+                          "type": "number"
+                        },
+                        "target_utilization_percentage": {
+                          "description": "Share of the concurrency target to aim for, in percent",
+                          "type": "number"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "created_at": {
+                      "description": "When it was created (ISO 8601)",
+                      "type": "string"
+                    },
+                    "environment": {
+                      "description": "The environment it serves, if any",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "The deployment's ID, for the deployment actions",
+                      "type": "string"
+                    },
+                    "instance_type_name": {
+                      "description": "The hardware it runs on",
+                      "type": "string"
+                    },
+                    "is_development": {
+                      "description": "True if it is the model's development deployment",
+                      "type": "boolean"
+                    },
+                    "is_production": {
+                      "description": "True if it is the model's production deployment",
+                      "type": "boolean"
+                    },
+                    "labels": {
+                      "description": "Labels given to it",
+                      "type": "object"
+                    },
+                    "model_id": {
+                      "description": "The model it belongs to",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The deployment's name",
+                      "type": "string"
+                    },
+                    "status": {
+                      "description": "ACTIVE, SCALED_TO_ZERO, WAKING_UP, INACTIVE, BUILDING, DEPLOYING, LOADING_MODEL, UPDATING, DEACTIVATING, UNHEALTHY, BUILD_FAILED, BUILD_STOPPED, DEPLOY_FAILED or FAILED",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "in_progress_promotion": {
+                  "description": "A promotion under way: status and traffic share",
+                  "type": "object"
+                },
+                "instance_type": {
+                  "description": "The hardware it runs on",
+                  "type": "object"
+                },
+                "model_id": {
+                  "description": "The model it belongs to",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The environment's name",
+                  "type": "string"
+                },
+                "promotion_settings": {
+                  "description": "How promotions to it are rolled out",
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_models": {
+      "description": "List the models in your Baseten workspace, with their production and development deployments.",
+      "display_name": "List models",
+      "display_str_template": "List models.",
+      "handler": "actions.list_models",
+      "id": "baseten_list_models",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "models": [
+          {
+            "created_at": "2026-10-01T09:00:00Z",
+            "deployments_count": 2,
+            "development_deployment_id": "zxcv9012",
+            "id": "abcd1234",
+            "instance_type_name": "1x L4",
+            "name": "Support summarizer",
+            "production_deployment_id": "qwer5678",
+            "team_name": "Default"
+          }
+        ]
+      },
+      "name": "list_models",
+      "output_formatter": "_format_models",
+      "parameters": [
+        {
+          "description": "Only the model with exactly this name.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/list-models",
+      "result_str_template": "Models retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many",
+            "type": "number"
+          },
+          "models": {
+            "description": "The models",
+            "items": {
+              "description": "A model in the Baseten workspace",
+              "properties": {
+                "created_at": {
+                  "description": "When it was created (ISO 8601)",
+                  "type": "string"
+                },
+                "deployments_count": {
+                  "description": "How many deployments it has",
+                  "type": "number"
+                },
+                "development_deployment_id": {
+                  "description": "Its development deployment's ID, if any",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The model's ID, for the model and deployment actions",
+                  "type": "string"
+                },
+                "instance_type_name": {
+                  "description": "The hardware its production deployment runs on",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The model's name",
+                  "type": "string"
+                },
+                "production_deployment_id": {
+                  "description": "Its production deployment's ID, if any",
+                  "type": "string"
+                },
+                "team_name": {
+                  "description": "The team it belongs to",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_secrets": {
+      "description": "List the names of the secrets your models can read, such as access tokens. Their values are never shown.",
+      "display_name": "List secrets",
+      "display_str_template": "List secrets.",
+      "handler": "actions.list_secrets",
+      "id": "baseten_list_secrets",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "secrets": [
+          {
+            "created_at": "2026-11-01T09:00:00Z",
+            "id": "sec123",
+            "name": "hf_access_token",
+            "team_name": "Default"
+          }
+        ]
+      },
+      "name": "list_secrets",
+      "output_formatter": "_format_secrets",
+      "parameters": [],
+      "path": "/actions/library/baseten/list-secrets",
+      "result_str_template": "Secrets retrieved.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many",
+            "type": "number"
+          },
+          "secrets": {
+            "description": "The secrets",
+            "items": {
+              "description": "A secret's name (Baseten never returns its value)",
+              "properties": {
+                "created_at": {
+                  "description": "When it was created (ISO 8601)",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The secret's ID",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The secret's name, for 'Delete secret'",
+                  "type": "string"
+                },
+                "team_name": {
+                  "description": "The team it belongs to",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "promote_deployment": {
+      "description": "Make a deployment the one an environment serves, such as moving a tested deployment into production.",
+      "display_name": "Promote deployment",
+      "display_str_template": "Promote deployment {deployment_id} of {model_id}.",
+      "handler": "actions.promote_deployment",
+      "id": "baseten_promote_deployment",
+      "method": "POST",
+      "mock_response": {
+        "deployment": {
+          "active_replica_count": 1,
+          "autoscaling_settings": {
+            "autoscaling_window": 60,
+            "concurrency_target": 2,
+            "max_replica": 2,
+            "min_replica": 0,
+            "scale_down_delay": 900,
+            "target_utilization_percentage": 70
+          },
+          "created_at": "2026-11-01T09:00:00Z",
+          "environment": "production",
+          "id": "qwer5678",
+          "instance_type_name": "1x L4",
+          "is_development": false,
+          "is_production": true,
+          "labels": {},
+          "model_id": "abcd1234",
+          "name": "deployment-2",
+          "status": "ACTIVE"
+        },
+        "environment": "production"
+      },
+      "name": "promote_deployment",
+      "output_formatter": "_format_deployment",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The deployment: the model's production or development deployment, or one by its ID from an earlier step.",
+          "display_name": "Deployment",
+          "dynamic_source": "deployments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "deployment_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The environment to promote it to. Defaults to production.",
+          "display_name": "Environment",
+          "dynamic_source": "environments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "environment",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Scale the deployment the environment served before down to zero. Baseten does this unless told not to.",
+          "display_name": "Scale down the one it replaces",
+          "name": "scale_down_previous",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/baseten/promote-deployment",
+      "result_str_template": "Deployment promoted.",
+      "returns": {
+        "properties": {
+          "deployment": {
+            "description": "The promoted deployment",
+            "properties": {
+              "active_replica_count": {
+                "description": "How many replicas are running",
+                "type": "number"
+              },
+              "autoscaling_settings": {
+                "description": "Its autoscaling settings (empty while deploying)",
+                "properties": {
+                  "autoscaling_window": {
+                    "description": "Seconds of traffic looked at when scaling",
+                    "type": "number"
+                  },
+                  "concurrency_target": {
+                    "description": "Requests per replica before another is added",
+                    "type": "number"
+                  },
+                  "max_replica": {
+                    "description": "Most replicas it may run",
+                    "type": "number"
+                  },
+                  "min_replica": {
+                    "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                    "type": "number"
+                  },
+                  "scale_down_delay": {
+                    "description": "Seconds to wait before removing a replica",
+                    "type": "number"
+                  },
+                  "target_utilization_percentage": {
+                    "description": "Share of the concurrency target to aim for, in percent",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "created_at": {
+                "description": "When it was created (ISO 8601)",
+                "type": "string"
+              },
+              "environment": {
+                "description": "The environment it serves, if any",
+                "type": "string"
+              },
+              "id": {
+                "description": "The deployment's ID, for the deployment actions",
+                "type": "string"
+              },
+              "instance_type_name": {
+                "description": "The hardware it runs on",
+                "type": "string"
+              },
+              "is_development": {
+                "description": "True if it is the model's development deployment",
+                "type": "boolean"
+              },
+              "is_production": {
+                "description": "True if it is the model's production deployment",
+                "type": "boolean"
+              },
+              "labels": {
+                "description": "Labels given to it",
+                "type": "object"
+              },
+              "model_id": {
+                "description": "The model it belongs to",
+                "type": "string"
+              },
+              "name": {
+                "description": "The deployment's name",
+                "type": "string"
+              },
+              "status": {
+                "description": "ACTIVE, SCALED_TO_ZERO, WAKING_UP, INACTIVE, BUILDING, DEPLOYING, LOADING_MODEL, UPDATING, DEACTIVATING, UNHEALTHY, BUILD_FAILED, BUILD_STOPPED, DEPLOY_FAILED or FAILED",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "environment": {
+            "description": "The environment it was promoted to",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "retry_deployment": {
+      "description": "Build and deploy a failed deployment again. If it can't be retried, the result says why.",
+      "display_name": "Retry failed deployment",
+      "display_str_template": "Retry deployment {deployment_id} of {model_id}.",
+      "handler": "actions.retry_deployment",
+      "id": "baseten_retry_deployment",
+      "method": "POST",
+      "mock_response": {
+        "deployment": {
+          "active_replica_count": 1,
+          "autoscaling_settings": {
+            "autoscaling_window": 60,
+            "concurrency_target": 2,
+            "max_replica": 2,
+            "min_replica": 0,
+            "scale_down_delay": 900,
+            "target_utilization_percentage": 70
+          },
+          "created_at": "2026-11-01T09:00:00Z",
+          "environment": "production",
+          "id": "qwer5678",
+          "instance_type_name": "1x L4",
+          "is_development": false,
+          "is_production": true,
+          "labels": {},
+          "model_id": "abcd1234",
+          "name": "deployment-2",
+          "status": "BUILDING"
+        },
+        "reason": "",
+        "retried": true
+      },
+      "name": "retry_deployment",
+      "output_formatter": "_format_retry",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The deployment: the model's production or development deployment, or one by its ID from an earlier step.",
+          "display_name": "Deployment",
+          "dynamic_source": "deployments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "deployment_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/retry-deployment",
+      "result_str_template": "Retry requested.",
+      "returns": {
+        "properties": {
+          "deployment": {
+            "description": "The deployment",
+            "properties": {
+              "active_replica_count": {
+                "description": "How many replicas are running",
+                "type": "number"
+              },
+              "autoscaling_settings": {
+                "description": "Its autoscaling settings (empty while deploying)",
+                "properties": {
+                  "autoscaling_window": {
+                    "description": "Seconds of traffic looked at when scaling",
+                    "type": "number"
+                  },
+                  "concurrency_target": {
+                    "description": "Requests per replica before another is added",
+                    "type": "number"
+                  },
+                  "max_replica": {
+                    "description": "Most replicas it may run",
+                    "type": "number"
+                  },
+                  "min_replica": {
+                    "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                    "type": "number"
+                  },
+                  "scale_down_delay": {
+                    "description": "Seconds to wait before removing a replica",
+                    "type": "number"
+                  },
+                  "target_utilization_percentage": {
+                    "description": "Share of the concurrency target to aim for, in percent",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "created_at": {
+                "description": "When it was created (ISO 8601)",
+                "type": "string"
+              },
+              "environment": {
+                "description": "The environment it serves, if any",
+                "type": "string"
+              },
+              "id": {
+                "description": "The deployment's ID, for the deployment actions",
+                "type": "string"
+              },
+              "instance_type_name": {
+                "description": "The hardware it runs on",
+                "type": "string"
+              },
+              "is_development": {
+                "description": "True if it is the model's development deployment",
+                "type": "boolean"
+              },
+              "is_production": {
+                "description": "True if it is the model's production deployment",
+                "type": "boolean"
+              },
+              "labels": {
+                "description": "Labels given to it",
+                "type": "object"
+              },
+              "model_id": {
+                "description": "The model it belongs to",
+                "type": "string"
+              },
+              "name": {
+                "description": "The deployment's name",
+                "type": "string"
+              },
+              "status": {
+                "description": "ACTIVE, SCALED_TO_ZERO, WAKING_UP, INACTIVE, BUILDING, DEPLOYING, LOADING_MODEL, UPDATING, DEACTIVATING, UNHEALTHY, BUILD_FAILED, BUILD_STOPPED, DEPLOY_FAILED or FAILED",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "reason": {
+            "description": "Why it couldn't be retried, if it wasn't",
+            "type": "string"
+          },
+          "retried": {
+            "description": "True if the retry started",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
+    "update_deployment_autoscaling": {
+      "description": "Change how many replicas a deployment runs and when it adds or removes them. Only the settings you fill in change; the rest keep their values.",
+      "display_name": "Update autoscaling",
+      "display_str_template": "Update autoscaling of deployment {deployment_id} of {model_id}.",
+      "handler": "actions.update_deployment_autoscaling",
+      "id": "baseten_update_deployment_autoscaling",
+      "method": "POST",
+      "mock_response": {
+        "autoscaling_settings": {
+          "autoscaling_window": 60,
+          "concurrency_target": 2,
+          "max_replica": 2,
+          "min_replica": 1,
+          "scale_down_delay": 900,
+          "target_utilization_percentage": 70
+        },
+        "changed": [
+          "min_replica"
+        ],
+        "message": "Autoscaling settings update accepted",
+        "status": "ACCEPTED"
+      },
+      "name": "update_deployment_autoscaling",
+      "output_formatter": "_format_autoscaling",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The deployment: the model's production or development deployment, or one by its ID from an earlier step.",
+          "display_name": "Deployment",
+          "dynamic_source": "deployments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "deployment_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The fewest copies of the model kept running. 0 lets it scale to zero when idle.",
+          "display_name": "Minimum replicas",
+          "maximum": 1000,
+          "minimum": 0,
+          "name": "min_replica",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The most copies of the model it may run at busy times.",
+          "display_name": "Maximum replicas",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "max_replica",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many requests one replica handles at once before another is added.",
+          "display_name": "Requests per replica",
+          "maximum": 100000,
+          "minimum": 1,
+          "name": "concurrency_target",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How much of the requests-per-replica figure to aim for, 1 to 100, leaving headroom for bursts.",
+          "display_name": "Target utilization (%)",
+          "maximum": 100,
+          "minimum": 1,
+          "name": "target_utilization_percentage",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many seconds of recent traffic to look at when deciding to scale.",
+          "display_name": "Autoscaling window (seconds)",
+          "maximum": 86400,
+          "minimum": 1,
+          "name": "autoscaling_window",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many seconds to wait before removing a replica once traffic drops.",
+          "display_name": "Scale-down delay (seconds)",
+          "maximum": 86400,
+          "minimum": 0,
+          "name": "scale_down_delay",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/baseten/update-deployment-autoscaling",
+      "result_str_template": "Autoscaling updated.",
+      "returns": {
+        "properties": {
+          "autoscaling_settings": {
+            "description": "The settings once the change applies",
+            "properties": {
+              "autoscaling_window": {
+                "description": "Seconds of traffic looked at when scaling",
+                "type": "number"
+              },
+              "concurrency_target": {
+                "description": "Requests per replica before another is added",
+                "type": "number"
+              },
+              "max_replica": {
+                "description": "Most replicas it may run",
+                "type": "number"
+              },
+              "min_replica": {
+                "description": "Fewest replicas kept running (0 lets it scale to zero)",
+                "type": "number"
+              },
+              "scale_down_delay": {
+                "description": "Seconds to wait before removing a replica",
+                "type": "number"
+              },
+              "target_utilization_percentage": {
+                "description": "Share of the concurrency target to aim for, in percent",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "changed": {
+            "description": "The settings that changed",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "message": {
+            "description": "What Baseten said",
+            "type": "string"
+          },
+          "status": {
+            "description": "ACCEPTED, QUEUED or UNCHANGED",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "upsert_secret": {
+      "description": "Add a secret your models can read, or replace the value of the one with that name. Running deployments get the new value at once.",
+      "display_name": "Save secret",
+      "display_str_template": "Save secret {name}.",
+      "handler": "actions.upsert_secret",
+      "id": "baseten_upsert_secret",
+      "method": "POST",
+      "mock_response": {
+        "secret": {
+          "created_at": "2026-11-01T09:00:00Z",
+          "id": "sec123",
+          "name": "hf_access_token",
+          "team_name": "Default"
+        }
+      },
+      "name": "upsert_secret",
+      "output_formatter": "_format_secret",
+      "parameters": [
+        {
+          "description": "The secret's name, such as hf_access_token. Baseten treats hf_access_token and hf-access-token as the same name.",
+          "display_name": "Name",
+          "examples": [
+            {
+              "label": "A name",
+              "value": "hf_access_token"
+            }
+          ],
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The secret's value.",
+          "display_name": "Value",
+          "name": "value",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/upsert-secret",
+      "result_str_template": "Secret saved.",
+      "returns": {
+        "properties": {
+          "secret": {
+            "description": "The secret, without its value",
+            "properties": {
+              "created_at": {
+                "description": "When it was created (ISO 8601)",
+                "type": "string"
+              },
+              "id": {
+                "description": "The secret's ID",
+                "type": "string"
+              },
+              "name": {
+                "description": "The secret's name, for 'Delete secret'",
+                "type": "string"
+              },
+              "team_name": {
+                "description": "The team it belongs to",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write",
+        "modify"
+      ]
+    },
+    "wake_model": {
+      "description": "Start a model that has scaled to zero, ahead of the requests you expect, so nobody waits for it to load. Returns at once.",
+      "display_name": "Wake model",
+      "display_str_template": "Wake model {model_id}.",
+      "handler": "actions.wake_model",
+      "id": "baseten_wake_model",
+      "method": "POST",
+      "mock_response": {
+        "called": "production environment",
+        "woken": true
+      },
+      "name": "wake_model",
+      "output_formatter": "_format_done",
+      "parameters": [
+        {
+          "description": "The model. Pick one, or give its ID from an earlier step.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The environment to wake. Defaults to production.",
+          "display_name": "Environment",
+          "dynamic_source": "environments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "environment",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A deployment to wake instead of an environment, such as the development deployment. Leave empty to use the environment.",
+          "display_name": "Deployment",
+          "dynamic_source": "deployments",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "model_id"
+          ],
+          "name": "deployment_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/baseten/wake-model",
+      "result_str_template": "Wake requested.",
+      "returns": {
+        "properties": {
+          "called": {
+            "description": "What was called, such as production environment",
+            "type": "string"
+          },
+          "woken": {
+            "description": "Always true once asked",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    }
+  },
+  "categories": [
+    "AI Models",
+    "Cloud Computing"
+  ],
+  "description": "Run and look after the AI models you deploy on Baseten: call a model, wake it, activate, deactivate or promote deployments, change autoscaling, read logs and manage environments and secrets. Start a workflow when a model or deployment is added, changes status or is promoted.",
+  "display_name": "Baseten",
+  "id": "baseten",
+  "logo": "https://www.lodol.com/app-icons/baseten-icon.png",
+  "triggers": {
+    "baseten_deployment_promoted_trigger": {
+      "description": "Runs when a model's production deployment changes, such as when a new version is promoted or production is rolled back to an earlier one.",
+      "display_name": "Deployment promoted to production",
+      "id": "baseten_deployment_promoted_trigger",
+      "output": {
+        "deployment_id": "The deployment now in production",
+        "instance_type_name": "The hardware production runs on",
+        "model": "Everything Baseten says about the model",
+        "model_id": "The model's ID",
+        "model_name": "The model's name"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only this model. Leave blank for every model.",
+          "display_name": "Model",
+          "name": "model_id",
+          "required": false
+        }
+      ]
+    },
+    "baseten_deployment_status_changed_trigger": {
+      "description": "Runs when a deployment's status changes, such as when it becomes active, fails to deploy or scales to zero. Choose a status to run only when a deployment reaches it.",
+      "display_name": "Deployment status changed",
+      "id": "baseten_deployment_status_changed_trigger",
+      "output": {
+        "active_replica_count": "How many replicas are running",
+        "created_at": "When it was created (ISO 8601)",
+        "deployment": "Everything Baseten says about the deployment",
+        "deployment_id": "The deployment's ID, for the deployment actions",
+        "environment": "The environment it serves, if any",
+        "instance_type_name": "The hardware it runs on",
+        "is_production": "True if it is the model's production deployment",
+        "model_id": "The model it belongs to",
+        "model_name": "The model's name",
+        "name": "The deployment's name",
+        "status": "Its status, such as ACTIVE, SCALED_TO_ZERO or DEPLOY_FAILED"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only this model. Leave blank for every model.",
+          "display_name": "Model",
+          "name": "model_id",
+          "required": false
+        },
+        {
+          "arg_index": 1,
+          "description": "Only when a deployment reaches this status, such as Active or Failed. Leave blank for any change.",
+          "display_name": "Status",
+          "name": "status",
+          "required": false
+        }
+      ]
+    },
+    "baseten_new_deployment_trigger": {
+      "description": "Runs when a new deployment (version) of a model is pushed to Baseten, while it is still building. Pair it with 'Deployment status changed' to act once it is ready.",
+      "display_name": "New deployment",
+      "id": "baseten_new_deployment_trigger",
+      "output": {
+        "active_replica_count": "How many replicas are running",
+        "created_at": "When it was created (ISO 8601)",
+        "deployment": "Everything Baseten says about the deployment",
+        "deployment_id": "The deployment's ID, for the deployment actions",
+        "environment": "The environment it serves, if any",
+        "instance_type_name": "The hardware it runs on",
+        "is_production": "True if it is the model's production deployment",
+        "model_id": "The model it belongs to",
+        "model_name": "The model's name",
+        "name": "The deployment's name",
+        "status": "Its status, such as ACTIVE, SCALED_TO_ZERO or DEPLOY_FAILED"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only this model. Leave blank for every model.",
+          "display_name": "Model",
+          "name": "model_id",
+          "required": false
+        }
+      ]
+    },
+    "baseten_new_model_trigger": {
+      "description": "Runs when a model is added to your Baseten workspace. Models already there when the workflow is turned on don't start it.",
+      "display_name": "New model",
+      "id": "baseten_new_model_trigger",
+      "output": {
+        "created_at": "When it was created (ISO 8601)",
+        "deployments_count": "How many deployments it has",
+        "model": "Everything Baseten says about the model",
+        "model_id": "The model's ID, for the model actions",
+        "name": "The model's name",
+        "production_deployment_id": "Its production deployment's ID, if any",
+        "team_name": "The team it belongs to"
+      },
+      "parameters": []
+    }
+  }
+}

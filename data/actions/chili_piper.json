@@ -1,0 +1,2353 @@
+{
+  "actions": {
+    "add_users_to_team": {
+      "description": "Add people to a team so meetings routed to it can go to them. People already in it are left as they are.",
+      "display_name": "Add people to team",
+      "display_str_template": "Add people to team.",
+      "handler": "actions.add_users_to_team",
+      "id": "chili_piper_add_users_to_team",
+      "method": "POST",
+      "mock_response": {
+        "team": {
+          "id": "5d6e7f80-1a2b-3c4d-5e6f-708192a3b4c5",
+          "members": [
+            "64ee0722-c7c6-4b48-bc89-356c99f1d25d"
+          ],
+          "name": "Inbound SDRs",
+          "workspaceId": "abcd1234-5678-90ef-1234-567890abcdef"
+        },
+        "user_ids": [
+          "64ee0722-c7c6-4b48-bc89-356c99f1d25d"
+        ]
+      },
+      "name": "add_users_to_team",
+      "output_formatter": "_format_team",
+      "parameters": [
+        {
+          "description": "The team. Pick one, or give its ID from an earlier step.",
+          "display_name": "Team",
+          "dynamic_source": "teams",
+          "dynamic_source_allows_custom": true,
+          "name": "chili_team_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The people to add or take off. Pick them, or give their IDs.",
+          "display_name": "People",
+          "dynamic_source": "users",
+          "dynamic_source_allows_custom": true,
+          "multi_select": true,
+          "name": "chili_user_ids",
+          "required": true,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/chili-piper/add-users-to-team",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "team": {
+            "description": "The team, as it is now",
+            "properties": {
+              "id": {
+                "description": "The team's ID, for the team actions",
+                "type": "string"
+              },
+              "members": {
+                "description": "The IDs of its members",
+                "items": {
+                  "description": "One entry",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "name": {
+                "description": "Its name",
+                "type": "string"
+              },
+              "workspaceId": {
+                "description": "The workspace it belongs to",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "user_ids": {
+            "description": "The people asked for",
+            "items": {
+              "description": "One entry",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "book_meeting": {
+      "description": "Book a meeting with one person on one of their own meeting types, at a time they are free (see 'Find open times'). Calendar invites go out straight away.",
+      "display_name": "Book meeting",
+      "display_str_template": "Book meeting.",
+      "handler": "actions.book_meeting",
+      "id": "chili_piper_book_meeting",
+      "method": "POST",
+      "mock_response": {
+        "guest_email": "jo@example.com",
+        "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789",
+        "start_time": "2026-11-10T15:00:00.000Z"
+      },
+      "name": "book_meeting",
+      "output_formatter": "_format_booked",
+      "parameters": [
+        {
+          "description": "The person the meeting is with.",
+          "display_name": "Host",
+          "dynamic_source": "users",
+          "dynamic_source_allows_custom": true,
+          "name": "host_user_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "One of the host's own meeting types, which sets its length and location.",
+          "display_name": "Meeting type",
+          "dynamic_source": "meeting_types",
+          "dynamic_source_allows_custom": true,
+          "name": "meeting_type_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "When the meeting starts. The host must be free then.",
+          "display_name": "Start",
+          "name": "start_time",
+          "required": true,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "The email address of the person the meeting is with.",
+          "display_name": "Guest email",
+          "examples": [
+            {
+              "label": "An email address",
+              "value": "jo@example.com"
+            }
+          ],
+          "name": "guest_email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The guest's first name. Most meeting types ask for it.",
+          "display_name": "Guest first name",
+          "name": "guest_first_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The guest's last name. Most meeting types ask for it.",
+          "display_name": "Guest last name",
+          "name": "guest_last_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The guest's time zone, such as America/New_York.",
+          "display_name": "Guest time zone",
+          "examples": [
+            {
+              "label": "A time zone",
+              "value": "America/New_York"
+            }
+          ],
+          "name": "guest_time_zone",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Email addresses of anyone else to invite. Their calendars aren't checked.",
+          "display_name": "Other guests",
+          "name": "additional_guests",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Send Chili Piper's own 'meeting booked' email and Slack notes to the host. On unless turned off; the guest's invite goes out either way.",
+          "display_name": "Notify the host",
+          "name": "notify_team",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/chili-piper/book-meeting",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "guest_email": {
+            "description": "Who it is with",
+            "type": "string"
+          },
+          "meeting_id": {
+            "description": "The new meeting's ID, for the other meeting actions",
+            "type": "string"
+          },
+          "start_time": {
+            "description": "When it starts (ISO 8601)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
+    "book_open_time": {
+      "description": "Book one of the times 'Find open times' returned, for a guest. Calendar invites go out straight away.",
+      "display_name": "Book an open time",
+      "display_str_template": "Book an open time.",
+      "handler": "actions.book_open_time",
+      "id": "chili_piper_book_open_time",
+      "method": "POST",
+      "mock_response": {
+        "guest_email": "jo@example.com",
+        "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789",
+        "start_time": "2026-11-10T15:00:00.000Z"
+      },
+      "name": "book_open_time",
+      "output_formatter": "_format_booked",
+      "parameters": [
+        {
+          "description": "The 'session_id' from 'Find open times'.",
+          "display_name": "Booking session",
+          "name": "session_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "One of the 'start_times' that step returned.",
+          "display_name": "Start",
+          "name": "start_time",
+          "required": true,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "The email address of the person the meeting is with.",
+          "display_name": "Guest email",
+          "examples": [
+            {
+              "label": "An email address",
+              "value": "jo@example.com"
+            }
+          ],
+          "name": "guest_email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The guest's time zone, such as America/New_York.",
+          "display_name": "Guest time zone",
+          "examples": [
+            {
+              "label": "A time zone",
+              "value": "America/New_York"
+            }
+          ],
+          "name": "guest_time_zone",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Answers to the link's guest form, by field, such as PersonFirstName. 'Find open times' lists the fields.",
+          "display_name": "Guest form answers",
+          "name": "form_answers",
+          "object_key_name": "Field",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Email addresses of anyone else to invite. Their calendars aren't checked.",
+          "display_name": "Other guests",
+          "name": "additional_guests",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/chili-piper/book-open-time",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "guest_email": {
+            "description": "Who it is with",
+            "type": "string"
+          },
+          "meeting_id": {
+            "description": "The new meeting's ID, for the other meeting actions",
+            "type": "string"
+          },
+          "start_time": {
+            "description": "When it starts (ISO 8601)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
+    "book_routed_meeting": {
+      "description": "Book one of the open times 'Route a lead' returned, with the rep the router picked. Calendar invites go out straight away.",
+      "display_name": "Book the routed meeting",
+      "display_str_template": "Book the routed meeting.",
+      "handler": "actions.book_routed_meeting",
+      "id": "chili_piper_book_routed_meeting",
+      "method": "POST",
+      "mock_response": {
+        "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789",
+        "start_time": "2026-11-10T15:00:00.000Z"
+      },
+      "name": "book_routed_meeting",
+      "output_formatter": "_format_booked",
+      "parameters": [
+        {
+          "description": "The 'session_id' from 'Route a lead'.",
+          "display_name": "Routing session",
+          "name": "session_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "One of the 'start_times' that step returned.",
+          "display_name": "Start",
+          "name": "start_time",
+          "required": true,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Email addresses of anyone else to invite. Their calendars aren't checked.",
+          "display_name": "Other guests",
+          "name": "additional_guests",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/chili-piper/book-routed-meeting",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "meeting_id": {
+            "description": "The new meeting's ID",
+            "type": "string"
+          },
+          "start_time": {
+            "description": "When it starts (ISO 8601)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
+    "cancel_meeting": {
+      "description": "Cancel a meeting. Chili Piper tells the people invited. It can't be undone.",
+      "display_name": "Cancel meeting",
+      "display_str_template": "Cancel meeting {meeting_id}.",
+      "handler": "actions.cancel_meeting",
+      "id": "chili_piper_cancel_meeting",
+      "method": "POST",
+      "mock_response": {
+        "meeting": {
+          "attendees": [],
+          "booked_at": "2026-11-06T12:00:00Z",
+          "guest_email": "jo@example.com",
+          "hostEmail": "alex@example.com",
+          "hostName": "Alex Johnson",
+          "host_id": "64ee0722-c7c6-4b48-bc89-356c99f1d25d",
+          "meetingStatus": "Canceled",
+          "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789",
+          "sourceUrl": "https://example.com/demo",
+          "start_time": "2026-11-10T15:00:00Z",
+          "status": "Canceled",
+          "workspaceId": "abcd1234-5678-90ef-1234-567890abcdef"
+        },
+        "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789"
+      },
+      "name": "cancel_meeting",
+      "output_formatter": "_format_meeting",
+      "parameters": [
+        {
+          "description": "The meeting's ID, from a Chili Piper trigger, 'List meetings' or a booking step.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/chili-piper/cancel-meeting",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "meeting": {
+            "description": "The meeting, as it is now",
+            "properties": {
+              "attendees": {
+                "description": "Everyone invited",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "booked_at": {
+                "description": "When it was booked (ISO 8601)",
+                "type": "string"
+              },
+              "guest_email": {
+                "description": "The guest's email address",
+                "type": "string"
+              },
+              "hostEmail": {
+                "description": "The host's email address (meeting lists)",
+                "type": "string"
+              },
+              "hostName": {
+                "description": "The host's name (meeting lists)",
+                "type": "string"
+              },
+              "host_id": {
+                "description": "The ID of the person hosting it",
+                "type": "string"
+              },
+              "meetingStatus": {
+                "description": "Chili Piper's own status field",
+                "type": "string"
+              },
+              "meeting_id": {
+                "description": "The meeting's ID, for the meeting actions",
+                "type": "string"
+              },
+              "sourceUrl": {
+                "description": "The page the guest booked from, when known",
+                "type": "string"
+              },
+              "start_time": {
+                "description": "When it starts (ISO 8601)",
+                "type": "string"
+              },
+              "status": {
+                "description": "Active, Completed, NoShow or Canceled",
+                "type": "string"
+              },
+              "workspaceId": {
+                "description": "The workspace it belongs to",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "meeting_id": {
+            "description": "The meeting's ID",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "find_open_times": {
+      "description": "Find the times that can be booked on a team scheduling link, or on one person's own meeting type. Books nothing: book one with 'Book an open time' (or 'Book meeting' for a person's own type).",
+      "display_name": "Find open times",
+      "display_str_template": "Find open times.",
+      "handler": "actions.find_open_times",
+      "id": "chili_piper_find_open_times",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "duration": "30 minutes",
+        "failures": {},
+        "form_fields": [],
+        "session_id": "rt_01HXAMPLE",
+        "slots": [
+          {
+            "attendees": [],
+            "startTime": "2026-11-10T15:00:00Z"
+          }
+        ],
+        "start_times": [
+          "2026-11-10T15:00:00Z"
+        ]
+      },
+      "name": "find_open_times",
+      "output_formatter": "_format_slots",
+      "parameters": [
+        {
+          "description": "A round robin, group or ownership link. Leave empty to use a host and their meeting type instead.",
+          "display_name": "Team scheduling link",
+          "dynamic_source": "links",
+          "dynamic_source_allows_custom": true,
+          "name": "scheduling_link",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Without a team link: the person to meet.",
+          "display_name": "Host",
+          "dynamic_source": "users",
+          "dynamic_source_allows_custom": true,
+          "name": "host_user_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Without a team link: one of the host's own meeting types. With a link that offers several: which one.",
+          "display_name": "Meeting type",
+          "dynamic_source": "meeting_types",
+          "dynamic_source_allows_custom": true,
+          "name": "meeting_type_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Look for times from this moment. Defaults to now.",
+          "display_name": "From",
+          "name": "start_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "How many days of times to find, 1 to 31. Defaults to 7.",
+          "display_name": "Days to look ahead",
+          "maximum": 31,
+          "minimum": 1,
+          "name": "days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The guest's email. Needed for an ownership link, to find their owner in the CRM.",
+          "display_name": "Guest email",
+          "name": "guest_email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The guest's time zone, such as America/New_York.",
+          "display_name": "Guest time zone",
+          "examples": [
+            {
+              "label": "A time zone",
+              "value": "America/New_York"
+            }
+          ],
+          "name": "guest_time_zone",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/chili-piper/find-open-times",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many came back",
+            "type": "number"
+          },
+          "duration": {
+            "description": "How long the meeting would be",
+            "type": "string"
+          },
+          "failures": {
+            "description": "People whose calendars couldn't be read, and why",
+            "type": "object"
+          },
+          "form_fields": {
+            "description": "The guest form's fields, for 'Guest form answers'",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "session_id": {
+            "description": "The booking session, for the booking step. It expires after a while.",
+            "type": "string"
+          },
+          "slots": {
+            "description": "Each time, with who is free then",
+            "items": {
+              "description": "A time that can be booked",
+              "properties": {
+                "attendees": {
+                  "description": "Who is free then",
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "startTime": {
+                  "description": "When it would start (ISO 8601)",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "start_times": {
+            "description": "The times that can be booked (ISO 8601)",
+            "items": {
+              "description": "One entry",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "find_users": {
+      "description": "Find people in your organization by name or email address.",
+      "display_name": "Find users",
+      "display_str_template": "Find users.",
+      "handler": "actions.find_users",
+      "id": "chili_piper_find_users",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "has_more": false,
+        "next_page": null,
+        "page": 0,
+        "total": 1,
+        "users": [
+          {
+            "email": "alex@example.com",
+            "id": "64ee0722-c7c6-4b48-bc89-356c99f1d25d",
+            "isSuperAdmin": false,
+            "licenses": {},
+            "name": "Alex Johnson",
+            "personalWorkspaceId": "9f0e1d2c-3b4a-5968-7766-554433221100",
+            "slug": "alex-johnson",
+            "timezone": "America/New_York",
+            "workspaces": [
+              "abcd1234-5678-90ef-1234-567890abcdef"
+            ]
+          }
+        ]
+      },
+      "name": "find_users",
+      "output_formatter": "_format_users",
+      "parameters": [
+        {
+          "description": "A name or email address, or part of one.",
+          "display_name": "Search",
+          "examples": [
+            {
+              "label": "An email",
+              "value": "alex@example.com"
+            }
+          ],
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which page of users to get, starting at 0. Use the 'next_page' an earlier run gave to get the next one.",
+          "display_name": "Page",
+          "minimum": 0,
+          "name": "page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many users per page, 1 to 50. Defaults to 50.",
+          "display_name": "Page size",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "page_size",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/chili-piper/find-users",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many came back",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "Whether there is another page",
+            "type": "boolean"
+          },
+          "next_page": {
+            "description": "The page to ask for next, or empty on the last page",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "page": {
+            "description": "The page this is, from 0",
+            "type": "number"
+          },
+          "total": {
+            "description": "How many there are in all",
+            "type": "number"
+          },
+          "users": {
+            "description": "The people found",
+            "items": {
+              "description": "A person in your Chili Piper organization",
+              "properties": {
+                "email": {
+                  "description": "Their email address",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The user's ID, for the user and team actions",
+                  "type": "string"
+                },
+                "isSuperAdmin": {
+                  "description": "Whether they are a super admin",
+                  "type": "boolean"
+                },
+                "licenses": {
+                  "description": "The products they are licensed for",
+                  "type": "object"
+                },
+                "name": {
+                  "description": "Their name",
+                  "type": "string"
+                },
+                "personalWorkspaceId": {
+                  "description": "Their personal workspace, if they have one",
+                  "type": "string"
+                },
+                "slug": {
+                  "description": "Their booking-page slug, if they have one",
+                  "type": "string"
+                },
+                "timezone": {
+                  "description": "Their scheduling time zone (reading one user only)",
+                  "type": "string"
+                },
+                "workspaces": {
+                  "description": "Workspaces they belong to",
+                  "items": {
+                    "description": "One entry",
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_meeting": {
+      "description": "Get one meeting with its time, people, status and where it was booked from.",
+      "display_name": "Get meeting",
+      "display_str_template": "Get meeting {meeting_id}.",
+      "handler": "actions.get_meeting",
+      "id": "chili_piper_get_meeting",
+      "method": "POST",
+      "mock_response": {
+        "meeting": {
+          "attendees": [],
+          "booked_at": "2026-11-06T12:00:00Z",
+          "guest_email": "jo@example.com",
+          "hostEmail": "alex@example.com",
+          "hostName": "Alex Johnson",
+          "host_id": "64ee0722-c7c6-4b48-bc89-356c99f1d25d",
+          "meetingStatus": "Active",
+          "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789",
+          "sourceUrl": "https://example.com/demo",
+          "start_time": "2026-11-10T15:00:00Z",
+          "status": "Active",
+          "workspaceId": "abcd1234-5678-90ef-1234-567890abcdef"
+        }
+      },
+      "name": "get_meeting",
+      "output_formatter": "_format_meeting",
+      "parameters": [
+        {
+          "description": "The meeting's ID, from a Chili Piper trigger, 'List meetings' or a booking step.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/chili-piper/get-meeting",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "meeting": {
+            "description": "The meeting",
+            "properties": {
+              "attendees": {
+                "description": "Everyone invited",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "booked_at": {
+                "description": "When it was booked (ISO 8601)",
+                "type": "string"
+              },
+              "guest_email": {
+                "description": "The guest's email address",
+                "type": "string"
+              },
+              "hostEmail": {
+                "description": "The host's email address (meeting lists)",
+                "type": "string"
+              },
+              "hostName": {
+                "description": "The host's name (meeting lists)",
+                "type": "string"
+              },
+              "host_id": {
+                "description": "The ID of the person hosting it",
+                "type": "string"
+              },
+              "meetingStatus": {
+                "description": "Chili Piper's own status field",
+                "type": "string"
+              },
+              "meeting_id": {
+                "description": "The meeting's ID, for the meeting actions",
+                "type": "string"
+              },
+              "sourceUrl": {
+                "description": "The page the guest booked from, when known",
+                "type": "string"
+              },
+              "start_time": {
+                "description": "When it starts (ISO 8601)",
+                "type": "string"
+              },
+              "status": {
+                "description": "Active, Completed, NoShow or Canceled",
+                "type": "string"
+              },
+              "workspaceId": {
+                "description": "The workspace it belongs to",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_meeting_link": {
+      "description": "Get the link that opens a meeting's activity page in Chili Piper, to share with the team.",
+      "display_name": "Get meeting link",
+      "display_str_template": "Get meeting link.",
+      "handler": "actions.get_meeting_link",
+      "id": "chili_piper_get_meeting_link",
+      "method": "POST",
+      "mock_response": {
+        "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789",
+        "url": "https://acme.chilipiper.com/fire/admin/workspaces/abcd1234/reporting/meetings-activity/7c4e8a1b"
+      },
+      "name": "get_meeting_link",
+      "output_formatter": "_format_link",
+      "parameters": [
+        {
+          "description": "The meeting's ID, from a Chili Piper trigger, 'List meetings' or a booking step.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/chili-piper/get-meeting-link",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "meeting_id": {
+            "description": "The meeting's ID",
+            "type": "string"
+          },
+          "url": {
+            "description": "The link to the meeting in Chili Piper",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_user": {
+      "description": "Get one person's profile: workspaces, licences, working hours and time zone.",
+      "display_name": "Get user",
+      "display_str_template": "Get user.",
+      "handler": "actions.get_user",
+      "id": "chili_piper_get_user",
+      "method": "POST",
+      "mock_response": {
+        "user": {
+          "email": "alex@example.com",
+          "id": "64ee0722-c7c6-4b48-bc89-356c99f1d25d",
+          "isSuperAdmin": false,
+          "licenses": {},
+          "name": "Alex Johnson",
+          "personalWorkspaceId": "9f0e1d2c-3b4a-5968-7766-554433221100",
+          "slug": "alex-johnson",
+          "timezone": "America/New_York",
+          "workspaces": [
+            "abcd1234-5678-90ef-1234-567890abcdef"
+          ]
+        }
+      },
+      "name": "get_user",
+      "output_formatter": "_format_user",
+      "parameters": [
+        {
+          "description": "The person. Pick one, or give their ID from an earlier step.",
+          "display_name": "User",
+          "dynamic_source": "users",
+          "dynamic_source_allows_custom": true,
+          "name": "chili_user_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/chili-piper/get-user",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "user": {
+            "description": "The user",
+            "properties": {
+              "email": {
+                "description": "Their email address",
+                "type": "string"
+              },
+              "id": {
+                "description": "The user's ID, for the user and team actions",
+                "type": "string"
+              },
+              "isSuperAdmin": {
+                "description": "Whether they are a super admin",
+                "type": "boolean"
+              },
+              "licenses": {
+                "description": "The products they are licensed for",
+                "type": "object"
+              },
+              "name": {
+                "description": "Their name",
+                "type": "string"
+              },
+              "personalWorkspaceId": {
+                "description": "Their personal workspace, if they have one",
+                "type": "string"
+              },
+              "slug": {
+                "description": "Their booking-page slug, if they have one",
+                "type": "string"
+              },
+              "timezone": {
+                "description": "Their scheduling time zone (reading one user only)",
+                "type": "string"
+              },
+              "workspaces": {
+                "description": "Workspaces they belong to",
+                "items": {
+                  "description": "One entry",
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "invite_user": {
+      "description": "Add a new person to your Chili Piper organization, such as a new rep. Uses a seat. No email goes out unless you ask for one.",
+      "display_name": "Invite user",
+      "display_str_template": "Invite user.",
+      "handler": "actions.invite_user",
+      "id": "chili_piper_invite_user",
+      "method": "POST",
+      "mock_response": {
+        "email": "sam@example.com",
+        "invited": false,
+        "user_id": "3f2e1d0c-9b8a-7766-5544-332211009988"
+      },
+      "name": "invite_user",
+      "output_formatter": "_format_invite",
+      "parameters": [
+        {
+          "description": "Their work email address. It must be new to Chili Piper.",
+          "display_name": "Email",
+          "examples": [
+            {
+              "label": "An email",
+              "value": "sam@example.com"
+            }
+          ],
+          "name": "email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Their full name.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "User or Admin. Defaults to User.",
+          "display_name": "Role",
+          "name": "role",
+          "options": [
+            {
+              "label": "User",
+              "value": "User"
+            },
+            {
+              "label": "Admin",
+              "value": "Admin"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The Chili Piper products they can use.",
+          "display_name": "Licences",
+          "multi_select": true,
+          "name": "licenses",
+          "options": [
+            {
+              "label": "ChiliCal",
+              "value": "ChiliCalOrg"
+            },
+            {
+              "label": "Concierge",
+              "value": "Concierge"
+            },
+            {
+              "label": "Concierge Live",
+              "value": "ConciergeLive"
+            },
+            {
+              "label": "Distro",
+              "value": "Distro"
+            },
+            {
+              "label": "Handoff",
+              "value": "Handoff"
+            },
+            {
+              "label": "Chat",
+              "value": "Chat"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only these workspaces. Leave empty for all of them.",
+          "display_name": "Workspaces",
+          "dynamic_source": "workspaces",
+          "dynamic_source_allows_custom": true,
+          "multi_select": true,
+          "name": "workspace_ids",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Send them Chili Piper's invitation email straight away.",
+          "display_name": "Email the invitation now",
+          "name": "send_invite",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/chili-piper/invite-user",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "email": {
+            "description": "Their email address",
+            "type": "string"
+          },
+          "invited": {
+            "description": "Whether the invitation email was sent",
+            "type": "boolean"
+          },
+          "user_id": {
+            "description": "The new person's ID",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
+    "list_meetings": {
+      "description": "List the meetings in a window of up to 7 days, with their time, host, guest and status. Gets one page; run it again with the next page to see more.",
+      "display_name": "List meetings",
+      "display_str_template": "List meetings.",
+      "handler": "actions.list_meetings",
+      "id": "chili_piper_list_meetings",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "has_more": false,
+        "meetings": [
+          {
+            "attendees": [],
+            "booked_at": "2026-11-06T12:00:00Z",
+            "guest_email": "jo@example.com",
+            "hostEmail": "alex@example.com",
+            "hostName": "Alex Johnson",
+            "host_id": "64ee0722-c7c6-4b48-bc89-356c99f1d25d",
+            "meetingStatus": "Active",
+            "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789",
+            "sourceUrl": "https://example.com/demo",
+            "start_time": "2026-11-10T15:00:00Z",
+            "status": "Active",
+            "workspaceId": "abcd1234-5678-90ef-1234-567890abcdef"
+          }
+        ],
+        "next_page": null,
+        "page": 0,
+        "total": 1
+      },
+      "name": "list_meetings",
+      "output_formatter": "_format_meetings",
+      "parameters": [
+        {
+          "description": "Meetings that start at or after this. Defaults to now.",
+          "display_name": "From",
+          "name": "start",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Meetings that start before this, at most 7 days after 'From'. Defaults to 7 days after it.",
+          "display_name": "Until",
+          "name": "end",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Only these workspaces. Leave empty for all of them.",
+          "display_name": "Workspaces",
+          "dynamic_source": "workspaces",
+          "dynamic_source_allows_custom": true,
+          "multi_select": true,
+          "name": "workspace_ids",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only meetings with these statuses. Leave empty for all.",
+          "display_name": "Status",
+          "multi_select": true,
+          "name": "statuses",
+          "options": [
+            {
+              "label": "Booked (upcoming, or past and not yet marked)",
+              "value": "Active"
+            },
+            {
+              "label": "Completed (the guest attended)",
+              "value": "Completed"
+            },
+            {
+              "label": "No-show",
+              "value": "NoShow"
+            },
+            {
+              "label": "Canceled",
+              "value": "Canceled"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only meetings these people host. Leave empty for all.",
+          "display_name": "Hosts",
+          "dynamic_source": "users",
+          "dynamic_source_allows_custom": true,
+          "multi_select": true,
+          "name": "host_ids",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only meetings with this guest.",
+          "display_name": "Guest email",
+          "name": "guest_email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which page of meetings to get, starting at 0. Use the 'next_page' an earlier run gave to get the next one.",
+          "display_name": "Page",
+          "minimum": 0,
+          "name": "page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many meetings per page, 1 to 50. Defaults to 50.",
+          "display_name": "Page size",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "page_size",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/chili-piper/list-meetings",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many came back",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "Whether there is another page",
+            "type": "boolean"
+          },
+          "meetings": {
+            "description": "The meetings",
+            "items": {
+              "description": "A Chili Piper meeting",
+              "properties": {
+                "attendees": {
+                  "description": "Everyone invited",
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "booked_at": {
+                  "description": "When it was booked (ISO 8601)",
+                  "type": "string"
+                },
+                "guest_email": {
+                  "description": "The guest's email address",
+                  "type": "string"
+                },
+                "hostEmail": {
+                  "description": "The host's email address (meeting lists)",
+                  "type": "string"
+                },
+                "hostName": {
+                  "description": "The host's name (meeting lists)",
+                  "type": "string"
+                },
+                "host_id": {
+                  "description": "The ID of the person hosting it",
+                  "type": "string"
+                },
+                "meetingStatus": {
+                  "description": "Chili Piper's own status field",
+                  "type": "string"
+                },
+                "meeting_id": {
+                  "description": "The meeting's ID, for the meeting actions",
+                  "type": "string"
+                },
+                "sourceUrl": {
+                  "description": "The page the guest booked from, when known",
+                  "type": "string"
+                },
+                "start_time": {
+                  "description": "When it starts (ISO 8601)",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "Active, Completed, NoShow or Canceled",
+                  "type": "string"
+                },
+                "workspaceId": {
+                  "description": "The workspace it belongs to",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "next_page": {
+            "description": "The page to ask for next, or empty on the last page",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "page": {
+            "description": "The page this is, from 0",
+            "type": "number"
+          },
+          "total": {
+            "description": "How many there are in all",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_teams": {
+      "description": "List teams with their members, the people meetings are routed to.",
+      "display_name": "List teams",
+      "display_str_template": "List teams.",
+      "handler": "actions.list_teams",
+      "id": "chili_piper_list_teams",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "has_more": false,
+        "next_page": null,
+        "page": 0,
+        "teams": [
+          {
+            "id": "5d6e7f80-1a2b-3c4d-5e6f-708192a3b4c5",
+            "members": [
+              "64ee0722-c7c6-4b48-bc89-356c99f1d25d"
+            ],
+            "name": "Inbound SDRs",
+            "workspaceId": "abcd1234-5678-90ef-1234-567890abcdef"
+          }
+        ],
+        "total": 1
+      },
+      "name": "list_teams",
+      "output_formatter": "_format_teams",
+      "parameters": [
+        {
+          "description": "Only these workspaces. Leave empty for all of them.",
+          "display_name": "Workspaces",
+          "dynamic_source": "workspaces",
+          "dynamic_source_allows_custom": true,
+          "multi_select": true,
+          "name": "workspace_ids",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only teams whose name contains this.",
+          "display_name": "Name contains",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only teams with any of these people in them.",
+          "display_name": "With members",
+          "dynamic_source": "users",
+          "dynamic_source_allows_custom": true,
+          "multi_select": true,
+          "name": "member_ids",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Which page of teams to get, starting at 0. Use the 'next_page' an earlier run gave to get the next one.",
+          "display_name": "Page",
+          "minimum": 0,
+          "name": "page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many teams per page, 1 to 50. Defaults to 50.",
+          "display_name": "Page size",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "page_size",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/chili-piper/list-teams",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many came back",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "Whether there is another page",
+            "type": "boolean"
+          },
+          "next_page": {
+            "description": "The page to ask for next, or empty on the last page",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "page": {
+            "description": "The page this is, from 0",
+            "type": "number"
+          },
+          "teams": {
+            "description": "The teams",
+            "items": {
+              "description": "A team",
+              "properties": {
+                "id": {
+                  "description": "The team's ID, for the team actions",
+                  "type": "string"
+                },
+                "members": {
+                  "description": "The IDs of its members",
+                  "items": {
+                    "description": "One entry",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "description": "Its name",
+                  "type": "string"
+                },
+                "workspaceId": {
+                  "description": "The workspace it belongs to",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total": {
+            "description": "How many there are in all",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_workspaces": {
+      "description": "List your organization's workspaces.",
+      "display_name": "List workspaces",
+      "display_str_template": "List workspaces.",
+      "handler": "actions.list_workspaces",
+      "id": "chili_piper_list_workspaces",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "has_more": false,
+        "next_page": null,
+        "page": 0,
+        "total": 1,
+        "workspaces": [
+          {
+            "emoji": "",
+            "id": "abcd1234-5678-90ef-1234-567890abcdef",
+            "name": "Sales"
+          }
+        ]
+      },
+      "name": "list_workspaces",
+      "output_formatter": "_format_workspaces",
+      "parameters": [
+        {
+          "description": "Only workspaces whose name contains this.",
+          "display_name": "Name contains",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which page of workspaces to get, starting at 0. Use the 'next_page' an earlier run gave to get the next one.",
+          "display_name": "Page",
+          "minimum": 0,
+          "name": "page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "How many workspaces per page, 1 to 50. Defaults to 50.",
+          "display_name": "Page size",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "page_size",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/chili-piper/list-workspaces",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many came back",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "Whether there is another page",
+            "type": "boolean"
+          },
+          "next_page": {
+            "description": "The page to ask for next, or empty on the last page",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "page": {
+            "description": "The page this is, from 0",
+            "type": "number"
+          },
+          "total": {
+            "description": "How many there are in all",
+            "type": "number"
+          },
+          "workspaces": {
+            "description": "The workspaces",
+            "items": {
+              "description": "A workspace",
+              "properties": {
+                "emoji": {
+                  "description": "Its emoji, if it has one",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The workspace's ID",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Its name",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "mark_attended": {
+      "description": "Record that the guest came, which also undoes a no-show mark. Chili Piper updates the CRM.",
+      "display_name": "Mark meeting as attended",
+      "display_str_template": "Mark meeting as attended.",
+      "handler": "actions.mark_attended",
+      "id": "chili_piper_mark_attended",
+      "method": "POST",
+      "mock_response": {
+        "meeting": {
+          "attendees": [],
+          "booked_at": "2026-11-06T12:00:00Z",
+          "guest_email": "jo@example.com",
+          "hostEmail": "alex@example.com",
+          "hostName": "Alex Johnson",
+          "host_id": "64ee0722-c7c6-4b48-bc89-356c99f1d25d",
+          "meetingStatus": "Active",
+          "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789",
+          "sourceUrl": "https://example.com/demo",
+          "start_time": "2026-11-10T15:00:00Z",
+          "status": "Completed",
+          "workspaceId": "abcd1234-5678-90ef-1234-567890abcdef"
+        },
+        "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789"
+      },
+      "name": "mark_attended",
+      "output_formatter": "_format_meeting",
+      "parameters": [
+        {
+          "description": "The meeting's ID, from a Chili Piper trigger, 'List meetings' or a booking step.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/chili-piper/mark-attended",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "meeting": {
+            "description": "The meeting, as it is now",
+            "properties": {
+              "attendees": {
+                "description": "Everyone invited",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "booked_at": {
+                "description": "When it was booked (ISO 8601)",
+                "type": "string"
+              },
+              "guest_email": {
+                "description": "The guest's email address",
+                "type": "string"
+              },
+              "hostEmail": {
+                "description": "The host's email address (meeting lists)",
+                "type": "string"
+              },
+              "hostName": {
+                "description": "The host's name (meeting lists)",
+                "type": "string"
+              },
+              "host_id": {
+                "description": "The ID of the person hosting it",
+                "type": "string"
+              },
+              "meetingStatus": {
+                "description": "Chili Piper's own status field",
+                "type": "string"
+              },
+              "meeting_id": {
+                "description": "The meeting's ID, for the meeting actions",
+                "type": "string"
+              },
+              "sourceUrl": {
+                "description": "The page the guest booked from, when known",
+                "type": "string"
+              },
+              "start_time": {
+                "description": "When it starts (ISO 8601)",
+                "type": "string"
+              },
+              "status": {
+                "description": "Active, Completed, NoShow or Canceled",
+                "type": "string"
+              },
+              "workspaceId": {
+                "description": "The workspace it belongs to",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "meeting_id": {
+            "description": "The meeting's ID",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "mark_no_show": {
+      "description": "Record that the guest didn't come. Chili Piper updates the CRM and runs its own no-show follow-ups.",
+      "display_name": "Mark meeting as no-show",
+      "display_str_template": "Mark meeting as no-show.",
+      "handler": "actions.mark_no_show",
+      "id": "chili_piper_mark_no_show",
+      "method": "POST",
+      "mock_response": {
+        "meeting": {
+          "attendees": [],
+          "booked_at": "2026-11-06T12:00:00Z",
+          "guest_email": "jo@example.com",
+          "hostEmail": "alex@example.com",
+          "hostName": "Alex Johnson",
+          "host_id": "64ee0722-c7c6-4b48-bc89-356c99f1d25d",
+          "meetingStatus": "Active",
+          "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789",
+          "sourceUrl": "https://example.com/demo",
+          "start_time": "2026-11-10T15:00:00Z",
+          "status": "NoShow",
+          "workspaceId": "abcd1234-5678-90ef-1234-567890abcdef"
+        },
+        "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789"
+      },
+      "name": "mark_no_show",
+      "output_formatter": "_format_meeting",
+      "parameters": [
+        {
+          "description": "The meeting's ID, from a Chili Piper trigger, 'List meetings' or a booking step.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/chili-piper/mark-no-show",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "meeting": {
+            "description": "The meeting, as it is now",
+            "properties": {
+              "attendees": {
+                "description": "Everyone invited",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "booked_at": {
+                "description": "When it was booked (ISO 8601)",
+                "type": "string"
+              },
+              "guest_email": {
+                "description": "The guest's email address",
+                "type": "string"
+              },
+              "hostEmail": {
+                "description": "The host's email address (meeting lists)",
+                "type": "string"
+              },
+              "hostName": {
+                "description": "The host's name (meeting lists)",
+                "type": "string"
+              },
+              "host_id": {
+                "description": "The ID of the person hosting it",
+                "type": "string"
+              },
+              "meetingStatus": {
+                "description": "Chili Piper's own status field",
+                "type": "string"
+              },
+              "meeting_id": {
+                "description": "The meeting's ID, for the meeting actions",
+                "type": "string"
+              },
+              "sourceUrl": {
+                "description": "The page the guest booked from, when known",
+                "type": "string"
+              },
+              "start_time": {
+                "description": "When it starts (ISO 8601)",
+                "type": "string"
+              },
+              "status": {
+                "description": "Active, Completed, NoShow or Canceled",
+                "type": "string"
+              },
+              "workspaceId": {
+                "description": "The workspace it belongs to",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "meeting_id": {
+            "description": "The meeting's ID",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "remove_users_from_team": {
+      "description": "Remove people from a team, such as someone going on leave, so no more meetings are routed to them through it. Their other teams are unchanged.",
+      "display_name": "Remove people from team",
+      "display_str_template": "Remove people from team.",
+      "handler": "actions.remove_users_from_team",
+      "id": "chili_piper_remove_users_from_team",
+      "method": "POST",
+      "mock_response": {
+        "team": {
+          "id": "5d6e7f80-1a2b-3c4d-5e6f-708192a3b4c5",
+          "members": [],
+          "name": "Inbound SDRs",
+          "workspaceId": "abcd1234-5678-90ef-1234-567890abcdef"
+        },
+        "user_ids": [
+          "64ee0722-c7c6-4b48-bc89-356c99f1d25d"
+        ]
+      },
+      "name": "remove_users_from_team",
+      "output_formatter": "_format_team",
+      "parameters": [
+        {
+          "description": "The team. Pick one, or give its ID from an earlier step.",
+          "display_name": "Team",
+          "dynamic_source": "teams",
+          "dynamic_source_allows_custom": true,
+          "name": "chili_team_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The people to add or take off. Pick them, or give their IDs.",
+          "display_name": "People",
+          "dynamic_source": "users",
+          "dynamic_source_allows_custom": true,
+          "multi_select": true,
+          "name": "chili_user_ids",
+          "required": true,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/chili-piper/remove-users-from-team",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "team": {
+            "description": "The team, as it is now",
+            "properties": {
+              "id": {
+                "description": "The team's ID, for the team actions",
+                "type": "string"
+              },
+              "members": {
+                "description": "The IDs of its members",
+                "items": {
+                  "description": "One entry",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "name": {
+                "description": "Its name",
+                "type": "string"
+              },
+              "workspaceId": {
+                "description": "The workspace it belongs to",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "user_ids": {
+            "description": "The people asked for",
+            "items": {
+              "description": "One entry",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "delete"
+      ]
+    },
+    "route_lead": {
+      "description": "Run a lead through a Concierge router, as if they had filled in your form: its rules pick the rep, and you get a link the lead can book with. Ask for open times to book one straight away.",
+      "display_name": "Route a lead",
+      "display_str_template": "Route a lead.",
+      "handler": "actions.route_lead",
+      "id": "chili_piper_route_lead",
+      "method": "POST",
+      "mock_response": {
+        "assignments": [],
+        "booking_url": "https://acme.chilipiper.com/concierge-router/link/rt_01HXAMPLE",
+        "distribution_ids": [],
+        "scheduling_allowed": true,
+        "session_id": "rt_01HXAMPLE",
+        "slots": [
+          {
+            "attendees": [],
+            "startTime": "2026-11-10T15:00:00Z"
+          }
+        ],
+        "start_times": [
+          "2026-11-10T15:00:00Z"
+        ]
+      },
+      "name": "route_lead",
+      "output_formatter": "_format_route",
+      "parameters": [
+        {
+          "description": "The Concierge router. Pick one, or type its slug.",
+          "display_name": "Router",
+          "dynamic_source": "routers",
+          "dynamic_source_allows_custom": true,
+          "name": "router_slug",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The lead's answers, by the field names your router uses, such as PersonEmail and PersonFirstName.",
+          "display_name": "Lead details",
+          "examples": [
+            {
+              "label": "Email and first name",
+              "value": "{\"PersonEmail\": \"jo@example.com\", \"PersonFirstName\": \"Jo\"}"
+            }
+          ],
+          "name": "form",
+          "object_key_name": "Field",
+          "required": true,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Which of the router's starting points to use.",
+          "display_name": "Where the lead came from",
+          "name": "trigger",
+          "options": [
+            {
+              "label": "A form on your website",
+              "value": "ThirdPartyForm"
+            },
+            {
+              "label": "A button in your product",
+              "value": "InAppButton"
+            },
+            {
+              "label": "A router link",
+              "value": "RouterLink"
+            },
+            {
+              "label": "A Chili Piper form",
+              "value": "ChiliForm"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The guest's time zone, such as America/New_York.",
+          "display_name": "Guest time zone",
+          "examples": [
+            {
+              "label": "A time zone",
+              "value": "America/New_York"
+            }
+          ],
+          "name": "guest_time_zone",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The web page the lead came from, for your reports.",
+          "display_name": "Page",
+          "name": "source_url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Also return open times for this many days (1 to 31), to book with 'Book the routed meeting'. Leave empty for just the booking link.",
+          "display_name": "Open times for the next",
+          "maximum": 31,
+          "minimum": 1,
+          "name": "days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/chili-piper/route-lead",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "assignments": {
+            "description": "Who the lead was routed to",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "booking_url": {
+            "description": "The link the lead can book with",
+            "type": "string"
+          },
+          "distribution_ids": {
+            "description": "The distributions used",
+            "items": {
+              "description": "One entry",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "scheduling_allowed": {
+            "description": "Whether the route lets the lead book",
+            "type": "boolean"
+          },
+          "session_id": {
+            "description": "The booking session, for the booking step. It expires after a while.",
+            "type": "string"
+          },
+          "slots": {
+            "description": "Each time, with who is free then",
+            "items": {
+              "description": "A time that can be booked",
+              "properties": {
+                "attendees": {
+                  "description": "Who is free then",
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "startTime": {
+                  "description": "When it would start (ISO 8601)",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "start_times": {
+            "description": "The times that can be booked (ISO 8601)",
+            "items": {
+              "description": "One entry",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
+    "update_meeting": {
+      "description": "Move a meeting to another time, hand it to another host, or both. Chili Piper checks the new time is free and updates the invites; anything not given stays as it is.",
+      "display_name": "Reschedule or reassign meeting",
+      "display_str_template": "Reschedule or reassign meeting {meeting_id}.",
+      "handler": "actions.update_meeting",
+      "id": "chili_piper_update_meeting",
+      "method": "POST",
+      "mock_response": {
+        "changed": [
+          "startTime"
+        ],
+        "meeting": {
+          "attendees": [],
+          "booked_at": "2026-11-06T12:00:00Z",
+          "guest_email": "jo@example.com",
+          "hostEmail": "alex@example.com",
+          "hostName": "Alex Johnson",
+          "host_id": "64ee0722-c7c6-4b48-bc89-356c99f1d25d",
+          "meetingStatus": "Active",
+          "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789",
+          "sourceUrl": "https://example.com/demo",
+          "start_time": "2026-11-10T15:00:00Z",
+          "status": "Active",
+          "workspaceId": "abcd1234-5678-90ef-1234-567890abcdef"
+        },
+        "meeting_id": "7c4e8a1b-2f3d-4e5c-9b8a-1d2e3f456789"
+      },
+      "name": "update_meeting",
+      "output_formatter": "_format_meeting",
+      "parameters": [
+        {
+          "description": "The meeting's ID, from a Chili Piper trigger, 'List meetings' or a booking step.",
+          "display_name": "Meeting ID",
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The new time. Leave empty to keep it.",
+          "display_name": "New start",
+          "name": "start_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Who should host it instead. Leave empty to keep the host.",
+          "display_name": "New host",
+          "dynamic_source": "users",
+          "dynamic_source_allows_custom": true,
+          "name": "host_user_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/chili-piper/update-meeting",
+      "result_str_template": "Done.",
+      "returns": {
+        "properties": {
+          "changed": {
+            "description": "What was changed: startTime, hostId",
+            "items": {
+              "description": "One entry",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "meeting": {
+            "description": "The meeting, as it is now",
+            "properties": {
+              "attendees": {
+                "description": "Everyone invited",
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "booked_at": {
+                "description": "When it was booked (ISO 8601)",
+                "type": "string"
+              },
+              "guest_email": {
+                "description": "The guest's email address",
+                "type": "string"
+              },
+              "hostEmail": {
+                "description": "The host's email address (meeting lists)",
+                "type": "string"
+              },
+              "hostName": {
+                "description": "The host's name (meeting lists)",
+                "type": "string"
+              },
+              "host_id": {
+                "description": "The ID of the person hosting it",
+                "type": "string"
+              },
+              "meetingStatus": {
+                "description": "Chili Piper's own status field",
+                "type": "string"
+              },
+              "meeting_id": {
+                "description": "The meeting's ID, for the meeting actions",
+                "type": "string"
+              },
+              "sourceUrl": {
+                "description": "The page the guest booked from, when known",
+                "type": "string"
+              },
+              "start_time": {
+                "description": "When it starts (ISO 8601)",
+                "type": "string"
+              },
+              "status": {
+                "description": "Active, Completed, NoShow or Canceled",
+                "type": "string"
+              },
+              "workspaceId": {
+                "description": "The workspace it belongs to",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "meeting_id": {
+            "description": "The meeting's ID",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    }
+  },
+  "categories": [
+    "Calendars",
+    "CRM & Contacts"
+  ],
+  "description": "Work with Chili Piper meetings and inbound routing: route leads, find open times and book, reschedule, reassign or cancel meetings, mark no-shows, and manage teams. Start a workflow when a meeting is booked, moved, canceled or marked no-show.",
+  "display_name": "Chili Piper",
+  "id": "chili_piper",
+  "logo": "https://www.lodol.com/app-icons/chili-piper-icon.svg",
+  "triggers": {
+    "chili_piper_meeting_attended_trigger": {
+      "description": "Runs when a meeting is marked as completed because the guest attended.",
+      "display_name": "Meeting marked attended",
+      "id": "chili_piper_meeting_attended_trigger",
+      "output": {
+        "booked_at": "When it was booked (ISO 8601)",
+        "guest_email": "The guest's email address",
+        "host_email": "The host's email address",
+        "host_id": "The ID of the person hosting it",
+        "host_name": "The host's name",
+        "meeting": "Everything Chili Piper says about the meeting",
+        "meeting_id": "The meeting's ID, for the meeting actions",
+        "start_time": "When the meeting starts (ISO 8601)",
+        "status": "Active, Completed, NoShow or Canceled",
+        "workspace_id": "The workspace it belongs to"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only meetings in this workspace. Leave blank for every workspace.",
+          "display_name": "Workspace",
+          "name": "workspace_id",
+          "required": false
+        }
+      ]
+    },
+    "chili_piper_meeting_booked_trigger": {
+      "description": "Runs when a meeting is booked in Chili Piper, from any router, link or rep, for a time within the next four weeks.",
+      "display_name": "New meeting booked",
+      "id": "chili_piper_meeting_booked_trigger",
+      "output": {
+        "booked_at": "When it was booked (ISO 8601)",
+        "guest_email": "The guest's email address",
+        "host_email": "The host's email address",
+        "host_id": "The ID of the person hosting it",
+        "host_name": "The host's name",
+        "meeting": "Everything Chili Piper says about the meeting",
+        "meeting_id": "The meeting's ID, for the meeting actions",
+        "start_time": "When the meeting starts (ISO 8601)",
+        "status": "Active, Completed, NoShow or Canceled",
+        "workspace_id": "The workspace it belongs to"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only meetings in this workspace. Leave blank for every workspace.",
+          "display_name": "Workspace",
+          "name": "workspace_id",
+          "required": false
+        }
+      ]
+    },
+    "chili_piper_meeting_canceled_trigger": {
+      "description": "Runs when a meeting is canceled, by the guest or by your team.",
+      "display_name": "Meeting canceled",
+      "id": "chili_piper_meeting_canceled_trigger",
+      "output": {
+        "booked_at": "When it was booked (ISO 8601)",
+        "guest_email": "The guest's email address",
+        "host_email": "The host's email address",
+        "host_id": "The ID of the person hosting it",
+        "host_name": "The host's name",
+        "meeting": "Everything Chili Piper says about the meeting",
+        "meeting_id": "The meeting's ID, for the meeting actions",
+        "start_time": "When the meeting starts (ISO 8601)",
+        "status": "Active, Completed, NoShow or Canceled",
+        "workspace_id": "The workspace it belongs to"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only meetings in this workspace. Leave blank for every workspace.",
+          "display_name": "Workspace",
+          "name": "workspace_id",
+          "required": false
+        }
+      ]
+    },
+    "chili_piper_meeting_no_show_trigger": {
+      "description": "Runs when a meeting is marked as a no-show, so you can follow up with the guest.",
+      "display_name": "Meeting marked no-show",
+      "id": "chili_piper_meeting_no_show_trigger",
+      "output": {
+        "booked_at": "When it was booked (ISO 8601)",
+        "guest_email": "The guest's email address",
+        "host_email": "The host's email address",
+        "host_id": "The ID of the person hosting it",
+        "host_name": "The host's name",
+        "meeting": "Everything Chili Piper says about the meeting",
+        "meeting_id": "The meeting's ID, for the meeting actions",
+        "start_time": "When the meeting starts (ISO 8601)",
+        "status": "Active, Completed, NoShow or Canceled",
+        "workspace_id": "The workspace it belongs to"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only meetings in this workspace. Leave blank for every workspace.",
+          "display_name": "Workspace",
+          "name": "workspace_id",
+          "required": false
+        }
+      ]
+    },
+    "chili_piper_meeting_reassigned_trigger": {
+      "description": "Runs when a meeting is handed to another host.",
+      "display_name": "Meeting reassigned",
+      "id": "chili_piper_meeting_reassigned_trigger",
+      "output": {
+        "booked_at": "When it was booked (ISO 8601)",
+        "guest_email": "The guest's email address",
+        "host_email": "The host's email address",
+        "host_id": "The ID of the person hosting it",
+        "host_name": "The host's name",
+        "meeting": "Everything Chili Piper says about the meeting",
+        "meeting_id": "The meeting's ID, for the meeting actions",
+        "start_time": "When the meeting starts (ISO 8601)",
+        "status": "Active, Completed, NoShow or Canceled",
+        "workspace_id": "The workspace it belongs to"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only meetings in this workspace. Leave blank for every workspace.",
+          "display_name": "Workspace",
+          "name": "workspace_id",
+          "required": false
+        }
+      ]
+    },
+    "chili_piper_meeting_rescheduled_trigger": {
+      "description": "Runs when a meeting is moved to another time.",
+      "display_name": "Meeting rescheduled",
+      "id": "chili_piper_meeting_rescheduled_trigger",
+      "output": {
+        "booked_at": "When it was booked (ISO 8601)",
+        "guest_email": "The guest's email address",
+        "host_email": "The host's email address",
+        "host_id": "The ID of the person hosting it",
+        "host_name": "The host's name",
+        "meeting": "Everything Chili Piper says about the meeting",
+        "meeting_id": "The meeting's ID, for the meeting actions",
+        "start_time": "When the meeting starts (ISO 8601)",
+        "status": "Active, Completed, NoShow or Canceled",
+        "workspace_id": "The workspace it belongs to"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only meetings in this workspace. Leave blank for every workspace.",
+          "display_name": "Workspace",
+          "name": "workspace_id",
+          "required": false
+        }
+      ]
+    }
+  }
+}

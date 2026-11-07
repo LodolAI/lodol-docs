@@ -42,6 +42,106 @@
         "delete"
       ]
     },
+    "export_images": {
+      "description": "Turn frames or layers of a Figma file into PNG, JPG, SVG or PDF images, and get a download link for each. The links last 30 days. Useful for sending the latest design to a channel, a document or a review.",
+      "display_name": "Export as image",
+      "display_str_template": "Export {node_ids} from Figma file {file_key}.",
+      "handler": "actions.export_images",
+      "id": "figma_export_images",
+      "method": "POST",
+      "mock_response": {
+        "format": "png",
+        "images": [
+          {
+            "node_id": "1:2",
+            "url": "https://figma-alpha-api.s3.us-west-2.amazonaws.com/images/example.png"
+          }
+        ]
+      },
+      "name": "export_images",
+      "output_formatter": "actions.format_export_images_output",
+      "parameters": [
+        {
+          "description": "The Figma file the frames are in. A file key or a full Figma file URL both work.",
+          "display_name": "File",
+          "name": "file_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Which frames or layers to export, by their node ids, separated by commas (e.g. '1:2,1:8'). In Figma, select a frame and copy its link: the id is the node-id in the link, with the dash written as a colon.",
+          "display_name": "Frames or layers",
+          "name": "node_ids",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The kind of image to make. Defaults to PNG.",
+          "display_name": "Format",
+          "name": "image_format",
+          "options": [
+            {
+              "label": "PNG",
+              "value": "png"
+            },
+            {
+              "label": "JPG",
+              "value": "jpg"
+            },
+            {
+              "label": "SVG",
+              "value": "svg"
+            },
+            {
+              "label": "PDF",
+              "value": "pdf"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How large to make the image, from 0.01 to 4 times its size in Figma. Defaults to 1. Ignored for SVG.",
+          "display_name": "Scale",
+          "maximum": 4,
+          "minimum": 0.01,
+          "name": "scale",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/figma/export-images",
+      "result_str_template": "Exported from Figma.",
+      "returns": {
+        "properties": {
+          "format": {
+            "description": "png, jpg, svg or pdf.",
+            "type": "string"
+          },
+          "images": {
+            "description": "One image per frame or layer, in order.",
+            "items": {
+              "properties": {
+                "node_id": {
+                  "description": "The frame or layer exported.",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "A link to download the image, for 30 days. Empty when Figma couldn't render that layer.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "get_file": {
       "description": "Get a Figma file's metadata and document tree by its file key. Returns the file name, the editor type (design, whiteboard, or slides), the last-modified timestamp, the current version id, a thumbnail URL, and the node tree (pages and their layers). Large files can return a lot of data, so use 'depth' to fetch only the top levels of the tree. Useful for reading a file's structure, checking when it last changed, or grabbing its thumbnail.",
       "display_name": "Get file",
@@ -542,9 +642,43 @@
   "categories": [
     "Images & Design"
   ],
-  "description": "Collaborative interface design. Read a Figma file's structure and metadata, list and post comments for design review, and clean up comments, all with a personal access token.",
+  "description": "Collaborative interface design. Read a Figma file's structure and metadata, export frames as images, list and post comments for design review, clean up comments, and start workflows on new comments, all with a personal access token.",
   "display_name": "Figma",
   "id": "figma",
   "logo": "https://www.lodol.com/app-icons/figma-icon.svg",
-  "triggers": {}
+  "triggers": {
+    "figma_new_comment_trigger": {
+      "description": "Runs for each new comment on a Figma file, replies included unless you leave them out, with its text, who wrote it and where it's pinned. Comments already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "New comment",
+      "id": "figma_new_comment_trigger",
+      "output": {
+        "author": "Who wrote it (their Figma name).",
+        "author_email": "Their email address, when Figma shares it.",
+        "created_at": "When it was written.",
+        "file_key": "The file's key.",
+        "file_url": "A link to the file in Figma.",
+        "id": "The comment's ID.",
+        "is_reply": "Whether it's a reply in a thread.",
+        "message": "What the comment says.",
+        "node_id": "The frame or layer it's pinned to, if any.",
+        "parent_id": "The comment it replies to; empty for a new thread."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The Figma file to watch: paste its link, or the file key from the link.",
+          "display_name": "File",
+          "name": "file_key",
+          "required": true
+        },
+        {
+          "arg_index": 1,
+          "description": "Whether a reply in a thread starts the workflow too, or only a new top-level comment.",
+          "display_name": "Replies",
+          "name": "replies",
+          "required": false
+        }
+      ]
+    }
+  }
 }
