@@ -376,6 +376,116 @@
         "write"
       ]
     },
+    "find_member": {
+      "description": "Look up a contact in an audience by email: whether they're there, their subscription status, name and tags.",
+      "display_name": "Find a member",
+      "display_str_template": "Find member {1}.",
+      "handler": "actions.find_member",
+      "id": "mailchimp_find_member",
+      "method": "POST",
+      "mock_response": {
+        "email_address": "user@example.com",
+        "first_name": "Ada",
+        "found": true,
+        "full_name": "Ada Lovelace",
+        "id": "b58996c504c5638798eb6b511e6f49af",
+        "last_changed": "2026-10-26T14:00:00+00:00",
+        "last_name": "Lovelace",
+        "list_id": "abc123xyz7",
+        "merge_fields": {
+          "FNAME": "Ada",
+          "LNAME": "Lovelace"
+        },
+        "status": "subscribed",
+        "subscribed_at": "2026-10-26T14:00:00+00:00",
+        "tags": [
+          "VIP"
+        ],
+        "unsubscribe_reason": ""
+      },
+      "name": "find_member",
+      "parameters": [
+        {
+          "description": "The ID of the Mailchimp audience.",
+          "display_name": "Audience ID",
+          "name": "list_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The email address to look for",
+          "display_name": "Email",
+          "name": "email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mailchimp/find-member",
+      "result_str_template": "Member looked up.",
+      "returns": {
+        "properties": {
+          "email_address": {
+            "description": "Their email address",
+            "type": "string"
+          },
+          "first_name": {
+            "description": "First name",
+            "type": "string"
+          },
+          "found": {
+            "description": "Whether the email is in the audience",
+            "type": "boolean"
+          },
+          "full_name": {
+            "description": "Full name as Mailchimp shows it",
+            "type": "string"
+          },
+          "id": {
+            "description": "The contact's ID, empty if not found",
+            "type": "string"
+          },
+          "last_changed": {
+            "description": "When their details last changed",
+            "type": "string"
+          },
+          "last_name": {
+            "description": "Last name",
+            "type": "string"
+          },
+          "list_id": {
+            "description": "The audience's ID",
+            "type": "string"
+          },
+          "merge_fields": {
+            "description": "Every audience field for them (FNAME, LNAME and the rest)",
+            "type": "object"
+          },
+          "status": {
+            "description": "subscribed, unsubscribed, pending, cleaned or archived; empty if not found",
+            "type": "string"
+          },
+          "subscribed_at": {
+            "description": "When they opted in",
+            "type": "string"
+          },
+          "tags": {
+            "description": "The names of their tags",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "unsubscribe_reason": {
+            "description": "Why they unsubscribed, if they did and said",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "get_campaign_results": {
       "description": "Get how email campaigns performed: for each campaign sent in the period, its name, when it went out, how many people it reached, and its open rate and click rate as percentages (23.4 means 23.4%).",
       "display_name": "Get campaign results",
@@ -557,6 +667,65 @@
         "delete"
       ]
     },
+    "remove_tag_from_member": {
+      "description": "Take a tag off a subscriber, for example when they finish an onboarding series. The tag stays in the audience for others.",
+      "display_name": "Remove a tag from a member",
+      "display_str_template": "Remove tag '{2}' from member {1}.",
+      "handler": "actions.remove_tag_from_member",
+      "id": "mailchimp_remove_tag",
+      "method": "POST",
+      "mock_response": {
+        "email_address": "user@example.com",
+        "removed": true,
+        "tag_name": "VIP"
+      },
+      "name": "remove_tag_from_member",
+      "parameters": [
+        {
+          "description": "The ID of the Mailchimp audience.",
+          "display_name": "Audience ID",
+          "name": "list_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Subscriber email",
+          "display_name": "Email",
+          "name": "email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The name of the tag to take off",
+          "display_name": "Tag name",
+          "name": "tag_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mailchimp/remove-tag",
+      "result_str_template": "Tag removed.",
+      "returns": {
+        "properties": {
+          "email_address": {
+            "description": "The subscriber the tag was taken off",
+            "type": "string"
+          },
+          "removed": {
+            "description": "True once the tag is off",
+            "type": "boolean"
+          },
+          "tag_name": {
+            "description": "The tag that was taken off",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
     "send_campaign": {
       "description": "Send a campaign that is ready to be delivered.",
       "display_name": "Send a campaign",
@@ -731,5 +900,62 @@
   "display_name": "Mailchimp",
   "id": "mailchimp",
   "logo": "https://www.lodol.com/app-icons/mailchimp-icon.jpeg",
-  "triggers": {}
+  "triggers": {
+    "mailchimp_new_subscriber_trigger": {
+      "description": "Runs for each new subscriber to a Mailchimp audience, with their email, name and tags. Subscribers already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "New subscriber",
+      "id": "mailchimp_new_subscriber_trigger",
+      "output": {
+        "email_address": "Their email address.",
+        "first_name": "Their first name, if the audience has one for them.",
+        "full_name": "Their full name, as Mailchimp shows it.",
+        "id": "The contact's ID in Mailchimp.",
+        "last_changed": "When their details last changed.",
+        "last_name": "Their last name, if the audience has one for them.",
+        "list_id": "The audience's ID.",
+        "merge_fields": "Every audience field for them (FNAME, LNAME and the rest).",
+        "status": "subscribed or unsubscribed.",
+        "subscribed_at": "When they opted in.",
+        "tags": "The names of their tags.",
+        "unsubscribe_reason": "Why they left, if they said."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The audience to watch. Its ID is under Audience > Settings > Audience name and defaults in Mailchimp, or in the List audiences step.",
+          "display_name": "Audience ID",
+          "name": "list_id",
+          "required": true
+        }
+      ]
+    },
+    "mailchimp_unsubscribed_trigger": {
+      "description": "Runs each time someone unsubscribes from a Mailchimp audience, with their email, name and the reason they gave. Unsubscribes from before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Unsubscribed",
+      "id": "mailchimp_unsubscribed_trigger",
+      "output": {
+        "email_address": "Their email address.",
+        "first_name": "Their first name, if the audience has one for them.",
+        "full_name": "Their full name, as Mailchimp shows it.",
+        "id": "The contact's ID in Mailchimp.",
+        "last_changed": "When their details last changed.",
+        "last_name": "Their last name, if the audience has one for them.",
+        "list_id": "The audience's ID.",
+        "merge_fields": "Every audience field for them (FNAME, LNAME and the rest).",
+        "status": "subscribed or unsubscribed.",
+        "subscribed_at": "When they opted in.",
+        "tags": "The names of their tags.",
+        "unsubscribe_reason": "Why they left, if they said."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The audience to watch. Its ID is under Audience > Settings > Audience name and defaults in Mailchimp, or in the List audiences step.",
+          "display_name": "Audience ID",
+          "name": "list_id",
+          "required": true
+        }
+      ]
+    }
+  }
 }

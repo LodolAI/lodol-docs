@@ -1200,6 +1200,112 @@
         "write"
       ]
     },
+    "create_record": {
+      "description": "Add a record to any table on the instance - a catalog task, a configuration item, a row in a custom table - with the fields you give it. The instance fills in its number and defaults as it would for a record made in ServiceNow.",
+      "display_name": "Create record",
+      "display_str_template": "Create a {0} record.",
+      "handler": "actions.create_record",
+      "id": "servicenow_create_record",
+      "method": "POST",
+      "mock_response": {
+        "number": "SCTASK0010007",
+        "record": {
+          "number": "SCTASK0010007",
+          "sys_id": "7e1e0a2b47d10210e3f0b6c8f36d43a1"
+        },
+        "status": "success",
+        "sys_id": "7e1e0a2b47d10210e3f0b6c8f36d43a1",
+        "table": "sc_task",
+        "url": "https://dev12345.service-now.com/sc_task.do?sys_id=7e1e0a2b47d10210e3f0b6c8f36d43a1"
+      },
+      "name": "create_record",
+      "parameters": [
+        {
+          "description": "The table's technical name, the one in the URL - 'incident', 'sys_user', 'sc_request', 'cmdb_ci_server'. Not its label.",
+          "display_name": "Table",
+          "examples": [
+            {
+              "label": "Requests",
+              "value": "sc_request"
+            },
+            {
+              "label": "Catalog tasks",
+              "value": "sc_task"
+            },
+            {
+              "label": "Configuration items",
+              "value": "cmdb_ci"
+            }
+          ],
+          "name": "table",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The columns to fill in, by their technical names - 'short_description', not 'Short description'.",
+          "display_name": "Fields to set",
+          "name": "fields",
+          "object_key_name": "Field name",
+          "required": true,
+          "schema": {
+            "type": "object"
+          },
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/servicenow/create-record",
+      "result_str_template": "Created {servicenow_create_record,table} record {servicenow_create_record,sys_id}.",
+      "returns": {
+        "properties": {
+          "number": {
+            "type": "string"
+          },
+          "record": {
+            "properties": {
+              "sys_created_by": {
+                "type": "string"
+              },
+              "sys_created_on": {
+                "type": "string"
+              },
+              "sys_id": {
+                "type": "string"
+              },
+              "sys_mod_count": {
+                "type": "string"
+              },
+              "sys_tags": {
+                "type": "string"
+              },
+              "sys_updated_by": {
+                "type": "string"
+              },
+              "sys_updated_on": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "status": {
+            "description": "Status of the action execution (\"success\" on success).",
+            "type": "string"
+          },
+          "sys_id": {
+            "type": "string"
+          },
+          "table": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
     "create_user": {
       "description": "Add a person to ServiceNow. Only the user name is required, and it has to be unique across the instance. No password is set, so the record cannot sign in until an administrator gives it one.",
       "display_name": "Create user",
@@ -5255,5 +5361,98 @@
   "display_name": "ServiceNow",
   "id": "servicenow",
   "logo": "https://www.lodol.com/app-icons/servicenow-icon.png",
-  "triggers": {}
+  "triggers": {
+    "servicenow_incident_updated_trigger": {
+      "description": "Runs each time a ServiceNow incident changes: its state, who it's assigned to, a new comment or work note, anything. Runs once per change, for one assignment group or all of them. A brand-new incident doesn't start it; use New incident for those. How often it checks follows your workspace plan.",
+      "display_name": "Incident updated",
+      "id": "servicenow_incident_updated_trigger",
+      "output": {
+        "assigned_to": "The record id of the person it's assigned to, empty if nobody.",
+        "assignment_group": "The record id of the group it's assigned to.",
+        "caller": "The record id of the person who reported it.",
+        "category": "Its category, such as network.",
+        "created_on": "When it was opened (UTC).",
+        "description": "The incident's full description.",
+        "impact": "Its impact as stored, 1 (High) to 3 (Low).",
+        "number": "The incident's number, such as INC0010023.",
+        "priority": "Its priority as stored, 1 (Critical) to 5 (Planning).",
+        "short_description": "The incident's summary.",
+        "state": "Its state as stored, such as 1 for New or 2 for In Progress.",
+        "sys_id": "The incident's record id, for later ServiceNow steps.",
+        "updated_by": "The user name of whoever last changed it.",
+        "updated_on": "When it last changed (UTC).",
+        "urgency": "Its urgency as stored, 1 (High) to 3 (Low).",
+        "url": "The incident's page in ServiceNow."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only watch records for this group: its name, such as Service Desk. Leave empty to watch them all.",
+          "display_name": "Assignment group",
+          "name": "assignment_group",
+          "required": false
+        }
+      ]
+    },
+    "servicenow_new_incident_trigger": {
+      "description": "Runs for each new ServiceNow incident, with its number, summary, priority and who reported it, for one assignment group or all of them. Incidents already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "New incident",
+      "id": "servicenow_new_incident_trigger",
+      "output": {
+        "assigned_to": "The record id of the person it's assigned to, empty if nobody.",
+        "assignment_group": "The record id of the group it's assigned to.",
+        "caller": "The record id of the person who reported it.",
+        "category": "Its category, such as network.",
+        "created_on": "When it was opened (UTC).",
+        "description": "The incident's full description.",
+        "impact": "Its impact as stored, 1 (High) to 3 (Low).",
+        "number": "The incident's number, such as INC0010023.",
+        "priority": "Its priority as stored, 1 (Critical) to 5 (Planning).",
+        "short_description": "The incident's summary.",
+        "state": "Its state as stored, such as 1 for New or 2 for In Progress.",
+        "sys_id": "The incident's record id, for later ServiceNow steps.",
+        "updated_by": "The user name of whoever last changed it.",
+        "updated_on": "When it last changed (UTC).",
+        "urgency": "Its urgency as stored, 1 (High) to 3 (Low).",
+        "url": "The incident's page in ServiceNow."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only watch records for this group: its name, such as Service Desk. Leave empty to watch them all.",
+          "display_name": "Assignment group",
+          "name": "assignment_group",
+          "required": false
+        }
+      ]
+    },
+    "servicenow_new_requested_item_trigger": {
+      "description": "Runs for each new item someone orders from the ServiceNow service catalog, such as a laptop or a software licence, with what was ordered and who it's for. Items already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "New requested item",
+      "id": "servicenow_new_requested_item_trigger",
+      "output": {
+        "assignment_group": "The record id of the group fulfilling it.",
+        "catalog_item": "The record id of the catalog item ordered.",
+        "created_on": "When it was ordered (UTC).",
+        "number": "The requested item's number, such as RITM0010001.",
+        "quantity": "How many were ordered.",
+        "request": "The record id of the request it belongs to.",
+        "requested_for": "The record id of the person it's for.",
+        "short_description": "What was ordered, in a line.",
+        "stage": "Where it is in fulfilment, such as request_approved.",
+        "state": "Its state as stored, such as 1 for Open.",
+        "sys_id": "The requested item's record id, for later ServiceNow steps.",
+        "url": "The requested item's page in ServiceNow."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only watch records for this group: its name, such as Service Desk. Leave empty to watch them all.",
+          "display_name": "Assignment group",
+          "name": "assignment_group",
+          "required": false
+        }
+      ]
+    }
+  }
 }

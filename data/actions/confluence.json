@@ -1,5 +1,67 @@
 {
   "actions": {
+    "add_comment": {
+      "description": "Post a comment at the bottom of a Confluence page.",
+      "display_name": "Comment on a page",
+      "display_str_template": "Comment on {page_id}: '{body}'.",
+      "handler": "actions.add_comment",
+      "id": "confluence_add_comment",
+      "method": "POST",
+      "mock_response": {
+        "comment": {
+          "id": "789012",
+          "page_id": "123456",
+          "url": "https://your-domain.atlassian.net/wiki/spaces/ENG/pages/123456?focusedCommentId=789012"
+        }
+      },
+      "name": "add_comment",
+      "parameters": [
+        {
+          "description": "The page's ID: the number after /pages/ in its address.",
+          "display_name": "Page",
+          "label_source": "page_names",
+          "name": "page_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Text of the comment. Each line becomes a paragraph.",
+          "display_name": "Comment text",
+          "multiline": true,
+          "name": "body",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/confluence/add-comment",
+      "result_str_template": "Confluence comment added.",
+      "returns": {
+        "properties": {
+          "comment": {
+            "description": "The comment that was posted",
+            "properties": {
+              "id": {
+                "description": "The comment's ID",
+                "type": "string"
+              },
+              "page_id": {
+                "description": "The ID of the page it is on",
+                "type": "string"
+              },
+              "url": {
+                "description": "Link that opens the comment",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
     "create_page": {
       "description": "Create a page in a Confluence space, with a title and text.",
       "display_name": "Create a page",
@@ -258,14 +320,120 @@
       "scopes": [
         "read"
       ]
+    },
+    "update_page": {
+      "description": "Change a Confluence page's title, replace its text, or add text to the end of it. Confluence keeps the earlier version in the page's history.",
+      "display_name": "Update a page",
+      "display_str_template": "Update {page_id}.",
+      "handler": "actions.update_page",
+      "id": "confluence_update_page",
+      "method": "POST",
+      "mock_response": {
+        "page": {
+          "id": "123456",
+          "title": "Onboarding checklist",
+          "url": "https://your-domain.atlassian.net/wiki/spaces/ENG/pages/123456/Onboarding+checklist",
+          "version": 4
+        }
+      },
+      "name": "update_page",
+      "parameters": [
+        {
+          "description": "The page's ID: the number after /pages/ in its address.",
+          "display_name": "Page",
+          "label_source": "page_names",
+          "name": "page_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The page's new title. Leave blank to keep it.",
+          "display_name": "New title",
+          "name": "title",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Replaces all of the page's text. Each line becomes a paragraph. Leave blank to keep the text.",
+          "display_name": "New text",
+          "multiline": true,
+          "name": "content",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Added after the page's text, which stays as it is. Each line becomes a paragraph. Use this or New text, not both.",
+          "display_name": "Text to add at the end",
+          "multiline": true,
+          "name": "append",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/confluence/update-page",
+      "result_str_template": "Confluence page updated.",
+      "returns": {
+        "properties": {
+          "page": {
+            "description": "The updated page",
+            "properties": {
+              "id": {
+                "description": "Confluence page ID",
+                "type": "string"
+              },
+              "title": {
+                "description": "The page's title after the change",
+                "type": "string"
+              },
+              "url": {
+                "description": "Link that opens the page",
+                "type": "string"
+              },
+              "version": {
+                "description": "The page's version number after the change",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
     }
   },
   "categories": [
     "Documents"
   ],
-  "description": "Create, read and find pages in your Confluence spaces.",
+  "description": "Create, read, update, comment on and find pages in your Confluence spaces.",
   "display_name": "Confluence",
   "id": "confluence",
   "logo": "https://www.lodol.com/app-icons/confluence-icon.svg",
-  "triggers": {}
+  "triggers": {
+    "confluence_new_page_trigger": {
+      "description": "Runs when a page is created in Confluence, with its title, space, link and who made it. Pages already there when the workflow is turned on don't start it.",
+      "display_name": "New page",
+      "id": "confluence_new_page_trigger",
+      "output": {
+        "created": "When it was created.",
+        "created_by": "Who created it: displayName, email, accountId.",
+        "id": "The page's ID.",
+        "space_key": "The key of the space it is in, such as ENG.",
+        "space_name": "The name of the space it is in.",
+        "title": "The page's title.",
+        "url": "The page's address."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only run for pages in this space. Leave blank for every space the account can see.",
+          "display_name": "Space",
+          "name": "space",
+          "required": false
+        }
+      ]
+    }
+  }
 }

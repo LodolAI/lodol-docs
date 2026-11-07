@@ -73,9 +73,11 @@
                 "items": {
                   "properties": {
                     "email": {
+                      "description": "The person's email address.",
                       "type": "string"
                     },
                     "name": {
+                      "description": "The person's name.",
                       "type": "string"
                     },
                     "recipientId": {
@@ -113,6 +115,181 @@
       },
       "scopes": [
         "write"
+      ]
+    },
+    "download_documents": {
+      "description": "Download an envelope's documents as one PDF, with every signature added so far, for a later step to save, attach or send. Once everyone has signed, this is the finished copy.",
+      "display_name": "Download signed documents",
+      "display_str_template": "Download the documents of envelope {envelope_id}.",
+      "handler": "actions.download_documents",
+      "id": "docusign_download_documents",
+      "method": "POST",
+      "mock_response": {
+        "content_type": "application/pdf",
+        "document_ref": "doc_0123456789abcdef0123456789abcdef",
+        "envelope_id": "abc123-def456-ghi789",
+        "file_name": "docusign-abc123-def456-ghi789.pdf",
+        "size_bytes": 182133
+      },
+      "name": "download_documents",
+      "parameters": [
+        {
+          "description": "The ID of the envelope whose documents to download.",
+          "display_name": "Envelope ID",
+          "name": "envelope_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Add DocuSign's certificate of completion, which records who signed and when, at the end of the PDF.",
+          "display_name": "Add the certificate of completion",
+          "name": "include_certificate",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/docusign/download-documents",
+      "result_str_template": "Downloaded {file_name}.",
+      "returns": {
+        "properties": {
+          "content_type": {
+            "description": "The file's type: application/pdf.",
+            "type": "string"
+          },
+          "document_ref": {
+            "description": "The downloaded PDF, for steps that take a file.",
+            "type": "string"
+          },
+          "envelope_id": {
+            "description": "The envelope the documents came from.",
+            "type": "string"
+          },
+          "file_name": {
+            "description": "The file's name.",
+            "type": "string"
+          },
+          "size_bytes": {
+            "description": "The file's size.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_envelope_recipients": {
+      "description": "See who an envelope went to and where each signer is: sent, delivered (opened), signed (completed) or declined, with when.",
+      "display_name": "Get envelope signers",
+      "display_str_template": "Get the signers of envelope {envelope_id}.",
+      "handler": "actions.get_envelope_recipients",
+      "id": "docusign_get_envelope_recipients",
+      "method": "POST",
+      "mock_response": {
+        "carbon_copies": [],
+        "signers": [
+          {
+            "declined_at": "",
+            "declined_reason": "",
+            "delivered_at": "2026-07-15T09:05:00.0000000Z",
+            "email": "ann@example.com",
+            "name": "Ann Lee",
+            "role_name": "Client",
+            "routing_order": "1",
+            "sent_at": "2026-07-15T09:00:00.0000000Z",
+            "signed_at": "2026-07-15T09:12:00.0000000Z",
+            "status": "completed"
+          }
+        ]
+      },
+      "name": "get_envelope_recipients",
+      "output_formatter": "actions.format_recipients_output",
+      "parameters": [
+        {
+          "description": "The ID of the envelope to check.",
+          "display_name": "Envelope ID",
+          "name": "envelope_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/docusign/get-envelope-recipients",
+      "result_str_template": "Got the envelope's signers.",
+      "returns": {
+        "properties": {
+          "carbon_copies": {
+            "description": "People who get a copy but don't sign.",
+            "items": {
+              "properties": {
+                "email": {
+                  "description": "The person's email address.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The person's name.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "signers": {
+            "description": "Each person who signs, in order.",
+            "items": {
+              "properties": {
+                "declined_at": {
+                  "description": "When they declined.",
+                  "type": "string"
+                },
+                "declined_reason": {
+                  "description": "Why they declined.",
+                  "type": "string"
+                },
+                "delivered_at": {
+                  "description": "When they opened it.",
+                  "type": "string"
+                },
+                "email": {
+                  "description": "The person's email address.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The person's name.",
+                  "type": "string"
+                },
+                "role_name": {
+                  "description": "The template role they fill, if any.",
+                  "type": "string"
+                },
+                "routing_order": {
+                  "description": "Their turn in the signing order.",
+                  "type": "string"
+                },
+                "sent_at": {
+                  "description": "When it was sent to them.",
+                  "type": "string"
+                },
+                "signed_at": {
+                  "description": "When they signed.",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "sent, delivered, completed (signed), declined or created.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
       ]
     },
     "get_envelope_status": {
@@ -369,6 +546,87 @@
         "write"
       ]
     },
+    "send_from_template": {
+      "description": "Send a document for signature using one of your DocuSign templates, filling each of its roles (such as Client or Manager) with a person. It goes to them straight away.",
+      "display_name": "Send from template",
+      "display_str_template": "Send template {template_id} for signature.",
+      "handler": "actions.send_from_template",
+      "id": "docusign_send_from_template",
+      "method": "POST",
+      "mock_response": {
+        "envelope_id": "abc123-def456-ghi789",
+        "status": "sent"
+      },
+      "name": "send_from_template",
+      "parameters": [
+        {
+          "description": "The template to send. Pick one, or use one from an earlier step.",
+          "display_name": "Template",
+          "dynamic_source": "templates",
+          "dynamic_source_allows_custom": true,
+          "name": "template_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Who fills each role in the template. Give each person the role's name exactly as the template has it, their name and their email.",
+          "display_name": "Signers",
+          "name": "signers",
+          "required": true,
+          "schema": {
+            "items": {
+              "properties": {
+                "email": {
+                  "description": "The person's email address.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The person's full name.",
+                  "type": "string"
+                },
+                "role_name": {
+                  "description": "The role in the template, e.g. 'Client'.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "role_name",
+                "name",
+                "email"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "The subject of the email asking them to sign (up to 100 characters). Leave blank to use the template's.",
+          "display_name": "Email subject",
+          "name": "email_subject",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/docusign/send-from-template",
+      "result_str_template": "Envelope {envelope_id} sent.",
+      "returns": {
+        "properties": {
+          "envelope_id": {
+            "description": "ID of the envelope that was sent.",
+            "type": "string"
+          },
+          "status": {
+            "description": "The envelope status (\"sent\") after sending.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
     "void_envelope": {
       "description": "Cancel an envelope that has already been sent so it can no longer be signed. You must give a reason. Only envelopes that are still in progress can be cancelled, not drafts, and not envelopes everyone has already signed.",
       "display_name": "Void envelope",
@@ -428,5 +686,21 @@
   "display_name": "DocuSign",
   "id": "docusign",
   "logo": "https://www.lodol.com/app-icons/docusign-icon.png",
-  "triggers": {}
+  "triggers": {
+    "docusign_envelope_completed_trigger": {
+      "description": "Runs when everyone has signed an envelope, with its ID and subject, ready for 'Download signed documents'. Envelopes already completed when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Envelope completed",
+      "id": "docusign_envelope_completed_trigger",
+      "output": {
+        "completed_at": "When the last person signed.",
+        "email_subject": "The subject of the signing email.",
+        "envelope_id": "The envelope's ID, for the other DocuSign steps.",
+        "sender_email": "The sender's email address.",
+        "sender_name": "Who sent it.",
+        "sent_at": "When it was sent.",
+        "status": "The envelope's status: completed."
+      },
+      "parameters": []
+    }
+  }
 }

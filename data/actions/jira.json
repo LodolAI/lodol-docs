@@ -64,6 +64,63 @@
         "write"
       ]
     },
+    "assign_issue": {
+      "description": "Assign a Jira issue to someone.",
+      "display_name": "Assign an issue",
+      "display_str_template": "Assign {issue_key}.",
+      "handler": "actions.assign_issue",
+      "id": "jira_assign_issue",
+      "method": "POST",
+      "mock_response": {
+        "assignee_account_id": "5b10a2844c20165700ede21g",
+        "issue_key": "PROJ-123",
+        "url": "https://example.atlassian.net/browse/PROJ-123"
+      },
+      "name": "assign_issue",
+      "parameters": [
+        {
+          "description": "The key of the issue to assign, such as PROJ-123.",
+          "display_name": "Issue",
+          "name": "issue_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The person to assign the issue to.",
+          "display_name": "Assignee",
+          "dynamic_source": "issue_assignees",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "issue_key"
+          ],
+          "name": "assignee_account_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/jira/assign-issue",
+      "result_str_template": "Jira issue assigned.",
+      "returns": {
+        "properties": {
+          "assignee_account_id": {
+            "description": "Account ID of the person it is now assigned to",
+            "type": "string"
+          },
+          "issue_key": {
+            "description": "Jira issue key (format: PROJ-123)",
+            "type": "string"
+          },
+          "url": {
+            "description": "Link that opens the issue in Jira",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
     "create_issue": {
       "description": "Create an issue in a Jira project, with a title and, if you like, a description, type, priority and assignee.",
       "display_name": "Create an issue",
@@ -180,7 +237,7 @@
       ]
     },
     "get_issue_details": {
-      "description": "Look up a Jira issue's title and status.",
+      "description": "Look up a Jira issue: its title, description, status, assignee, priority, labels and due date.",
       "display_name": "Get an issue",
       "display_str_template": "Get {issue_key}.",
       "handler": "actions.get_issue_details",
@@ -188,13 +245,31 @@
       "method": "POST",
       "mock_response": {
         "issue": {
+          "assignee": {
+            "accountId": "5b10a2844c20165700ede21g",
+            "displayName": "Alex Kim",
+            "emailAddress": "alex.kim@example.com"
+          },
+          "description": "Steps to reproduce the bug.",
+          "due_date": "2026-10-09",
           "id": "abc123xyz789",
+          "issue_type": "Bug",
           "key": "example_value",
+          "labels": [
+            "customer"
+          ],
+          "priority": "High",
+          "reporter": {
+            "accountId": "5b10a2844c20165700ede21h",
+            "displayName": "Sam Lee",
+            "emailAddress": "sam.lee@example.com"
+          },
           "status": {
             "id": "1",
             "name": "In Progress"
           },
-          "summary": "example_value"
+          "summary": "example_value",
+          "url": "https://example.atlassian.net/browse/PROJ-1"
         }
       },
       "name": "get_issue_details",
@@ -214,13 +289,72 @@
           "issue": {
             "description": "Issue details",
             "properties": {
+              "assignee": {
+                "description": "Who the issue is assigned to. Every field is an empty string when it is unassigned",
+                "properties": {
+                  "accountId": {
+                    "description": "Account ID of the assignee",
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "description": "Assignee's name as shown in Jira",
+                    "type": "string"
+                  },
+                  "emailAddress": {
+                    "description": "Assignee's email address, empty when they have hidden it",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "description": {
+                "description": "The description, as plain text",
+                "type": "string"
+              },
+              "due_date": {
+                "description": "The date the issue is due (2026-10-12), empty when it has none",
+                "type": "string"
+              },
               "id": {
                 "description": "Jira issue ID (internal numeric identifier). Use the key field instead for most operations",
+                "type": "string"
+              },
+              "issue_type": {
+                "description": "Issue type name (e.g. 'Bug', 'Task')",
                 "type": "string"
               },
               "key": {
                 "description": "Jira issue key (format: PROJ-123)",
                 "type": "string"
+              },
+              "labels": {
+                "description": "The issue's labels",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "priority": {
+                "description": "Priority name (e.g. 'High'), empty if none",
+                "type": "string"
+              },
+              "reporter": {
+                "description": "Who reported the issue",
+                "properties": {
+                  "accountId": {
+                    "description": "Account ID of the person who reported it",
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "description": "Their name as shown in Jira",
+                    "type": "string"
+                  },
+                  "emailAddress": {
+                    "description": "Their email address, empty when hidden",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               },
               "status": {
                 "description": "Current workflow status of the issue. Contains name and id for identifying the issue's state in the project workflow",
@@ -238,6 +372,10 @@
               },
               "summary": {
                 "description": "Issue title/summary text. This is the main heading displayed in Jira",
+                "type": "string"
+              },
+              "url": {
+                "description": "Link that opens the issue in Jira",
                 "type": "string"
               }
             },
@@ -612,12 +750,109 @@
       "scopes": [
         "modify"
       ]
+    },
+    "update_issue": {
+      "description": "Change a Jira issue's title, description, priority or due date, or add and remove labels. Anything left blank stays as it is.",
+      "display_name": "Update an issue",
+      "display_str_template": "Update {issue_key}.",
+      "handler": "actions.update_issue",
+      "id": "jira_update_issue",
+      "method": "POST",
+      "mock_response": {
+        "changed": [
+          "priority",
+          "summary",
+          "labels"
+        ],
+        "issue_key": "PROJ-123",
+        "url": "https://example.atlassian.net/browse/PROJ-123"
+      },
+      "name": "update_issue",
+      "parameters": [
+        {
+          "description": "The key of the issue to change, such as PROJ-123.",
+          "display_name": "Issue",
+          "name": "issue_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The issue's new title. Leave blank to keep it.",
+          "display_name": "New title",
+          "name": "summary",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Replaces the issue's whole description. Leave blank to keep it.",
+          "display_name": "New description",
+          "multiline": true,
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How urgent the issue is, such as High. Leave blank to keep it.",
+          "display_name": "Priority",
+          "dynamic_source": "priorities",
+          "dynamic_source_allows_custom": true,
+          "name": "priority",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The date the issue is due. Leave blank to keep it.",
+          "display_name": "Due date",
+          "name": "due_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Labels to add, separated by commas, such as customer, needs-review. The issue keeps its other labels.",
+          "display_name": "Labels to add",
+          "name": "add_labels",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Labels to take off the issue, separated by commas.",
+          "display_name": "Labels to remove",
+          "name": "remove_labels",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/jira/update-issue",
+      "result_str_template": "Jira issue updated.",
+      "returns": {
+        "properties": {
+          "changed": {
+            "description": "What was changed: summary, description, priority, due_date and labels",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "issue_key": {
+            "description": "Jira issue key (format: PROJ-123)",
+            "type": "string"
+          },
+          "url": {
+            "description": "Link that opens the issue in Jira",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
     }
   },
   "categories": [
     "Project Management"
   ],
-  "description": "Create, move, comment on and find issues in your Jira projects.",
+  "description": "Create, update, assign, move, comment on and find issues in your Jira projects.",
   "display_name": "Jira",
   "id": "jira",
   "logo": "https://www.lodol.com/app-icons/jira-icon.svg",
@@ -663,6 +898,43 @@
           "description": "Only run when an issue moves into this status, such as Done. Leave blank to run for every move.",
           "display_name": "New status",
           "name": "to_status",
+          "required": false
+        }
+      ]
+    },
+    "jira_new_comment_trigger": {
+      "description": "Runs when someone comments on an issue in Jira, with the comment, who wrote it and the issue it is on.",
+      "display_name": "New comment",
+      "id": "jira_new_comment_trigger",
+      "output": {
+        "assignee": "Who it is assigned to: displayName, emailAddress, accountId.",
+        "comment_author": "Who wrote it: displayName, emailAddress, accountId.",
+        "comment_body": "What the comment says, as plain text.",
+        "comment_id": "The comment's ID.",
+        "commented_at": "When it was written.",
+        "created": "When it was created.",
+        "description": "The description, as plain text.",
+        "due_date": "Its due date, if it has one.",
+        "id": "The issue's ID.",
+        "issue_type": "The issue type, such as Bug or Task.",
+        "key": "The issue key, such as ENG-123.",
+        "labels": "Its labels.",
+        "priority": "The priority, such as High.",
+        "project_key": "The project's key, such as ENG.",
+        "project_name": "The project's name.",
+        "reporter": "Who reported it: displayName, emailAddress, accountId.",
+        "status": "Its status, such as In Progress.",
+        "status_category": "Its status category: To Do, In Progress or Done.",
+        "summary": "The summary.",
+        "updated": "When it was last changed.",
+        "url": "The issue's page in Jira."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only run for issues in this project. Leave blank for every project the account can see.",
+          "display_name": "Project",
+          "name": "project",
           "required": false
         }
       ]

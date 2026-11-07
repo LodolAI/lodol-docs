@@ -59,6 +59,63 @@
         "write"
       ]
     },
+    "archive_page": {
+      "description": "Move a Notion page to the trash, where it can be restored from Notion's Trash for 30 days.",
+      "display_name": "Move page to trash",
+      "display_str_template": "Move '{0}' to the trash.",
+      "handler": "actions.archive_page",
+      "id": "notion_archive_page",
+      "method": "POST",
+      "mock_response": {
+        "archived": true,
+        "id": "a1b2c3d4e5f6",
+        "status": "success",
+        "title": "Meeting Notes",
+        "url": "https://www.notion.so/Meeting-Notes-a1b2c3d4e5f6"
+      },
+      "name": "archive_page",
+      "output_formatter": "actions.format_archive_page_output",
+      "parameters": [
+        {
+          "description": "The page, as an earlier step gave it, or its ID.",
+          "display_name": "Page",
+          "label_source": "page_names",
+          "name": "page_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/notion/archive-page",
+      "result_str_template": "Page moved to the trash.",
+      "returns": {
+        "properties": {
+          "archived": {
+            "description": "Whether the page is now in the trash.",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Page ID.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Action execution status.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Page title.",
+            "type": "string"
+          },
+          "url": {
+            "description": "Page URL.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "delete"
+      ]
+    },
     "create_page": {
       "description": "Create a new page in a Notion database, with optional content blocks.",
       "display_name": "Create page",
@@ -138,6 +195,115 @@
       },
       "scopes": [
         "write"
+      ]
+    },
+    "get_page_content": {
+      "description": "Read what is written on a Notion page: its headings, paragraphs, lists and to-dos, as text, 100 blocks at a time.",
+      "display_name": "Get page content",
+      "display_str_template": "Read the content of '{0}'.",
+      "handler": "actions.get_page_content",
+      "id": "notion_get_page_content",
+      "method": "POST",
+      "mock_response": {
+        "blocks": [
+          {
+            "has_children": false,
+            "id": "b1c2d3e4f5a6",
+            "text": "# Agenda",
+            "type": "heading_1"
+          },
+          {
+            "has_children": false,
+            "id": "c2d3e4f5a6b7",
+            "text": "- Budget review",
+            "type": "bulleted_list_item"
+          },
+          {
+            "has_children": false,
+            "id": "d3e4f5a6b7c8",
+            "text": "[ ] Send minutes",
+            "type": "to_do"
+          }
+        ],
+        "count": 3,
+        "has_more": false,
+        "next_cursor": null,
+        "status": "success",
+        "text": "# Agenda\n- Budget review\n[ ] Send minutes"
+      },
+      "name": "get_page_content",
+      "output_formatter": "actions.format_get_page_content_output",
+      "parameters": [
+        {
+          "description": "The page, as an earlier step gave it, or its ID.",
+          "display_name": "Page",
+          "label_source": "page_names",
+          "name": "page_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Leave blank to start at the top. To read on, use the next page an earlier run gave.",
+          "display_name": "Next page",
+          "name": "start_cursor",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/notion/get-page-content",
+      "result_str_template": "Page content read.",
+      "returns": {
+        "properties": {
+          "blocks": {
+            "description": "The page's blocks, in order.",
+            "items": {
+              "properties": {
+                "has_children": {
+                  "description": "Whether the block holds more blocks, such as a toggle's contents.",
+                  "type": "boolean"
+                },
+                "id": {
+                  "description": "Block ID.",
+                  "type": "string"
+                },
+                "text": {
+                  "description": "The block's text. A to-do starts with [ ] or [x].",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "What kind of block it is, such as paragraph, heading_1 or to_do.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "Number of blocks returned.",
+            "type": "integer"
+          },
+          "has_more": {
+            "description": "Whether the page has more blocks.",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "description": "Cursor for the next blocks.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Action execution status.",
+            "type": "string"
+          },
+          "text": {
+            "description": "The page's content as plain text, one block per line.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
       ]
     },
     "list_databases": {
@@ -609,6 +775,33 @@
       "description": "Runs for each new page in a Notion database. Pages already there when the workflow is turned on don't start it.",
       "display_name": "New page",
       "id": "notion_new_page_trigger",
+      "output": {
+        "id": "string",
+        "last_edited_time": "string",
+        "title": "string",
+        "url": "string"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The database to watch.",
+          "display_name": "Database",
+          "name": "database_id",
+          "required": true
+        },
+        {
+          "arg_index": 1,
+          "description": "Only pages whose title contains this text. Leave blank for every page.",
+          "display_name": "Title contains",
+          "name": "title",
+          "required": false
+        }
+      ]
+    },
+    "notion_updated_page_trigger": {
+      "description": "Runs when a page in a Notion database is changed or added, such as when its status or another property is edited. Edits made before the workflow is turned on don't start it.",
+      "display_name": "Page changed",
+      "id": "notion_updated_page_trigger",
       "output": {
         "id": "string",
         "last_edited_time": "string",
