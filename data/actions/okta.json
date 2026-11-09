@@ -2293,6 +2293,74 @@
         "delete"
       ]
     },
+    "reset_password": {
+      "description": "Have Okta email a user a link to choose a new password. Until they use it they can't sign in, so only do this when they're expecting the email.",
+      "display_name": "Reset password",
+      "display_str_template": "Reset the password of user {0}.",
+      "handler": "actions.reset_password",
+      "id": "okta_reset_password",
+      "method": "POST",
+      "mock_response": {
+        "asynchronous": false,
+        "email_sent": true,
+        "operation": "reset_password",
+        "sessions_revoked": false,
+        "status": "RECOVERY",
+        "user_id": "00u1abcdEFGHijklM2n3"
+      },
+      "name": "reset_password",
+      "parameters": [
+        {
+          "description": "The Okta user id (00u...), the user's login, or the Admin Console URL of their profile.",
+          "display_name": "User",
+          "name": "user_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Turn on to end the user's current Okta sessions too, for an account you think someone else is using.",
+          "display_name": "Also sign them out everywhere",
+          "name": "revoke_sessions",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/okta/reset-password",
+      "result_str_template": "Reset email sent.",
+      "returns": {
+        "properties": {
+          "asynchronous": {
+            "description": "True when Okta completes this operation in the background, so the user's own status may still say otherwise for a moment.",
+            "type": "boolean"
+          },
+          "email_sent": {
+            "description": "Always true: Okta emails the user the link.",
+            "type": "boolean"
+          },
+          "operation": {
+            "description": "Always 'reset_password'.",
+            "type": "string"
+          },
+          "sessions_revoked": {
+            "description": "Whether their sessions were ended too.",
+            "type": "boolean"
+          },
+          "status": {
+            "description": "The status this operation moves the user to. Read the user again if you need to confirm the transition has landed.",
+            "type": "string"
+          },
+          "user_id": {
+            "description": "The user that was changed.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
     "revoke_user_sessions": {
       "description": "Sign a user out of Okta everywhere, forcing them to authenticate again. The first move on a compromised account.",
       "display_name": "Revoke user sessions",
@@ -2410,6 +2478,56 @@
         "write",
         "modify",
         "delete"
+      ]
+    },
+    "unlock_user": {
+      "description": "Unlock a user Okta locked out after too many failed sign-ins, so they can sign in again with their current password.",
+      "display_name": "Unlock user",
+      "display_str_template": "Unlock user {0}.",
+      "handler": "actions.unlock_user",
+      "id": "okta_unlock_user",
+      "method": "POST",
+      "mock_response": {
+        "asynchronous": false,
+        "operation": "unlock",
+        "status": "ACTIVE",
+        "user_id": "00u1abcdEFGHijklM2n3"
+      },
+      "name": "unlock_user",
+      "parameters": [
+        {
+          "description": "The Okta user id (00u...), the user's login, or the Admin Console URL of their profile.",
+          "display_name": "User",
+          "name": "user_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/okta/unlock-user",
+      "result_str_template": "User unlocked.",
+      "returns": {
+        "properties": {
+          "asynchronous": {
+            "description": "True when Okta completes this operation in the background, so the user's own status may still say otherwise for a moment.",
+            "type": "boolean"
+          },
+          "operation": {
+            "description": "Always 'unlock'.",
+            "type": "string"
+          },
+          "status": {
+            "description": "The status this operation moves the user to. Read the user again if you need to confirm the transition has landed.",
+            "type": "string"
+          },
+          "user_id": {
+            "description": "The user that was changed.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
       ]
     },
     "unsuspend_user": {
@@ -2836,5 +2954,76 @@
   "display_name": "Okta",
   "id": "okta",
   "logo": "https://www.lodol.com/app-icons/okta-icon.svg",
-  "triggers": {}
+  "triggers": {
+    "okta_new_user_trigger": {
+      "description": "Runs for each user created in Okta, by an admin, an import or a connected directory, with their login, name and who created them. Add a Get user step for the rest of their profile. Changes made before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "New user",
+      "id": "okta_new_user_trigger",
+      "output": {
+        "by": "Who created them: an admin's name, or Okta's own for an automatic change.",
+        "by_login": "That admin's login, if a person did it.",
+        "event_id": "The System Log event's id.",
+        "happened_at": "When it happened (UTC).",
+        "login": "Their Okta login, usually their email address.",
+        "name": "Their name as Okta shows it.",
+        "user_id": "The user's Okta id (00u...), for later Okta steps."
+      },
+      "parameters": []
+    },
+    "okta_user_added_to_group_trigger": {
+      "description": "Runs each time someone is added to an Okta group you choose, by an admin or a group rule, with their login, name and who added them. Add a Get user step for the rest of their profile. Changes made before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "User added to a group",
+      "id": "okta_user_added_to_group_trigger",
+      "output": {
+        "by": "Who added them: an admin's name, or Okta's own for an automatic change.",
+        "by_login": "That admin's login, if a person did it.",
+        "event_id": "The System Log event's id.",
+        "group_id": "The group's Okta id.",
+        "group_name": "The group's name.",
+        "happened_at": "When it happened (UTC).",
+        "login": "Their Okta login, usually their email address.",
+        "name": "Their name as Okta shows it.",
+        "user_id": "The user's Okta id (00u...), for later Okta steps."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The group to watch: its Okta id (00g...), or its address copied from the Admin Console.",
+          "display_name": "Group",
+          "name": "group_id",
+          "required": true
+        }
+      ]
+    },
+    "okta_user_deactivated_trigger": {
+      "description": "Runs each time an Okta user is deactivated, which removes their access to every app, with their login, name and who deactivated them. Add a Get user step for the rest of their profile. Changes made before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "User deactivated",
+      "id": "okta_user_deactivated_trigger",
+      "output": {
+        "by": "Who deactivated them: an admin's name, or Okta's own for an automatic change.",
+        "by_login": "That admin's login, if a person did it.",
+        "event_id": "The System Log event's id.",
+        "happened_at": "When it happened (UTC).",
+        "login": "Their Okta login, usually their email address.",
+        "name": "Their name as Okta shows it.",
+        "user_id": "The user's Okta id (00u...), for later Okta steps."
+      },
+      "parameters": []
+    },
+    "okta_user_suspended_trigger": {
+      "description": "Runs each time an Okta user is suspended, so they can't sign in but keep their apps and groups, with their login, name and who suspended them. Add a Get user step for the rest of their profile. Changes made before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "User suspended",
+      "id": "okta_user_suspended_trigger",
+      "output": {
+        "by": "Who suspended them: an admin's name, or Okta's own for an automatic change.",
+        "by_login": "That admin's login, if a person did it.",
+        "event_id": "The System Log event's id.",
+        "happened_at": "When it happened (UTC).",
+        "login": "Their Okta login, usually their email address.",
+        "name": "Their name as Okta shows it.",
+        "user_id": "The user's Okta id (00u...), for later Okta steps."
+      },
+      "parameters": []
+    }
+  }
 }

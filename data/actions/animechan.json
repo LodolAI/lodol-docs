@@ -44,14 +44,25 @@
       ]
     },
     "find_anime": {
-      "description": "Search the catalogue by title and get back the shows that match, best first, each with how many quotes it has on record. The step to put in front of the others when all a workflow has is a title out of a form field. Matching here is better than the quote routes': it matches whole words and folds accents, so 'cowboy bebop' finds Cowboy Bebop and a title typed without its accents still lands. Alternate titles are searched too.",
+      "description": "Search the catalogue by title and get back the shows that match, best first, each with how many quotes it has on record. The step to put in front of the others when all a workflow has is a title out of a form field: pass on 'best_match', the top result when it matched at least a whole word. Animechan's own search answers first, in one request, comparing main and alternate titles and ignoring case and punctuation. Only when it finds nothing is the whole catalogue read and matched here, so a title typed in another word order or without its accents still lands.",
       "display_name": "Find an anime",
       "display_str_template": "Find anime matching {0}.",
       "handler": "actions.find_anime",
       "id": "animechan_find_anime",
       "method": "POST",
       "mock_response": {
-        "catalogue_size": 458,
+        "best_match": {
+          "alt_name": "Cowboy Bebop",
+          "anime_id": 52,
+          "episode_count": 26,
+          "mal_id": 1,
+          "mal_url": "https://myanimelist.net/anime/1",
+          "match_is_confident": true,
+          "match_quality": "exact",
+          "name": "Cowboy Bebop",
+          "quote_count": 31
+        },
+        "catalogue_size": null,
         "exact_match": {
           "alt_name": "Cowboy Bebop",
           "anime_id": 52,
@@ -114,6 +125,38 @@
       "result_str_template": "Search complete.",
       "returns": {
         "properties": {
+          "best_match": {
+            "properties": {
+              "alt_name": {
+                "type": "string"
+              },
+              "anime_id": {
+                "type": "number"
+              },
+              "episode_count": {
+                "type": "number"
+              },
+              "mal_id": {
+                "type": "number"
+              },
+              "mal_url": {
+                "type": "string"
+              },
+              "match_is_confident": {
+                "type": "boolean"
+              },
+              "match_quality": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "quote_count": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
           "catalogue_size": {
             "type": "number"
           },
@@ -192,6 +235,90 @@
           },
           "total_matches": {
             "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_anime": {
+      "description": "Get one anime's summary, episode count and alternate title, by its id or its title, in one request. The only step with a summary, for a post that says what a show is about alongside a quote from it. An id is exact; a title is answered with Animechan's closest match, and 'match_quality' says how close that was.",
+      "display_name": "Get anime details",
+      "display_str_template": "Get details of {0}.",
+      "handler": "actions.get_anime",
+      "id": "animechan_get_anime",
+      "method": "POST",
+      "mock_response": {
+        "alt_name": "Cowboy Bebop",
+        "anime_id": 457,
+        "episode_count": 26,
+        "looked_up_by": "title",
+        "match_is_confident": true,
+        "match_quality": "word",
+        "name": "Cowboy Bebop",
+        "requested_anime": "bebop",
+        "summary": "Crime is timeless. By the year 2071, humanity has expanded across the galaxy, filling the surface of other planets with settlements like those on Earth. These new societies are plagued by murder, drug use, and theft, and intergalactic outlaws are hunted by a growing number of tough bounty hunters."
+      },
+      "name": "get_anime",
+      "output_formatter": "actions.format_anime_details_output",
+      "parameters": [
+        {
+          "description": "The anime's id or its title. An id is exact: pass 'anime_id' from 'Find an anime' or another Animechan step. A title is answered with the closest match, so 'bebop' finds Cowboy Bebop. Text made only of digits is read as an id.",
+          "display_name": "Anime",
+          "examples": [
+            {
+              "label": "A series",
+              "value": "Cowboy Bebop"
+            },
+            {
+              "label": "An anime id",
+              "value": "457"
+            }
+          ],
+          "name": "anime",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Fail the step rather than return another show when a title matched only inside a word. Animechan answers a title with its closest match, and its own docs warn that a loose title can return the wrong anime. Leave this off and 'match_is_confident' still says how close it was. Has no effect on an id.",
+          "display_name": "Only exact matches",
+          "name": "require_exact_match",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/animechan/get-anime",
+      "result_str_template": "Got details of {animechan_get_anime,name}.",
+      "returns": {
+        "properties": {
+          "alt_name": {
+            "type": "string"
+          },
+          "anime_id": {
+            "type": "number"
+          },
+          "episode_count": {
+            "type": "number"
+          },
+          "looked_up_by": {
+            "type": "string"
+          },
+          "match_is_confident": {
+            "type": "boolean"
+          },
+          "match_quality": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "requested_anime": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
           }
         },
         "type": "object"
@@ -442,7 +569,7 @@
       "output_formatter": "actions.format_quote_page_output",
       "parameters": [
         {
-          "description": "The show to take quotes from. Matching is loose and case-insensitive, so 'bebop' finds Cowboy Bebop. If all you have is a title typed by a user, run 'Find an anime' first and pass the name it confirms. An empty value is rejected: the API answers a blank name with random quotes rather than an error.",
+          "description": "The show to take quotes from. Matching is loose and case-insensitive, so 'bebop' finds Cowboy Bebop. If all you have is a title typed by a user, run 'Find an anime' first and pass on the name in its 'best_match'. An empty value is rejected: the API answers a blank name with random quotes rather than an error.",
           "display_name": "Anime",
           "examples": [
             {

@@ -1,5 +1,81 @@
 {
   "actions": {
+    "add_member_note": {
+      "description": "Add a note to a contact's profile in Mailchimp, such as what they asked about or bought, for your team to see.",
+      "display_name": "Add a note to a member",
+      "display_str_template": "Add a note to member {1}.",
+      "handler": "actions.add_member_note",
+      "id": "mailchimp_add_member_note",
+      "method": "POST",
+      "mock_response": {
+        "created_at": "2026-11-09T10:00:00+00:00",
+        "created_by": "Lodol",
+        "email_address": "user@example.com",
+        "id": "42",
+        "list_id": "abc123xyz7",
+        "note": "Asked about the spring workshop."
+      },
+      "name": "add_member_note",
+      "parameters": [
+        {
+          "description": "The Mailchimp audience. Pick one, or give its ID from an earlier step.",
+          "display_name": "Audience",
+          "dynamic_source": "audiences",
+          "dynamic_source_allows_custom": true,
+          "name": "list_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The contact's email address",
+          "display_name": "Email",
+          "name": "email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The note, up to 1,000 characters",
+          "display_name": "Note",
+          "name": "note",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mailchimp/add-note",
+      "result_str_template": "Note added.",
+      "returns": {
+        "properties": {
+          "created_at": {
+            "description": "When the note was added",
+            "type": "string"
+          },
+          "created_by": {
+            "description": "Who Mailchimp shows as its author",
+            "type": "string"
+          },
+          "email_address": {
+            "description": "The contact the note is on",
+            "type": "string"
+          },
+          "id": {
+            "description": "The note's ID",
+            "type": "string"
+          },
+          "list_id": {
+            "description": "The audience's ID",
+            "type": "string"
+          },
+          "note": {
+            "description": "The note as saved",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
     "add_member_to_audience": {
       "description": "Add or subscribe a contact to a Mailchimp audience.",
       "display_name": "Add member to audience",
@@ -382,6 +458,91 @@
         "write"
       ]
     },
+    "find_campaign": {
+      "description": "Find an email campaign by its name or subject line, for its ID, status and when it was sent. One named exactly what you search for comes first.",
+      "display_name": "Find a campaign",
+      "display_str_template": "Find campaign '{0}'.",
+      "handler": "actions.find_campaign",
+      "id": "mailchimp_find_campaign",
+      "method": "POST",
+      "mock_response": {
+        "archive_url": "https://mailchi.mp/example/november",
+        "created_at": "2026-11-01T09:00:00+00:00",
+        "emails_sent": 1200,
+        "found": true,
+        "id": "42694e9e57",
+        "list_id": "abc123xyz7",
+        "sent_at": "2026-11-02T09:00:00+00:00",
+        "status": "sent",
+        "subject": "What's new this month",
+        "title": "November newsletter",
+        "type": "regular"
+      },
+      "name": "find_campaign",
+      "parameters": [
+        {
+          "description": "Words from the campaign's name or subject line",
+          "display_name": "Name or subject",
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/mailchimp/find-campaign",
+      "result_str_template": "Campaign looked up.",
+      "returns": {
+        "properties": {
+          "archive_url": {
+            "description": "The public link to the campaign",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "When it was made",
+            "type": "string"
+          },
+          "emails_sent": {
+            "description": "How many emails it sent",
+            "type": "integer"
+          },
+          "found": {
+            "description": "Whether a campaign matched",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "The campaign's ID, empty if none matched",
+            "type": "string"
+          },
+          "list_id": {
+            "description": "The ID of the audience it goes to",
+            "type": "string"
+          },
+          "sent_at": {
+            "description": "When it was sent, empty if it hasn't been",
+            "type": "string"
+          },
+          "status": {
+            "description": "save (a draft), paused, schedule, sending or sent",
+            "type": "string"
+          },
+          "subject": {
+            "description": "Its subject line",
+            "type": "string"
+          },
+          "title": {
+            "description": "The campaign's name",
+            "type": "string"
+          },
+          "type": {
+            "description": "regular, plaintext, rss or variate",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "find_member": {
       "description": "Look up a contact in an audience by email: whether they're there, their subscription status, name and tags.",
       "display_name": "Find a member",
@@ -531,6 +692,13 @@
           "type": "ParameterType.DATE"
         },
         {
+          "description": "Beta. Only campaigns sent in the whole days before today: 7 on a Monday is last Monday to Sunday. Needs no date steps. Dates above win.",
+          "display_name": "Sent in last days",
+          "name": "sent_in_last_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
           "description": "Most campaigns to return (50 if left blank)",
           "display_name": "Count",
           "name": "count",
@@ -631,6 +799,94 @@
       },
       "scopes": [
         "read"
+      ]
+    },
+    "record_member_event": {
+      "description": "Record something a contact did, such as signed_up or purchased, on their Mailchimp profile. A Customer Journey that starts on that event starts for them.",
+      "display_name": "Record an event for a member",
+      "display_str_template": "Record event '{2}' for member {1}.",
+      "handler": "actions.record_member_event",
+      "id": "mailchimp_record_event",
+      "method": "POST",
+      "mock_response": {
+        "email_address": "user@example.com",
+        "list_id": "abc123xyz7",
+        "name": "signed_up",
+        "recorded": true
+      },
+      "name": "record_member_event",
+      "parameters": [
+        {
+          "description": "The Mailchimp audience. Pick one, or give its ID from an earlier step.",
+          "display_name": "Audience",
+          "dynamic_source": "audiences",
+          "dynamic_source_allows_custom": true,
+          "name": "list_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The contact's email address",
+          "display_name": "Email",
+          "name": "email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What happened, 2 to 30 letters, numbers, dashes or underscores, like signed_up. A journey starts on this name.",
+          "display_name": "Event name",
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional details of the event, as names and values, like plan: Pro. Mailchimp keeps each value as text.",
+          "display_name": "Details",
+          "name": "properties",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "When the event happened. Leave blank for now.",
+          "display_name": "When it happened",
+          "name": "occurred_at",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": true,
+          "description": "Start any Customer Journey that begins with this event. Turn off to record past events without starting journeys.",
+          "display_name": "Start journeys",
+          "name": "start_journeys",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/mailchimp/record-event",
+      "result_str_template": "Event recorded.",
+      "returns": {
+        "properties": {
+          "email_address": {
+            "description": "The contact it was recorded for",
+            "type": "string"
+          },
+          "list_id": {
+            "description": "The audience's ID",
+            "type": "string"
+          },
+          "name": {
+            "description": "The event's name",
+            "type": "string"
+          },
+          "recorded": {
+            "description": "True once Mailchimp has the event",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
       ]
     },
     "remove_member_from_audience": {
@@ -915,6 +1171,87 @@
   "id": "mailchimp",
   "logo": "https://www.lodol.com/app-icons/mailchimp-icon.jpeg",
   "triggers": {
+    "mailchimp_campaign_sent_trigger": {
+      "description": "Runs each time a Mailchimp email campaign is sent, with its name, subject, how many it went to and its public link. Campaigns sent before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Campaign sent",
+      "id": "mailchimp_campaign_sent_trigger",
+      "output": {
+        "archive_url": "The public link to the campaign as sent.",
+        "created_at": "When it was made.",
+        "emails_sent": "How many emails it sent.",
+        "id": "The campaign's ID, for later Mailchimp steps.",
+        "list_id": "The ID of the audience it went to.",
+        "sent_at": "When it was sent.",
+        "status": "sent.",
+        "subject": "Its subject line.",
+        "title": "The campaign's name.",
+        "type": "regular, plaintext, rss or variate."
+      },
+      "parameters": []
+    },
+    "mailchimp_member_changed_trigger": {
+      "description": "Runs each time a contact is added to a Mailchimp audience or their details change (a name, a field, their status), with their email, name, status and tags. Changes from before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Subscriber added or updated",
+      "id": "mailchimp_member_changed_trigger",
+      "output": {
+        "email_address": "Their email address.",
+        "first_name": "Their first name, if the audience has one for them.",
+        "full_name": "Their full name, as Mailchimp shows it.",
+        "id": "The contact's ID in Mailchimp.",
+        "last_changed": "When their details last changed.",
+        "last_name": "Their last name, if the audience has one for them.",
+        "list_id": "The audience's ID.",
+        "merge_fields": "Every audience field for them (FNAME, LNAME and the rest).",
+        "status": "subscribed, unsubscribed, pending, cleaned or archived.",
+        "subscribed_at": "When they opted in.",
+        "tags": "The names of their tags.",
+        "unsubscribe_reason": "Why they left, if they said."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The audience to watch. Pick one, or give its ID.",
+          "display_name": "Audience",
+          "name": "list_id",
+          "required": true
+        }
+      ]
+    },
+    "mailchimp_member_tagged_trigger": {
+      "description": "Runs each time a subscriber in a Mailchimp audience is given a tag, such as Webinar, with their email, name and tags. People who already have the tag when the workflow is turned on don't start it. Watches tags of up to 4,000 people. How often it checks follows your workspace plan.",
+      "display_name": "Subscriber tagged",
+      "id": "mailchimp_member_tagged_trigger",
+      "output": {
+        "email_address": "Their email address.",
+        "first_name": "Their first name, if the audience has one for them.",
+        "full_name": "Their full name, as Mailchimp shows it.",
+        "id": "The contact's ID in Mailchimp.",
+        "last_changed": "When their details last changed.",
+        "last_name": "Their last name, if the audience has one for them.",
+        "list_id": "The audience's ID.",
+        "merge_fields": "Every audience field for them (FNAME, LNAME and the rest).",
+        "status": "subscribed, unsubscribed, pending, cleaned or archived.",
+        "subscribed_at": "When they opted in.",
+        "tags": "The names of their tags.",
+        "unsubscribe_reason": "Why they left, if they said."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The audience to watch. Pick one, or give its ID.",
+          "display_name": "Audience",
+          "name": "list_id",
+          "required": true
+        },
+        {
+          "arg_index": 1,
+          "description": "The tag's name, as Mailchimp shows it under Audience > Tags.",
+          "display_name": "Tag",
+          "name": "tag_name",
+          "required": true
+        }
+      ]
+    },
     "mailchimp_new_subscriber_trigger": {
       "description": "Runs for each new subscriber to a Mailchimp audience, with their email, name and tags. Subscribers already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
       "display_name": "New subscriber",
@@ -928,7 +1265,7 @@
         "last_name": "Their last name, if the audience has one for them.",
         "list_id": "The audience's ID.",
         "merge_fields": "Every audience field for them (FNAME, LNAME and the rest).",
-        "status": "subscribed or unsubscribed.",
+        "status": "subscribed, unsubscribed, pending, cleaned or archived.",
         "subscribed_at": "When they opted in.",
         "tags": "The names of their tags.",
         "unsubscribe_reason": "Why they left, if they said."
@@ -936,8 +1273,8 @@
       "parameters": [
         {
           "arg_index": 0,
-          "description": "The audience to watch. Its ID is under Audience > Settings > Audience name and defaults in Mailchimp, or in the List audiences step.",
-          "display_name": "Audience ID",
+          "description": "The audience to watch. Pick one, or give its ID.",
+          "display_name": "Audience",
           "name": "list_id",
           "required": true
         }
@@ -956,7 +1293,7 @@
         "last_name": "Their last name, if the audience has one for them.",
         "list_id": "The audience's ID.",
         "merge_fields": "Every audience field for them (FNAME, LNAME and the rest).",
-        "status": "subscribed or unsubscribed.",
+        "status": "subscribed, unsubscribed, pending, cleaned or archived.",
         "subscribed_at": "When they opted in.",
         "tags": "The names of their tags.",
         "unsubscribe_reason": "Why they left, if they said."
@@ -964,8 +1301,8 @@
       "parameters": [
         {
           "arg_index": 0,
-          "description": "The audience to watch. Its ID is under Audience > Settings > Audience name and defaults in Mailchimp, or in the List audiences step.",
-          "display_name": "Audience ID",
+          "description": "The audience to watch. Pick one, or give its ID.",
+          "display_name": "Audience",
           "name": "list_id",
           "required": true
         }

@@ -1,5 +1,60 @@
 {
   "actions": {
+    "add_invoice_note": {
+      "description": "Add a note to an invoice's history and notes in Xero, such as a reminder sent or a promise to pay, for your team to see.",
+      "display_name": "Add a note to an invoice",
+      "display_str_template": "Add a note to invoice {0}.",
+      "handler": "actions.add_invoice_note",
+      "id": "xero_add_invoice_note",
+      "method": "POST",
+      "mock_response": {
+        "added_at": "2026-09-03T09:00:00Z",
+        "invoice_id": "aaaa1111-bbbb-2222-cccc-3333dddd4444",
+        "note": "Customer promised payment by Friday.",
+        "user": "System Generated"
+      },
+      "name": "add_invoice_note",
+      "output_formatter": "actions.format_invoice_note_output",
+      "parameters": [
+        {
+          "description": "The invoice's InvoiceID, from 'Create an invoice', 'List invoices' or an invoice trigger.",
+          "display_name": "Invoice ID",
+          "name": "invoice_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The note, up to 2,500 characters.",
+          "display_name": "Note",
+          "multiline": true,
+          "name": "note",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/xero/add-invoice-note",
+      "result_str_template": "Note added.",
+      "returns": {
+        "properties": {
+          "added_at": {
+            "type": "string"
+          },
+          "invoice_id": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
     "archive_contact": {
       "description": "Archive a contact so it can no longer be used on new transactions, or set it back to active. An archived contact keeps its name, so the name stays taken.",
       "display_name": "Archive or restore a contact",
@@ -2127,6 +2182,486 @@
             "type": "object"
           },
           "TotalCostPool": {
+            "type": "number"
+          },
+          "UpdatedDateUTC": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
+    "create_purchase_order": {
+      "description": "Raise a purchase order to a supplier. Created as a draft unless you choose otherwise.",
+      "display_name": "Create a purchase order",
+      "display_str_template": "Create a purchase order.",
+      "handler": "actions.create_purchase_order",
+      "id": "xero_create_purchase_order",
+      "method": "POST",
+      "mock_response": {
+        "AttentionTo": "Accounts",
+        "Contact": {
+          "ContactID": "e0e0e0e0-1111-2222-3333-444455556666",
+          "Name": "Acme Ltd"
+        },
+        "CurrencyCode": "GBP",
+        "Date": "2026-09-03T00:00:00Z",
+        "DeliveryDate": "2026-09-10T00:00:00Z",
+        "LineAmountTypes": "Exclusive",
+        "LineItems": [
+          {
+            "AccountCode": "200",
+            "Description": "Onsite project management",
+            "LineAmount": 250.0,
+            "LineItemID": "52208ff9-528a-4985-a9ad-b2b1d4210e38",
+            "Quantity": 2,
+            "TaxAmount": 50.0,
+            "TaxType": "OUTPUT2",
+            "UnitAmount": 125.0
+          }
+        ],
+        "PurchaseOrderID": "eeee5555-ffff-6666-aaaa-7777bbbb8888",
+        "PurchaseOrderNumber": "PO-0004",
+        "Status": "DRAFT",
+        "SubTotal": 250.0,
+        "Total": 300.0,
+        "TotalTax": 50.0,
+        "UpdatedDateUTC": "2026-09-03T09:30:00.000Z"
+      },
+      "name": "create_purchase_order",
+      "output_formatter": "actions.format_purchase_order_output",
+      "parameters": [
+        {
+          "description": "The Xero ContactID to raise this against. Get one from 'Create a contact' or 'List contacts'.",
+          "display_name": "Contact ID",
+          "name": "contact_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Used only when no Contact ID is given: the contact with exactly this name is looked up first, and only its id is sent. The contact itself is never changed.",
+          "display_name": "Contact name",
+          "name": "contact_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "DRAFT",
+          "description": "Save it as a draft, for approval, or approved.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Draft",
+              "value": "DRAFT"
+            },
+            {
+              "label": "Awaiting approval",
+              "value": "SUBMITTED"
+            },
+            {
+              "label": "Approved",
+              "value": "AUTHORISED"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What the line is for. Required unless an item code is given.",
+          "display_name": "Line description",
+          "multiline": true,
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 1,
+          "description": "How many units. Defaults to 1.",
+          "display_name": "Quantity",
+          "minimum": 0,
+          "name": "quantity",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The price per unit, before tax.",
+          "display_name": "Unit amount",
+          "name": "unit_amount",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The account this line posts to. Optional on a draft, required before it can be approved.",
+          "display_name": "Account",
+          "dynamic_source": "accounts",
+          "name": "account_code",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A saved item's code, which fills the line's description, price and account from the item.",
+          "display_name": "Item code",
+          "name": "item_code",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Overrides the tax rate the account would otherwise apply.",
+          "display_name": "Tax rate",
+          "dynamic_source": "tax_rates",
+          "name": "tax_type",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A percentage discount on this line, 0-100.",
+          "display_name": "Discount %",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "name": "discount_rate",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "A list of line objects for a multi-line document, e.g. [{\"description\": \"Design\", \"quantity\": 2, \"unit_amount\": 150}]. When given it replaces the single-line fields above.",
+          "display_name": "Line items (advanced)",
+          "name": "line_items",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Whether the amounts above include tax. Defaults to excluding it.",
+          "display_name": "Amounts include tax?",
+          "name": "line_amount_types",
+          "options": [
+            {
+              "label": "Amounts exclude tax",
+              "value": "Exclusive"
+            },
+            {
+              "label": "Amounts include tax",
+              "value": "Inclusive"
+            },
+            {
+              "label": "No tax",
+              "value": "NoTax"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The date of the order. Today's date is used when creating without one.",
+          "display_name": "Order date",
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "When the goods are to be delivered.",
+          "display_name": "Delivery date",
+          "name": "delivery_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Your own order number. Left blank, Xero generates one.",
+          "display_name": "Order number",
+          "name": "purchase_order_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "An additional reference for the order.",
+          "display_name": "Reference",
+          "name": "reference",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The person at the supplier the order is for.",
+          "display_name": "Attention",
+          "name": "attention_to",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A phone number for the delivery.",
+          "display_name": "Telephone",
+          "name": "telephone",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where the goods are to be delivered.",
+          "display_name": "Delivery address",
+          "multiline": true,
+          "name": "delivery_address",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Instructions for the delivery, max 4000 characters.",
+          "display_name": "Delivery instructions",
+          "multiline": true,
+          "name": "delivery_instructions",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "ISO currency code. Defaults to the organisation's base currency.",
+          "display_name": "Currency",
+          "name": "currency_code",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/xero/create-purchase-order",
+      "result_str_template": "Purchase order created.",
+      "returns": {
+        "properties": {
+          "AttentionTo": {
+            "type": "string"
+          },
+          "BrandingThemeID": {
+            "type": "string"
+          },
+          "Contact": {
+            "properties": {
+              "Addresses": {
+                "items": {
+                  "properties": {
+                    "AddressLine1": {
+                      "type": "string"
+                    },
+                    "AddressLine2": {
+                      "type": "string"
+                    },
+                    "AddressLine3": {
+                      "type": "string"
+                    },
+                    "AddressLine4": {
+                      "type": "string"
+                    },
+                    "AddressType": {
+                      "type": "string"
+                    },
+                    "AttentionTo": {
+                      "type": "string"
+                    },
+                    "City": {
+                      "type": "string"
+                    },
+                    "Country": {
+                      "type": "string"
+                    },
+                    "PostalCode": {
+                      "type": "string"
+                    },
+                    "Region": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ContactID": {
+                "type": "string"
+              },
+              "ContactStatus": {
+                "type": "string"
+              },
+              "EmailAddress": {
+                "type": "string"
+              },
+              "FirstName": {
+                "type": "string"
+              },
+              "IsCustomer": {
+                "type": "boolean"
+              },
+              "IsSupplier": {
+                "type": "boolean"
+              },
+              "LastName": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "Phones": {
+                "items": {
+                  "properties": {
+                    "PhoneAreaCode": {
+                      "type": "string"
+                    },
+                    "PhoneCountryCode": {
+                      "type": "string"
+                    },
+                    "PhoneNumber": {
+                      "type": "string"
+                    },
+                    "PhoneType": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "UpdatedDateUTC": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "CurrencyCode": {
+            "type": "string"
+          },
+          "CurrencyRate": {
+            "type": "number"
+          },
+          "Date": {
+            "type": "string"
+          },
+          "DateString": {
+            "type": "string"
+          },
+          "DeliveryAddress": {
+            "type": "string"
+          },
+          "DeliveryDate": {
+            "type": "string"
+          },
+          "DeliveryDateString": {
+            "type": "string"
+          },
+          "DeliveryInstructions": {
+            "type": "string"
+          },
+          "ExpectedArrivalDate": {
+            "type": "string"
+          },
+          "HasAttachments": {
+            "type": "boolean"
+          },
+          "LineAmountTypes": {
+            "type": "string"
+          },
+          "LineItems": {
+            "items": {
+              "properties": {
+                "AccountCode": {
+                  "type": "string"
+                },
+                "AccountId": {
+                  "type": "string"
+                },
+                "Description": {
+                  "type": "string"
+                },
+                "DiscountAmount": {
+                  "type": "number"
+                },
+                "DiscountRate": {
+                  "type": "number"
+                },
+                "Item": {
+                  "properties": {
+                    "Code": {
+                      "type": "string"
+                    },
+                    "ItemID": {
+                      "type": "string"
+                    },
+                    "Name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "ItemCode": {
+                  "type": "string"
+                },
+                "LineAmount": {
+                  "type": "number"
+                },
+                "LineItemID": {
+                  "type": "string"
+                },
+                "Quantity": {
+                  "type": "number"
+                },
+                "TaxAmount": {
+                  "type": "number"
+                },
+                "TaxType": {
+                  "type": "string"
+                },
+                "Tracking": {
+                  "items": {
+                    "properties": {
+                      "Name": {
+                        "type": "string"
+                      },
+                      "Option": {
+                        "type": "string"
+                      },
+                      "TrackingCategoryID": {
+                        "type": "string"
+                      },
+                      "TrackingOptionID": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "UnitAmount": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "PurchaseOrderID": {
+            "type": "string"
+          },
+          "PurchaseOrderNumber": {
+            "type": "string"
+          },
+          "Reference": {
+            "type": "string"
+          },
+          "SentToContact": {
+            "type": "boolean"
+          },
+          "Status": {
+            "type": "string"
+          },
+          "StatusAttributeString": {
+            "type": "string"
+          },
+          "SubTotal": {
+            "type": "number"
+          },
+          "Telephone": {
+            "type": "string"
+          },
+          "Total": {
+            "type": "number"
+          },
+          "TotalDiscount": {
+            "type": "number"
+          },
+          "TotalTax": {
             "type": "number"
           },
           "UpdatedDateUTC": {
@@ -5148,7 +5683,9 @@
         "item_count": 1,
         "page": 1,
         "page_count": 1,
-        "page_size": 100
+        "page_size": 100,
+        "total_amount_due": 120.0,
+        "total_amount_due_display": "$120.00"
       },
       "name": "list_invoices",
       "output_formatter": "actions.format_invoices_output",
@@ -5240,6 +5777,14 @@
           ],
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Beta. Turn on to get just the sales invoices that are awaiting payment and past their due date, oldest first, with what they add up to (total_amount_due), so a reminder needs no filtering or adding up. Replaces Statuses, Sort by and paging.",
+          "display_name": "Only overdue sales invoices",
+          "name": "overdue_only",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         },
         {
           "default": 1,
@@ -5649,6 +6194,14 @@
           },
           "page_size": {
             "type": "number"
+          },
+          "total_amount_due": {
+            "description": "Beta. With Only overdue sales invoices: what the invoices still owe in all.",
+            "type": "number"
+          },
+          "total_amount_due_display": {
+            "description": "Beta. total_amount_due as a person writes it ($1,240.50), ready to put in a message.",
+            "type": "string"
           }
         },
         "type": "object"
@@ -5799,6 +6352,423 @@
           },
           "total_count": {
             "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_purchase_orders": {
+      "description": "Find purchase orders by status or order date.",
+      "display_name": "List purchase orders",
+      "display_str_template": "List purchase orders.",
+      "handler": "actions.list_purchase_orders",
+      "id": "xero_list_purchase_orders",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "has_more": false,
+        "item_count": 1,
+        "page": 1,
+        "page_count": 1,
+        "page_size": 100,
+        "purchase_orders": [
+          {
+            "AttentionTo": "Accounts",
+            "Contact": {
+              "ContactID": "e0e0e0e0-1111-2222-3333-444455556666",
+              "Name": "Acme Ltd"
+            },
+            "CurrencyCode": "GBP",
+            "Date": "2026-09-03T00:00:00Z",
+            "DeliveryDate": "2026-09-10T00:00:00Z",
+            "LineAmountTypes": "Exclusive",
+            "LineItems": [
+              {
+                "AccountCode": "200",
+                "Description": "Onsite project management",
+                "LineAmount": 250.0,
+                "LineItemID": "52208ff9-528a-4985-a9ad-b2b1d4210e38",
+                "Quantity": 2,
+                "TaxAmount": 50.0,
+                "TaxType": "OUTPUT2",
+                "UnitAmount": 125.0
+              }
+            ],
+            "PurchaseOrderID": "eeee5555-ffff-6666-aaaa-7777bbbb8888",
+            "PurchaseOrderNumber": "PO-0004",
+            "Status": "DRAFT",
+            "SubTotal": 250.0,
+            "Total": 300.0,
+            "TotalTax": 50.0,
+            "UpdatedDateUTC": "2026-09-03T09:30:00.000Z"
+          }
+        ]
+      },
+      "name": "list_purchase_orders",
+      "output_formatter": "actions.format_purchase_orders_output",
+      "parameters": [
+        {
+          "description": "Only return purchase orders in this status.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Draft",
+              "value": "DRAFT"
+            },
+            {
+              "label": "Awaiting approval",
+              "value": "SUBMITTED"
+            },
+            {
+              "label": "Approved",
+              "value": "AUTHORISED"
+            },
+            {
+              "label": "Billed",
+              "value": "BILLED"
+            },
+            {
+              "label": "Deleted",
+              "value": "DELETED"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only return orders dated on or after this date.",
+          "display_name": "Dated from",
+          "name": "date_from",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only return orders dated on or before this date.",
+          "display_name": "Dated to",
+          "name": "date_to",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "How to order the results.",
+          "display_name": "Sort by",
+          "name": "order",
+          "options": [
+            {
+              "label": "Recently updated first",
+              "value": "UpdatedDateUTC DESC"
+            },
+            {
+              "label": "Least recently updated first",
+              "value": "UpdatedDateUTC ASC"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 1,
+          "description": "Which page of results to return. Starts at 1.",
+          "display_name": "Page",
+          "minimum": 1,
+          "name": "page",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 100,
+          "description": "How many results per page (1-1000). Defaults to 100.",
+          "display_name": "Page size",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "page_size",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only return records created or changed after this moment.",
+          "display_name": "Changed since",
+          "name": "modified_since",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/xero/list-purchase-orders",
+      "result_str_template": "Purchase orders listed.",
+      "returns": {
+        "properties": {
+          "count": {
+            "type": "number"
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "item_count": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "page_count": {
+            "type": "number"
+          },
+          "page_size": {
+            "type": "number"
+          },
+          "purchase_orders": {
+            "items": {
+              "properties": {
+                "AttentionTo": {
+                  "type": "string"
+                },
+                "BrandingThemeID": {
+                  "type": "string"
+                },
+                "Contact": {
+                  "properties": {
+                    "Addresses": {
+                      "items": {
+                        "properties": {
+                          "AddressLine1": {
+                            "type": "string"
+                          },
+                          "AddressLine2": {
+                            "type": "string"
+                          },
+                          "AddressLine3": {
+                            "type": "string"
+                          },
+                          "AddressLine4": {
+                            "type": "string"
+                          },
+                          "AddressType": {
+                            "type": "string"
+                          },
+                          "AttentionTo": {
+                            "type": "string"
+                          },
+                          "City": {
+                            "type": "string"
+                          },
+                          "Country": {
+                            "type": "string"
+                          },
+                          "PostalCode": {
+                            "type": "string"
+                          },
+                          "Region": {
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "ContactID": {
+                      "type": "string"
+                    },
+                    "ContactStatus": {
+                      "type": "string"
+                    },
+                    "EmailAddress": {
+                      "type": "string"
+                    },
+                    "FirstName": {
+                      "type": "string"
+                    },
+                    "IsCustomer": {
+                      "type": "boolean"
+                    },
+                    "IsSupplier": {
+                      "type": "boolean"
+                    },
+                    "LastName": {
+                      "type": "string"
+                    },
+                    "Name": {
+                      "type": "string"
+                    },
+                    "Phones": {
+                      "items": {
+                        "properties": {
+                          "PhoneAreaCode": {
+                            "type": "string"
+                          },
+                          "PhoneCountryCode": {
+                            "type": "string"
+                          },
+                          "PhoneNumber": {
+                            "type": "string"
+                          },
+                          "PhoneType": {
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "UpdatedDateUTC": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "CurrencyCode": {
+                  "type": "string"
+                },
+                "CurrencyRate": {
+                  "type": "number"
+                },
+                "Date": {
+                  "type": "string"
+                },
+                "DateString": {
+                  "type": "string"
+                },
+                "DeliveryAddress": {
+                  "type": "string"
+                },
+                "DeliveryDate": {
+                  "type": "string"
+                },
+                "DeliveryDateString": {
+                  "type": "string"
+                },
+                "DeliveryInstructions": {
+                  "type": "string"
+                },
+                "ExpectedArrivalDate": {
+                  "type": "string"
+                },
+                "HasAttachments": {
+                  "type": "boolean"
+                },
+                "LineAmountTypes": {
+                  "type": "string"
+                },
+                "LineItems": {
+                  "items": {
+                    "properties": {
+                      "AccountCode": {
+                        "type": "string"
+                      },
+                      "AccountId": {
+                        "type": "string"
+                      },
+                      "Description": {
+                        "type": "string"
+                      },
+                      "DiscountAmount": {
+                        "type": "number"
+                      },
+                      "DiscountRate": {
+                        "type": "number"
+                      },
+                      "Item": {
+                        "properties": {
+                          "Code": {
+                            "type": "string"
+                          },
+                          "ItemID": {
+                            "type": "string"
+                          },
+                          "Name": {
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "ItemCode": {
+                        "type": "string"
+                      },
+                      "LineAmount": {
+                        "type": "number"
+                      },
+                      "LineItemID": {
+                        "type": "string"
+                      },
+                      "Quantity": {
+                        "type": "number"
+                      },
+                      "TaxAmount": {
+                        "type": "number"
+                      },
+                      "TaxType": {
+                        "type": "string"
+                      },
+                      "Tracking": {
+                        "items": {
+                          "properties": {
+                            "Name": {
+                              "type": "string"
+                            },
+                            "Option": {
+                              "type": "string"
+                            },
+                            "TrackingCategoryID": {
+                              "type": "string"
+                            },
+                            "TrackingOptionID": {
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "UnitAmount": {
+                        "type": "number"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "PurchaseOrderID": {
+                  "type": "string"
+                },
+                "PurchaseOrderNumber": {
+                  "type": "string"
+                },
+                "Reference": {
+                  "type": "string"
+                },
+                "SentToContact": {
+                  "type": "boolean"
+                },
+                "Status": {
+                  "type": "string"
+                },
+                "StatusAttributeString": {
+                  "type": "string"
+                },
+                "SubTotal": {
+                  "type": "number"
+                },
+                "Telephone": {
+                  "type": "string"
+                },
+                "Total": {
+                  "type": "number"
+                },
+                "TotalDiscount": {
+                  "type": "number"
+                },
+                "TotalTax": {
+                  "type": "number"
+                },
+                "UpdatedDateUTC": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -7413,6 +8383,779 @@
       "scopes": [
         "modify"
       ]
+    },
+    "update_purchase_order": {
+      "description": "Change a purchase order, approve it, mark it billed, or delete it. Only the fields you fill in change.",
+      "display_name": "Update a purchase order",
+      "display_str_template": "Update purchase order {0}.",
+      "handler": "actions.update_purchase_order",
+      "id": "xero_update_purchase_order",
+      "method": "POST",
+      "mock_response": {
+        "AttentionTo": "Accounts",
+        "Contact": {
+          "ContactID": "e0e0e0e0-1111-2222-3333-444455556666",
+          "Name": "Acme Ltd"
+        },
+        "CurrencyCode": "GBP",
+        "Date": "2026-09-03T00:00:00Z",
+        "DeliveryDate": "2026-09-10T00:00:00Z",
+        "LineAmountTypes": "Exclusive",
+        "LineItems": [
+          {
+            "AccountCode": "200",
+            "Description": "Onsite project management",
+            "LineAmount": 250.0,
+            "LineItemID": "52208ff9-528a-4985-a9ad-b2b1d4210e38",
+            "Quantity": 2,
+            "TaxAmount": 50.0,
+            "TaxType": "OUTPUT2",
+            "UnitAmount": 125.0
+          }
+        ],
+        "PurchaseOrderID": "eeee5555-ffff-6666-aaaa-7777bbbb8888",
+        "PurchaseOrderNumber": "PO-0004",
+        "Status": "AUTHORISED",
+        "SubTotal": 250.0,
+        "Total": 300.0,
+        "TotalTax": 50.0,
+        "UpdatedDateUTC": "2026-09-03T09:30:00.000Z"
+      },
+      "name": "update_purchase_order",
+      "output_formatter": "actions.format_purchase_order_output",
+      "parameters": [
+        {
+          "description": "The PurchaseOrderID, from 'Create a purchase order', 'List purchase orders' or the New purchase order trigger.",
+          "display_name": "Purchase order ID",
+          "name": "purchase_order_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Move the purchase order to this status.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Draft",
+              "value": "DRAFT"
+            },
+            {
+              "label": "Awaiting approval",
+              "value": "SUBMITTED"
+            },
+            {
+              "label": "Approved",
+              "value": "AUTHORISED"
+            },
+            {
+              "label": "Billed",
+              "value": "BILLED"
+            },
+            {
+              "label": "Deleted",
+              "value": "DELETED"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The date of the order. Today's date is used when creating without one.",
+          "display_name": "Order date",
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "When the goods are to be delivered.",
+          "display_name": "Delivery date",
+          "name": "delivery_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Your own order number. Left blank, Xero generates one.",
+          "display_name": "Order number",
+          "name": "purchase_order_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "An additional reference for the order.",
+          "display_name": "Reference",
+          "name": "reference",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The person at the supplier the order is for.",
+          "display_name": "Attention",
+          "name": "attention_to",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A phone number for the delivery.",
+          "display_name": "Telephone",
+          "name": "telephone",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where the goods are to be delivered.",
+          "display_name": "Delivery address",
+          "multiline": true,
+          "name": "delivery_address",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Instructions for the delivery, max 4000 characters.",
+          "display_name": "Delivery instructions",
+          "multiline": true,
+          "name": "delivery_instructions",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "New lines, which replace every line on the purchase order. Same format as 'Create a purchase order'.",
+          "display_name": "Replace lines (advanced)",
+          "name": "line_items",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/xero/update-purchase-order",
+      "result_str_template": "Purchase order updated.",
+      "returns": {
+        "properties": {
+          "AttentionTo": {
+            "type": "string"
+          },
+          "BrandingThemeID": {
+            "type": "string"
+          },
+          "Contact": {
+            "properties": {
+              "Addresses": {
+                "items": {
+                  "properties": {
+                    "AddressLine1": {
+                      "type": "string"
+                    },
+                    "AddressLine2": {
+                      "type": "string"
+                    },
+                    "AddressLine3": {
+                      "type": "string"
+                    },
+                    "AddressLine4": {
+                      "type": "string"
+                    },
+                    "AddressType": {
+                      "type": "string"
+                    },
+                    "AttentionTo": {
+                      "type": "string"
+                    },
+                    "City": {
+                      "type": "string"
+                    },
+                    "Country": {
+                      "type": "string"
+                    },
+                    "PostalCode": {
+                      "type": "string"
+                    },
+                    "Region": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ContactID": {
+                "type": "string"
+              },
+              "ContactStatus": {
+                "type": "string"
+              },
+              "EmailAddress": {
+                "type": "string"
+              },
+              "FirstName": {
+                "type": "string"
+              },
+              "IsCustomer": {
+                "type": "boolean"
+              },
+              "IsSupplier": {
+                "type": "boolean"
+              },
+              "LastName": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "Phones": {
+                "items": {
+                  "properties": {
+                    "PhoneAreaCode": {
+                      "type": "string"
+                    },
+                    "PhoneCountryCode": {
+                      "type": "string"
+                    },
+                    "PhoneNumber": {
+                      "type": "string"
+                    },
+                    "PhoneType": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "UpdatedDateUTC": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "CurrencyCode": {
+            "type": "string"
+          },
+          "CurrencyRate": {
+            "type": "number"
+          },
+          "Date": {
+            "type": "string"
+          },
+          "DateString": {
+            "type": "string"
+          },
+          "DeliveryAddress": {
+            "type": "string"
+          },
+          "DeliveryDate": {
+            "type": "string"
+          },
+          "DeliveryDateString": {
+            "type": "string"
+          },
+          "DeliveryInstructions": {
+            "type": "string"
+          },
+          "ExpectedArrivalDate": {
+            "type": "string"
+          },
+          "HasAttachments": {
+            "type": "boolean"
+          },
+          "LineAmountTypes": {
+            "type": "string"
+          },
+          "LineItems": {
+            "items": {
+              "properties": {
+                "AccountCode": {
+                  "type": "string"
+                },
+                "AccountId": {
+                  "type": "string"
+                },
+                "Description": {
+                  "type": "string"
+                },
+                "DiscountAmount": {
+                  "type": "number"
+                },
+                "DiscountRate": {
+                  "type": "number"
+                },
+                "Item": {
+                  "properties": {
+                    "Code": {
+                      "type": "string"
+                    },
+                    "ItemID": {
+                      "type": "string"
+                    },
+                    "Name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "ItemCode": {
+                  "type": "string"
+                },
+                "LineAmount": {
+                  "type": "number"
+                },
+                "LineItemID": {
+                  "type": "string"
+                },
+                "Quantity": {
+                  "type": "number"
+                },
+                "TaxAmount": {
+                  "type": "number"
+                },
+                "TaxType": {
+                  "type": "string"
+                },
+                "Tracking": {
+                  "items": {
+                    "properties": {
+                      "Name": {
+                        "type": "string"
+                      },
+                      "Option": {
+                        "type": "string"
+                      },
+                      "TrackingCategoryID": {
+                        "type": "string"
+                      },
+                      "TrackingOptionID": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "UnitAmount": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "PurchaseOrderID": {
+            "type": "string"
+          },
+          "PurchaseOrderNumber": {
+            "type": "string"
+          },
+          "Reference": {
+            "type": "string"
+          },
+          "SentToContact": {
+            "type": "boolean"
+          },
+          "Status": {
+            "type": "string"
+          },
+          "StatusAttributeString": {
+            "type": "string"
+          },
+          "SubTotal": {
+            "type": "number"
+          },
+          "Telephone": {
+            "type": "string"
+          },
+          "Total": {
+            "type": "number"
+          },
+          "TotalDiscount": {
+            "type": "number"
+          },
+          "TotalTax": {
+            "type": "number"
+          },
+          "UpdatedDateUTC": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "update_quote": {
+      "description": "Change a quote, or mark it sent, accepted, declined or invoiced. Only the fields you fill in change.",
+      "display_name": "Update a quote",
+      "display_str_template": "Update quote {0}.",
+      "handler": "actions.update_quote",
+      "id": "xero_update_quote",
+      "method": "POST",
+      "mock_response": {
+        "Contact": {
+          "ContactID": "e0e0e0e0-1111-2222-3333-444455556666",
+          "Name": "Acme Ltd"
+        },
+        "CurrencyCode": "GBP",
+        "Date": "2026-09-01T00:00:00Z",
+        "ExpiryDate": "2026-09-15T00:00:00Z",
+        "LineAmountTypes": "Exclusive",
+        "LineItems": [
+          {
+            "AccountCode": "200",
+            "Description": "Onsite project management",
+            "LineAmount": 250.0,
+            "LineItemID": "52208ff9-528a-4985-a9ad-b2b1d4210e38",
+            "Quantity": 2,
+            "TaxAmount": 50.0,
+            "TaxType": "OUTPUT2",
+            "UnitAmount": 125.0
+          }
+        ],
+        "QuoteID": "bbbb2222-cccc-3333-dddd-4444eeee5555",
+        "QuoteNumber": "QU-0007",
+        "Status": "ACCEPTED",
+        "SubTotal": 250.0,
+        "Title": "Website refresh",
+        "Total": 300.0,
+        "TotalTax": 50.0,
+        "UpdatedDateUTC": "2026-09-01T10:16:00.000Z"
+      },
+      "name": "update_quote",
+      "output_formatter": "actions.format_quote_output",
+      "parameters": [
+        {
+          "description": "The quote's QuoteID, from 'Create a quote', 'List quotes' or a quote trigger.",
+          "display_name": "Quote ID",
+          "name": "quote_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Move the quote to this status.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "Draft",
+              "value": "DRAFT"
+            },
+            {
+              "label": "Sent",
+              "value": "SENT"
+            },
+            {
+              "label": "Accepted",
+              "value": "ACCEPTED"
+            },
+            {
+              "label": "Declined",
+              "value": "DECLINED"
+            },
+            {
+              "label": "Invoiced",
+              "value": "INVOICED"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The date the quote is issued.",
+          "display_name": "Quote date",
+          "name": "date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "The date the quote stops being valid.",
+          "display_name": "Expiry date",
+          "name": "expiry_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "A new quote number.",
+          "display_name": "Quote number",
+          "name": "quote_number",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "An additional reference for the quote.",
+          "display_name": "Reference",
+          "name": "reference",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A title shown on the quote, max 100 characters.",
+          "display_name": "Title",
+          "name": "title",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A summary shown on the quote, max 3000 characters.",
+          "display_name": "Summary",
+          "multiline": true,
+          "name": "summary",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The quote's terms, max 4000 characters.",
+          "display_name": "Terms",
+          "multiline": true,
+          "name": "terms",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "New lines, which replace every line on the quote. Same format as 'Create a quote'.",
+          "display_name": "Replace lines (advanced)",
+          "name": "line_items",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/xero/update-quote",
+      "result_str_template": "Quote updated.",
+      "returns": {
+        "properties": {
+          "BrandingThemeID": {
+            "type": "string"
+          },
+          "Contact": {
+            "properties": {
+              "Addresses": {
+                "items": {
+                  "properties": {
+                    "AddressLine1": {
+                      "type": "string"
+                    },
+                    "AddressLine2": {
+                      "type": "string"
+                    },
+                    "AddressLine3": {
+                      "type": "string"
+                    },
+                    "AddressLine4": {
+                      "type": "string"
+                    },
+                    "AddressType": {
+                      "type": "string"
+                    },
+                    "AttentionTo": {
+                      "type": "string"
+                    },
+                    "City": {
+                      "type": "string"
+                    },
+                    "Country": {
+                      "type": "string"
+                    },
+                    "PostalCode": {
+                      "type": "string"
+                    },
+                    "Region": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ContactID": {
+                "type": "string"
+              },
+              "ContactStatus": {
+                "type": "string"
+              },
+              "EmailAddress": {
+                "type": "string"
+              },
+              "FirstName": {
+                "type": "string"
+              },
+              "IsCustomer": {
+                "type": "boolean"
+              },
+              "IsSupplier": {
+                "type": "boolean"
+              },
+              "LastName": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "Phones": {
+                "items": {
+                  "properties": {
+                    "PhoneAreaCode": {
+                      "type": "string"
+                    },
+                    "PhoneCountryCode": {
+                      "type": "string"
+                    },
+                    "PhoneNumber": {
+                      "type": "string"
+                    },
+                    "PhoneType": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "UpdatedDateUTC": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "CurrencyCode": {
+            "type": "string"
+          },
+          "CurrencyRate": {
+            "type": "number"
+          },
+          "Date": {
+            "type": "string"
+          },
+          "DateString": {
+            "type": "string"
+          },
+          "ExpiryDate": {
+            "type": "string"
+          },
+          "ExpiryDateString": {
+            "type": "string"
+          },
+          "LineAmountTypes": {
+            "type": "string"
+          },
+          "LineItems": {
+            "items": {
+              "properties": {
+                "AccountCode": {
+                  "type": "string"
+                },
+                "AccountId": {
+                  "type": "string"
+                },
+                "Description": {
+                  "type": "string"
+                },
+                "DiscountAmount": {
+                  "type": "number"
+                },
+                "DiscountRate": {
+                  "type": "number"
+                },
+                "Item": {
+                  "properties": {
+                    "Code": {
+                      "type": "string"
+                    },
+                    "ItemID": {
+                      "type": "string"
+                    },
+                    "Name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "ItemCode": {
+                  "type": "string"
+                },
+                "LineAmount": {
+                  "type": "number"
+                },
+                "LineItemID": {
+                  "type": "string"
+                },
+                "Quantity": {
+                  "type": "number"
+                },
+                "TaxAmount": {
+                  "type": "number"
+                },
+                "TaxType": {
+                  "type": "string"
+                },
+                "Tracking": {
+                  "items": {
+                    "properties": {
+                      "Name": {
+                        "type": "string"
+                      },
+                      "Option": {
+                        "type": "string"
+                      },
+                      "TrackingCategoryID": {
+                        "type": "string"
+                      },
+                      "TrackingOptionID": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "UnitAmount": {
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "QuoteID": {
+            "type": "string"
+          },
+          "QuoteNumber": {
+            "type": "string"
+          },
+          "Reference": {
+            "type": "string"
+          },
+          "Status": {
+            "type": "string"
+          },
+          "StatusAttributeString": {
+            "type": "string"
+          },
+          "SubTotal": {
+            "type": "number"
+          },
+          "Summary": {
+            "type": "string"
+          },
+          "Terms": {
+            "type": "string"
+          },
+          "Title": {
+            "type": "string"
+          },
+          "Total": {
+            "type": "number"
+          },
+          "TotalDiscount": {
+            "type": "number"
+          },
+          "TotalTax": {
+            "type": "number"
+          },
+          "UpdatedDateUTC": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
     }
   },
   "categories": [
@@ -7423,6 +9166,55 @@
   "id": "xero",
   "logo": "https://www.lodol.com/app-icons/xero-icon.svg",
   "triggers": {
+    "xero_contact_changed_trigger": {
+      "description": "Runs each time a contact in Xero is added or changes, with their name, email and whether they are a customer or supplier. Each change starts it once; several changes between two checks start it once, with the record as it is now. Changes from before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Contact added or updated",
+      "id": "xero_contact_changed_trigger",
+      "output": {
+        "account_number": "Their account number, empty if none.",
+        "contact_id": "The contact's ID, for later Xero steps.",
+        "email": "Their email address.",
+        "first_name": "The contact person's first name.",
+        "is_customer": "Whether you have invoiced them.",
+        "is_supplier": "Whether they have billed you.",
+        "last_name": "The contact person's last name.",
+        "name": "The contact's name.",
+        "status": "ACTIVE or ARCHIVED.",
+        "updated_at": "When the contact last changed."
+      },
+      "parameters": []
+    },
+    "xero_invoice_changed_trigger": {
+      "description": "Runs each time an invoice in Xero is added or changes (approved, edited, paid in part or in full), with its number, customer, status and what is owed. Watches sales invoices, or bills or both if you choose. Each change starts it once; several changes between two checks start it once, with the record as it is now. Changes from before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Invoice added or updated",
+      "id": "xero_invoice_changed_trigger",
+      "output": {
+        "amount_due": "What is still owed.",
+        "amount_paid": "What has been paid so far.",
+        "contact_id": "The contact's ID, for later Xero steps.",
+        "contact_name": "The customer or supplier.",
+        "currency": "Its currency, such as USD.",
+        "date": "The invoice date (YYYY-MM-DD).",
+        "due_date": "The day it is due (YYYY-MM-DD).",
+        "fully_paid_on": "The day it was paid in full, empty until then.",
+        "invoice_id": "The invoice's ID, for later Xero steps.",
+        "invoice_number": "Its number, such as INV-0042.",
+        "reference": "Its reference, empty if none.",
+        "status": "Its status, such as DRAFT, AUTHORISED or PAID.",
+        "total": "Its total, tax included.",
+        "type": "Sales invoice or Bill.",
+        "updated_at": "When it last changed."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Which to watch: sales (the invoices you send customers, the default), bills (the ones suppliers send you) or all.",
+          "display_name": "Invoices or bills",
+          "name": "kind",
+          "required": false
+        }
+      ]
+    },
     "xero_invoice_paid_trigger": {
       "description": "Runs when an invoice in Xero is paid in full, with its number, customer, total and the day it was paid. Watches sales invoices, or bills or both if you choose. Invoices paid before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
       "display_name": "Invoice paid",
@@ -7453,6 +9245,25 @@
         }
       ]
     },
+    "xero_new_credit_note_trigger": {
+      "description": "Runs for each new credit note in Xero, for customers or suppliers, with its number, contact and total. Credit notes already there when the workflow is turned on don't start it, and neither does one dated more than a week before it was entered. How often it checks follows your workspace plan.",
+      "display_name": "New credit note",
+      "id": "xero_new_credit_note_trigger",
+      "output": {
+        "contact_id": "The contact's ID, for later Xero steps.",
+        "contact_name": "The customer or supplier.",
+        "credit_note_id": "The credit note's ID, for later Xero steps.",
+        "credit_note_number": "Its number, such as CN-0003.",
+        "currency": "Its currency, such as USD.",
+        "date": "The credit note's date (YYYY-MM-DD).",
+        "reference": "Its reference, empty if none.",
+        "remaining_credit": "What is left to allocate.",
+        "status": "Its status, such as DRAFT or AUTHORISED.",
+        "total": "Its total, tax included.",
+        "type": "Customer credit note or Supplier credit note."
+      },
+      "parameters": []
+    },
     "xero_new_invoice_trigger": {
       "description": "Runs for each new invoice in Xero, drafts included, with its number, customer, total and due date. Watches sales invoices, or bills or both if you choose. Invoices already there when the workflow is turned on don't start it, and neither does one dated more than a week before it was entered. How often it checks follows your workspace plan.",
       "display_name": "New invoice",
@@ -7482,6 +9293,64 @@
           "required": false
         }
       ]
+    },
+    "xero_new_purchase_order_trigger": {
+      "description": "Runs for each new purchase order in Xero, drafts included, with its number, supplier and total. Orders already there when the workflow is turned on don't start it, and neither does one dated more than a week before it was entered. How often it checks follows your workspace plan.",
+      "display_name": "New purchase order",
+      "id": "xero_new_purchase_order_trigger",
+      "output": {
+        "contact_id": "The contact's ID, for later Xero steps.",
+        "contact_name": "The supplier.",
+        "currency": "Its currency, such as USD.",
+        "date": "The order date (YYYY-MM-DD).",
+        "delivery_date": "The delivery date (YYYY-MM-DD), empty if none.",
+        "purchase_order_id": "The purchase order's ID, for later Xero steps.",
+        "purchase_order_number": "Its number, such as PO-0004.",
+        "reference": "Its reference, empty if none.",
+        "status": "DRAFT, SUBMITTED, AUTHORISED or BILLED.",
+        "total": "Its total, tax included."
+      },
+      "parameters": []
+    },
+    "xero_new_quote_trigger": {
+      "description": "Runs for each new quote in Xero, drafts included, with its number, customer and total. Quotes already there when the workflow is turned on don't start it, and neither does one dated more than a week before it was entered. How often it checks follows your workspace plan.",
+      "display_name": "New quote",
+      "id": "xero_new_quote_trigger",
+      "output": {
+        "contact_id": "The contact's ID, for later Xero steps.",
+        "contact_name": "The customer.",
+        "currency": "Its currency, such as USD.",
+        "date": "The quote date (YYYY-MM-DD).",
+        "expiry_date": "The day it expires (YYYY-MM-DD), empty if none.",
+        "quote_id": "The quote's ID, for later Xero steps.",
+        "quote_number": "Its number, such as QU-0007.",
+        "reference": "Its reference, empty if none.",
+        "status": "DRAFT, SENT, ACCEPTED, DECLINED or INVOICED.",
+        "title": "Its title, empty if none.",
+        "total": "Its total, tax included.",
+        "updated_at": "When it last changed."
+      },
+      "parameters": []
+    },
+    "xero_quote_changed_trigger": {
+      "description": "Runs each time a quote in Xero is added or changes, such as when a customer accepts or declines it, with its status, number and total. Each change starts it once; several changes between two checks start it once, with the record as it is now. Changes from before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Quote added or updated",
+      "id": "xero_quote_changed_trigger",
+      "output": {
+        "contact_id": "The contact's ID, for later Xero steps.",
+        "contact_name": "The customer.",
+        "currency": "Its currency, such as USD.",
+        "date": "The quote date (YYYY-MM-DD).",
+        "expiry_date": "The day it expires (YYYY-MM-DD), empty if none.",
+        "quote_id": "The quote's ID, for later Xero steps.",
+        "quote_number": "Its number, such as QU-0007.",
+        "reference": "Its reference, empty if none.",
+        "status": "DRAFT, SENT, ACCEPTED, DECLINED or INVOICED.",
+        "title": "Its title, empty if none.",
+        "total": "Its total, tax included.",
+        "updated_at": "When it last changed."
+      },
+      "parameters": []
     }
   }
 }

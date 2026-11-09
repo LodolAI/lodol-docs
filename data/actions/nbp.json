@@ -1,5 +1,90 @@
 {
   "actions": {
+    "check_todays_rates": {
+      "description": "Find out whether NBP has published one of its tables yet today. Put it first in a workflow that runs every weekday and carry on only when the answer is yes: NBP publishes on Polish working days only, so on a Polish public holiday, or before the day's table is out, there is nothing new to send. When today's table is not out yet, it also says which publication is still the latest. Table B is published once a week, normally on Wednesdays. No API key required.",
+      "display_name": "Check whether today's rates are out",
+      "display_str_template": "Check whether NBP has published table {table} today.",
+      "handler": "actions.check_todays_rates",
+      "id": "nbp_check_todays_rates",
+      "method": "POST",
+      "mock_response": {
+        "latest_effective_date": "2026-09-11",
+        "latest_table_number": "177/A/NBP/2026",
+        "latest_trading_date": "",
+        "published_today": true,
+        "summary": "NBP published table A today (2026-09-11): 177/A/NBP/2026",
+        "table": "A",
+        "table_label": "Table A - average rates of convertible currencies (every working day)",
+        "today": "2026-09-11"
+      },
+      "name": "check_todays_rates",
+      "parameters": [
+        {
+          "default": "A",
+          "description": "Which of NBP's three tables to check for.",
+          "display_name": "Table",
+          "name": "table",
+          "options": [
+            {
+              "label": "Table A - average rates of convertible currencies (every working day)",
+              "value": "A"
+            },
+            {
+              "label": "Table B - average rates of other currencies (weekly, on Wednesdays)",
+              "value": "B"
+            },
+            {
+              "label": "Table C - buy and sell rates of major currencies (every working day)",
+              "value": "C"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/nbp/check-todays-rates",
+      "result_str_template": "{nbp_check_todays_rates,summary}.",
+      "returns": {
+        "properties": {
+          "latest_effective_date": {
+            "description": "The day the latest publication took effect, as YYYY-MM-DD. The same as 'today' when today's table is out.",
+            "type": "string"
+          },
+          "latest_table_number": {
+            "description": "NBP's number for the latest publication of the table, such as 217/A/NBP/2026: today's when it is out, the one still current when it is not.",
+            "type": "string"
+          },
+          "latest_trading_date": {
+            "description": "For table C only: the day the market was read for the latest publication, which is the working day before it took effect. Empty for tables A and B.",
+            "type": "string"
+          },
+          "published_today": {
+            "description": "True when NBP has published this table today. False before it has, and on every day it does not publish: weekends, Polish public holidays and, for table B, most days of the week. This is the field to put a condition on.",
+            "type": "boolean"
+          },
+          "summary": {
+            "description": "The answer as a sentence, ready to show someone.",
+            "type": "string"
+          },
+          "table": {
+            "description": "Which table was checked: A, B or C.",
+            "type": "string"
+          },
+          "table_label": {
+            "description": "What the table holds, in words.",
+            "type": "string"
+          },
+          "today": {
+            "description": "Today's date in Poland, as YYYY-MM-DD. NBP's day is the day in Warsaw, which can differ from the date where the workflow runs.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "compare_rates": {
       "description": "See how far a rate has moved between two dates, as a percentage and as a number. The step to put in front of a condition: alert when the z\u0142oty has moved more than two per cent since a contract was signed, or since the start of the quarter. No API key required.",
       "display_name": "Compare a rate between two dates",
@@ -617,7 +702,7 @@
       ]
     },
     "get_gold_price_history": {
-      "description": "Get NBP's gold price across a stretch of time, with the high, the low, the average and how far it moved - for a chart, a trend, or a condition on the move. NBP answers at most 93 days per request; this step splits a longer range across as many requests as it takes, up to about five years. With no dates filled in it covers roughly the last month. Gold prices start on 2 January 2013. No API key required.",
+      "description": "Get NBP's gold price across a stretch of time, with the high, the low, the average and how far it moved - for a chart, a trend, or a condition on the move. NBP answers at most 93 days per request; this step splits a longer range across as many requests as it takes, up to about five years. With no dates filled in it covers roughly the last month, or ask for NBP's latest few prices instead of dates. Gold prices start on 2 January 2013. No API key required.",
       "display_name": "Get gold prices over time",
       "display_str_template": "Get gold prices over time.",
       "handler": "actions.get_gold_price_history",
@@ -672,6 +757,15 @@
           "name": "end_date",
           "required": false,
           "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Optional. Instead of dates, how many of NBP's most recent gold prices to fetch, from 1 to 255, whatever days they were published on. 2 gives the latest move: the newest figure against the one before it. Leave the dates empty when filling this in.",
+          "display_name": "Latest publications",
+          "maximum": 255,
+          "minimum": 1,
+          "name": "latest_count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
         }
       ],
       "path": "/actions/library/nbp/get-gold-price-history",
@@ -752,11 +846,11 @@
             "type": "array"
           },
           "requested_end_date": {
-            "description": "The last day that was asked for.",
+            "description": "The last day that was asked for, or empty when 'Latest publications' was used instead of dates.",
             "type": "string"
           },
           "requested_start_date": {
-            "description": "The first day that was asked for.",
+            "description": "The first day that was asked for, or empty when 'Latest publications' was used instead of dates. It differs from the first day with a figure whenever the range opens on a weekend or a holiday.",
             "type": "string"
           },
           "start_date": {
@@ -778,7 +872,7 @@
       ]
     },
     "get_rate_history": {
-      "description": "Get a rate between two currencies across a stretch of time - for a chart, a trend, or a loop over each publication. Comes back with the high, the low, the average and how far the rate moved over the range, as well as the rates themselves. NBP answers at most 93 days per request; this step splits a longer range across as many requests as it takes, up to about five years. With no dates filled in it covers roughly the last month. No API key required.",
+      "description": "Get a rate between two currencies across a stretch of time - for a chart, a trend, or a loop over each publication. Comes back with the high, the low, the average and how far the rate moved over the range, as well as the rates themselves. NBP answers at most 93 days per request; this step splits a longer range across as many requests as it takes, up to about five years. With no dates filled in it covers roughly the last month. Or ask for NBP's latest few publications instead of dates: two of them give the move at the latest fixing, whichever working days those were. No API key required.",
       "display_name": "Get a rate over time",
       "display_str_template": "Get the {from_currency} to {to_currency} rate over time.",
       "handler": "actions.get_rate_history",
@@ -855,6 +949,15 @@
           "name": "end_date",
           "required": false,
           "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Optional. Instead of dates, how many of NBP's most recent rates to fetch, from 1 to 255, whatever days they were published on. 2 gives the latest move: the newest figure against the one before it. A currency NBP quotes weekly, in table B, has one publication a week. Leave the dates empty when filling this in.",
+          "display_name": "Latest publications",
+          "maximum": 255,
+          "minimum": 1,
+          "name": "latest_count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
         }
       ],
       "path": "/actions/library/nbp/get-rate-history",
@@ -935,11 +1038,11 @@
             "type": "array"
           },
           "requested_end_date": {
-            "description": "The last day that was asked for.",
+            "description": "The last day that was asked for, or empty when 'Latest publications' was used instead of dates.",
             "type": "string"
           },
           "requested_start_date": {
-            "description": "The first day that was asked for. It differs from the first day with a rate whenever the range opens on a weekend or a holiday.",
+            "description": "The first day that was asked for, or empty when 'Latest publications' was used instead of dates. It differs from the first day with a figure whenever the range opens on a weekend or a holiday.",
             "type": "string"
           },
           "start_date": {
@@ -1246,7 +1349,7 @@
     "Market Data",
     "Utilities"
   ],
-  "description": "Official exchange rates and gold prices from Narodowy Bank Polski, the central bank of Poland - the figures Polish invoices, VAT returns, customs declarations and audited accounts are settled at. Convert an amount between any two of the roughly 170 currencies NBP quotes, look up a rate for today or for the day an invoice was raised, and take it on the basis Polish tax law asks for: the rate published on the last working day before. Pull a whole table in one step, chart a rate over time, read the buy and sell prices NBP quotes in table C, and follow the official price of gold per gram, ounce or kilogram. Rates go back to 2002 and gold prices to 2013. No account or API key required.",
+  "description": "Official exchange rates and gold prices from Narodowy Bank Polski, the central bank of Poland - the figures Polish invoices, VAT returns, customs declarations and audited accounts are settled at. Convert an amount between any two of the roughly 170 currencies NBP quotes, look up a rate for today or for the day an invoice was raised, and take it on the basis Polish tax law asks for: the rate published on the last working day before. Pull a whole table in one step, check whether today's table is out before a daily workflow sends anything, chart a rate over time or see its latest move, read the buy and sell prices NBP quotes in table C, and follow the official price of gold per gram, ounce or kilogram. Rates go back to 2002 and gold prices to 2013. No account or API key required.",
   "display_name": "NBP",
   "id": "nbp",
   "logo": "https://www.lodol.com/app-icons/nbp-icon.jpg",

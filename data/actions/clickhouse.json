@@ -78,6 +78,118 @@
         "delete"
       ]
     },
+    "find_rows": {
+      "description": "Read rows from a table, optionally only those matching column/value conditions, sorted by a column. Returns up to 1,000 rows.",
+      "display_name": "Find rows",
+      "display_str_template": "Find rows in the table '{1}'.",
+      "handler": "actions.find_rows",
+      "id": "clickhouse_find_rows",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "database": "default",
+        "rows": [
+          {
+            "id": 1,
+            "name": "Ada"
+          }
+        ],
+        "table": "events"
+      },
+      "name": "find_rows",
+      "output_formatter": "actions.format_find_rows_output",
+      "parameters": [
+        {
+          "description": "The database that contains the table. Pick one, or leave blank to use the connection's default database.",
+          "display_name": "Database",
+          "dynamic_source": "databases",
+          "name": "database",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The table to act on. Pick a table, or type its name (for example 'events'). Choose a database first to load its tables.",
+          "display_name": "Table",
+          "dynamic_source": "tables",
+          "dynamic_source_depends_on": [
+            "database"
+          ],
+          "name": "table",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only rows equal to every value given, as column/value pairs (for example, status: \"paid\"). Leave blank for any row.",
+          "display_name": "Match rows where",
+          "name": "filter",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "The column to sort by, such as created_at. Leave blank for ClickHouse's own order.",
+          "display_name": "Sort by column",
+          "name": "order_by",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "ASC",
+          "description": "Lowest first (ascending) or highest first (descending).",
+          "display_name": "Sort direction",
+          "name": "sort_direction",
+          "options": [
+            {
+              "label": "Ascending",
+              "value": "ASC"
+            },
+            {
+              "label": "Descending",
+              "value": "DESC"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The most rows to return, up to 1,000. Defaults to 100.",
+          "display_name": "Limit",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/clickhouse/find-rows",
+      "result_str_template": "Found rows in ClickHouse.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "Number of rows found",
+            "type": "integer"
+          },
+          "database": {
+            "description": "Database read from (null when the default was used)",
+            "type": "string"
+          },
+          "rows": {
+            "description": "The rows found, each as column/value pairs",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "table": {
+            "description": "Table read from",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "insert_rows": {
       "description": "Add one or more rows to a table. Each row is given as column/value pairs; columns you omit fall back to their defaults, so you only provide the columns you have values for.",
       "display_name": "Insert rows",
@@ -245,9 +357,44 @@
   "categories": [
     "Databases"
   ],
-  "description": "Insert, update, and delete rows in your ClickHouse database tables.",
+  "description": "Find, insert, update, and delete rows in your ClickHouse database tables.",
   "display_name": "ClickHouse",
   "id": "clickhouse",
   "logo": "https://www.lodol.com/app-icons/clickhouse-icon.svg",
-  "triggers": {}
+  "triggers": {
+    "clickhouse_new_row_trigger": {
+      "description": "Runs when a row is added to a ClickHouse table, found by checking for rows past the highest value seen so far of a column that grows with every new row, such as created_at. Rows already in the table don't trigger it. Each check is a query, so a ClickHouse Cloud service doesn't go idle while the workflow is on.",
+      "display_name": "New row (ClickHouse)",
+      "id": "clickhouse_new_row_trigger",
+      "output": {
+        "column": "string",
+        "row": "object",
+        "table": "string",
+        "value": "string"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The database the table is in.",
+          "display_name": "Database",
+          "name": "database",
+          "required": true
+        },
+        {
+          "arg_index": 1,
+          "description": "The table to watch.",
+          "display_name": "Table",
+          "name": "table",
+          "required": true
+        },
+        {
+          "arg_index": 2,
+          "description": "A column whose value grows with every new row, such as a created-at time or an increasing number. It must be in the table's ORDER BY or PARTITION BY.",
+          "display_name": "Order column",
+          "name": "column",
+          "required": true
+        }
+      ]
+    }
+  }
 }

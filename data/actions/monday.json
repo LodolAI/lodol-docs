@@ -187,6 +187,101 @@
         "delete"
       ]
     },
+    "find_items": {
+      "description": "Find the items on a Monday.com board whose column holds a value, such as every item whose Status is Stuck or whose Email is ada@example.com, each with its group and its columns as text.",
+      "display_name": "Find items",
+      "display_str_template": "Find items on board {0} whose column {1} is {2}.",
+      "handler": "actions.find_items",
+      "id": "monday_find_items",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "items": [
+          {
+            "columns": {
+              "Owner": "Ada Lovelace",
+              "Status": "Stuck"
+            },
+            "group": "This week",
+            "id": "item1",
+            "name": "Task 1",
+            "state": "active"
+          }
+        ]
+      },
+      "name": "find_items",
+      "parameters": [
+        {
+          "description": "The board to look on.",
+          "display_name": "Board",
+          "dynamic_source": "boards",
+          "name": "board_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The column to look in, such as Status or Email.",
+          "display_name": "Column",
+          "dynamic_source": "board_columns",
+          "dynamic_source_depends_on": [
+            "board_id"
+          ],
+          "name": "column_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What the column holds, in full: a status label such as Done, a person's name, a date such as 2026-11-30, or the whole text of a text column.",
+          "display_name": "Value",
+          "name": "value",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/monday/find-items",
+      "result_str_template": "Items found.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many items matched.",
+            "type": "integer"
+          },
+          "items": {
+            "description": "The matching items, up to 500.",
+            "items": {
+              "properties": {
+                "columns": {
+                  "description": "The item's columns as text, by the column's title on the board.",
+                  "type": "object"
+                },
+                "group": {
+                  "description": "The title of the group the item sits in.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Item ID.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Item name.",
+                  "type": "string"
+                },
+                "state": {
+                  "description": "active, archived or deleted.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "list_board_items": {
       "description": "List the items in a Monday.com board (up to 500), each with its group and its columns by title as text, such as Status, Owner and Due date.",
       "display_name": "List board items",
@@ -585,6 +680,36 @@
   "id": "monday",
   "logo": "https://www.lodol.com/app-icons/monday-icon.png",
   "triggers": {
+    "monday_column_value_changed_trigger": {
+      "description": "Runs each time someone changes a column on an item of a Monday.com board, such as its Status, Owner or Due date: any column, or only the one you choose. Changes made before the workflow is turned on don't start it.",
+      "display_name": "Column value changed",
+      "id": "monday_column_value_changed_trigger",
+      "output": {
+        "board_id": "The board the item is on.",
+        "changed_at": "When it was changed.",
+        "column": "The title of the column that changed, such as Status.",
+        "column_id": "The ID of the column that changed.",
+        "item": "The item as it is now: id, name, state, group, and columns (its columns as text, by title).",
+        "previous_value": "What the column held before, as text.",
+        "value": "The column's value now, as text."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The board to watch for changes.",
+          "display_name": "Board",
+          "name": "board_id",
+          "required": true
+        },
+        {
+          "arg_index": 1,
+          "description": "Only changes to this column, such as Status. Leave blank for a change to any column.",
+          "display_name": "Column",
+          "name": "column_id",
+          "required": false
+        }
+      ]
+    },
     "monday_new_item_trigger": {
       "description": "Runs for each new item on a Monday.com board. Items already there when the workflow is turned on don't start it.",
       "display_name": "New item",
@@ -601,6 +726,30 @@
         {
           "arg_index": 0,
           "description": "The board to watch for new items.",
+          "display_name": "Board",
+          "name": "board_id",
+          "required": true
+        }
+      ]
+    },
+    "monday_new_update_trigger": {
+      "description": "Runs for each new update (a comment in an item's updates feed) posted on a Monday.com board's items. Updates already there when the workflow is turned on don't start it.",
+      "display_name": "New update",
+      "id": "monday_new_update_trigger",
+      "output": {
+        "author_email": "The email of who posted it.",
+        "author_name": "Who posted it.",
+        "board_id": "The board the item is on.",
+        "created_at": "When it was posted.",
+        "id": "The update's ID.",
+        "item_id": "The ID of the item it was posted on.",
+        "item_name": "The name of the item it was posted on.",
+        "text": "What the update says, as plain text."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The board to watch for new updates.",
           "display_name": "Board",
           "name": "board_id",
           "required": true

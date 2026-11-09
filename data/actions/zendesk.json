@@ -2513,8 +2513,70 @@
         "read"
       ]
     },
+    "remove_ticket_tags": {
+      "description": "Take tags off a ticket and keep the rest. A tag the ticket doesn't have is ignored. A closed ticket can't be changed.",
+      "display_name": "Remove tags from a ticket",
+      "display_str_template": "Remove tags from ticket {0}.",
+      "handler": "actions.remove_ticket_tags",
+      "id": "zendesk_remove_ticket_tags",
+      "method": "POST",
+      "mock_response": {
+        "status": "success",
+        "tags": [
+          "routine"
+        ],
+        "ticket_id": 35436,
+        "url": "https://example.zendesk.com/agent/tickets/35436"
+      },
+      "name": "remove_ticket_tags",
+      "parameters": [
+        {
+          "description": "The ticket's numeric id, for example 12345.",
+          "display_name": "Ticket",
+          "name": "ticket_id",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The tags to take off, such as needs_review.",
+          "display_name": "Tags to remove",
+          "name": "tags",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/zendesk/remove-ticket-tags",
+      "result_str_template": "Removed tags from ticket {zendesk_remove_ticket_tags,ticket_id}.",
+      "returns": {
+        "properties": {
+          "status": {
+            "description": "Status of the action execution (\"success\" on success).",
+            "type": "string"
+          },
+          "tags": {
+            "type": "array"
+          },
+          "ticket_id": {
+            "type": "number"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
     "search": {
-      "description": "Search tickets, users, organizations and groups with Zendesk search syntax, for example 'type:ticket status:open'. A ticket comes back with its subject, description (what the customer wrote), status, priority, and the name and email of its assignee and requester, the day it was created and how many days it has waited (created_display and days_waiting, beta). To react to each new ticket, start the workflow with the New ticket trigger instead of searching on a schedule.",
+      "description": "Search tickets, users, organizations and groups with Zendesk search syntax, for example 'type:ticket status:open'. A ticket comes back with its subject, description (what the customer wrote), status, priority, and the name and email of its assignee and requester, the day it was created and how many days it has waited (created_display and days_waiting, beta), and ticket_link, the page that opens it in Zendesk (beta). To react to each new ticket, start the workflow with the New ticket trigger instead of searching on a schedule.",
       "display_name": "Search Zendesk",
       "display_str_template": "Search for '{0}'.",
       "handler": "actions.search",
@@ -2537,7 +2599,8 @@
             "requester_name": "Alex Doe",
             "result_type": "ticket",
             "status": "open",
-            "subject": "Printer on fire"
+            "subject": "Printer on fire",
+            "ticket_link": "https://acme.zendesk.com/agent/tickets/101"
           }
         ],
         "returned": 1,
@@ -2697,6 +2760,10 @@
                   "type": "string"
                 },
                 "subject": {
+                  "type": "string"
+                },
+                "ticket_link": {
+                  "description": "Beta. On a ticket: the link that opens it in Zendesk, for a message or digest. The url field is the API address, not this.",
                   "type": "string"
                 },
                 "updated_at": {
@@ -3639,6 +3706,52 @@
   "id": "zendesk",
   "logo": "https://www.lodol.com/app-icons/zendesk-icon.svg",
   "triggers": {
+    "zendesk_new_organization_trigger": {
+      "description": "Runs for each new organization (a customer company) in Zendesk. Organizations already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "New organization",
+      "id": "zendesk_new_organization_trigger",
+      "output": {
+        "created_at": "When it was added.",
+        "details": "Its details.",
+        "domain_names": "The email domains that put people in it.",
+        "id": "The organization's Zendesk ID.",
+        "name": "Its name.",
+        "notes": "Its notes.",
+        "tags": "Its tags.",
+        "url": "Its page in Zendesk."
+      },
+      "parameters": []
+    },
+    "zendesk_new_ticket_in_view_trigger": {
+      "description": "Runs when a ticket appears in one of your Zendesk views, such as Unassigned tickets or a team's queue: a new ticket, or one that changed to match it. One that leaves the view and comes back runs again. Tickets in it when the workflow is turned on don't start it. Watches views of up to 1,000 tickets. How often it checks follows your workspace plan.",
+      "display_name": "New ticket in view",
+      "id": "zendesk_new_ticket_in_view_trigger",
+      "output": {
+        "assignee_name": "The agent it is assigned to, empty if nobody.",
+        "created_at": "When it was created.",
+        "description": "What the customer wrote.",
+        "id": "The ticket's number.",
+        "priority": "How urgent it is, empty if not set.",
+        "requester_email": "The sender's email address.",
+        "requester_first_name": "Beta. The first word of requester_name, ready for 'Hi Ada,' in a reply with no step to split the name.",
+        "requester_name": "Who sent it.",
+        "status": "The ticket's status, such as new or open.",
+        "subject": "The ticket's subject.",
+        "tags": "The ticket's tags.",
+        "updated_at": "When it last changed.",
+        "url": "The ticket's page in Zendesk.",
+        "view_id": "The view it appeared in."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The view to watch. Pick one of the views you can see in Zendesk.",
+          "display_name": "View",
+          "name": "view_id",
+          "required": true
+        }
+      ]
+    },
     "zendesk_new_ticket_trigger": {
       "description": "Runs for each new Zendesk ticket, with what the customer wrote and who sent it. Tickets already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
       "display_name": "New ticket",
@@ -3650,11 +3763,30 @@
         "id": "The ticket's number.",
         "priority": "How urgent it is, empty if not set.",
         "requester_email": "The sender's email address.",
+        "requester_first_name": "Beta. The first word of requester_name, ready for 'Hi Ada,' in a reply with no step to split the name.",
         "requester_name": "Who sent it.",
         "status": "The ticket's status, such as new or open.",
         "subject": "The ticket's subject.",
         "tags": "The ticket's tags.",
         "url": "The ticket's page in Zendesk."
+      },
+      "parameters": []
+    },
+    "zendesk_new_user_trigger": {
+      "description": "Runs for each new person in Zendesk: a customer who writes in or signs up, or a new agent. Use its role to tell them apart. People already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "New user",
+      "id": "zendesk_new_user_trigger",
+      "output": {
+        "created_at": "When they were added.",
+        "email": "Their email address, empty if none.",
+        "first_name": "The first word of their name, for a greeting.",
+        "id": "The person's Zendesk user ID.",
+        "name": "Their name.",
+        "organization_id": "The organization they belong to, if any.",
+        "phone": "Their phone number, empty if none.",
+        "role": "end-user for a customer, agent or admin for staff.",
+        "tags": "Their tags.",
+        "url": "Their page in Zendesk."
       },
       "parameters": []
     },
@@ -3669,6 +3801,7 @@
         "id": "The ticket's number.",
         "priority": "How urgent it is, empty if not set.",
         "requester_email": "The sender's email address.",
+        "requester_first_name": "Beta. The first word of requester_name, ready for 'Hi Ada,' in a reply with no step to split the name.",
         "requester_name": "Who sent it.",
         "status": "The ticket's status, such as new or open.",
         "subject": "The ticket's subject.",
@@ -3689,6 +3822,7 @@
         "id": "The ticket's number.",
         "priority": "How urgent it is, empty if not set.",
         "requester_email": "The sender's email address.",
+        "requester_first_name": "Beta. The first word of requester_name, ready for 'Hi Ada,' in a reply with no step to split the name.",
         "requester_name": "Who sent it.",
         "status": "The ticket's status, such as new or open.",
         "subject": "The ticket's subject.",

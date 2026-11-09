@@ -23,8 +23,10 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Name of the label to add",
-          "display_name": "Label name",
+          "description": "The label to add. Pick one from the list, or type a new name to create it.",
+          "display_name": "Label",
+          "dynamic_source": "labels",
+          "dynamic_source_allows_custom": true,
           "name": "label_name",
           "required": true,
           "type": "ParameterType.STRING"
@@ -623,6 +625,127 @@
         "write"
       ]
     },
+    "get_conversation": {
+      "description": "Get every email in a conversation, oldest first, with who sent each one, when, and its text.",
+      "display_name": "Get conversation",
+      "display_str_template": "Get the conversation '{0}'.",
+      "handler": "actions.get_conversation",
+      "id": "gmail_get_conversation",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "emails": [
+          {
+            "body": "Could you send a quote for the new office?",
+            "from": "Sam <sam@example.com>",
+            "id": "18abc123def456",
+            "received": "2026-11-02T09:00:00+00:00",
+            "reply_body": "Could you send a quote for the new office?",
+            "sender": "Sam <sam@example.com>",
+            "snippet": "Could you send a quote for the new office?",
+            "subject": "Quote for the new office",
+            "thread_id": "18abc123def456",
+            "to": "me@example.com"
+          },
+          {
+            "body": "Here it is: $4,200 for the fit-out.",
+            "from": "me@example.com",
+            "id": "18abc123def999",
+            "received": "2026-11-02T11:30:00+00:00",
+            "reply_body": "Here it is: $4,200 for the fit-out.",
+            "sender": "me@example.com",
+            "snippet": "Here it is: $4,200 for the fit-out.",
+            "subject": "Re: Quote for the new office",
+            "thread_id": "18abc123def456",
+            "to": "Sam <sam@example.com>"
+          }
+        ],
+        "subject": "Quote for the new office",
+        "thread_id": "18abc123def456"
+      },
+      "name": "get_conversation",
+      "output_formatter": "actions.format_get_conversation_output",
+      "parameters": [
+        {
+          "description": "The conversation, such as the thread ID of the email that started the run. Any email in it works too.",
+          "display_name": "Conversation",
+          "name": "thread_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/gmail/get-conversation",
+      "result_str_template": "Got the conversation.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many emails the conversation has",
+            "type": "integer"
+          },
+          "emails": {
+            "description": "Its emails, oldest first",
+            "items": {
+              "properties": {
+                "body": {
+                  "description": "Full plain-text email body",
+                  "type": "string"
+                },
+                "from": {
+                  "description": "Who sent it",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Gmail message ID",
+                  "type": "string"
+                },
+                "received": {
+                  "description": "When it was sent, as a timestamp",
+                  "type": "string"
+                },
+                "reply_body": {
+                  "description": "Its own words, with quoted earlier emails taken out",
+                  "type": "string"
+                },
+                "sender": {
+                  "description": "Who sent it",
+                  "type": "string"
+                },
+                "snippet": {
+                  "description": "Email preview",
+                  "type": "string"
+                },
+                "subject": {
+                  "description": "Email subject",
+                  "type": "string"
+                },
+                "thread_id": {
+                  "description": "Thread ID",
+                  "type": "string"
+                },
+                "to": {
+                  "description": "Who it was sent to",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "subject": {
+            "description": "The subject of its first email",
+            "type": "string"
+          },
+          "thread_id": {
+            "description": "The conversation's ID",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "get_message_headers": {
       "description": "Get who an email is from and to, its subject and its date.",
       "display_name": "Get email details",
@@ -723,11 +846,13 @@
       "id": "gmail_list_emails",
       "method": "POST",
       "mock_response": {
+        "count": 1,
         "emails": [
           {
             "body": "Hello there, this is the full email body content.",
             "from": "sender@example.com",
             "id": "18abc123def456",
+            "received": "2024-01-15T14:20:00+00:00",
             "reply_body": "Hello there, this is the full email body content.",
             "sender": "sender@example.com",
             "snippet": "Hello there",
@@ -779,6 +904,10 @@
       "returns": {
         "description": "List of Gmail emails under `emails`",
         "properties": {
+          "count": {
+            "description": "Beta. How many emails came back",
+            "type": "integer"
+          },
           "emails": {
             "items": {
               "properties": {
@@ -792,6 +921,10 @@
                 },
                 "id": {
                   "description": "Gmail message ID",
+                  "type": "string"
+                },
+                "received": {
+                  "description": "Beta. When the email was sent, as a timestamp",
                   "type": "string"
                 },
                 "reply_body": {
@@ -895,6 +1028,59 @@
         "modify"
       ]
     },
+    "remove_label_from_conversation": {
+      "description": "Remove a label from every email in a conversation.",
+      "display_name": "Remove label from conversation",
+      "display_str_template": "Remove label '{1}' from conversation '{0}'.",
+      "handler": "actions.remove_label_from_conversation",
+      "id": "gmail_remove_label_from_conversation",
+      "method": "POST",
+      "mock_response": {
+        "label_id": "Label_123",
+        "label_name": "Follow up",
+        "thread_id": "18abc123def456"
+      },
+      "name": "remove_label_from_conversation",
+      "output_formatter": "actions.format_remove_label_from_conversation_output",
+      "parameters": [
+        {
+          "description": "The conversation, such as the thread ID of the email that started the run. Any email in it works too.",
+          "display_name": "Conversation",
+          "name": "thread_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The name of the label to remove, such as Follow up.",
+          "display_name": "Label",
+          "name": "label_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/gmail/remove-label-from-conversation",
+      "result_str_template": "Removed the label from the conversation.",
+      "returns": {
+        "properties": {
+          "label_id": {
+            "description": "Label ID",
+            "type": "string"
+          },
+          "label_name": {
+            "description": "The label that was removed",
+            "type": "string"
+          },
+          "thread_id": {
+            "description": "The conversation's ID",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
     "remove_label_from_message": {
       "description": "Remove a label from an email.",
       "display_name": "Remove label from email",
@@ -918,8 +1104,9 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Name of the label to remove",
-          "display_name": "Label name",
+          "description": "The label to take off the email",
+          "display_name": "Label",
+          "dynamic_source": "labels",
           "name": "label_name",
           "required": true,
           "type": "ParameterType.STRING"
@@ -1031,6 +1218,38 @@
   "id": "gmail",
   "logo": "https://www.lodol.com/app-icons/gmail-icon.png",
   "triggers": {
+    "gmail_new_email_matching_search_trigger": {
+      "description": "Runs for each new email that matches a Gmail search, such as from:billing@acme.com has:attachment, or label:Receipts for email a Gmail filter files away. Emails already there when the workflow is turned on don't start it.",
+      "display_name": "New email matching search",
+      "id": "gmail_new_email_matching_search_trigger",
+      "output": {
+        "body": "string",
+        "date": "string",
+        "email_id": "string",
+        "from": "string",
+        "from_address": "Beta. Just the sender's email address, such as ada@example.com, ready to reply to, add as a contact or look up.",
+        "from_name": "Beta. Just the sender's name, such as Ada Lovelace; empty when the email shows only an address.",
+        "subject": "string",
+        "thread_id": "string",
+        "to": "string"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "What to look for, written the way you search in Gmail, such as from:billing@acme.com subject:invoice, has:attachment filename:pdf, or label:Receipts.",
+          "display_name": "Search",
+          "name": "search",
+          "required": true
+        },
+        {
+          "arg_index": 1,
+          "description": "Enter yes to only trigger for the first email of each conversation, not for replies to it. Leave blank to trigger for every matching email.",
+          "display_name": "Only new conversations",
+          "name": "only_new_conversations",
+          "required": false
+        }
+      ]
+    },
     "gmail_new_email_trigger": {
       "description": "Runs when a new email arrives in your Gmail inbox",
       "display_name": "New email",
@@ -1040,6 +1259,8 @@
         "date": "string",
         "email_id": "string",
         "from": "string",
+        "from_address": "Beta. Just the sender's email address, such as ada@example.com, ready to reply to, add as a contact or look up.",
+        "from_name": "Beta. Just the sender's name, such as Ada Lovelace; empty when the email shows only an address.",
         "subject": "string",
         "thread_id": "string",
         "to": "string"
@@ -1047,7 +1268,7 @@
       "parameters": [
         {
           "arg_index": 0,
-          "description": "Only trigger for emails from this address. Leave blank to watch every new email.",
+          "description": "Only trigger for emails from this address, or from anyone at a company by writing just its domain, such as @bigclient.com. Leave blank to watch every new email.",
           "display_name": "From",
           "name": "sender",
           "required": false
@@ -1065,6 +1286,32 @@
           "display_name": "Only with attachments",
           "name": "only_with_attachments",
           "required": false
+        }
+      ]
+    },
+    "gmail_new_labeled_email_trigger": {
+      "description": "Runs when an email is given a label, by you or by a Gmail filter. Use the label STARRED to run when you star an email. Emails labeled before the workflow is turned on don't start it.",
+      "display_name": "New labeled email",
+      "id": "gmail_new_labeled_email_trigger",
+      "output": {
+        "body": "string",
+        "date": "string",
+        "email_id": "string",
+        "from": "string",
+        "from_address": "Beta. Just the sender's email address, such as ada@example.com, ready to reply to, add as a contact or look up.",
+        "from_name": "Beta. Just the sender's name, such as Ada Lovelace; empty when the email shows only an address.",
+        "label": "The label the email was given.",
+        "subject": "string",
+        "thread_id": "string",
+        "to": "string"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The label's name as it shows in Gmail, such as Invoices, or STARRED or IMPORTANT.",
+          "display_name": "Label",
+          "name": "label",
+          "required": true
         }
       ]
     }

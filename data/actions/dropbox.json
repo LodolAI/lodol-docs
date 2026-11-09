@@ -1,5 +1,62 @@
 {
   "actions": {
+    "append_text": {
+      "description": "Add a line of text to the end of a text file in Dropbox, such as a log or a list, creating the file if it isn't there yet.",
+      "display_name": "Add text to a file",
+      "display_str_template": "Add text to '{0}'.",
+      "handler": "actions.append_text",
+      "id": "dropbox_append_text",
+      "method": "POST",
+      "mock_response": {
+        "created": false,
+        "path": "/Logs/requests.txt",
+        "size": 2048,
+        "status": "success"
+      },
+      "name": "append_text",
+      "output_formatter": "actions.format_append_text_output",
+      "parameters": [
+        {
+          "description": "The text file to add to, including its name, for example /Logs/requests.txt.",
+          "display_name": "File path",
+          "name": "dropbox_path",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The text to add. It goes on a new line at the end of the file.",
+          "display_name": "Text",
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/dropbox/append-text",
+      "result_str_template": "Text added to '{path}'.",
+      "returns": {
+        "properties": {
+          "created": {
+            "description": "Whether the file was new, made by this step.",
+            "type": "boolean"
+          },
+          "path": {
+            "description": "The path of the file in Dropbox.",
+            "type": "string"
+          },
+          "size": {
+            "description": "The file's size afterwards, in bytes.",
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
     "copy_path": {
       "description": "Make a copy of a file or folder somewhere else in Dropbox.",
       "display_name": "Copy file or folder",
@@ -147,14 +204,16 @@
       ]
     },
     "download_file": {
-      "description": "Download a file from Dropbox and save it to a location you choose.",
+      "description": "Download a file from Dropbox. Left to itself it keeps the file with your other files and hands it on as document_ref (beta), which an AI step or Read a file can open; name a destination path to save it there instead.",
       "display_name": "Download file",
       "display_str_template": "Download '{0}'.",
       "handler": "actions.download_file",
       "id": "dropbox_download_file",
       "method": "POST",
       "mock_response": {
-        "path": "/tmp/downloaded_file.txt",
+        "document_ref": "doc_0123456789abcdef0123456789abcdef",
+        "file_name": "invoice.pdf",
+        "path": "",
         "status": "success"
       },
       "name": "download_file",
@@ -168,7 +227,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Where to save the downloaded file. If left blank, a temporary folder is used.",
+          "description": "Where to save the downloaded file. If left blank, the file is kept as a document_ref for later steps.",
           "display_name": "Destination path",
           "name": "destination_path",
           "required": false,
@@ -180,8 +239,16 @@
       "returns": {
         "description": "Response envelope; the payload is in the \"path\" field.",
         "properties": {
+          "document_ref": {
+            "description": "Beta. Reference to the downloaded file, usable as a file input in later steps. Given when no destination path was named.",
+            "type": "string"
+          },
+          "file_name": {
+            "description": "Beta. The file's name. Given with document_ref.",
+            "type": "string"
+          },
           "path": {
-            "description": "The local path where the file was saved.",
+            "description": "The local path where the file was saved; empty when no destination path was given.",
             "type": "string"
           },
           "status": {
@@ -464,6 +531,55 @@
         {
           "arg_index": 0,
           "description": "The Dropbox folder path to watch (e.g. /Invoices). Leave blank to watch the whole account.",
+          "display_name": "Folder",
+          "name": "folder_path",
+          "required": false
+        },
+        {
+          "arg_index": 1,
+          "description": "Only trigger for files whose name contains this text. Leave blank to match any file.",
+          "display_name": "File name filter",
+          "name": "name_pattern",
+          "required": false
+        }
+      ]
+    },
+    "dropbox_new_folder_trigger": {
+      "description": "Runs for each new folder made in a Dropbox folder, such as one per client or case. Folders already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "New folder",
+      "id": "dropbox_new_folder_trigger",
+      "output": {
+        "id": "The folder's Dropbox ID.",
+        "name": "The folder's name.",
+        "path_display": "The folder's path, as Dropbox shows it.",
+        "path_lower": "The folder's path in lower case."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The Dropbox folder path to watch (e.g. /Invoices). Leave blank to watch the top of your Dropbox. Folders inside it aren't watched.",
+          "display_name": "Folder",
+          "name": "folder_path",
+          "required": false
+        }
+      ]
+    },
+    "dropbox_new_or_updated_file_trigger": {
+      "description": "Runs for each file added to a Dropbox folder, and again each time a file there is saved with changes. Files already there when the workflow is turned on don't start it until they change. How often it checks follows your workspace plan.",
+      "display_name": "New or updated file",
+      "id": "dropbox_new_or_updated_file_trigger",
+      "output": {
+        "id": "The file's Dropbox ID, the same after each change.",
+        "modified": "When Dropbox last saved a change to it.",
+        "name": "The file's name.",
+        "path_display": "The file's path, as Dropbox shows it.",
+        "path_lower": "The file's path in lower case.",
+        "size": "The file's size in bytes."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The Dropbox folder path to watch (e.g. /Invoices). Leave blank to watch the top of your Dropbox. Folders inside it aren't watched.",
           "display_name": "Folder",
           "name": "folder_path",
           "required": false

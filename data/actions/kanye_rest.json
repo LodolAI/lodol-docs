@@ -23,21 +23,27 @@
       "returns": {
         "properties": {
           "message": {
+            "description": "What was found, in one sentence.",
             "type": "string"
           },
           "online": {
+            "description": "Whether kanye.rest answered with a quote, which is what working means for it.",
             "type": "boolean"
           },
           "rate_limited": {
+            "description": "Whether kanye.rest refused because too many requests were made. Waiting a while fixes it.",
             "type": "boolean"
           },
           "reachable": {
+            "description": "Whether kanye.rest answered at all, even with an error. True and 'online' false means it is up but failing or throttling.",
             "type": "boolean"
           },
           "response_time_ms": {
+            "description": "How long the answer took, in milliseconds. Empty when it could not be reached.",
             "type": "number"
           },
           "status_code": {
+            "description": "The HTTP status kanye.rest answered with, such as 200. Empty when it could not be reached.",
             "type": "number"
           }
         },
@@ -99,6 +105,7 @@
                 "type": "string"
               },
               "character_count": {
+                "description": "How long the quote is in characters, counting spaces, which is what 'Longest quote' compares against.",
                 "type": "number"
               },
               "id": {
@@ -122,6 +129,7 @@
                 "type": "string"
               },
               "word_count": {
+                "description": "How many words the quote has.",
                 "type": "number"
               }
             },
@@ -135,7 +143,7 @@
       ]
     },
     "get_quote_of_the_day": {
-      "description": "Pick one quote for a day and keep picking that same quote all day. A random draw gives a different one on every call, so a daily workflow that retries, or that two people run an hour apart, posts two different quotes for the one day. This one is fixed by the date: the same date always gives the same quote, and tomorrow gives a different one. Add a seed of your own to have two workspaces post different quotes on the same day.",
+      "description": "Pick one quote for a day and keep picking that same quote all day. A random draw gives a different one on every call, so a daily workflow that retries, or that two people run an hour apart, posts two different quotes for the one day. This one is fixed by the date: the same date always gives the same quote. Turn on No repeats to work through every quote before any comes round again, and add a seed of your own to have two workspaces post different quotes on the same day.",
       "display_name": "Get the quote of the day",
       "display_str_template": "Get the Kanye West quote of the day for {0}.",
       "handler": "actions.get_quote_of_the_day",
@@ -143,8 +151,9 @@
       "method": "POST",
       "mock_response": {
         "date": "2026-09-15",
-        "excluded_count": 2,
-        "pool_size": 120,
+        "excluded_count": 5,
+        "no_repeats": false,
+        "pool_size": 117,
         "quote": {
           "author": "Kanye West",
           "character_count": 52,
@@ -182,8 +191,25 @@
           "type": "ParameterType.STRING"
         },
         {
+          "default": false,
+          "description": "Show every quote once before any comes round again, with nothing to store between runs: about four months of different quotes, one a day. Left off, each day's pick is made on its own, so a quote can come back within a few weeks. Off by default, so turning it on is the only thing that changes a date's quote. When the catalogue changes, or you change Longest quote or Safe for work only, the cycle starts again from a new place, so a quote shown lately can come round early.",
+          "display_name": "No repeats",
+          "name": "no_repeats",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Only choose quotes this many characters long or shorter, counting spaces, so the quote fits where it is going: a Slack status holds 100, a text message 160. Leave empty for any length. Quotes run from 4 to about 210 characters, and about 100 of the 120 fit in 100.",
+          "display_name": "Longest quote",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "max_characters",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
           "default": true,
-          "description": "Leave out the quotes with strong language in them. On by default, so a step posting to a team channel cannot draw one by accident. The service publishes no rating of its own, so this filter is Lodol's and is applied to what it sends; every quote returned also carries its own 'safe_for_work' flag, and the number left out is always reported.",
+          "description": "Leave out the quotes with strong language or sexual references in them. On by default, so a step posting to a team channel cannot draw one by accident. The service publishes no rating of its own, so this filter is Lodol's and is applied to what it sends; every quote returned also carries its own 'safe_for_work' flag, and the number left out is always reported.",
           "display_name": "Safe for work only",
           "name": "safe_for_work",
           "required": false,
@@ -195,13 +221,19 @@
       "returns": {
         "properties": {
           "date": {
+            "description": "The day the quote was picked for, as YYYY-MM-DD. Pass it back as the day to get the same quote again.",
             "type": "string"
           },
           "excluded_count": {
+            "description": "How many quotes the safe-for-work filter left out of what this step chose from. 0 when the filter is off.",
             "type": "number"
           },
+          "no_repeats": {
+            "description": "Whether the pick came from the cycle through every quote rather than a fresh pick for the day.",
+            "type": "boolean"
+          },
           "pool_size": {
-            "description": "How many quotes the day's pick was made from.",
+            "description": "How many quotes the day's pick was made from, after the safe-for-work filter and the length limit. With No repeats on, it is also how many days pass before a quote comes round again.",
             "type": "number"
           },
           "quote": {
@@ -212,6 +244,7 @@
                 "type": "string"
               },
               "character_count": {
+                "description": "How long the quote is in characters, counting spaces, which is what 'Longest quote' compares against.",
                 "type": "number"
               },
               "id": {
@@ -235,15 +268,18 @@
                 "type": "string"
               },
               "word_count": {
+                "description": "How many words the quote has.",
                 "type": "number"
               }
             },
             "type": "object"
           },
           "safe_for_work_only": {
+            "description": "Whether the safe-for-work filter was on for this step.",
             "type": "boolean"
           },
           "seed": {
+            "description": "What the pick was made from: the day, then your own seed after a '|' if you gave one.",
             "type": "string"
           }
         },
@@ -254,7 +290,7 @@
       ]
     },
     "get_random_quote": {
-      "description": "Get one random Kanye West quote, ready to post, with the attribution the service leaves off. Quotes with strong language are skipped unless you ask for them. This is the service's own random route, so a second run gives a different quote. Use Get the quote of the day where a day's workflow must post the same one every time it runs.",
+      "description": "Get one random Kanye West quote, ready to post, with the attribution the service leaves off. Quotes that are not safe for work are skipped unless you ask for them, and so are any you list as already posted, so a daily post never repeats itself. A second run gives a different quote. Use Get the quote of the day where a day's workflow must post the same one every time it runs.",
       "display_name": "Get a random quote",
       "display_str_template": "Get a random Kanye West quote.",
       "handler": "actions.get_random_quote",
@@ -278,11 +314,33 @@
       "parameters": [
         {
           "default": true,
-          "description": "Leave out the quotes with strong language in them. On by default, so a step posting to a team channel cannot draw one by accident. The service publishes no rating of its own, so this filter is Lodol's and is applied to what it sends; every quote returned also carries its own 'safe_for_work' flag, and the number left out is always reported.",
+          "description": "Leave out the quotes with strong language or sexual references in them. On by default, so a step posting to a team channel cannot draw one by accident. The service publishes no rating of its own, so this filter is Lodol's and is applied to what it sends; every quote returned also carries its own 'safe_for_work' flag, and the number left out is always reported.",
           "display_name": "Safe for work only",
           "name": "safe_for_work",
           "required": false,
           "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Quotes not to draw, such as the ones a workflow has already posted, so it never posts the same one twice. Pass the ids an earlier step returned (or that step's 'quotes' list as it is), or type ids separated by commas. In a list, a quote's exact text works in place of its id. Ids no longer in the catalogue are ignored.",
+          "display_name": "Quotes to skip",
+          "name": "exclude_ids",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only choose quotes this many characters long or shorter, counting spaces, so the quote fits where it is going: a Slack status holds 100, a text message 160. Leave empty for any length. Quotes run from 4 to about 210 characters, and about 100 of the 120 fit in 100.",
+          "display_name": "Longest quote",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "max_characters",
+          "required": false,
+          "type": "ParameterType.NUMBER"
         }
       ],
       "path": "/actions/library/kanye-rest/get-random-quote",
@@ -297,6 +355,7 @@
                 "type": "string"
               },
               "character_count": {
+                "description": "How long the quote is in characters, counting spaces, which is what 'Longest quote' compares against.",
                 "type": "number"
               },
               "id": {
@@ -320,12 +379,14 @@
                 "type": "string"
               },
               "word_count": {
+                "description": "How many words the quote has.",
                 "type": "number"
               }
             },
             "type": "object"
           },
           "safe_for_work_only": {
+            "description": "Whether the safe-for-work filter was on for this step.",
             "type": "boolean"
           }
         },
@@ -336,15 +397,15 @@
       ]
     },
     "get_random_quotes": {
-      "description": "Get several different Kanye West quotes at once, up to 50. No quote is drawn twice in the same batch, and the whole batch costs one request however many you ask for. Asking for more than the catalogue holds returns what there is rather than failing, and says how many that was.",
+      "description": "Get several different Kanye West quotes at once, up to 50. No quote is drawn twice in the same batch, none you list as already posted is drawn at all, and the whole batch costs one request however many you ask for. Asking for more than are left returns what there is rather than failing, and says how many that was: an empty batch means every quote has been used.",
       "display_name": "Get random quotes",
       "display_str_template": "Get {0} random Kanye West quotes.",
       "handler": "actions.get_random_quotes",
       "id": "kanye_rest_get_random_quotes",
       "method": "POST",
       "mock_response": {
-        "available_count": 120,
-        "excluded_count": 2,
+        "available_count": 112,
+        "excluded_count": 5,
         "quote_count": 2,
         "quotes": [
           {
@@ -369,7 +430,8 @@
           }
         ],
         "requested_count": 2,
-        "safe_for_work_only": true
+        "safe_for_work_only": true,
+        "skipped_count": 5
       },
       "name": "get_random_quotes",
       "output_formatter": "actions.format_quotes_output",
@@ -386,11 +448,33 @@
         },
         {
           "default": true,
-          "description": "Leave out the quotes with strong language in them. On by default, so a step posting to a team channel cannot draw one by accident. The service publishes no rating of its own, so this filter is Lodol's and is applied to what it sends; every quote returned also carries its own 'safe_for_work' flag, and the number left out is always reported.",
+          "description": "Leave out the quotes with strong language or sexual references in them. On by default, so a step posting to a team channel cannot draw one by accident. The service publishes no rating of its own, so this filter is Lodol's and is applied to what it sends; every quote returned also carries its own 'safe_for_work' flag, and the number left out is always reported.",
           "display_name": "Safe for work only",
           "name": "safe_for_work",
           "required": false,
           "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Quotes not to draw, such as the ones a workflow has already posted, so it never posts the same one twice. Pass the ids an earlier step returned (or that step's 'quotes' list as it is), or type ids separated by commas. In a list, a quote's exact text works in place of its id. Ids no longer in the catalogue are ignored.",
+          "display_name": "Quotes to skip",
+          "name": "exclude_ids",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Only choose quotes this many characters long or shorter, counting spaces, so the quote fits where it is going: a Slack status holds 100, a text message 160. Leave empty for any length. Quotes run from 4 to about 210 characters, and about 100 of the 120 fit in 100.",
+          "display_name": "Longest quote",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "max_characters",
+          "required": false,
+          "type": "ParameterType.NUMBER"
         }
       ],
       "path": "/actions/library/kanye-rest/get-random-quotes",
@@ -398,17 +482,19 @@
       "returns": {
         "properties": {
           "available_count": {
-            "description": "How many quotes the draw could choose from, after filtering.",
+            "description": "How many quotes the draw could choose from, after the safe-for-work filter, the length limit and the quotes to skip. 0 means every quote has been used.",
             "type": "number"
           },
           "excluded_count": {
-            "description": "How many quotes the safe-for-work filter left out.",
+            "description": "How many quotes the safe-for-work filter left out of what this step chose from. 0 when the filter is off.",
             "type": "number"
           },
           "quote_count": {
+            "description": "How many quotes were drawn. Fewer than asked for only when fewer were left to choose from.",
             "type": "number"
           },
           "quotes": {
+            "description": "The quotes drawn, all different.",
             "items": {
               "description": "One Kanye West quote, ready to post.",
               "properties": {
@@ -417,6 +503,7 @@
                   "type": "string"
                 },
                 "character_count": {
+                  "description": "How long the quote is in characters, counting spaces, which is what 'Longest quote' compares against.",
                   "type": "number"
                 },
                 "id": {
@@ -440,6 +527,7 @@
                   "type": "string"
                 },
                 "word_count": {
+                  "description": "How many words the quote has.",
                   "type": "number"
                 }
               },
@@ -448,10 +536,16 @@
             "type": "array"
           },
           "requested_count": {
+            "description": "How many quotes the step asked for, capped at 50.",
             "type": "number"
           },
           "safe_for_work_only": {
+            "description": "Whether the safe-for-work filter was on for this step.",
             "type": "boolean"
+          },
+          "skipped_count": {
+            "description": "How many quotes were left out because they were on the list of quotes to skip. 0 beside a long list means the list did not hold this integration's quote ids.",
+            "type": "number"
           }
         },
         "type": "object"
@@ -468,7 +562,7 @@
       "id": "kanye_rest_list_quotes",
       "method": "POST",
       "mock_response": {
-        "excluded_count": 2,
+        "excluded_count": 5,
         "limit": 1000,
         "offset": 0,
         "quote_count": 2,
@@ -495,7 +589,7 @@
           }
         ],
         "safe_for_work_only": true,
-        "total_count": 120
+        "total_count": 117
       },
       "name": "list_quotes",
       "output_formatter": "actions.format_catalogue_output",
@@ -521,7 +615,7 @@
         },
         {
           "default": true,
-          "description": "Leave out the quotes with strong language in them. On by default, so a step posting to a team channel cannot draw one by accident. The service publishes no rating of its own, so this filter is Lodol's and is applied to what it sends; every quote returned also carries its own 'safe_for_work' flag, and the number left out is always reported.",
+          "description": "Leave out the quotes with strong language or sexual references in them. On by default, so a step posting to a team channel cannot draw one by accident. The service publishes no rating of its own, so this filter is Lodol's and is applied to what it sends; every quote returned also carries its own 'safe_for_work' flag, and the number left out is always reported.",
           "display_name": "Safe for work only",
           "name": "safe_for_work",
           "required": false,
@@ -533,18 +627,23 @@
       "returns": {
         "properties": {
           "excluded_count": {
+            "description": "How many quotes in the catalogue the safe-for-work filter left out.",
             "type": "number"
           },
           "limit": {
+            "description": "The most quotes this page could hold.",
             "type": "number"
           },
           "offset": {
+            "description": "How many quotes were skipped first.",
             "type": "number"
           },
           "quote_count": {
+            "description": "How many quotes were returned.",
             "type": "number"
           },
           "quotes": {
+            "description": "The quotes, in the service's own order.",
             "items": {
               "description": "One Kanye West quote, ready to post.",
               "properties": {
@@ -553,6 +652,7 @@
                   "type": "string"
                 },
                 "character_count": {
+                  "description": "How long the quote is in characters, counting spaces, which is what 'Longest quote' compares against.",
                   "type": "number"
                 },
                 "id": {
@@ -576,6 +676,7 @@
                   "type": "string"
                 },
                 "word_count": {
+                  "description": "How many words the quote has.",
                   "type": "number"
                 }
               },
@@ -584,6 +685,7 @@
             "type": "array"
           },
           "safe_for_work_only": {
+            "description": "Whether the safe-for-work filter was on for this step.",
             "type": "boolean"
           },
           "total_count": {
@@ -608,7 +710,7 @@
       "id": "kanye_rest_search_quotes",
       "method": "POST",
       "mock_response": {
-        "excluded_count": 2,
+        "excluded_count": 0,
         "match_count": 1,
         "matches": [
           {
@@ -624,8 +726,8 @@
         ],
         "query": "sleep",
         "safe_for_work_only": true,
-        "searched_count": 120,
-        "total_matches": 1
+        "searched_count": 122,
+        "total_matches": 3
       },
       "name": "search_quotes",
       "output_formatter": "actions.format_search_output",
@@ -659,7 +761,7 @@
         },
         {
           "default": true,
-          "description": "Leave out the quotes with strong language in them. On by default, so a step posting to a team channel cannot draw one by accident. The service publishes no rating of its own, so this filter is Lodol's and is applied to what it sends; every quote returned also carries its own 'safe_for_work' flag, and the number left out is always reported.",
+          "description": "Leave out the quotes with strong language or sexual references in them. On by default, so a step posting to a team channel cannot draw one by accident. The service publishes no rating of its own, so this filter is Lodol's and is applied to what it sends; every quote returned also carries its own 'safe_for_work' flag, and the number left out is always reported.",
           "display_name": "Safe for work only",
           "name": "safe_for_work",
           "required": false,
@@ -671,12 +773,15 @@
       "returns": {
         "properties": {
           "excluded_count": {
+            "description": "How many quotes matched but were left out by the safe-for-work filter.",
             "type": "number"
           },
           "match_count": {
+            "description": "How many matches were returned.",
             "type": "number"
           },
           "matches": {
+            "description": "The matching quotes, best match first.",
             "items": {
               "description": "One Kanye West quote, ready to post.",
               "properties": {
@@ -685,6 +790,7 @@
                   "type": "string"
                 },
                 "character_count": {
+                  "description": "How long the quote is in characters, counting spaces, which is what 'Longest quote' compares against.",
                   "type": "number"
                 },
                 "id": {
@@ -708,6 +814,7 @@
                   "type": "string"
                 },
                 "word_count": {
+                  "description": "How many words the quote has.",
                   "type": "number"
                 }
               },
@@ -716,9 +823,11 @@
             "type": "array"
           },
           "query": {
+            "description": "What was searched for, with extra spaces removed.",
             "type": "string"
           },
           "safe_for_work_only": {
+            "description": "Whether the safe-for-work filter was on for this step.",
             "type": "boolean"
           },
           "searched_count": {
@@ -726,6 +835,7 @@
             "type": "number"
           },
           "total_matches": {
+            "description": "How many quotes matched in all, however many were returned.",
             "type": "number"
           }
         },
@@ -739,7 +849,7 @@
   "categories": [
     "Jokes, Quotes & Fun"
   ],
-  "description": "Pull Kanye West quotes from kanye.rest, the free 'Kanye as a Service' API. Draw one at random or a batch of them, search every quote for a word, read the whole catalogue, or pick a quote of the day that stays the same all day so a scheduled post never tells two. Every quote comes back with its attribution and a stable id you can store and look up again, neither of which the service itself provides, and the handful of quotes with strong language are left out unless you ask for them.",
+  "description": "Pull Kanye West quotes from kanye.rest, the free 'Kanye as a Service' API. Draw one at random or a batch of them, search every quote for a word, read the whole catalogue, or pick a quote of the day that stays the same all day so a scheduled post never tells two. Every quote comes back with its attribution and a stable id you can store and look up again, neither of which the service itself provides, and the handful of quotes that are not safe for work are left out unless you ask for them. A skip list keeps a daily post from repeating a quote it has already used, and a length limit keeps one short enough for a status or a text message.",
   "display_name": "Kanye Rest",
   "id": "kanye_rest",
   "logo": "https://www.lodol.com/app-icons/kanye-rest-icon.svg",

@@ -1,5 +1,101 @@
 {
   "actions": {
+    "add_tags": {
+      "description": "Add tags to a customer, order or product, keeping the tags it already has, such as to mark a VIP customer or a handled order.",
+      "display_name": "Add tags",
+      "display_str_template": "Tag {record_id} with {tags}.",
+      "handler": "actions.add_tags",
+      "id": "shopify_add_tags",
+      "method": "POST",
+      "mock_response": {
+        "id": "gid://shopify/Customer/7001234567890",
+        "name": "Ana Silva",
+        "tags": [
+          "vip",
+          "wholesale"
+        ]
+      },
+      "name": "add_tags",
+      "output_formatter": "actions.format_tags_output",
+      "parameters": [
+        {
+          "description": "Whether the tags are on a customer, an order or a product.",
+          "display_name": "What to tag",
+          "name": "record_type",
+          "options": [
+            {
+              "label": "Customer",
+              "value": "customer"
+            },
+            {
+              "label": "Order",
+              "value": "order"
+            },
+            {
+              "label": "Product",
+              "value": "product"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The customer, order or product, from an earlier step, or the number at the end of its page's address in the Shopify admin.",
+          "display_name": "Customer, order or product",
+          "examples": [
+            {
+              "label": "From the Shopify admin",
+              "value": "7001234567890"
+            },
+            {
+              "label": "From an earlier step",
+              "value": "gid://shopify/Customer/7001234567890"
+            }
+          ],
+          "name": "record_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "One or more tags, separated by commas.",
+          "display_name": "Tags",
+          "examples": [
+            {
+              "label": "Example",
+              "value": "vip,wholesale"
+            }
+          ],
+          "name": "tags",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/shopify/add-tags",
+      "result_str_template": "Tags added.",
+      "returns": {
+        "properties": {
+          "id": {
+            "description": "The customer's, order's or product's ID",
+            "type": "string"
+          },
+          "name": {
+            "description": "The customer's name, the order's name (#1042) or the product's title",
+            "type": "string"
+          },
+          "tags": {
+            "description": "Every tag it has now",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
     "cancel_order": {
       "description": "Cancel an order, and choose whether to refund the customer, put its items back in stock and email them. Shopify finishes the cancellation a moment later. An order that has shipped can't be cancelled.",
       "display_name": "Cancel an order",
@@ -113,6 +209,103 @@
           "order_id": {
             "description": "The order being cancelled",
             "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "capture_order_payment": {
+      "description": "Charge the customer for an order whose payment was only authorized at checkout, for a store set to collect payment later, such as when the order ships. Collects all of it unless you give an amount.",
+      "display_name": "Collect an order's payment",
+      "display_str_template": "Collect the payment for {order_id}.",
+      "handler": "actions.capture_order_payment",
+      "id": "shopify_capture_order_payment",
+      "method": "POST",
+      "mock_response": {
+        "transaction": {
+          "amountSet": {
+            "presentmentMoney": {
+              "amount": "84.00",
+              "currencyCode": "USD"
+            }
+          },
+          "id": "gid://shopify/OrderTransaction/6001234567890",
+          "kind": "CAPTURE",
+          "order": {
+            "capturable": false,
+            "displayFinancialStatus": "PAID",
+            "id": "gid://shopify/Order/5001234567890",
+            "name": "#1042"
+          },
+          "processedAt": "2026-11-09T10:15:00Z",
+          "status": "SUCCESS"
+        }
+      },
+      "name": "capture_order_payment",
+      "output_formatter": "actions.format_capture_output",
+      "parameters": [
+        {
+          "description": "The order, from an earlier step, or the number at the end of its page's address in the Shopify admin (not the #1001 customers see).",
+          "display_name": "Order",
+          "examples": [
+            {
+              "label": "From the Shopify admin",
+              "value": "5001234567890"
+            },
+            {
+              "label": "From an earlier step",
+              "value": "gid://shopify/Order/5001234567890"
+            }
+          ],
+          "label_source": "order_names",
+          "name": "order_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How much to collect, in the currency the customer paid in, such as 25.50. Leave empty to collect everything that's waiting.",
+          "display_name": "Amount",
+          "name": "amount",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/shopify/capture-order-payment",
+      "result_str_template": "Payment collected.",
+      "returns": {
+        "properties": {
+          "transaction": {
+            "description": "The payment Shopify collected",
+            "properties": {
+              "amountSet": {
+                "description": "How much, as presentmentMoney.amount and presentmentMoney.currencyCode",
+                "type": "object"
+              },
+              "id": {
+                "description": "The payment's ID (gid://shopify/OrderTransaction/...)",
+                "type": "string"
+              },
+              "kind": {
+                "description": "CAPTURE for a collected payment",
+                "type": "string"
+              },
+              "order": {
+                "description": "The order: id, name, displayFinancialStatus and whether more can be collected (capturable)",
+                "type": "object"
+              },
+              "processedAt": {
+                "description": "When it was collected",
+                "type": "string"
+              },
+              "status": {
+                "description": "SUCCESS once collected, or PENDING or FAILURE",
+                "type": "string"
+              }
+            },
+            "type": "object"
           }
         },
         "type": "object"
@@ -3259,6 +3452,15 @@
           "type": "ParameterType.STRING"
         },
         {
+          "description": "Beta. Only list items with fewer than this many left to sell: 10 for 'running low'. Use it for a low-stock alert instead of filtering the list in a later step; count then says how many are low on this page.",
+          "display_name": "Only items with fewer than",
+          "maximum": 1000000,
+          "minimum": 1,
+          "name": "fewer_than",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
           "default": 25,
           "description": "How many items to list, from 1 to 250. Leave empty for 25.",
           "display_name": "How many",
@@ -3614,12 +3816,27 @@
           "type": "ParameterType.DATE"
         },
         {
-          "description": "Beta. Only include orders placed in the last this many whole days, up to and including yesterday: 7 on a Monday is last week, Monday to Sunday, and never counts an order in two reports. Use it for a weekly or daily report instead of working out the two dates in earlier steps. Placed on or after and Placed on or before win when given.",
+          "description": "Beta. Only include orders placed in the last this many whole days, up to and including yesterday: 7 on a Monday is last week, Monday to Sunday, and never counts an order in two reports. Use it for a weekly or daily report instead of working out the two dates in earlier steps. With How many left empty, every order in the period is read, so the count and total cover the whole week. Placed on or after and Placed on or before win when given.",
           "display_name": "Placed in the last days",
           "minimum": 1,
           "name": "placed_in_last_days",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Beta. Only include orders placed on or before the day this many days ago: 2 for orders that have waited at least 2 days. Use it with the Unfulfilled shipping status for a daily list of late orders instead of working out a date in an earlier step. Placed on or before wins when given.",
+          "display_name": "Placed this many days ago or earlier",
+          "minimum": 1,
+          "name": "placed_days_ago_or_more",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Beta. Turn on to get the orders placed in the whole of last calendar month, for a monthly report that runs on the 1st: no dates to work out in earlier steps. With How many left empty, every order in the month is read. Placed on or after and Placed on or before win when given.",
+          "display_name": "Placed last month",
+          "name": "placed_last_month",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         },
         {
           "description": "Only include orders that changed on or after this date, which catches an old order that was just paid or shipped.",
@@ -4722,6 +4939,530 @@
       },
       "scopes": [
         "read"
+      ]
+    },
+    "mark_order_as_paid": {
+      "description": "Record that an order's balance was paid outside Shopify, such as by bank transfer, cash or a paid invoice, as the admin's Mark as paid button does. No money is taken.",
+      "display_name": "Mark an order as paid",
+      "display_str_template": "Mark {order_id} as paid.",
+      "handler": "actions.mark_order_as_paid",
+      "id": "shopify_mark_order_as_paid",
+      "method": "POST",
+      "mock_response": {
+        "order": {
+          "cancelledAt": null,
+          "closedAt": null,
+          "confirmed": true,
+          "createdAt": "2026-08-30T14:02:11Z",
+          "currencyCode": "USD",
+          "customer": {
+            "displayName": "Avery Chen",
+            "email": "avery@example.com",
+            "id": "gid://shopify/Customer/7001234567890",
+            "phone": null
+          },
+          "displayFinancialStatus": "PAID",
+          "displayFulfillmentStatus": "UNFULFILLED",
+          "email": "avery@example.com",
+          "id": "gid://shopify/Order/5001234567890",
+          "legacyResourceId": "5001234567890",
+          "name": "#1042",
+          "note": null,
+          "phone": null,
+          "processedAt": "2026-08-30T14:02:11Z",
+          "shippingAddress": {
+            "address1": "418 Bathurst St",
+            "city": "Toronto",
+            "country": "Canada",
+            "countryCodeV2": "CA",
+            "firstName": "Avery",
+            "lastName": "Chen",
+            "province": "Ontario",
+            "provinceCode": "ON",
+            "zip": "M5T 2S5"
+          },
+          "subtotalPriceSet": {
+            "shopMoney": {
+              "amount": "48.00",
+              "currencyCode": "USD"
+            }
+          },
+          "tags": [
+            "wholesale"
+          ],
+          "test": false,
+          "totalPriceSet": {
+            "shopMoney": {
+              "amount": "54.60",
+              "currencyCode": "USD"
+            }
+          },
+          "totalRefundedSet": {
+            "shopMoney": {
+              "amount": "0.00",
+              "currencyCode": "USD"
+            }
+          },
+          "totalShippingPriceSet": {
+            "shopMoney": {
+              "amount": "6.60",
+              "currencyCode": "USD"
+            }
+          },
+          "totalTaxSet": {
+            "shopMoney": {
+              "amount": "0.00",
+              "currencyCode": "USD"
+            }
+          },
+          "updatedAt": "2026-08-30T14:05:40Z"
+        }
+      },
+      "name": "mark_order_as_paid",
+      "output_formatter": "actions.format_order_output",
+      "parameters": [
+        {
+          "description": "The order, from an earlier step, or the number at the end of its page's address in the Shopify admin (not the #1001 customers see).",
+          "display_name": "Order",
+          "examples": [
+            {
+              "label": "From the Shopify admin",
+              "value": "5001234567890"
+            },
+            {
+              "label": "From an earlier step",
+              "value": "gid://shopify/Order/5001234567890"
+            }
+          ],
+          "label_source": "order_names",
+          "name": "order_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/shopify/mark-order-as-paid",
+      "result_str_template": "Order marked as paid.",
+      "returns": {
+        "properties": {
+          "order": {
+            "description": "The order, now paid",
+            "properties": {
+              "billingAddress": {
+                "description": "Where it was billed to",
+                "properties": {
+                  "address1": {
+                    "description": "Street address",
+                    "type": "string"
+                  },
+                  "address2": {
+                    "description": "Apartment, suite or unit",
+                    "type": "string"
+                  },
+                  "city": {
+                    "description": "City",
+                    "type": "string"
+                  },
+                  "company": {
+                    "description": "Company, when there is one",
+                    "type": "string"
+                  },
+                  "country": {
+                    "description": "Country name",
+                    "type": "string"
+                  },
+                  "countryCodeV2": {
+                    "description": "Two-letter country code",
+                    "type": "string"
+                  },
+                  "firstName": {
+                    "description": "First name on the address",
+                    "type": "string"
+                  },
+                  "lastName": {
+                    "description": "Last name on the address",
+                    "type": "string"
+                  },
+                  "phone": {
+                    "description": "Phone number on the address",
+                    "type": "string"
+                  },
+                  "province": {
+                    "description": "State, province or region",
+                    "type": "string"
+                  },
+                  "provinceCode": {
+                    "description": "Short state/province code",
+                    "type": "string"
+                  },
+                  "zip": {
+                    "description": "Postal or ZIP code",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "cancelledAt": {
+                "description": "When it was cancelled, or null",
+                "type": "string"
+              },
+              "closedAt": {
+                "description": "When it was closed, or null",
+                "type": "string"
+              },
+              "confirmed": {
+                "description": "Whether it is confirmed",
+                "type": "boolean"
+              },
+              "createdAt": {
+                "description": "When it was placed",
+                "type": "string"
+              },
+              "currencyCode": {
+                "description": "The order's currency",
+                "type": "string"
+              },
+              "customer": {
+                "description": "Who placed the order, when it is not a guest checkout",
+                "properties": {
+                  "displayName": {
+                    "description": "Their name",
+                    "type": "string"
+                  },
+                  "email": {
+                    "description": "Their email",
+                    "type": "string"
+                  },
+                  "firstName": {
+                    "description": "Their first name",
+                    "type": "string"
+                  },
+                  "id": {
+                    "description": "The customer's id",
+                    "type": "string"
+                  },
+                  "lastName": {
+                    "description": "Their last name",
+                    "type": "string"
+                  },
+                  "numberOfOrders": {
+                    "description": "Their orders in your store so far, this one included: 1 means a first-time customer",
+                    "type": "string"
+                  },
+                  "phone": {
+                    "description": "Their phone",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "displayFinancialStatus": {
+                "description": "PAID, PENDING, REFUNDED and the rest",
+                "type": "string"
+              },
+              "displayFulfillmentStatus": {
+                "description": "FULFILLED, UNFULFILLED, PARTIALLY_FULFILLED and the rest",
+                "type": "string"
+              },
+              "email": {
+                "description": "Contact email on the order",
+                "type": "string"
+              },
+              "id": {
+                "description": "Shopify id, e.g. 'gid://shopify/Order/123'",
+                "type": "string"
+              },
+              "legacyResourceId": {
+                "description": "The bare numeric id",
+                "type": "string"
+              },
+              "name": {
+                "description": "The order number as customers see it, e.g. '#1001'",
+                "type": "string"
+              },
+              "note": {
+                "description": "Staff note on the order",
+                "type": "string"
+              },
+              "phone": {
+                "description": "Contact phone on the order",
+                "type": "string"
+              },
+              "processedAt": {
+                "description": "When it was processed",
+                "type": "string"
+              },
+              "shippingAddress": {
+                "description": "Where it ships to",
+                "properties": {
+                  "address1": {
+                    "description": "Street address",
+                    "type": "string"
+                  },
+                  "address2": {
+                    "description": "Apartment, suite or unit",
+                    "type": "string"
+                  },
+                  "city": {
+                    "description": "City",
+                    "type": "string"
+                  },
+                  "company": {
+                    "description": "Company, when there is one",
+                    "type": "string"
+                  },
+                  "country": {
+                    "description": "Country name",
+                    "type": "string"
+                  },
+                  "countryCodeV2": {
+                    "description": "Two-letter country code",
+                    "type": "string"
+                  },
+                  "firstName": {
+                    "description": "First name on the address",
+                    "type": "string"
+                  },
+                  "lastName": {
+                    "description": "Last name on the address",
+                    "type": "string"
+                  },
+                  "phone": {
+                    "description": "Phone number on the address",
+                    "type": "string"
+                  },
+                  "province": {
+                    "description": "State, province or region",
+                    "type": "string"
+                  },
+                  "provinceCode": {
+                    "description": "Short state/province code",
+                    "type": "string"
+                  },
+                  "zip": {
+                    "description": "Postal or ZIP code",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "subtotalPriceSet": {
+                "description": "Total before tax and shipping",
+                "properties": {
+                  "shopMoney": {
+                    "description": "The amount in the store's own currency",
+                    "properties": {
+                      "amount": {
+                        "description": "The amount, as a decimal string",
+                        "type": "string"
+                      },
+                      "currencyCode": {
+                        "description": "Currency, e.g. 'USD'",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
+              "tags": {
+                "description": "Tags on the order",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "test": {
+                "description": "Whether it was placed with a test gateway",
+                "type": "boolean"
+              },
+              "totalPriceSet": {
+                "description": "What the customer paid. For sales figures, Get one field from every order (totalPriceSet.shopMoney.amount) and Calculate total on that; an average needs at least one order.",
+                "properties": {
+                  "shopMoney": {
+                    "description": "The amount in the store's own currency",
+                    "properties": {
+                      "amount": {
+                        "description": "The amount, as a decimal string",
+                        "type": "string"
+                      },
+                      "currencyCode": {
+                        "description": "Currency, e.g. 'USD'",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
+              "totalRefundedSet": {
+                "description": "Refunded so far",
+                "properties": {
+                  "shopMoney": {
+                    "description": "The amount in the store's own currency",
+                    "properties": {
+                      "amount": {
+                        "description": "The amount, as a decimal string",
+                        "type": "string"
+                      },
+                      "currencyCode": {
+                        "description": "Currency, e.g. 'USD'",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
+              "totalShippingPriceSet": {
+                "description": "Shipping charged",
+                "properties": {
+                  "shopMoney": {
+                    "description": "The amount in the store's own currency",
+                    "properties": {
+                      "amount": {
+                        "description": "The amount, as a decimal string",
+                        "type": "string"
+                      },
+                      "currencyCode": {
+                        "description": "Currency, e.g. 'USD'",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
+              "totalTaxSet": {
+                "description": "Tax charged",
+                "properties": {
+                  "shopMoney": {
+                    "description": "The amount in the store's own currency",
+                    "properties": {
+                      "amount": {
+                        "description": "The amount, as a decimal string",
+                        "type": "string"
+                      },
+                      "currencyCode": {
+                        "description": "Currency, e.g. 'USD'",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              },
+              "updatedAt": {
+                "description": "When it last changed",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "remove_tags": {
+      "description": "Take tags off a customer, order or product, leaving its other tags as they are.",
+      "display_name": "Remove tags",
+      "display_str_template": "Remove {tags} from {record_id}.",
+      "handler": "actions.remove_tags",
+      "id": "shopify_remove_tags",
+      "method": "POST",
+      "mock_response": {
+        "id": "gid://shopify/Customer/7001234567890",
+        "name": "Ana Silva",
+        "tags": [
+          "vip"
+        ]
+      },
+      "name": "remove_tags",
+      "output_formatter": "actions.format_tags_output",
+      "parameters": [
+        {
+          "description": "Whether the tags are on a customer, an order or a product.",
+          "display_name": "What to tag",
+          "name": "record_type",
+          "options": [
+            {
+              "label": "Customer",
+              "value": "customer"
+            },
+            {
+              "label": "Order",
+              "value": "order"
+            },
+            {
+              "label": "Product",
+              "value": "product"
+            }
+          ],
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The customer, order or product, from an earlier step, or the number at the end of its page's address in the Shopify admin.",
+          "display_name": "Customer, order or product",
+          "examples": [
+            {
+              "label": "From the Shopify admin",
+              "value": "7001234567890"
+            },
+            {
+              "label": "From an earlier step",
+              "value": "gid://shopify/Customer/7001234567890"
+            }
+          ],
+          "name": "record_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "One or more tags, separated by commas.",
+          "display_name": "Tags",
+          "examples": [
+            {
+              "label": "Example",
+              "value": "vip,wholesale"
+            }
+          ],
+          "name": "tags",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/shopify/remove-tags",
+      "result_str_template": "Tags removed.",
+      "returns": {
+        "properties": {
+          "id": {
+            "description": "The customer's, order's or product's ID",
+            "type": "string"
+          },
+          "name": {
+            "description": "The customer's name, the order's name (#1042) or the product's title",
+            "type": "string"
+          },
+          "tags": {
+            "description": "Every tag it has now",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
       ]
     },
     "set_inventory_quantity": {
@@ -6100,11 +6841,54 @@
   "id": "shopify",
   "logo": "https://www.lodol.com/app-icons/shopify-icon.svg",
   "triggers": {
+    "shopify_abandoned_checkout_trigger": {
+      "description": "Runs when a shopper leaves a checkout unfinished for an hour, with what was in their cart and a link back to it, to send a reminder.",
+      "display_name": "New abandoned checkout",
+      "id": "shopify_abandoned_checkout_trigger",
+      "output": {
+        "abandonedCheckoutUrl": "The link that takes the shopper back to their cart.",
+        "createdAt": "When the checkout started.",
+        "customer": "The shopper: id, displayName, firstName, lastName, email and phone, when known.",
+        "discountCodes": "Discount codes the shopper entered.",
+        "email": "The shopper's email address, blank when they gave none.",
+        "id": "The checkout's ID (gid://shopify/AbandonedCheckout/...).",
+        "name": "The checkout's name, such as #1234.",
+        "note": "A note the shopper left.",
+        "products": "What was in the cart: title, variant, quantity and sku (the first ten).",
+        "shippingAddress": "Where it was to ship to, if they got that far.",
+        "subtotalPriceSet": "The subtotal, as shopMoney.amount and shopMoney.currencyCode.",
+        "totalPriceSet": "The total, as shopMoney.amount and shopMoney.currencyCode.",
+        "total_display": "The total as a person writes it, such as $84.00. Use it in a message.",
+        "updatedAt": "When the shopper last changed it."
+      },
+      "parameters": []
+    },
+    "shopify_customer_updated_trigger": {
+      "description": "Runs each time a customer in your store changes: their details, tags, marketing choice or address, or when they place an order.",
+      "display_name": "Customer updated",
+      "id": "shopify_customer_updated_trigger",
+      "output": {
+        "accepts_marketing": "Beta. True when they agreed to marketing emails, false when they didn't or haven't said.",
+        "createdAt": "When the customer was created.",
+        "defaultAddress": "Their default address.",
+        "displayName": "Their full name.",
+        "email": "Their email address.",
+        "firstName": "Their first name.",
+        "id": "The customer's ID (gid://shopify/Customer/...).",
+        "lastName": "Their last name.",
+        "phone": "Their phone number.",
+        "state": "Their account state, such as ENABLED or DISABLED.",
+        "tags": "Their tags.",
+        "updatedAt": "When it was last changed: the change this run is for."
+      },
+      "parameters": []
+    },
     "shopify_new_customer_trigger": {
       "description": "Runs when a customer is added to your store, whether they sign up, check out for the first time or are added by your team.",
       "display_name": "New customer",
       "id": "shopify_new_customer_trigger",
       "output": {
+        "accepts_marketing": "Beta. True when they agreed to marketing emails, false when they didn't or haven't said.",
         "createdAt": "When the customer was created.",
         "defaultAddress": "Their default address.",
         "displayName": "Their full name.",
@@ -6116,7 +6900,15 @@
         "state": "Their account state, such as ENABLED or DISABLED.",
         "tags": "Their tags."
       },
-      "parameters": []
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Beta. Enter yes to run only for customers who agreed to marketing emails, so a welcome series or a mailing list never gets someone who did not. Leave empty to run for every new customer.",
+          "display_name": "Only customers who accept marketing",
+          "name": "only_accepts_marketing",
+          "required": false
+        }
+      ]
     },
     "shopify_new_order_trigger": {
       "description": "Runs when an order is placed in your store, paid or not. Use Order paid to run only once the money is in.",
@@ -6173,6 +6965,36 @@
         "title": "Its title.",
         "totalInventory": "How many are in stock across all locations.",
         "vendor": "Its vendor."
+      },
+      "parameters": []
+    },
+    "shopify_order_cancelled_trigger": {
+      "description": "Runs when an order in your store is cancelled, by your team, the customer or another app, with why it was cancelled.",
+      "display_name": "Order cancelled",
+      "id": "shopify_order_cancelled_trigger",
+      "output": {
+        "cancelReason": "Why: CUSTOMER, DECLINED, FRAUD, INVENTORY, STAFF or OTHER.",
+        "cancelledAt": "When it was cancelled.",
+        "createdAt": "When the order was placed.",
+        "customer": "The customer: id, displayName, firstName, lastName, email, phone and numberOfOrders (their orders in your store so far, this one included: 1 means a first-time customer). Empty for a guest checkout, whose name is then blank: use the order's email to say who ordered.",
+        "displayFinancialStatus": "Payment status, such as PAID or PENDING.",
+        "displayFulfillmentStatus": "Shipping status, such as UNFULFILLED or FULFILLED.",
+        "email": "The customer's email address.",
+        "fulfilled_at": "When its latest shipment was made; empty if none.",
+        "fulfillments": "Its shipments, each with status and trackingInfo. An order shipped in parts has one per part.",
+        "id": "The order's ID (gid://shopify/Order/...).",
+        "legacyResourceId": "The order's number in the admin's address bar.",
+        "name": "The order's name customers see, such as #1001.",
+        "note": "The order note.",
+        "paid_at": "When its latest payment went through; empty if unpaid.",
+        "phone": "The customer's phone number.",
+        "products": "The line items: title, quantity, sku and total (the first ten).",
+        "shippingAddress": "Where it ships to.",
+        "subtotalPriceSet": "The subtotal, as shopMoney.amount and shopMoney.currencyCode.",
+        "tags": "The order's tags.",
+        "test": "Whether it is a test order.",
+        "totalPriceSet": "The total, as shopMoney.amount and shopMoney.currencyCode.",
+        "total_display": "The total as a person writes it, such as $1,240.50. Use it in a message."
       },
       "parameters": []
     },
@@ -6239,6 +7061,58 @@
           "required": false
         }
       ]
+    },
+    "shopify_order_updated_trigger": {
+      "description": "Runs each time an order in your store changes, from being placed to being paid, edited, tagged, shipped, refunded or cancelled.",
+      "display_name": "Order updated",
+      "id": "shopify_order_updated_trigger",
+      "output": {
+        "createdAt": "When the order was placed.",
+        "customer": "The customer: id, displayName, firstName, lastName, email, phone and numberOfOrders (their orders in your store so far, this one included: 1 means a first-time customer). Empty for a guest checkout, whose name is then blank: use the order's email to say who ordered.",
+        "displayFinancialStatus": "Payment status, such as PAID or PENDING.",
+        "displayFulfillmentStatus": "Shipping status, such as UNFULFILLED or FULFILLED.",
+        "email": "The customer's email address.",
+        "fulfilled_at": "When its latest shipment was made; empty if none.",
+        "fulfillments": "Its shipments, each with status and trackingInfo. An order shipped in parts has one per part.",
+        "id": "The order's ID (gid://shopify/Order/...).",
+        "legacyResourceId": "The order's number in the admin's address bar.",
+        "name": "The order's name customers see, such as #1001.",
+        "note": "The order note.",
+        "paid_at": "When its latest payment went through; empty if unpaid.",
+        "phone": "The customer's phone number.",
+        "products": "The line items: title, quantity, sku and total (the first ten).",
+        "shippingAddress": "Where it ships to.",
+        "subtotalPriceSet": "The subtotal, as shopMoney.amount and shopMoney.currencyCode.",
+        "tags": "The order's tags.",
+        "test": "Whether it is a test order.",
+        "totalPriceSet": "The total, as shopMoney.amount and shopMoney.currencyCode.",
+        "total_display": "The total as a person writes it, such as $1,240.50. Use it in a message.",
+        "updatedAt": "When it was last changed: the change this run is for."
+      },
+      "parameters": []
+    },
+    "shopify_product_updated_trigger": {
+      "description": "Runs each time a product in your store changes: its title, price, status, tags or variants, including when it's added.",
+      "display_name": "Product updated",
+      "id": "shopify_product_updated_trigger",
+      "output": {
+        "createdAt": "When it was added.",
+        "descriptionHtml": "Its description, as HTML.",
+        "featuredMedia": "Its main image.",
+        "handle": "The end of its web address, such as cotton-t-shirt.",
+        "id": "The product's ID (gid://shopify/Product/...).",
+        "legacyResourceId": "The product's number in the admin's address bar.",
+        "onlineStoreUrl": "Its page in your online store, empty until published.",
+        "priceRangeV2": "Its lowest and highest variant prices.",
+        "productType": "Its product type.",
+        "status": "ACTIVE, DRAFT or ARCHIVED.",
+        "tags": "Its tags.",
+        "title": "Its title.",
+        "totalInventory": "How many are in stock across all locations.",
+        "updatedAt": "When it was last changed: the change this run is for.",
+        "vendor": "Its vendor."
+      },
+      "parameters": []
     }
   }
 }

@@ -304,8 +304,149 @@
         "write"
       ]
     },
+    "deactivate_payment_link": {
+      "description": "Stop a payment link taking payments, such as when an offer ends or a product sells out. Anyone who opens it is told it's no longer active. You can turn it back on in Stripe.",
+      "display_name": "Turn off a payment link",
+      "display_str_template": "Turn off the payment link {payment_link_id}.",
+      "handler": "actions.deactivate_payment_link",
+      "id": "stripe_deactivate_payment_link",
+      "method": "POST",
+      "mock_response": {
+        "active": false,
+        "id": "plink_123",
+        "url": "https://buy.stripe.com/test_123"
+      },
+      "name": "deactivate_payment_link",
+      "output_formatter": "actions.format_deactivate_payment_link_output",
+      "parameters": [
+        {
+          "description": "The payment link to turn off.",
+          "display_name": "Payment link",
+          "dynamic_source": "payment_links",
+          "dynamic_source_allows_custom": true,
+          "name": "payment_link_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/stripe/deactivate-payment-link",
+      "result_str_template": "Payment link turned off.",
+      "returns": {
+        "properties": {
+          "active": {
+            "description": "Whether the link takes payments: false once turned off.",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "The payment link's id (plink_...).",
+            "type": "string"
+          },
+          "url": {
+            "description": "The link's address, which now says it's no longer active.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "get_payment": {
+      "description": "Get one payment's amount, status and who paid, such as to check it went through before you ship an order.",
+      "display_name": "Get a payment",
+      "display_str_template": "Get {payment_intent_id}.",
+      "handler": "actions.get_payment",
+      "id": "stripe_get_payment",
+      "method": "POST",
+      "mock_response": {
+        "amount": 5000,
+        "amount_received": 5000,
+        "created": 1767225600,
+        "currency": "usd",
+        "customer": {
+          "email": "customer@example.com",
+          "id": "cus_123",
+          "name": "Example Customer"
+        },
+        "description": "Order 1042",
+        "id": "pi_123",
+        "latest_charge": "ch_123",
+        "metadata": {},
+        "receipt_email": "customer@example.com",
+        "status": "succeeded"
+      },
+      "name": "get_payment",
+      "output_formatter": "actions.format_get_payment_output",
+      "parameters": [
+        {
+          "description": "The payment to get.",
+          "display_name": "Payment",
+          "dynamic_source": "payments",
+          "dynamic_source_allows_custom": true,
+          "label_source": "payment_names",
+          "name": "payment_intent_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/stripe/get-payment",
+      "result_str_template": "Payment retrieved.",
+      "returns": {
+        "properties": {
+          "amount": {
+            "description": "The amount in cents, not dollars: 5000 is $50.00.",
+            "type": "number"
+          },
+          "amount_received": {
+            "description": "How much has been collected so far, in cents.",
+            "type": "number"
+          },
+          "created": {
+            "description": "When it was made, as a Unix timestamp.",
+            "type": "number"
+          },
+          "currency": {
+            "description": "The three-letter currency code, such as usd.",
+            "type": "string"
+          },
+          "customer": {
+            "description": "Who paid: their id, name and email. Empty for a guest checkout; use receipt_email then.",
+            "type": "object"
+          },
+          "description": {
+            "description": "The note saved on the payment, if any.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The payment's id (pi_...).",
+            "type": "string"
+          },
+          "latest_charge": {
+            "description": "The id of the charge that took the money (ch_...).",
+            "type": "string"
+          },
+          "metadata": {
+            "description": "Your own key-value data saved on the payment.",
+            "type": "object"
+          },
+          "receipt_email": {
+            "description": "The email the receipt goes to, if any.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Where it stands: succeeded once the money is in, processing, requires_payment_method after a failed card, or canceled.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "list_customers": {
-      "description": "List your newest customers, most recent first.",
+      "description": "List your newest customers, most recent first, or find the customers with an email address.",
       "display_name": "List customers",
       "display_str_template": "List customers.",
       "handler": "actions.list_customers",
@@ -331,6 +472,13 @@
           "name": "limit",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Beta. Only customers with exactly this email address, to find a customer before you update or charge them. Stripe matches capital letters too, so Ana@example.com doesn't find ana@example.com. Leave empty to list every customer.",
+          "display_name": "Email",
+          "name": "email",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/stripe/list-customers",
@@ -869,6 +1017,29 @@
       },
       "parameters": []
     },
+    "stripe_dispute_updated_trigger": {
+      "description": "Beta. Runs when a dispute (a chargeback) changes in Stripe, usually when evidence is added, with its status and what it was before.",
+      "display_name": "Dispute updated",
+      "id": "stripe_dispute_updated_trigger",
+      "output": {
+        "amount": "The amount disputed, in the currency's smallest unit (cents).",
+        "amount_display": "The amount disputed as a person writes it, such as $12.50.",
+        "charge": "The id of the charge being disputed (ch_...).",
+        "created": "When the dispute was opened, as a Unix timestamp.",
+        "currency": "The three-letter currency code, such as usd.",
+        "event_created": "When the event happened, as a Unix timestamp.",
+        "event_id": "The id of the Stripe event (evt_...).",
+        "evidence_details": "due_by: when your evidence must reach Stripe, as a Unix timestamp.",
+        "id": "The dispute's id (dp_...).",
+        "metadata": "Your own key-value data saved on the dispute.",
+        "payment_intent": "The payment's id (pi_...).",
+        "previous_attributes": "What it was before, for the parts that changed only, such as status or items.",
+        "previous_status": "Beta. The status before this change, such as trialing, when the status changed; blank when it didn't. Compare it with status to catch a trial becoming paid or a subscription falling past_due.",
+        "reason": "Why the customer's bank says it's disputed, such as fraudulent or product_not_received.",
+        "status": "Where it stands, such as needs_response or warning_needs_response."
+      },
+      "parameters": []
+    },
     "stripe_invoice_paid_trigger": {
       "description": "Runs when an invoice is paid in Stripe, including each subscription renewal and an invoice marked paid outside Stripe.",
       "display_name": "Invoice paid",
@@ -878,6 +1049,7 @@
         "amount_due_display": "The amount due as a person writes it, such as $12.50.",
         "amount_paid": "The amount paid, in the currency's smallest unit (cents).",
         "amount_paid_display": "The amount paid as a person writes it, such as $12.50.",
+        "amount_paid_dollars": "Beta. The amount paid in dollars (or your currency), not cents: 5000 means $5,000. Compare it with a figure the way people say it, such as at least 5000.",
         "amount_remaining": "What is still owed, in the currency's smallest unit.",
         "amount_remaining_display": "What is still owed as a person writes it, such as $12.50.",
         "attempt_count": "Which try this was: how many times Stripe has tried to collect payment.",
@@ -907,6 +1079,7 @@
         "amount_due_display": "The amount due as a person writes it, such as $12.50.",
         "amount_paid": "The amount paid, in the currency's smallest unit (cents).",
         "amount_paid_display": "The amount paid as a person writes it, such as $12.50.",
+        "amount_paid_dollars": "Beta. The amount paid in dollars (or your currency), not cents: 5000 means $5,000. Compare it with a figure the way people say it, such as at least 5000.",
         "amount_remaining": "What is still owed, in the currency's smallest unit.",
         "amount_remaining_display": "What is still owed as a person writes it, such as $12.50.",
         "attempt_count": "Which try this was: how many times Stripe has tried to collect payment.",
@@ -941,6 +1114,36 @@
         "metadata": "Your own key-value data saved on the customer.",
         "name": "Their name.",
         "phone": "Their phone number."
+      },
+      "parameters": []
+    },
+    "stripe_new_invoice_trigger": {
+      "description": "Beta. Runs when an invoice is created in Stripe, by your team or for a subscription's next period. Most start as drafts; use Invoice paid to run once the money is in.",
+      "display_name": "New invoice",
+      "id": "stripe_new_invoice_trigger",
+      "output": {
+        "amount_due": "The amount due, in the currency's smallest unit (cents).",
+        "amount_due_display": "The amount due as a person writes it, such as $12.50.",
+        "amount_paid": "The amount paid, in the currency's smallest unit (cents).",
+        "amount_paid_display": "The amount paid as a person writes it, such as $12.50.",
+        "amount_paid_dollars": "Beta. The amount paid in dollars (or your currency), not cents: 5000 means $5,000. Compare it with a figure the way people say it, such as at least 5000.",
+        "amount_remaining": "What is still owed, in the currency's smallest unit.",
+        "amount_remaining_display": "What is still owed as a person writes it, such as $12.50.",
+        "attempt_count": "Which try this was: how many times Stripe has tried to collect payment.",
+        "created": "When the invoice was created, as a Unix timestamp.",
+        "currency": "The three-letter currency code, such as usd.",
+        "customer": "The customer's id.",
+        "customer_email": "The customer's email address.",
+        "customer_name": "The customer's name.",
+        "event_created": "When the event happened, as a Unix timestamp.",
+        "event_id": "The id of the Stripe event (evt_...).",
+        "hosted_invoice_url": "The invoice's page, where the customer can pay it.",
+        "id": "The invoice's id (in_...).",
+        "invoice_pdf": "A link to download the invoice as a PDF.",
+        "next_payment_attempt": "When Stripe tries again, as a Unix timestamp, if it will.",
+        "number": "The invoice number customers see.",
+        "payer": "Who the customer is, ready to put in a message: their name, else their email, else 'a customer'. Customer name is blank for some customers.",
+        "status": "The status, such as paid or open."
       },
       "parameters": []
     },
@@ -984,6 +1187,7 @@
       "display_name": "New subscription",
       "id": "stripe_new_subscription_trigger",
       "output": {
+        "amount_display": "Beta. What it bills each period, such as $29.00 a month.",
         "cancel_at_period_end": "Whether it is set to end when the period it is in ends.",
         "canceled_at": "When it was canceled, as a Unix timestamp, if it was.",
         "cancellation_details": "Why it ended: reason (cancellation_requested when the customer chose to leave, payment_failed when their payments kept failing, or payment_disputed), plus comment and feedback when the customer gave any. Read reason to tell a customer who left from one whose card failed.",
@@ -998,6 +1202,8 @@
         "items": "What is subscribed to: each item's price, product and quantity.",
         "metadata": "Your own key-value data saved on the subscription.",
         "payer": "Who the customer is, ready to put in a message: their name, else their email, else 'a customer'.",
+        "plan": "Beta. The plan's name, when its price has one.",
+        "reason_display": "Beta. Why it ended in words, such as The customer cancelled or Their payments kept failing; blank when Stripe gave no reason.",
         "status": "The status, such as active, trialing or canceled."
       },
       "parameters": []
@@ -1041,9 +1247,12 @@
         "event_id": "The id of the Stripe event (evt_...).",
         "id": "The charge's id (ch_...): the card payment that was refunded.",
         "metadata": "Your own key-value data saved on the payment.",
+        "payer": "Beta. Who was refunded, ready for a message: their name, else their email, else a customer.",
         "payment_intent": "The payment's id (pi_...).",
         "receipt_email": "The email receipts go to, blank when none was given.",
-        "refunded": "Whether the whole payment has now been refunded."
+        "refund_type": "Beta. Full refund or Partial refund, in those words.",
+        "refunded": "Whether the whole payment has now been refunded.",
+        "refunded_on": "Beta. The day of the refund as a person writes it, such as Nov 8, 2026."
       },
       "parameters": []
     },
@@ -1052,6 +1261,7 @@
       "display_name": "Subscription ended",
       "id": "stripe_subscription_ended_trigger",
       "output": {
+        "amount_display": "Beta. What it bills each period, such as $29.00 a month.",
         "cancel_at_period_end": "Whether it is set to end when the period it is in ends.",
         "canceled_at": "When it was canceled, as a Unix timestamp, if it was.",
         "cancellation_details": "Why it ended: reason (cancellation_requested when the customer chose to leave, payment_failed when their payments kept failing, or payment_disputed), plus comment and feedback when the customer gave any. Read reason to tell a customer who left from one whose card failed.",
@@ -1066,6 +1276,36 @@
         "items": "What is subscribed to: each item's price, product and quantity.",
         "metadata": "Your own key-value data saved on the subscription.",
         "payer": "Who the customer is, ready to put in a message: their name, else their email, else 'a customer'.",
+        "plan": "Beta. The plan's name, when its price has one.",
+        "reason_display": "Beta. Why it ended in words, such as The customer cancelled or Their payments kept failing; blank when Stripe gave no reason.",
+        "status": "The status, such as active, trialing or canceled."
+      },
+      "parameters": []
+    },
+    "stripe_subscription_updated_trigger": {
+      "description": "Beta. Runs whenever a subscription changes in Stripe: a new plan or quantity, a trial becoming paid, a renewal, a payment falling past due, or a cancellation booked for the end of the period. Says what it was before.",
+      "display_name": "Subscription updated",
+      "id": "stripe_subscription_updated_trigger",
+      "output": {
+        "amount_display": "Beta. What it bills each period, such as $29.00 a month.",
+        "cancel_at_period_end": "Whether it is set to end when the period it is in ends.",
+        "canceled_at": "When it was canceled, as a Unix timestamp, if it was.",
+        "cancellation_details": "Why it ended: reason (cancellation_requested when the customer chose to leave, payment_failed when their payments kept failing, or payment_disputed), plus comment and feedback when the customer gave any. Read reason to tell a customer who left from one whose card failed.",
+        "created": "When the subscription was created, as a Unix timestamp.",
+        "customer": "The customer's id.",
+        "customer_email": "The customer's email address, blank when Stripe has none.",
+        "customer_name": "The customer's name, blank when Stripe has none.",
+        "ended_at": "When it ended, as a Unix timestamp, if it has.",
+        "event_created": "When the event happened, as a Unix timestamp.",
+        "event_id": "The id of the Stripe event (evt_...).",
+        "id": "The subscription's id (sub_...).",
+        "items": "What is subscribed to: each item's price, product and quantity.",
+        "metadata": "Your own key-value data saved on the subscription.",
+        "payer": "Who the customer is, ready to put in a message: their name, else their email, else 'a customer'.",
+        "plan": "Beta. The plan's name, when its price has one.",
+        "previous_attributes": "What it was before, for the parts that changed only, such as status or items.",
+        "previous_status": "Beta. The status before this change, such as trialing, when the status changed; blank when it didn't. Compare it with status to catch a trial becoming paid or a subscription falling past_due.",
+        "reason_display": "Beta. Why it ended in words, such as The customer cancelled or Their payments kept failing; blank when Stripe gave no reason.",
         "status": "The status, such as active, trialing or canceled."
       },
       "parameters": []
