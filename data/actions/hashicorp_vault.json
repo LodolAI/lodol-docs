@@ -1,0 +1,1292 @@
+{
+  "actions": {
+    "check_health": {
+      "description": "Check that Vault is up, initialized and unsealed, and whether this server is active or a standby, with its version.",
+      "display_name": "Check server health",
+      "display_str_template": "Check Vault's health.",
+      "handler": "actions.check_health",
+      "id": "hashicorp_vault_check_health",
+      "method": "POST",
+      "mock_response": {
+        "cluster_name": "vault-cluster-c3c5adc2",
+        "enterprise": false,
+        "initialized": true,
+        "ready": true,
+        "sealed": false,
+        "server_time": "2026-11-06T10:00:00+00:00",
+        "standby": false,
+        "status": "active",
+        "version": "1.21.0"
+      },
+      "name": "check_health",
+      "output_formatter": "actions.format_health",
+      "parameters": [],
+      "path": "/actions/library/hashicorp-vault/check-health",
+      "result_str_template": "Vault is {hashicorp_vault_check_health,status}.",
+      "returns": {
+        "properties": {
+          "cluster_name": {
+            "description": "The cluster's name",
+            "type": "string"
+          },
+          "enterprise": {
+            "description": "True for Vault Enterprise or HCP Vault",
+            "type": "boolean"
+          },
+          "initialized": {
+            "description": "True once Vault has been initialized",
+            "type": "boolean"
+          },
+          "ready": {
+            "description": "True when it is unsealed and answering",
+            "type": "boolean"
+          },
+          "sealed": {
+            "description": "True while Vault is sealed and can't be used",
+            "type": "boolean"
+          },
+          "server_time": {
+            "description": "The server's clock",
+            "type": "string"
+          },
+          "standby": {
+            "description": "True on a standby server",
+            "type": "boolean"
+          },
+          "status": {
+            "description": "active, standby, performance standby, sealed, not initialized or DR secondary",
+            "type": "string"
+          },
+          "version": {
+            "description": "Vault's version, such as 1.21.0",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "decrypt_text": {
+      "description": "Decrypt text that 'Encrypt text' (or anything else using the same Transit key) encrypted; it starts with vault:v. The value is in the step's result for later steps, so anyone who can see this workflow's runs can see it; the run's summary doesn't print it.",
+      "display_name": "Decrypt text",
+      "display_str_template": "Decrypt text with Vault key {1}.",
+      "handler": "actions.decrypt_text",
+      "id": "hashicorp_vault_decrypt_text",
+      "method": "POST",
+      "mock_response": {
+        "is_text": true,
+        "key": "orders",
+        "key_version": 1,
+        "plaintext": "4111 1111 1111 1111",
+        "transit_mount": "transit"
+      },
+      "name": "decrypt_text",
+      "output_formatter": "actions.format_decrypted",
+      "parameters": [
+        {
+          "description": "The Transit secrets engine, such as transit.",
+          "display_name": "Transit engine",
+          "dynamic_source": "transit_mounts",
+          "dynamic_source_allows_custom": true,
+          "name": "transit_mount",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The Transit key to use, such as orders.",
+          "display_name": "Key",
+          "dynamic_source": "transit_keys",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "transit_mount"
+          ],
+          "name": "key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The encrypted text, starting with vault:v.",
+          "display_name": "Encrypted text",
+          "name": "ciphertext",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/hashicorp-vault/decrypt-text",
+      "result_str_template": "Decrypted with {hashicorp_vault_decrypt_text,key}.",
+      "returns": {
+        "properties": {
+          "is_text": {
+            "description": "False when the result wasn't text and is given as base64",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "The Transit key used",
+            "type": "string"
+          },
+          "key_version": {
+            "description": "The key version the text was encrypted with",
+            "type": "number"
+          },
+          "plaintext": {
+            "description": "The decrypted text (base64 when it isn't text)",
+            "type": "string"
+          },
+          "transit_mount": {
+            "description": "The Transit engine",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "delete_secret": {
+      "description": "Delete a secret's current version or the versions you name, which 'Restore secret versions' can bring back; or destroy versions, or the whole secret with its history, for good.",
+      "display_name": "Delete secret",
+      "display_str_template": "Delete Vault secret {1}.",
+      "handler": "actions.delete_secret",
+      "id": "hashicorp_vault_delete_secret",
+      "method": "POST",
+      "mock_response": {
+        "can_restore": true,
+        "how": "latest",
+        "mount": "secret",
+        "name": "db",
+        "path": "apps/billing/db",
+        "permanent": false,
+        "versions": [
+          3
+        ]
+      },
+      "name": "delete_secret",
+      "output_formatter": "actions.format_deleted",
+      "parameters": [
+        {
+          "description": "The key/value secrets engine the secret is in, such as secret.",
+          "display_name": "Secrets engine",
+          "dynamic_source": "kv_mounts",
+          "dynamic_source_allows_custom": true,
+          "name": "mount",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where the secret is in the engine, such as apps/billing/db.",
+          "display_name": "Secret path",
+          "name": "path",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "latest",
+          "description": "What to delete. Only the first two can be restored.",
+          "display_name": "How",
+          "name": "how",
+          "options": [
+            {
+              "label": "Delete the current version (can be restored)",
+              "value": "latest"
+            },
+            {
+              "label": "Delete these versions (can be restored)",
+              "value": "versions"
+            },
+            {
+              "label": "Destroy these versions for good",
+              "value": "destroy"
+            },
+            {
+              "label": "Delete the secret and all its versions for good",
+              "value": "everything"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The version numbers, such as 2 or 1, 3.",
+          "display_name": "Versions",
+          "name": "versions",
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "how": [
+              "versions",
+              "destroy"
+            ]
+          }
+        }
+      ],
+      "path": "/actions/library/hashicorp-vault/delete-secret",
+      "result_str_template": "Deleted {hashicorp_vault_delete_secret,path}.",
+      "returns": {
+        "properties": {
+          "can_restore": {
+            "description": "True when 'Restore secret versions' can bring them back",
+            "type": "boolean"
+          },
+          "how": {
+            "description": "latest, versions, destroy or everything",
+            "type": "string"
+          },
+          "mount": {
+            "description": "The secrets engine, such as secret",
+            "type": "string"
+          },
+          "name": {
+            "description": "The last part of its path, such as db",
+            "type": "string"
+          },
+          "path": {
+            "description": "The secret's path in the engine, such as apps/billing/db",
+            "type": "string"
+          },
+          "permanent": {
+            "description": "True when they are gone for good",
+            "type": "boolean"
+          },
+          "versions": {
+            "description": "The versions deleted or destroyed",
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "delete"
+      ]
+    },
+    "encrypt_text": {
+      "description": "Encrypt text with a Transit key, such as a card number or a note to store elsewhere. Only Vault can decrypt it, with the same key.",
+      "display_name": "Encrypt text",
+      "display_str_template": "Encrypt text with Vault key {1}.",
+      "handler": "actions.encrypt_text",
+      "id": "hashicorp_vault_encrypt_text",
+      "method": "POST",
+      "mock_response": {
+        "ciphertext": "vault:v1:8SDd3WHDOjf7mq69CyCqYjBXAiQQAVZRkFM13ok481zoCmHnSeDX9vyf7w==",
+        "key": "orders",
+        "key_version": 1,
+        "transit_mount": "transit"
+      },
+      "name": "encrypt_text",
+      "output_formatter": "actions.format_encrypted",
+      "parameters": [
+        {
+          "description": "The Transit secrets engine, such as transit.",
+          "display_name": "Transit engine",
+          "dynamic_source": "transit_mounts",
+          "dynamic_source_allows_custom": true,
+          "name": "transit_mount",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The Transit key to use, such as orders.",
+          "display_name": "Key",
+          "dynamic_source": "transit_keys",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "transit_mount"
+          ],
+          "name": "key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The text to encrypt.",
+          "display_name": "Text",
+          "multiline": true,
+          "name": "plaintext",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/hashicorp-vault/encrypt-text",
+      "result_str_template": "Encrypted with {hashicorp_vault_encrypt_text,key}.",
+      "returns": {
+        "properties": {
+          "ciphertext": {
+            "description": "The encrypted text, starting with vault:v and the key version",
+            "type": "string"
+          },
+          "key": {
+            "description": "The Transit key used",
+            "type": "string"
+          },
+          "key_version": {
+            "description": "The version of the key used",
+            "type": "number"
+          },
+          "transit_mount": {
+            "description": "The Transit engine",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "generate_random": {
+      "description": "Make a strong random password, or random bytes as hex or base64 for a key, from Vault's own randomness; or a password by one of your Vault's password policies. The value is in the step's result for later steps, so anyone who can see this workflow's runs can see it; the run's summary doesn't print it.",
+      "display_name": "Generate random value",
+      "display_str_template": "Generate a random value with Vault.",
+      "handler": "actions.generate_random",
+      "id": "hashicorp_vault_generate_random",
+      "method": "POST",
+      "mock_response": {
+        "length": 32,
+        "value": "q7R!fK2m#Xw9pL4t@Vz8sN1c-Hj6Bd3Y",
+        "value_format": "password"
+      },
+      "name": "generate_random",
+      "output_formatter": "actions.format_random",
+      "parameters": [
+        {
+          "default": "password",
+          "description": "A password, or random bytes written as hex or base64.",
+          "display_name": "Kind of value",
+          "name": "value_format",
+          "options": [
+            {
+              "label": "Password",
+              "value": "password"
+            },
+            {
+              "label": "Hex",
+              "value": "hex"
+            },
+            {
+              "label": "Base64",
+              "value": "base64"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Characters in a password (8 to 256, 32 if blank), or bytes of hex or base64 (up to 1024, 32 if blank).",
+          "display_name": "Length",
+          "maximum": 1024,
+          "minimum": 1,
+          "name": "length",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": true,
+          "description": "Use symbols (!#$%&*+-=?@^_) in the password as well as letters and digits.",
+          "display_name": "Include symbols",
+          "name": "symbols",
+          "required": false,
+          "type": "ParameterType.BOOLEAN",
+          "visible_when": {
+            "value_format": [
+              "password"
+            ]
+          }
+        },
+        {
+          "description": "The name of a password policy in your Vault to follow instead, such as active-directory. Leave blank for Lodol's.",
+          "display_name": "Password policy",
+          "name": "password_policy",
+          "required": false,
+          "type": "ParameterType.STRING",
+          "visible_when": {
+            "value_format": [
+              "password"
+            ]
+          }
+        }
+      ],
+      "path": "/actions/library/hashicorp-vault/generate-random",
+      "result_str_template": "Made a random {hashicorp_vault_generate_random,value_format}.",
+      "returns": {
+        "properties": {
+          "length": {
+            "description": "Characters in a password, or bytes of a hex or base64 value",
+            "type": "number"
+          },
+          "value": {
+            "description": "The random value",
+            "type": "string"
+          },
+          "value_format": {
+            "description": "password, hex or base64",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_secret_metadata": {
+      "description": "See a secret's versions without reading its values: which is current, when each was written, and which are deleted or destroyed, with its custom metadata.",
+      "display_name": "Get secret versions",
+      "display_str_template": "Get the versions of Vault secret {1}.",
+      "handler": "actions.get_secret_metadata",
+      "id": "hashicorp_vault_get_secret_metadata",
+      "method": "POST",
+      "mock_response": {
+        "cas_required": false,
+        "created_time": "2026-06-01T08:00:00+00:00",
+        "current_state": "kept",
+        "current_version": 3,
+        "custom_metadata": {
+          "owner": "billing-team"
+        },
+        "delete_version_after": "0s",
+        "link": "https://vault.example.com:8200/ui/vault/secrets/secret/kv/apps%2Fbilling%2Fdb",
+        "max_versions": 0,
+        "mount": "secret",
+        "name": "db",
+        "oldest_version": 1,
+        "path": "apps/billing/db",
+        "updated_time": "2026-10-02T09:15:04+00:00",
+        "versions": [
+          {
+            "created_time": "2026-10-02T09:15:04+00:00",
+            "deletion_time": "",
+            "destroyed": false,
+            "state": "current",
+            "version": 3
+          },
+          {
+            "created_time": "2026-08-14T12:30:00+00:00",
+            "deletion_time": "2026-10-02T09:16:00+00:00",
+            "destroyed": false,
+            "state": "deleted",
+            "version": 2
+          },
+          {
+            "created_time": "2026-06-01T08:00:00+00:00",
+            "deletion_time": "",
+            "destroyed": true,
+            "state": "destroyed",
+            "version": 1
+          }
+        ]
+      },
+      "name": "get_secret_metadata",
+      "output_formatter": "actions.format_metadata",
+      "parameters": [
+        {
+          "description": "The key/value secrets engine the secret is in, such as secret.",
+          "display_name": "Secrets engine",
+          "dynamic_source": "kv_mounts",
+          "dynamic_source_allows_custom": true,
+          "name": "mount",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where the secret is in the engine, such as apps/billing/db.",
+          "display_name": "Secret path",
+          "name": "path",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/hashicorp-vault/get-secret-metadata",
+      "result_str_template": "{hashicorp_vault_get_secret_metadata,path} is at version {hashicorp_vault_get_secret_metadata,current_version}.",
+      "returns": {
+        "properties": {
+          "cas_required": {
+            "description": "True when every write must name the version it replaces",
+            "type": "boolean"
+          },
+          "created_time": {
+            "description": "When the secret was first written",
+            "type": "string"
+          },
+          "current_state": {
+            "description": "The newest version's state: kept, deleted or destroyed",
+            "type": "string"
+          },
+          "current_version": {
+            "description": "The newest version",
+            "type": "number"
+          },
+          "custom_metadata": {
+            "description": "The secret's custom metadata, such as its owner",
+            "type": "object"
+          },
+          "delete_version_after": {
+            "description": "How long a version is kept before Vault deletes it, such as 2160h0m0s; 0s for always",
+            "type": "string"
+          },
+          "link": {
+            "description": "A link to the secret in Vault",
+            "type": "string"
+          },
+          "max_versions": {
+            "description": "How many versions it keeps; 0 for the engine's setting",
+            "type": "number"
+          },
+          "mount": {
+            "description": "The secrets engine, such as secret",
+            "type": "string"
+          },
+          "name": {
+            "description": "The last part of its path, such as db",
+            "type": "string"
+          },
+          "oldest_version": {
+            "description": "The oldest version Vault still keeps",
+            "type": "number"
+          },
+          "path": {
+            "description": "The secret's path in the engine, such as apps/billing/db",
+            "type": "string"
+          },
+          "updated_time": {
+            "description": "When it last changed",
+            "type": "string"
+          },
+          "versions": {
+            "description": "Its versions, newest first",
+            "items": {
+              "properties": {
+                "created_time": {
+                  "description": "When it was written",
+                  "type": "string"
+                },
+                "deletion_time": {
+                  "description": "When it was deleted (or will be); empty if it wasn't",
+                  "type": "string"
+                },
+                "destroyed": {
+                  "description": "True when it was destroyed for good",
+                  "type": "boolean"
+                },
+                "state": {
+                  "description": "current, kept, deleted or destroyed",
+                  "type": "string"
+                },
+                "version": {
+                  "description": "The version number",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_secrets": {
+      "description": "List the secrets in a folder of a secrets engine, and its folders, or every secret under it. Values aren't read.",
+      "display_name": "List secrets",
+      "display_str_template": "List Vault secrets in {0}.",
+      "handler": "actions.list_secrets",
+      "id": "hashicorp_vault_list_secrets",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "folder": "apps",
+        "folders": [
+          "apps/billing"
+        ],
+        "mount": "secret",
+        "secrets": [
+          {
+            "folder": "apps/billing",
+            "link": "https://vault.example.com:8200/ui/vault/secrets/secret/kv/apps%2Fbilling%2Fdb",
+            "name": "db",
+            "path": "apps/billing/db"
+          },
+          {
+            "folder": "apps/billing",
+            "link": "https://vault.example.com:8200/ui/vault/secrets/secret/kv/apps%2Fbilling%2Fstripe",
+            "name": "stripe",
+            "path": "apps/billing/stripe"
+          }
+        ],
+        "truncated": false
+      },
+      "name": "list_secrets",
+      "output_formatter": "actions.format_list",
+      "parameters": [
+        {
+          "description": "The key/value secrets engine the secret is in, such as secret.",
+          "display_name": "Secrets engine",
+          "dynamic_source": "kv_mounts",
+          "dynamic_source_allows_custom": true,
+          "name": "mount",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The folder to list, such as apps/billing. Leave blank for the top of the engine.",
+          "display_name": "Folder",
+          "name": "folder",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "List the secrets in every folder under it too, up to 500.",
+          "display_name": "Include subfolders",
+          "name": "include_subfolders",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/hashicorp-vault/list-secrets",
+      "result_str_template": "Listed {hashicorp_vault_list_secrets,count} secrets.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many secrets are listed",
+            "type": "number"
+          },
+          "folder": {
+            "description": "The folder listed; empty for the top",
+            "type": "string"
+          },
+          "folders": {
+            "description": "The folders found, such as apps/billing",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "mount": {
+            "description": "The secrets engine",
+            "type": "string"
+          },
+          "secrets": {
+            "description": "The secrets, in order of their paths",
+            "items": {
+              "properties": {
+                "folder": {
+                  "description": "The folder it's in, such as apps/billing",
+                  "type": "string"
+                },
+                "link": {
+                  "description": "A link to the secret in Vault",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The last part of its path",
+                  "type": "string"
+                },
+                "path": {
+                  "description": "Its path in the engine, such as apps/billing/db",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "truncated": {
+            "description": "True when there were more than Lodol lists at once",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "look_up_token": {
+      "description": "See the connection's token: its policies, and when it expires unless renewed. Lodol renews a renewable token as it uses it.",
+      "display_name": "Look up token",
+      "display_str_template": "Look up the Vault token.",
+      "handler": "actions.look_up_token",
+      "id": "hashicorp_vault_look_up_token",
+      "method": "POST",
+      "mock_response": {
+        "accessor": "FXpzhkV8ss78ymKec0HGp98b",
+        "display_name": "token-lodol",
+        "expire_time": "2026-12-08T23:54:27+00:00",
+        "expires_in_days": 32.0,
+        "issue_time": "2026-11-06T23:54:27+00:00",
+        "namespace": "",
+        "never_expires": false,
+        "orphan": true,
+        "period_days": 32.0,
+        "policies": [
+          "default",
+          "lodol"
+        ],
+        "renewable": true,
+        "ttl_seconds": 2764800
+      },
+      "name": "look_up_token",
+      "output_formatter": "actions.format_token",
+      "parameters": [],
+      "path": "/actions/library/hashicorp-vault/look-up-token",
+      "result_str_template": "The token expires {hashicorp_vault_look_up_token,expire_time}.",
+      "returns": {
+        "properties": {
+          "accessor": {
+            "description": "The token's accessor, which names it without being it",
+            "type": "string"
+          },
+          "display_name": {
+            "description": "The token's name, such as token-lodol",
+            "type": "string"
+          },
+          "expire_time": {
+            "description": "When it expires unless renewed; empty if it never does",
+            "type": "string"
+          },
+          "expires_in_days": {
+            "description": "Days until it expires; empty if it never does",
+            "type": "number"
+          },
+          "issue_time": {
+            "description": "When it was made",
+            "type": "string"
+          },
+          "namespace": {
+            "description": "The connection's namespace; empty for none",
+            "type": "string"
+          },
+          "never_expires": {
+            "description": "True for a token with no expiry, such as a root token",
+            "type": "boolean"
+          },
+          "orphan": {
+            "description": "True when it doesn't end with the token that made it",
+            "type": "boolean"
+          },
+          "period_days": {
+            "description": "A periodic token's period in days; 0 if it isn't one",
+            "type": "number"
+          },
+          "policies": {
+            "description": "The policies it has, such as default and lodol",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "renewable": {
+            "description": "True when it can be renewed (Lodol renews it as it's used)",
+            "type": "boolean"
+          },
+          "ttl_seconds": {
+            "description": "Seconds it has left",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "read_secret": {
+      "description": "Read a secret's keys and values, or one key's value such as a password, to use in a later step; the current version or an earlier one. The value is in the step's result for later steps, so anyone who can see this workflow's runs can see it; the run's summary doesn't print it.",
+      "display_name": "Read secret",
+      "display_str_template": "Read Vault secret {1}.",
+      "handler": "actions.read_secret",
+      "id": "hashicorp_vault_read_secret",
+      "method": "POST",
+      "mock_response": {
+        "created_time": "2026-10-02T09:15:04+00:00",
+        "custom_metadata": {
+          "owner": "billing-team"
+        },
+        "data": {
+          "password": "Xy7#pQ2m!vR9",
+          "username": "billing"
+        },
+        "key": "password",
+        "keys": [
+          "password",
+          "username"
+        ],
+        "link": "https://vault.example.com:8200/ui/vault/secrets/secret/kv/apps%2Fbilling%2Fdb",
+        "mount": "secret",
+        "name": "db",
+        "path": "apps/billing/db",
+        "value": "Xy7#pQ2m!vR9",
+        "version": 3
+      },
+      "name": "read_secret",
+      "output_formatter": "actions.format_secret",
+      "parameters": [
+        {
+          "description": "The key/value secrets engine the secret is in, such as secret.",
+          "display_name": "Secrets engine",
+          "dynamic_source": "kv_mounts",
+          "dynamic_source_allows_custom": true,
+          "name": "mount",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where the secret is in the engine, such as apps/billing/db.",
+          "display_name": "Secret path",
+          "name": "path",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only this key's value, such as password. Leave blank for every key.",
+          "display_name": "Key",
+          "name": "key",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "An earlier version to read. Leave blank for the current one.",
+          "display_name": "Version",
+          "minimum": 1,
+          "name": "version",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/hashicorp-vault/read-secret",
+      "result_str_template": "Read version {hashicorp_vault_read_secret,version} of {hashicorp_vault_read_secret,path}.",
+      "returns": {
+        "properties": {
+          "created_time": {
+            "description": "When that version was written",
+            "type": "string"
+          },
+          "custom_metadata": {
+            "description": "The secret's custom metadata, if any",
+            "type": "object"
+          },
+          "data": {
+            "description": "Every key of the secret with its value, such as username and password",
+            "type": "object"
+          },
+          "key": {
+            "description": "The key asked for, if one was",
+            "type": "string"
+          },
+          "keys": {
+            "description": "The secret's key names",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "link": {
+            "description": "A link to the secret in Vault",
+            "type": "string"
+          },
+          "mount": {
+            "description": "The secrets engine, such as secret",
+            "type": "string"
+          },
+          "name": {
+            "description": "The last part of its path, such as db",
+            "type": "string"
+          },
+          "path": {
+            "description": "The secret's path in the engine, such as apps/billing/db",
+            "type": "string"
+          },
+          "value": {
+            "description": "That key's value, when a key was asked for; otherwise empty",
+            "type": "string"
+          },
+          "version": {
+            "description": "The version read",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "restore_secret": {
+      "description": "Bring back deleted versions of a secret, such as one deleted by mistake. Destroyed versions can't be restored.",
+      "display_name": "Restore secret versions",
+      "display_str_template": "Restore Vault secret {1}.",
+      "handler": "actions.restore_secret",
+      "id": "hashicorp_vault_restore_secret",
+      "method": "POST",
+      "mock_response": {
+        "current_version": 3,
+        "link": "https://vault.example.com:8200/ui/vault/secrets/secret/kv/apps%2Fbilling%2Fdb",
+        "mount": "secret",
+        "name": "db",
+        "path": "apps/billing/db",
+        "versions": [
+          3
+        ]
+      },
+      "name": "restore_secret",
+      "output_formatter": "actions.format_restored",
+      "parameters": [
+        {
+          "description": "The key/value secrets engine the secret is in, such as secret.",
+          "display_name": "Secrets engine",
+          "dynamic_source": "kv_mounts",
+          "dynamic_source_allows_custom": true,
+          "name": "mount",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where the secret is in the engine, such as apps/billing/db.",
+          "display_name": "Secret path",
+          "name": "path",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The version numbers to restore, such as 3 or 2, 3. Leave blank for the current version.",
+          "display_name": "Versions",
+          "name": "versions",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/hashicorp-vault/restore-secret",
+      "result_str_template": "Restored {hashicorp_vault_restore_secret,path}.",
+      "returns": {
+        "properties": {
+          "current_version": {
+            "description": "The secret's newest version",
+            "type": "number"
+          },
+          "link": {
+            "description": "A link to the secret in Vault",
+            "type": "string"
+          },
+          "mount": {
+            "description": "The secrets engine, such as secret",
+            "type": "string"
+          },
+          "name": {
+            "description": "The last part of its path, such as db",
+            "type": "string"
+          },
+          "path": {
+            "description": "The secret's path in the engine, such as apps/billing/db",
+            "type": "string"
+          },
+          "versions": {
+            "description": "The versions restored",
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "update_secret": {
+      "description": "Set some keys of a secret, such as a new password, and remove others, keeping the rest as they are. It makes a new version.",
+      "display_name": "Update secret keys",
+      "display_str_template": "Update Vault secret {1}.",
+      "handler": "actions.update_secret",
+      "id": "hashicorp_vault_update_secret",
+      "method": "POST",
+      "mock_response": {
+        "created_time": "2026-11-06T10:00:00+00:00",
+        "keys": [
+          "password"
+        ],
+        "link": "https://vault.example.com:8200/ui/vault/secrets/secret/kv/apps%2Fbilling%2Fdb",
+        "mount": "secret",
+        "name": "db",
+        "path": "apps/billing/db",
+        "removed_keys": [
+          "old_password"
+        ],
+        "version": 4
+      },
+      "name": "update_secret",
+      "output_formatter": "actions.format_written",
+      "parameters": [
+        {
+          "description": "The key/value secrets engine the secret is in, such as secret.",
+          "display_name": "Secrets engine",
+          "dynamic_source": "kv_mounts",
+          "dynamic_source_allows_custom": true,
+          "name": "mount",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where the secret is in the engine, such as apps/billing/db.",
+          "display_name": "Secret path",
+          "name": "path",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Each key to set and its new value, such as password. Keys not named keep their values.",
+          "display_name": "Keys to set",
+          "name": "data",
+          "object_key_name": "Key",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Keys to take out of the secret, separated by commas, such as old_password.",
+          "display_name": "Keys to remove",
+          "name": "remove_keys",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/hashicorp-vault/update-secret",
+      "result_str_template": "Saved {hashicorp_vault_update_secret,path} as version {hashicorp_vault_update_secret,version}.",
+      "returns": {
+        "properties": {
+          "created_time": {
+            "description": "When it was written",
+            "type": "string"
+          },
+          "keys": {
+            "description": "The keys written",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "link": {
+            "description": "A link to the secret in Vault",
+            "type": "string"
+          },
+          "mount": {
+            "description": "The secrets engine, such as secret",
+            "type": "string"
+          },
+          "name": {
+            "description": "The last part of its path, such as db",
+            "type": "string"
+          },
+          "path": {
+            "description": "The secret's path in the engine, such as apps/billing/db",
+            "type": "string"
+          },
+          "removed_keys": {
+            "description": "The keys removed",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "version": {
+            "description": "The version the write made",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "write_secret": {
+      "description": "Save keys and values as a secret, such as an API key from a sign-up or a password changed elsewhere. A secret already at the path gets a new version with exactly these keys; earlier versions are kept.",
+      "display_name": "Write secret",
+      "display_str_template": "Write Vault secret {1}.",
+      "handler": "actions.write_secret",
+      "id": "hashicorp_vault_write_secret",
+      "method": "POST",
+      "mock_response": {
+        "created_time": "2026-11-06T10:00:00+00:00",
+        "keys": [
+          "password",
+          "username"
+        ],
+        "link": "https://vault.example.com:8200/ui/vault/secrets/secret/kv/apps%2Fbilling%2Fdb",
+        "mount": "secret",
+        "name": "db",
+        "path": "apps/billing/db",
+        "version": 4
+      },
+      "name": "write_secret",
+      "output_formatter": "actions.format_written",
+      "parameters": [
+        {
+          "description": "The key/value secrets engine the secret is in, such as secret.",
+          "display_name": "Secrets engine",
+          "dynamic_source": "kv_mounts",
+          "dynamic_source_allows_custom": true,
+          "name": "mount",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where the secret is in the engine, such as apps/billing/db.",
+          "display_name": "Secret path",
+          "name": "path",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Each key and its value, such as username and password.",
+          "display_name": "Keys and values",
+          "name": "data",
+          "object_key_name": "Key",
+          "required": true,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "default": false,
+          "description": "Refuse to write when a secret is already at this path, so nothing is overwritten.",
+          "display_name": "Only if new",
+          "name": "only_if_new",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/hashicorp-vault/write-secret",
+      "result_str_template": "Saved {hashicorp_vault_write_secret,path} as version {hashicorp_vault_write_secret,version}.",
+      "returns": {
+        "properties": {
+          "created_time": {
+            "description": "When it was written",
+            "type": "string"
+          },
+          "keys": {
+            "description": "The keys written",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "link": {
+            "description": "A link to the secret in Vault",
+            "type": "string"
+          },
+          "mount": {
+            "description": "The secrets engine, such as secret",
+            "type": "string"
+          },
+          "name": {
+            "description": "The last part of its path, such as db",
+            "type": "string"
+          },
+          "path": {
+            "description": "The secret's path in the engine, such as apps/billing/db",
+            "type": "string"
+          },
+          "version": {
+            "description": "The version the write made",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write",
+        "modify"
+      ]
+    }
+  },
+  "categories": [
+    "Security",
+    "Identity & Access"
+  ],
+  "description": "Use HashiCorp Vault's secrets in workflows: read a secret or one key of it, store and update secrets, list them, see and restore their versions, encrypt and decrypt with Transit, and make strong passwords. Start a workflow when a secret is created or updated, or is due for rotation.",
+  "display_name": "HashiCorp Vault",
+  "id": "hashicorp_vault",
+  "logo": "https://www.lodol.com/app-icons/hashicorp-vault-icon.svg",
+  "triggers": {
+    "hashicorp_vault_secret_changed_trigger": {
+      "description": "Runs when a secret is created or gets a new version in a key/value engine, in the folder you choose, with its path and version (not its values). Secrets already there when the workflow is turned on don't start it.",
+      "display_name": "Secret created or updated",
+      "id": "hashicorp_vault_secret_changed_trigger",
+      "output": {
+        "age_days": "Days since its current version was written",
+        "change": "created for a new secret, updated for a new version",
+        "created_time": "When the secret was first written",
+        "custom_metadata": "The secret's custom metadata, such as its owner",
+        "folder": "The folder it's in, such as apps/billing",
+        "link": "A link to the secret in Vault",
+        "mount": "The secrets engine, such as secret",
+        "name": "The last part of its path, such as db",
+        "path": "The secret's path, such as apps/billing/db",
+        "updated_time": "When its current version was written",
+        "version": "Its current version"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The key/value secrets engine to watch, such as secret.",
+          "display_name": "Secrets engine",
+          "name": "mount",
+          "required": true
+        },
+        {
+          "arg_index": 1,
+          "description": "Only secrets in this folder and the folders under it, such as apps. Leave blank for the whole engine. Up to 200 secrets are watched.",
+          "display_name": "Folder",
+          "name": "folder",
+          "required": false
+        }
+      ]
+    },
+    "hashicorp_vault_secret_due_for_rotation_trigger": {
+      "description": "Runs once for each secret whose current version is older than the days you choose, such as 90, with its path and age, so it can be changed. Secrets already that old when the workflow is turned on start it too; a new version starts the count again.",
+      "display_name": "Secret due for rotation",
+      "id": "hashicorp_vault_secret_due_for_rotation_trigger",
+      "output": {
+        "age_days": "Days since its current version was written",
+        "change": "created for a new secret, updated for a new version",
+        "created_time": "When the secret was first written",
+        "custom_metadata": "The secret's custom metadata, such as its owner",
+        "folder": "The folder it's in, such as apps/billing",
+        "link": "A link to the secret in Vault",
+        "mount": "The secrets engine, such as secret",
+        "name": "The last part of its path, such as db",
+        "path": "The secret's path, such as apps/billing/db",
+        "updated_time": "When its current version was written",
+        "version": "Its current version"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The key/value secrets engine to watch, such as secret.",
+          "display_name": "Secrets engine",
+          "name": "mount",
+          "required": true
+        },
+        {
+          "arg_index": 1,
+          "description": "Only secrets in this folder and the folders under it, such as apps. Leave blank for the whole engine. Up to 200 secrets are watched.",
+          "display_name": "Folder",
+          "name": "folder",
+          "required": false
+        },
+        {
+          "arg_index": 2,
+          "description": "How old the current version is before it's due, in days. Leave blank for 90.",
+          "display_name": "Days",
+          "name": "days",
+          "required": false
+        }
+      ]
+    }
+  }
+}

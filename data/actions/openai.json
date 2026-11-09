@@ -865,6 +865,187 @@
         "modify"
       ]
     },
+    "check_moderation": {
+      "description": "Check whether text, such as a comment or a form answer, may be harmful: hateful, harassing, violent, sexual or about self-harm. Free with an OpenAI API key.",
+      "display_name": "Check for harmful content",
+      "display_str_template": "Check '{text}' for harmful content.",
+      "handler": "actions.check_moderation",
+      "id": "openai_check_moderation",
+      "method": "POST",
+      "mock_response": {
+        "categories": {
+          "harassment": true,
+          "hate": false,
+          "violence": false
+        },
+        "category_scores": {
+          "harassment": 0.91,
+          "hate": 0.02,
+          "violence": 0.01
+        },
+        "flagged": true,
+        "flagged_categories": [
+          "harassment"
+        ],
+        "model": "omni-moderation-latest"
+      },
+      "name": "check_moderation",
+      "output_formatter": "actions.format_check_moderation_output",
+      "parameters": [
+        {
+          "description": "The text to check.",
+          "display_name": "Text",
+          "multiline": true,
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openai/check-moderation",
+      "result_str_template": "Flagged: {openai_check_moderation,flagged}.",
+      "returns": {
+        "properties": {
+          "categories": {
+            "description": "Each kind of harm OpenAI checks for, true where found.",
+            "type": "object"
+          },
+          "category_scores": {
+            "description": "How confident OpenAI is for each kind of harm, from 0 to 1.",
+            "type": "object"
+          },
+          "flagged": {
+            "description": "Whether the text may be harmful in any way.",
+            "type": "boolean"
+          },
+          "flagged_categories": {
+            "description": "The kinds of harm found, such as harassment or violence; empty when nothing was.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "model": {
+            "description": "The model that checked it.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "create_embeddings": {
+      "description": "Turn texts into vectors for semantic search, finding similar items or grouping them, ready to store in a vector database.",
+      "display_name": "Create embeddings",
+      "display_str_template": "Embed {texts}.",
+      "handler": "actions.create_embeddings",
+      "id": "openai_create_embeddings",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "dimensions": 3,
+        "embedding": [
+          0.012,
+          -0.043,
+          0.031
+        ],
+        "embeddings": [
+          [
+            0.012,
+            -0.043,
+            0.031
+          ],
+          [
+            0.018,
+            -0.039,
+            0.027
+          ]
+        ],
+        "model": "text-embedding-3-small"
+      },
+      "name": "create_embeddings",
+      "output_formatter": "actions.format_create_embeddings_output",
+      "parameters": [
+        {
+          "description": "The texts to embed, one per entry, up to 2,048. Each comes back as one vector, in the same order.",
+          "display_name": "Texts",
+          "name": "texts",
+          "required": true,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": "text-embedding-3-small",
+          "description": "Which embedding model to use. Defaults to Text Embedding 3 small. Vectors from different models can't be compared with each other.",
+          "display_name": "Model",
+          "name": "model",
+          "options": [
+            {
+              "label": "Text Embedding 3 small (lower cost)",
+              "value": "text-embedding-3-small"
+            },
+            {
+              "label": "Text Embedding 3 large (most accurate)",
+              "value": "text-embedding-3-large"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many numbers each vector has, for a vector database that expects a set size. Leave blank for the model's full size (1,536 for small, 3,072 for large).",
+          "display_name": "Dimensions",
+          "name": "dimensions",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/openai/create-embeddings",
+      "result_str_template": "Created {openai_create_embeddings,count} vectors.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many vectors there are.",
+            "type": "number"
+          },
+          "dimensions": {
+            "description": "How many numbers each vector has.",
+            "type": "number"
+          },
+          "embedding": {
+            "description": "The first text's vector.",
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "embeddings": {
+            "description": "One vector per text, in the same order.",
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "model": {
+            "description": "The embedding model used.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
     "generate_code": {
       "description": "Gives a coding task, such as writing, fixing or explaining code, to one of OpenAI's Codex coding models and returns its answer. Include the code it should work on in the task. For a long task, turn on Run in the background, then pick up the answer with Get a stored response or the When a response's status changes trigger.",
       "display_name": "Write code",
@@ -1800,6 +1981,233 @@
         "write",
         "modify",
         "delete"
+      ]
+    },
+    "generate_image": {
+      "description": "Draw a picture from a description with OpenAI's GPT Image models, or change pictures you give it, such as putting a product photo on a new background. The picture is saved as a file for later steps.",
+      "display_name": "Generate an image",
+      "display_str_template": "Draw '{prompt}'.",
+      "handler": "actions.generate_image",
+      "id": "openai_generate_image",
+      "method": "POST",
+      "mock_response": {
+        "content_type": "image/png",
+        "document_ref": "doc_0123456789abcdef0123456789abcdef",
+        "documents": [
+          {
+            "content_type": "image/png",
+            "document_ref": "doc_0123456789abcdef0123456789abcdef",
+            "filename": "openai-image-1.png",
+            "size_bytes": 1482211,
+            "url": "/actions/core/serve-document/doc_0123456789abcdef0123456789abcdef"
+          }
+        ],
+        "filename": "openai-image-1.png",
+        "image_count": 1,
+        "model": "gpt-image-2.5-flare",
+        "quality": "medium",
+        "size": "1024x1024",
+        "size_bytes": 1482211,
+        "url": "/actions/core/serve-document/doc_0123456789abcdef0123456789abcdef"
+      },
+      "name": "generate_image",
+      "output_formatter": "actions.format_generate_image_output",
+      "parameters": [
+        {
+          "description": "What to draw: the subject, the setting, the style and the mood. With reference pictures, say what to change, such as 'Put this product on a beach at sunset'.",
+          "display_name": "Description",
+          "multiline": true,
+          "name": "prompt",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "gpt-image-2.5-flare",
+          "description": "Which GPT Image model draws it. Defaults to GPT Image 2.5 Flare. You can also type a model's ID.",
+          "display_name": "Model",
+          "name": "model",
+          "options": [
+            {
+              "label": "GPT Image 2.5 Flare",
+              "value": "gpt-image-2.5-flare"
+            },
+            {
+              "label": "GPT Image 2.5 Sunburst",
+              "value": "gpt-image-2.5-sunburst"
+            },
+            {
+              "label": "GPT Image 2",
+              "value": "gpt-image-2"
+            },
+            {
+              "label": "GPT Image 1 mini (lowest cost)",
+              "value": "gpt-image-1-mini"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The picture's shape and size. Leave blank to let the model choose.",
+          "display_name": "Size",
+          "name": "size",
+          "options": [
+            {
+              "label": "Let the model choose",
+              "value": "auto"
+            },
+            {
+              "label": "Square (1024 \u00d7 1024)",
+              "value": "1024x1024"
+            },
+            {
+              "label": "Landscape (1536 \u00d7 1024)",
+              "value": "1536x1024"
+            },
+            {
+              "label": "Portrait (1024 \u00d7 1536)",
+              "value": "1024x1536"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Higher quality takes longer and costs more. Leave blank to let the model choose.",
+          "display_name": "Quality",
+          "name": "quality",
+          "options": [
+            {
+              "label": "Let the model choose",
+              "value": "auto"
+            },
+            {
+              "label": "Low (fastest, lowest cost)",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Transparent suits a logo or a sticker. Leave blank to let the model choose.",
+          "display_name": "Background",
+          "name": "background",
+          "options": [
+            {
+              "label": "Let the model choose",
+              "value": "auto"
+            },
+            {
+              "label": "Solid",
+              "value": "opaque"
+            },
+            {
+              "label": "Transparent",
+              "value": "transparent"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "accepts_file_upload": true,
+          "accepts_variable_reference": true,
+          "description": "Pictures to change or work from, such as a product photo or a logo: upload them, pick files from an earlier step, or paste public web addresses. PNG, JPEG or WebP, up to 16.",
+          "display_name": "Reference pictures",
+          "name": "reference_images",
+          "required": false,
+          "schema": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/openai/generate-image",
+      "result_str_template": "Drew a picture: {openai_generate_image,filename}.",
+      "returns": {
+        "properties": {
+          "content_type": {
+            "description": "The file's type, such as image/png.",
+            "type": "string"
+          },
+          "document_ref": {
+            "description": "The saved file, for steps that take a file.",
+            "type": "string"
+          },
+          "documents": {
+            "description": "Every picture saved, in order.",
+            "items": {
+              "properties": {
+                "content_type": {
+                  "description": "The file's type, such as image/png.",
+                  "type": "string"
+                },
+                "document_ref": {
+                  "description": "The saved file, for steps that take a file.",
+                  "type": "string"
+                },
+                "filename": {
+                  "description": "The file's name.",
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "description": "The file's size in bytes.",
+                  "type": "number"
+                },
+                "url": {
+                  "description": "A link that opens the saved file.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "filename": {
+            "description": "The file's name.",
+            "type": "string"
+          },
+          "image_count": {
+            "description": "How many pictures OpenAI drew.",
+            "type": "number"
+          },
+          "model": {
+            "description": "The model that drew it.",
+            "type": "string"
+          },
+          "quality": {
+            "description": "The quality it was drawn at.",
+            "type": "string"
+          },
+          "size": {
+            "description": "The picture's size, such as 1024x1024.",
+            "type": "string"
+          },
+          "size_bytes": {
+            "description": "The file's size in bytes.",
+            "type": "number"
+          },
+          "url": {
+            "description": "A link that opens the saved file.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
       ]
     },
     "get_response": {
@@ -2809,12 +3217,80 @@
         "modify",
         "delete"
       ]
+    },
+    "transcribe_audio": {
+      "description": "Write down what a recording says, such as a voicemail, a meeting or an interview, with OpenAI's transcription model.",
+      "display_name": "Transcribe audio",
+      "display_str_template": "Transcribe {audio}.",
+      "handler": "actions.transcribe_audio",
+      "id": "openai_transcribe_audio",
+      "method": "POST",
+      "mock_response": {
+        "languages": [
+          "en"
+        ],
+        "model": "gpt-transcribe",
+        "text": "Hi, it's Dana from Coastal Marine. Please call me back about the order."
+      },
+      "name": "transcribe_audio",
+      "output_formatter": "actions.format_transcribe_audio_output",
+      "parameters": [
+        {
+          "accepts_file_upload": true,
+          "accepts_variable_reference": true,
+          "description": "The recording: upload it, pick a file from an earlier step, or paste a public web address. MP3, MP4, M4A, WAV, WebM, OGG or FLAC, up to 25 MB.",
+          "display_name": "Recording",
+          "name": "audio",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The language spoken, as a two-letter code such as en or es, which makes the transcript more accurate. Leave blank to detect it.",
+          "display_name": "Language",
+          "name": "language",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Names, product names or terms the recording uses, one per line, so they're spelled right.",
+          "display_name": "Words to listen for",
+          "multiline": true,
+          "name": "keywords",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/openai/transcribe-audio",
+      "result_str_template": "Transcribed: {openai_transcribe_audio,text}",
+      "returns": {
+        "properties": {
+          "languages": {
+            "description": "The languages heard, as codes such as en.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "model": {
+            "description": "The model that transcribed it.",
+            "type": "string"
+          },
+          "text": {
+            "description": "What the recording says.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
     }
   },
   "categories": [
     "AI Models"
   ],
-  "description": "Ask OpenAI's GPT models to write, summarise or answer, and give coding tasks to its Codex models.",
+  "description": "Ask OpenAI's GPT models to write, summarise or answer, draw pictures, transcribe recordings, and give coding tasks to its Codex models.",
   "display_name": "OpenAI",
   "id": "openai",
   "logo": "https://www.lodol.com/app-icons/openai-icon.png",

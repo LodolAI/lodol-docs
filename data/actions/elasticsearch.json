@@ -184,6 +184,143 @@
         "read"
       ]
     },
+    "search_documents": {
+      "description": "Find documents in an index by words they contain, by the value of one field, or both, such as every order whose status is pending. Leave both empty to list the index's documents. Returns up to 100, sorted by a field you choose or by how well they match.",
+      "display_name": "Search documents",
+      "display_str_template": "Search documents in the index '{0}'.",
+      "handler": "actions.search_documents",
+      "id": "elasticsearch_search_documents",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "documents": [
+          {
+            "document": {
+              "name": "Wireless Headphones",
+              "price": 79.99
+            },
+            "document_id": "1",
+            "index": "products",
+            "score": 1.3862942
+          }
+        ],
+        "index": "products",
+        "total": 1
+      },
+      "name": "search_documents",
+      "parameters": [
+        {
+          "description": "The index the document lives in.",
+          "display_name": "Index",
+          "dynamic_source": "indices",
+          "name": "index",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Words to look for anywhere in the documents, such as wireless headphones. Every word must appear. Leave it empty to match on a field alone, or to list documents.",
+          "display_name": "Search for",
+          "name": "search_text",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only documents whose value in this field matches Value, such as status. Use dots for a field inside another, such as customer.email.",
+          "display_name": "Field",
+          "name": "field",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The value Field must have, such as pending. Needed when Field is filled in.",
+          "display_name": "Value",
+          "name": "value",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A field to put the documents in order by, such as created_at or price. Leave it empty to put the best matches first.",
+          "display_name": "Sort by",
+          "name": "sort_by",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "desc",
+          "description": "Which end of Sort by comes first.",
+          "display_name": "Order",
+          "name": "sort_order",
+          "options": [
+            {
+              "label": "Highest or newest first",
+              "value": "desc"
+            },
+            {
+              "label": "Lowest or oldest first",
+              "value": "asc"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 10,
+          "description": "The most documents to return, from 1 to 100.",
+          "display_name": "Limit",
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/elasticsearch/search-documents",
+      "result_str_template": "Searched the documents in Elasticsearch.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many documents were returned",
+            "type": "integer"
+          },
+          "documents": {
+            "description": "The documents found, each with its index, document_id, score (how well it matched) and document (its stored fields)",
+            "items": {
+              "properties": {
+                "document": {
+                  "description": "The document's stored fields",
+                  "type": "object"
+                },
+                "document_id": {
+                  "description": "The document's id",
+                  "type": "string"
+                },
+                "index": {
+                  "description": "The index the document is in",
+                  "type": "string"
+                },
+                "score": {
+                  "description": "How well it matched; empty when sorted by a field",
+                  "nullable": true,
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "index": {
+            "description": "The index that was searched",
+            "type": "string"
+          },
+          "total": {
+            "description": "How many documents match in all, which can be more than were returned",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "update_document": {
       "description": "Update a document by its Document ID. The fields you provide are merged into the stored document, leaving its other fields unchanged.",
       "display_name": "Update document",
@@ -267,9 +404,37 @@
     "Databases",
     "AI Search & Memory"
   ],
-  "description": "Create, read, update, and delete documents in your Elasticsearch indices.",
+  "description": "Create, read, update, search and delete documents in your Elasticsearch indices, and start a workflow when a document is added.",
   "display_name": "Elasticsearch",
   "id": "elasticsearch",
   "logo": "https://www.lodol.com/app-icons/elasticsearch-icon.svg",
-  "triggers": {}
+  "triggers": {
+    "elasticsearch_new_document_trigger": {
+      "description": "Runs when a document is added to an Elasticsearch index, found by checking for documents past the highest value seen so far of a field every new document gets, such as created_at. Documents without that field are never seen, and documents already in the index don't trigger it.",
+      "display_name": "New document",
+      "id": "elasticsearch_new_document_trigger",
+      "output": {
+        "document": "The document's stored fields.",
+        "document_id": "The new document's id, for Get, Update or Delete document.",
+        "field": "The order field the trigger watches.",
+        "index": "The index it was added to."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The index to watch, such as orders.",
+          "display_name": "Index",
+          "name": "index",
+          "required": true
+        },
+        {
+          "arg_index": 1,
+          "description": "A field every new document gets, whose value grows with each one, such as a created_at time or an increasing number. It must be a date, number or keyword field; for text, use its .keyword version, such as order_number.keyword.",
+          "display_name": "Order field",
+          "name": "field",
+          "required": true
+        }
+      ]
+    }
+  }
 }

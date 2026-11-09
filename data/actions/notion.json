@@ -116,6 +116,72 @@
         "delete"
       ]
     },
+    "create_child_page": {
+      "description": "Create a new page inside an existing Notion page, as a sub-page rather than a database entry, with optional content blocks.",
+      "display_name": "Create page inside a page",
+      "display_str_template": "Create the page '{1}' inside '{0}'.",
+      "handler": "actions.create_child_page",
+      "id": "notion_create_child_page",
+      "method": "POST",
+      "mock_response": {
+        "id": "f1e2d3c4b5a6",
+        "status": "success",
+        "title": "Minutes",
+        "url": "https://www.notion.so/Minutes-f1e2d3c4b5a6"
+      },
+      "name": "create_child_page",
+      "output_formatter": "actions.format_create_child_page_output",
+      "parameters": [
+        {
+          "description": "The page to create it in, as an earlier step gave it, or its ID. The page must be shared with the integration.",
+          "display_name": "Parent page",
+          "label_source": "page_names",
+          "name": "parent_page_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Page title.",
+          "display_name": "Title",
+          "name": "title",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Content blocks to add to the page, in Notion's block format. Each block needs a 'type' field and a matching object of that type containing a 'rich_text' list.",
+          "display_name": "Content blocks",
+          "name": "children",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/notion/create-child-page",
+      "result_str_template": "Page created.",
+      "returns": {
+        "properties": {
+          "id": {
+            "description": "Created page ID.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Action execution status.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Created page title.",
+            "type": "string"
+          },
+          "url": {
+            "description": "Created page URL.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
     "create_page": {
       "description": "Create a new page in a Notion database, with optional content blocks.",
       "display_name": "Create page",
@@ -401,7 +467,7 @@
       ]
     },
     "query_database": {
-      "description": "Find pages in a Notion database, with optional filters and sorting.",
+      "description": "Find pages in a Notion database, with optional filters and sorting. For the tasks due today, tomorrow or overdue, give the date column and the day instead of writing a filter, and leave out the finished ones with the column that holds their status. Each page also gives the email addresses of the people in its People columns (people_emails.Owner), to message each owner.",
       "display_name": "Find pages in a database",
       "display_str_template": "Find pages in {0}.",
       "handler": "actions.query_database",
@@ -415,6 +481,9 @@
           {
             "id": "p1q2r3s4t5u6",
             "last_edited_time": "2024-01-15T14:20:00.000Z",
+            "people_emails": {
+              "Owner": "sam@example.com"
+            },
             "properties": {
               "Name": "Task 1",
               "Status": "In Progress"
@@ -443,6 +512,34 @@
           "name": "filter",
           "required": false,
           "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Beta. The name of a date column, such as Due date. With the day below, only pages dated on that day come back, so a list of today's tasks needs no filter written by hand.",
+          "display_name": "Date column",
+          "name": "date_property",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. With a date column: today, tomorrow, overdue (before today), or a number of days from today.",
+          "display_name": "Dated",
+          "name": "due",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. The name of a column to leave pages out by, such as Status. With the value below, pages whose cell has that value are left out, so unfinished tasks are every page except the Done ones.",
+          "display_name": "Leave out pages where this column is",
+          "name": "skip_property",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. With a column above: the value that leaves a page out, such as Done.",
+          "display_name": "Value that leaves a page out",
+          "name": "skip_value",
+          "required": false,
+          "type": "ParameterType.STRING"
         },
         {
           "description": "How to order the results, in Notion's sort format.",
@@ -495,6 +592,10 @@
                   "description": "Last edit timestamp.",
                   "type": "string"
                 },
+                "people_emails": {
+                  "description": "Beta. For each People column such as Owner, the email addresses of the people in it (people_emails.Owner), ready to message or email them.",
+                  "type": "object"
+                },
                 "properties": {
                   "description": "Extracted property values from the page.",
                   "type": "object"
@@ -524,6 +625,171 @@
         "write",
         "modify",
         "delete"
+      ]
+    },
+    "restore_page": {
+      "description": "Bring a Notion page back from the trash to where it was, such as one an earlier step moved there.",
+      "display_name": "Restore page from trash",
+      "display_str_template": "Restore '{0}' from the trash.",
+      "handler": "actions.restore_page",
+      "id": "notion_restore_page",
+      "method": "POST",
+      "mock_response": {
+        "archived": false,
+        "id": "a1b2c3d4e5f6",
+        "status": "success",
+        "title": "Meeting Notes",
+        "url": "https://www.notion.so/Meeting-Notes-a1b2c3d4e5f6"
+      },
+      "name": "restore_page",
+      "output_formatter": "actions.format_restore_page_output",
+      "parameters": [
+        {
+          "description": "The page, as an earlier step gave it, or its ID.",
+          "display_name": "Page",
+          "label_source": "page_names",
+          "name": "page_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/notion/restore-page",
+      "result_str_template": "Page restored.",
+      "returns": {
+        "properties": {
+          "archived": {
+            "description": "Whether the page is still in the trash.",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Page ID.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Action execution status.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Page title.",
+            "type": "string"
+          },
+          "url": {
+            "description": "Page URL.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "retrieve_database": {
+      "description": "Get a Notion database's name and columns, with each column's type and the choices of its select and status columns.",
+      "display_name": "Get database",
+      "display_str_template": "Get the database {0}.",
+      "handler": "actions.retrieve_database",
+      "id": "notion_retrieve_database",
+      "method": "POST",
+      "mock_response": {
+        "archived": false,
+        "columns": [
+          {
+            "name": "Name",
+            "options": [],
+            "type": "title"
+          },
+          {
+            "name": "Status",
+            "options": [
+              "Not started",
+              "In progress",
+              "Done"
+            ],
+            "type": "status"
+          },
+          {
+            "name": "Due",
+            "options": [],
+            "type": "date"
+          }
+        ],
+        "count": 3,
+        "id": "d9c8b7a6f5e4",
+        "name": "Permits",
+        "status": "success",
+        "url": "https://www.notion.so/d9c8b7a6f5e4"
+      },
+      "name": "retrieve_database",
+      "output_formatter": "actions.format_retrieve_database_output",
+      "parameters": [
+        {
+          "description": "The database to read.",
+          "display_name": "Database",
+          "dynamic_source": "databases",
+          "dynamic_source_allows_custom": true,
+          "name": "database_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/notion/retrieve-database",
+      "result_str_template": "Database retrieved.",
+      "returns": {
+        "properties": {
+          "archived": {
+            "description": "Whether the database is in the trash.",
+            "type": "boolean"
+          },
+          "columns": {
+            "description": "The database's columns.",
+            "items": {
+              "properties": {
+                "name": {
+                  "description": "The column's name, as properties use it.",
+                  "type": "string"
+                },
+                "options": {
+                  "description": "The choices of a select, multi-select or status column.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "description": "What the column holds, such as title, select, date or people.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "Number of columns.",
+            "type": "integer"
+          },
+          "id": {
+            "description": "Database ID.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Database name.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Action execution status.",
+            "type": "string"
+          },
+          "url": {
+            "description": "Database URL.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
       ]
     },
     "retrieve_page": {
@@ -795,6 +1061,27 @@
           "display_name": "Title contains",
           "name": "title",
           "required": false
+        }
+      ]
+    },
+    "notion_page_edited_trigger": {
+      "description": "Runs when one Notion page you choose is edited, whether its content or its properties, such as a policy page or a meeting agenda. Edits made before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Page edited",
+      "id": "notion_page_edited_trigger",
+      "output": {
+        "id": "The page's ID.",
+        "last_edited_time": "When it was last edited.",
+        "properties": "Its properties, by name, when it's a database page.",
+        "title": "The page's title.",
+        "url": "The page's link in Notion."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The page to watch: its link or its ID. The page must be shared with the integration.",
+          "display_name": "Page",
+          "name": "page_id",
+          "required": true
         }
       ]
     },

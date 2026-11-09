@@ -1,5 +1,61 @@
 {
   "actions": {
+    "activate_user": {
+      "description": "Activate a staged user so they can sign in. JumpCloud emails them a welcome message, or a link to choose a password if they have none.",
+      "display_name": "Activate user",
+      "display_str_template": "Activate user.",
+      "handler": "actions.activate_user",
+      "id": "jumpcloud_activate_user",
+      "method": "POST",
+      "mock_response": {
+        "action": "activated",
+        "done": true,
+        "user_id": "5f3d7b8e9c1a2b0012345678"
+      },
+      "name": "activate_user",
+      "output_formatter": "actions.done_formatter.<locals>.format_output",
+      "parameters": [
+        {
+          "description": "The user. Pick one, or give their id from an earlier step.",
+          "display_name": "User",
+          "dynamic_source": "users",
+          "dynamic_source_allows_custom": true,
+          "name": "jumpcloud_user_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": true,
+          "description": "Leave on for JumpCloud to email the user. Turn off if you'll tell them yourself.",
+          "display_name": "Send the welcome email",
+          "name": "send_email",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/jumpcloud/activate-user",
+      "result_str_template": "User activated.",
+      "returns": {
+        "properties": {
+          "action": {
+            "description": "What was done",
+            "type": "string"
+          },
+          "done": {
+            "description": "Always true once done",
+            "type": "boolean"
+          },
+          "user_id": {
+            "description": "The user changed",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
     "add_user_to_group": {
       "description": "Add a user to a user group.",
       "display_name": "Add user to group",
@@ -1981,6 +2037,54 @@
         "modify"
       ]
     },
+    "unsuspend_user": {
+      "description": "Let a suspended user sign in again. If they aren't suspended, the step stops and changes nothing.",
+      "display_name": "Unsuspend user",
+      "display_str_template": "Unsuspend user.",
+      "handler": "actions.unsuspend_user",
+      "id": "jumpcloud_unsuspend_user",
+      "method": "POST",
+      "mock_response": {
+        "action": "unsuspended",
+        "done": true,
+        "user_id": "5f3d7b8e9c1a2b0012345678"
+      },
+      "name": "unsuspend_user",
+      "output_formatter": "actions.done_formatter.<locals>.format_output",
+      "parameters": [
+        {
+          "description": "The user. Pick one, or give their id from an earlier step.",
+          "display_name": "User",
+          "dynamic_source": "users",
+          "dynamic_source_allows_custom": true,
+          "name": "jumpcloud_user_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/jumpcloud/unsuspend-user",
+      "result_str_template": "User unsuspended.",
+      "returns": {
+        "properties": {
+          "action": {
+            "description": "What was done",
+            "type": "string"
+          },
+          "done": {
+            "description": "Always true once done",
+            "type": "boolean"
+          },
+          "user_id": {
+            "description": "The user changed",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
     "update_system_group": {
       "description": "Rename a device group or change its description.",
       "display_name": "Update device group",
@@ -2340,5 +2444,64 @@
   "display_name": "JumpCloud",
   "id": "jumpcloud",
   "logo": "https://www.lodol.com/app-icons/jumpcloud-icon.svg",
-  "triggers": {}
+  "triggers": {
+    "jumpcloud_new_user_trigger": {
+      "description": "Runs for each user added to JumpCloud, staged or active, with their username, email, name, job title and department. Users already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "New user",
+      "id": "jumpcloud_new_user_trigger",
+      "output": {
+        "company": "Their company.",
+        "created_at": "When the user was created (UTC).",
+        "department": "Their department.",
+        "display_name": "Their name as JumpCloud shows it.",
+        "email": "Their email address.",
+        "first_name": "Their first name.",
+        "job_title": "Their job title.",
+        "last_name": "Their last name.",
+        "location": "Their location.",
+        "state": "ACTIVATED, STAGED or SUSPENDED.",
+        "user_id": "The user's JumpCloud id, for later JumpCloud steps.",
+        "username": "Their JumpCloud username."
+      },
+      "parameters": []
+    },
+    "jumpcloud_user_added_to_group_trigger": {
+      "description": "Runs each time a user is added to a JumpCloud user group you choose, with the user's id; add a Get user step for their name and email. Members already in it when the workflow is turned on don't start it. Watches groups of up to 4,000 members. How often it checks follows your workspace plan.",
+      "display_name": "User added to a group",
+      "id": "jumpcloud_user_added_to_group_trigger",
+      "output": {
+        "group_id": "The group's JumpCloud id.",
+        "user_id": "The JumpCloud id of the user added, for a Get user step."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The user group to watch. Pick one, or give its id from an earlier step.",
+          "display_name": "User group",
+          "name": "group_id",
+          "required": true
+        }
+      ]
+    },
+    "jumpcloud_user_suspended_trigger": {
+      "description": "Runs each time a JumpCloud user is suspended, so they can no longer sign in, with their username, email and department. Users already suspended when the workflow is turned on don't start it. Watches up to 4,000 suspended users. How often it checks follows your workspace plan.",
+      "display_name": "User suspended",
+      "id": "jumpcloud_user_suspended_trigger",
+      "output": {
+        "company": "Their company.",
+        "created_at": "When the user was created (UTC).",
+        "department": "Their department.",
+        "display_name": "Their name as JumpCloud shows it.",
+        "email": "Their email address.",
+        "first_name": "Their first name.",
+        "job_title": "Their job title.",
+        "last_name": "Their last name.",
+        "location": "Their location.",
+        "state": "ACTIVATED, STAGED or SUSPENDED.",
+        "user_id": "The user's JumpCloud id, for later JumpCloud steps.",
+        "username": "Their JumpCloud username."
+      },
+      "parameters": []
+    }
+  }
 }

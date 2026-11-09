@@ -19,8 +19,9 @@
       "name": "create_project",
       "parameters": [
         {
-          "description": "The ID of the workspace. You can get this from the List Clockify workspaces action.",
-          "display_name": "Workspace ID",
+          "description": "The workspace: pick one, or use its id from an earlier step such as List workspaces.",
+          "display_name": "Workspace",
+          "dynamic_source": "workspaces",
           "name": "workspace_id",
           "required": true,
           "type": "ParameterType.STRING"
@@ -105,8 +106,9 @@
       "name": "create_time_entry",
       "parameters": [
         {
-          "description": "The ID of the workspace. You can get this from the List Clockify workspaces action.",
-          "display_name": "Workspace ID",
+          "description": "The workspace: pick one, or use its id from an earlier step such as List workspaces.",
+          "display_name": "Workspace",
+          "dynamic_source": "workspaces",
           "name": "workspace_id",
           "required": true,
           "type": "ParameterType.STRING"
@@ -189,6 +191,54 @@
         "write"
       ]
     },
+    "delete_time_entry": {
+      "description": "Delete a Clockify time entry for good. This can't be undone.",
+      "display_name": "Delete time entry",
+      "display_str_template": "Delete time entry '{1}'.",
+      "handler": "actions.delete_time_entry",
+      "id": "clockify_delete_time_entry",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "time_entry_id": "9d5e6f7a8b9c0d1e2f3a4b5c"
+      },
+      "name": "delete_time_entry",
+      "parameters": [
+        {
+          "description": "The workspace: pick one, or use its id from an earlier step such as List workspaces.",
+          "display_name": "Workspace",
+          "dynamic_source": "workspaces",
+          "name": "workspace_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The time entry's id, from an earlier step such as List time entries or Create time entry.",
+          "display_name": "Time entry",
+          "name": "time_entry_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/clockify/delete-time-entry",
+      "result_str_template": "Time entry '{clockify_delete_time_entry,time_entry_id}' deleted.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "True once the entry is deleted.",
+            "type": "boolean"
+          },
+          "time_entry_id": {
+            "description": "The id of the entry deleted.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "delete"
+      ]
+    },
     "list_projects": {
       "description": "Retrieve projects in a specified Clockify workspace. Results are paged; raise the page size or step through pages to see them all.",
       "display_name": "List projects",
@@ -212,8 +262,9 @@
       "name": "list_projects",
       "parameters": [
         {
-          "description": "The ID of the workspace. You can get this from the List Clockify workspaces action.",
-          "display_name": "Workspace ID",
+          "description": "The workspace: pick one, or use its id from an earlier step such as List workspaces.",
+          "display_name": "Workspace",
+          "dynamic_source": "workspaces",
           "name": "workspace_id",
           "required": true,
           "type": "ParameterType.STRING"
@@ -274,6 +325,144 @@
                 },
                 "name": {
                   "description": "Name of the project.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_time_entries": {
+      "description": "List your own time entries in a Clockify workspace, newest first, with each one's project and how long it lasted. Optionally only between two times or for one project.",
+      "display_name": "List time entries",
+      "display_str_template": "List your time entries in workspace '{0}'.",
+      "handler": "actions.list_time_entries",
+      "id": "clockify_list_time_entries",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "has_more": false,
+        "time_entries": [
+          {
+            "billable": true,
+            "description": "Drafting the release notes",
+            "duration": "PT1H30M",
+            "end": "2026-01-28T10:30:00Z",
+            "id": "9d5e6f7a8b9c0d1e2f3a4b5c",
+            "project_id": "6a2b3c4d5e6f7a8b9c0d1e2f",
+            "project_name": "Sample Project",
+            "start": "2026-01-28T09:00:00Z",
+            "task_id": null,
+            "task_name": null
+          }
+        ]
+      },
+      "name": "list_time_entries",
+      "parameters": [
+        {
+          "description": "The workspace: pick one, or use its id from an earlier step such as List workspaces.",
+          "display_name": "Workspace",
+          "dynamic_source": "workspaces",
+          "name": "workspace_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only entries that start at or after this time.",
+          "display_name": "From",
+          "name": "start",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Only entries that start before this time.",
+          "display_name": "To",
+          "name": "end",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Only entries logged to this project.",
+          "display_name": "Project",
+          "dynamic_source": "projects",
+          "dynamic_source_depends_on": [
+            "workspace_id"
+          ],
+          "name": "project_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The most entries to return, up to 1000. Defaults to 50.",
+          "display_name": "Limit",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/clockify/list-time-entries",
+      "result_str_template": "Fetched {clockify_list_time_entries,count} time entries.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many entries came back.",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "True when the limit was reached, so there may be more entries.",
+            "type": "boolean"
+          },
+          "time_entries": {
+            "description": "Your time entries, newest first.",
+            "items": {
+              "properties": {
+                "billable": {
+                  "description": "Whether the entry counts as billable time.",
+                  "type": "boolean"
+                },
+                "description": {
+                  "description": "The note describing what was worked on.",
+                  "type": "string"
+                },
+                "duration": {
+                  "description": "How long the entry lasted, as an ISO 8601 duration such as PT1H30M. Null while the timer is still running.",
+                  "type": "string"
+                },
+                "end": {
+                  "description": "When the entry ends, ISO 8601 UTC. Null while the timer is still running.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "Unique identifier of the time entry.",
+                  "type": "string"
+                },
+                "project_id": {
+                  "description": "ID of the project the time is logged against, if any.",
+                  "type": "string"
+                },
+                "project_name": {
+                  "description": "The project's name, if the entry has one.",
+                  "type": "string"
+                },
+                "start": {
+                  "description": "When the entry starts, ISO 8601 UTC.",
+                  "type": "string"
+                },
+                "task_id": {
+                  "description": "ID of the task within the project, if any.",
+                  "type": "string"
+                },
+                "task_name": {
+                  "description": "The task's name, if the entry has one.",
                   "type": "string"
                 }
               },
@@ -360,8 +549,9 @@
       "name": "start_timer",
       "parameters": [
         {
-          "description": "The ID of the workspace. You can get this from the List Clockify workspaces action.",
-          "display_name": "Workspace ID",
+          "description": "The workspace: pick one, or use its id from an earlier step such as List workspaces.",
+          "display_name": "Workspace",
+          "dynamic_source": "workspaces",
           "name": "workspace_id",
           "required": true,
           "type": "ParameterType.STRING"
@@ -452,8 +642,9 @@
       "name": "stop_timer",
       "parameters": [
         {
-          "description": "The ID of the workspace. You can get this from the List Clockify workspaces action.",
-          "display_name": "Workspace ID",
+          "description": "The workspace: pick one, or use its id from an earlier step such as List workspaces.",
+          "display_name": "Workspace",
+          "dynamic_source": "workspaces",
           "name": "workspace_id",
           "required": true,
           "type": "ParameterType.STRING"
@@ -506,6 +697,132 @@
       "scopes": [
         "modify"
       ]
+    },
+    "update_time_entry": {
+      "description": "Change a Clockify time entry's note, project, start, end or billable flag. Only the fields you fill in change; the rest stay as they are.",
+      "display_name": "Update time entry",
+      "display_str_template": "Update time entry '{1}'.",
+      "handler": "actions.update_time_entry",
+      "id": "clockify_update_time_entry",
+      "method": "POST",
+      "mock_response": {
+        "time_entry": {
+          "billable": true,
+          "description": "Drafting the release notes",
+          "duration": "PT1H30M",
+          "end": "2026-01-28T10:30:00Z",
+          "id": "9d5e6f7a8b9c0d1e2f3a4b5c",
+          "project_id": "6a2b3c4d5e6f7a8b9c0d1e2f",
+          "start": "2026-01-28T09:00:00Z",
+          "task_id": null
+        }
+      },
+      "name": "update_time_entry",
+      "parameters": [
+        {
+          "description": "The workspace: pick one, or use its id from an earlier step such as List workspaces.",
+          "display_name": "Workspace",
+          "dynamic_source": "workspaces",
+          "name": "workspace_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The time entry's id, from an earlier step such as List time entries or Create time entry.",
+          "display_name": "Time entry",
+          "name": "time_entry_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A new note describing the work.",
+          "display_name": "Description",
+          "multiline": true,
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Pick a project in the workspace, or use its id from an earlier step.",
+          "display_name": "Project",
+          "dynamic_source": "projects",
+          "dynamic_source_depends_on": [
+            "workspace_id"
+          ],
+          "name": "project_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A new start time.",
+          "display_name": "Start",
+          "name": "start",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "A new end time. Giving one to a running timer stops it.",
+          "display_name": "End",
+          "name": "end",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Whether the time is billable.",
+          "display_name": "Billable",
+          "name": "billable",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/clockify/update-time-entry",
+      "result_str_template": "Time entry '{clockify_update_time_entry,time_entry,id}' updated.",
+      "returns": {
+        "properties": {
+          "time_entry": {
+            "properties": {
+              "billable": {
+                "description": "Whether the entry counts as billable time.",
+                "type": "boolean"
+              },
+              "description": {
+                "description": "The note describing what was worked on.",
+                "type": "string"
+              },
+              "duration": {
+                "description": "How long the entry lasted, as an ISO 8601 duration such as PT1H30M. Null while the timer is still running.",
+                "type": "string"
+              },
+              "end": {
+                "description": "When the entry ends, ISO 8601 UTC. Null while the timer is still running.",
+                "type": "string"
+              },
+              "id": {
+                "description": "Unique identifier of the time entry.",
+                "type": "string"
+              },
+              "project_id": {
+                "description": "ID of the project the time is logged against, if any.",
+                "type": "string"
+              },
+              "start": {
+                "description": "When the entry starts, ISO 8601 UTC.",
+                "type": "string"
+              },
+              "task_id": {
+                "description": "ID of the task within the project, if any.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "modify"
+      ]
     }
   },
   "categories": [
@@ -515,5 +832,40 @@
   "display_name": "Clockify",
   "id": "clockify",
   "logo": "https://www.lodol.com/app-icons/clockify-icon.png",
-  "triggers": {}
+  "triggers": {
+    "clockify_new_time_entry_trigger": {
+      "description": "Runs for each new Clockify time entry of yours in a workspace, a timer you start included, with its note, project, task and start, for one project or all of them. Entries already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "New time entry",
+      "id": "clockify_new_time_entry_trigger",
+      "output": {
+        "billable": "Whether the time is billable.",
+        "description": "The note describing the work.",
+        "duration": "How long it lasted, such as PT1H30M; empty while running.",
+        "end": "When it ended (UTC); empty while the timer runs.",
+        "id": "The time entry's Clockify id, for Update or Delete time entry.",
+        "project_id": "The project's id, if it has one.",
+        "project_name": "The project's name.",
+        "start": "When it started (UTC).",
+        "task_id": "The task's id, if it has one.",
+        "task_name": "The task's name.",
+        "workspace_id": "The workspace it is in."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The Clockify workspace to watch.",
+          "display_name": "Workspace",
+          "name": "workspace_id",
+          "required": true
+        },
+        {
+          "arg_index": 1,
+          "description": "Only watch time logged to this project. Leave empty to watch all your time in the workspace.",
+          "display_name": "Project",
+          "name": "project_id",
+          "required": false
+        }
+      ]
+    }
+  }
 }

@@ -1,7 +1,64 @@
 {
   "actions": {
+    "call_function": {
+      "description": "Run one of your project's database functions and get back what it returns. A function can change or delete data as well as read it, so check what it does before you use it here.",
+      "display_name": "Call a database function",
+      "display_str_template": "Call the database function '{function}'.",
+      "handler": "actions.call_function",
+      "id": "supabase_call_function",
+      "method": "POST",
+      "mock_response": {
+        "result": [
+          {
+            "id": 7,
+            "status": "open"
+          }
+        ]
+      },
+      "name": "call_function",
+      "parameters": [
+        {
+          "description": "The function's name as it is in your database, such as get_open_orders. It must be in the public schema.",
+          "display_name": "Function name",
+          "name": "function",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The function's inputs by name, given as name-and-value pairs (for example, {\"customer_id\": 42}). Leave blank for a function that takes none.",
+          "display_name": "Inputs",
+          "name": "arguments",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/supabase/call-function",
+      "result_str_template": "Function called.",
+      "returns": {
+        "properties": {
+          "result": {
+            "description": "What the function returned: a value, a row, or a list of rows.",
+            "type": [
+              "array",
+              "object",
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
     "delete_rows": {
-      "description": "Delete rows in a Supabase table that match your conditions.",
+      "description": "Permanently delete every row in a Supabase table that matches your conditions. Deleted rows can't be brought back.",
       "display_name": "Delete rows from a table",
       "display_str_template": "Delete rows from '{table}'.",
       "handler": "actions.delete_rows",
@@ -169,7 +226,7 @@
       ]
     },
     "update_rows": {
-      "description": "Update rows in a Supabase table that match your conditions.",
+      "description": "Update every row in a Supabase table that matches your conditions. The columns you give replace the values already there.",
       "display_name": "Update rows in a table",
       "display_str_template": "Update rows in '{table}'.",
       "handler": "actions.update_rows",
@@ -225,15 +282,105 @@
       "scopes": [
         "modify"
       ]
+    },
+    "upsert_row": {
+      "description": "Add a row to a Supabase table, or, if a row with the same key is already there, overwrite that row's columns with the values you give. Columns you leave out keep their values.",
+      "display_name": "Insert or update a row",
+      "display_str_template": "Insert or update a row in '{table}'.",
+      "handler": "actions.upsert_row",
+      "id": "supabase_upsert_row",
+      "method": "POST",
+      "mock_response": {
+        "row": {
+          "id": 42,
+          "status": "paid"
+        }
+      },
+      "name": "upsert_row",
+      "parameters": [
+        {
+          "description": "The name of the table to save the row in.",
+          "display_name": "Table name",
+          "dynamic_source": "tables",
+          "name": "table",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The row's columns and values, including the ones that identify it. Pick a table and its columns appear as fields to fill in; if the table comes from an earlier step, enter column-and-value pairs yourself (for example, {\"id\": 42, \"status\": \"paid\"}).",
+          "display_name": "Row",
+          "dynamic_source": "columns",
+          "dynamic_source_depends_on": [
+            "table"
+          ],
+          "name": "row",
+          "required": true,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "The columns that say whether the row is already there, such as email. They must be the table's primary key or have a unique constraint. Leave empty to use the primary key.",
+          "display_name": "Columns that identify the row",
+          "dynamic_source": "columns",
+          "dynamic_source_depends_on": [
+            "table"
+          ],
+          "name": "match_columns",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/supabase/upsert-row",
+      "result_str_template": "Row saved.",
+      "returns": {
+        "properties": {
+          "row": {
+            "description": "The row as it is now saved.",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write",
+        "modify"
+      ]
     }
   },
   "categories": [
     "Databases",
     "Cloud Computing"
   ],
-  "description": "List, insert, update, and delete rows in your Supabase tables.",
+  "description": "List, insert, update, and delete rows in your Supabase tables, call database functions, and start a workflow when a row is added.",
   "display_name": "Supabase",
   "id": "supabase",
   "logo": "https://www.lodol.com/app-icons/supabase-icon.png",
-  "triggers": {}
+  "triggers": {
+    "supabase_new_row_trigger": {
+      "description": "Runs when a row is added to a Supabase table, found by checking for rows past the highest id (or other ever-growing column) seen so far. Rows already in the table don't trigger it.",
+      "display_name": "New row (Supabase)",
+      "id": "supabase_new_row_trigger",
+      "output": {
+        "column": "string",
+        "row": "object",
+        "table": "string",
+        "value": "string"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The table to watch, e.g. orders.",
+          "display_name": "Table",
+          "name": "table",
+          "required": true
+        },
+        {
+          "arg_index": 1,
+          "description": "A column whose value grows with every new row, such as an auto-increment id or a created-at time. Leave blank to use the table's primary key.",
+          "display_name": "Order column",
+          "name": "column",
+          "required": false
+        }
+      ]
+    }
+  }
 }

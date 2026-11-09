@@ -8,6 +8,7 @@
       "id": "arul_public_apis_check_ip_address",
       "method": "POST",
       "mock_response": {
+        "cidr": "199.199.199.199/32",
         "expected": [
           "199.199.199.0/24",
           "203.0.113.7"
@@ -39,37 +40,71 @@
           "name": "expected",
           "required": true,
           "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": "any",
+          "description": "Which kind of address to look up: IPv4 or IPv6. On a network that has both, a service that only speaks IPv4 sees the IPv4 address even when this lookup would go out over IPv6, so choose the kind the other service uses. 'Either' (the default) takes whichever the network prefers; 'IPv6' fails on a network with no IPv6 connection to the internet.",
+          "display_name": "IP version",
+          "name": "ip_version",
+          "options": [
+            {
+              "label": "Either, whichever the network uses (default)",
+              "value": "any"
+            },
+            {
+              "label": "IPv4",
+              "value": "ipv4"
+            },
+            {
+              "label": "IPv6",
+              "value": "ipv6"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/arul-public-apis/check-ip-address",
       "result_str_template": "On the list: {arul_public_apis_check_ip_address,matches} ({arul_public_apis_check_ip_address,ip}).",
       "returns": {
         "properties": {
+          "cidr": {
+            "description": "The address as a one-address CIDR range (ending /32 for IPv4, /128 for IPv6), the form many allow-lists ask for.",
+            "type": "string"
+          },
           "expected": {
+            "description": "The expected addresses and ranges the address was checked against, with blanks and repeats taken out.",
             "items": {
               "type": "string"
             },
             "type": "array"
           },
           "ip": {
+            "description": "The public IP address the request came from, as Arul's Public APIs saw it.",
             "type": "string"
           },
           "is_ipv4": {
+            "description": "True when the address is an IPv4 address.",
             "type": "boolean"
           },
           "is_ipv6": {
+            "description": "True when the address is an IPv6 address.",
             "type": "boolean"
           },
           "matched": {
+            "description": "The first expected entry the address matched, written as it was given, or empty when none did.",
             "type": "string"
           },
           "matches": {
+            "description": "True when the address is one of the expected addresses or falls inside one of the expected ranges.",
             "type": "boolean"
           },
           "source": {
+            "description": "Which of the service's two routes answered: 'json', or 'text' when the JSON route failed and the plain-text one was asked instead.",
             "type": "string"
           },
           "version": {
+            "description": "Which kind of address it is: 'IPv4' or 'IPv6'.",
             "type": "string"
           }
         },
@@ -82,14 +117,159 @@
         "delete"
       ]
     },
+    "find_ip_addresses": {
+      "description": "Look up this workflow's public IP address several times, each over a new connection, and list every different address that came back. Some networks share their outbound traffic across several addresses and pick one per connection, so a single lookup shows only one of them, and an allow-list built from it refuses some of the requests. Run this before setting up an allow-list: if more than one address comes back, the other service has to allow every one. A few lookups can still miss an address that is rarely used, so use more lookups, or run it again, when the count matters.",
+      "display_name": "Find all of this workflow's IP addresses",
+      "display_str_template": "Find every public IP address this workflow calls out from.",
+      "handler": "actions.find_ip_addresses",
+      "id": "arul_public_apis_find_ip_addresses",
+      "method": "POST",
+      "mock_response": {
+        "address_count": 2,
+        "addresses": [
+          "199.199.199.199",
+          "199.199.199.200"
+        ],
+        "cidrs": [
+          "199.199.199.199/32",
+          "199.199.199.200/32"
+        ],
+        "found": [
+          {
+            "cidr": "199.199.199.199/32",
+            "ip": "199.199.199.199",
+            "is_ipv4": true,
+            "is_ipv6": false,
+            "seen": 3,
+            "version": "IPv4"
+          },
+          {
+            "cidr": "199.199.199.200/32",
+            "ip": "199.199.199.200",
+            "is_ipv4": true,
+            "is_ipv6": false,
+            "seen": 2,
+            "version": "IPv4"
+          }
+        ],
+        "lookups": 5,
+        "single_address": false
+      },
+      "name": "find_ip_addresses",
+      "output_formatter": "actions.format_find_output",
+      "parameters": [
+        {
+          "default": 5,
+          "description": "How many times to look the address up, from 2 to 10. More lookups are more likely to find an address that is rarely used, and each one is a request to a free service that asks to be used reasonably. Defaults to 5.",
+          "display_name": "Number of lookups",
+          "maximum": 10,
+          "minimum": 2,
+          "name": "lookups",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "any",
+          "description": "Which kind of address to look up: IPv4 or IPv6. On a network that has both, a service that only speaks IPv4 sees the IPv4 address even when this lookup would go out over IPv6, so choose the kind the other service uses. 'Either' (the default) takes whichever the network prefers; 'IPv6' fails on a network with no IPv6 connection to the internet.",
+          "display_name": "IP version",
+          "name": "ip_version",
+          "options": [
+            {
+              "label": "Either, whichever the network uses (default)",
+              "value": "any"
+            },
+            {
+              "label": "IPv4",
+              "value": "ipv4"
+            },
+            {
+              "label": "IPv6",
+              "value": "ipv6"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/arul-public-apis/find-ip-addresses",
+      "result_str_template": "Found {arul_public_apis_find_ip_addresses,address_count} address(es) in {arul_public_apis_find_ip_addresses,lookups} lookups: {arul_public_apis_find_ip_addresses,addresses}.",
+      "returns": {
+        "properties": {
+          "address_count": {
+            "description": "How many different addresses were found.",
+            "type": "integer"
+          },
+          "addresses": {
+            "description": "Every different address the lookups came from, in the order they were first seen.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "cidrs": {
+            "description": "The same addresses as one-address CIDR ranges (ending /32 or /128), ready for an allow-list.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "found": {
+            "description": "One entry per address found, with its details and how many lookups came from it.",
+            "items": {
+              "properties": {
+                "cidr": {
+                  "description": "The address as a one-address CIDR range (ending /32 for IPv4, /128 for IPv6), the form many allow-lists ask for.",
+                  "type": "string"
+                },
+                "ip": {
+                  "description": "The public IP address the request came from, as Arul's Public APIs saw it.",
+                  "type": "string"
+                },
+                "is_ipv4": {
+                  "description": "True when the address is an IPv4 address.",
+                  "type": "boolean"
+                },
+                "is_ipv6": {
+                  "description": "True when the address is an IPv6 address.",
+                  "type": "boolean"
+                },
+                "seen": {
+                  "description": "How many of the lookups came from this address.",
+                  "type": "integer"
+                },
+                "version": {
+                  "description": "Which kind of address it is: 'IPv4' or 'IPv6'.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "lookups": {
+            "description": "How many lookups were made.",
+            "type": "integer"
+          },
+          "single_address": {
+            "description": "True when every lookup came from the same address.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "get_ip_address": {
-      "description": "Get the public IP address this workflow's requests go out from - Lodol's own outbound address, which is what a third-party API means when it asks you to allow-list 'your' IP. It is not the address of whoever is looking at the workflow, because the request is made by Lodol's servers. Comes back with whether it is IPv4 or IPv6, which decides what an allow-list entry has to look like.",
+      "description": "Get the public IP address this workflow's requests go out from - Lodol's own outbound address, which is what a third-party API means when it asks you to allow-list 'your' IP. It is not the address of whoever is looking at the workflow, because the request is made by Lodol's servers. Comes back with whether it is IPv4 or IPv6, which decides what an allow-list entry has to look like, and the address written as a CIDR range. A network can share its traffic across several outbound addresses, and then one lookup finds only one of them: 'Find all of this workflow's IP addresses' finds the rest.",
       "display_name": "Get this workflow's IP address",
       "display_str_template": "Get this workflow's public IP address.",
       "handler": "actions.get_ip_address",
       "id": "arul_public_apis_get_ip_address",
       "method": "POST",
       "mock_response": {
+        "cidr": "199.199.199.199/32",
         "ip": "199.199.199.199",
         "is_ipv4": true,
         "is_ipv6": false,
@@ -98,24 +278,56 @@
       },
       "name": "get_ip_address",
       "output_formatter": "actions.format_ip_output",
-      "parameters": [],
+      "parameters": [
+        {
+          "default": "any",
+          "description": "Which kind of address to look up: IPv4 or IPv6. On a network that has both, a service that only speaks IPv4 sees the IPv4 address even when this lookup would go out over IPv6, so choose the kind the other service uses. 'Either' (the default) takes whichever the network prefers; 'IPv6' fails on a network with no IPv6 connection to the internet.",
+          "display_name": "IP version",
+          "name": "ip_version",
+          "options": [
+            {
+              "label": "Either, whichever the network uses (default)",
+              "value": "any"
+            },
+            {
+              "label": "IPv4",
+              "value": "ipv4"
+            },
+            {
+              "label": "IPv6",
+              "value": "ipv6"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
       "path": "/actions/library/arul-public-apis/get-ip-address",
       "result_str_template": "This workflow calls out from {arul_public_apis_get_ip_address,ip} ({arul_public_apis_get_ip_address,version}).",
       "returns": {
         "properties": {
+          "cidr": {
+            "description": "The address as a one-address CIDR range (ending /32 for IPv4, /128 for IPv6), the form many allow-lists ask for.",
+            "type": "string"
+          },
           "ip": {
+            "description": "The public IP address the request came from, as Arul's Public APIs saw it.",
             "type": "string"
           },
           "is_ipv4": {
+            "description": "True when the address is an IPv4 address.",
             "type": "boolean"
           },
           "is_ipv6": {
+            "description": "True when the address is an IPv6 address.",
             "type": "boolean"
           },
           "source": {
+            "description": "Which of the service's two routes answered: 'json', or 'text' when the JSON route failed and the plain-text one was asked instead.",
             "type": "string"
           },
           "version": {
+            "description": "Which kind of address it is: 'IPv4' or 'IPv6'.",
             "type": "string"
           }
         },
@@ -129,7 +341,7 @@
   "categories": [
     "Utilities"
   ],
-  "description": "Find out which public IP address your workflows reach the internet from, using Arul's Public APIs - a free, keyless web service with no account and no API key. Get the address to paste into a third-party allow-list, or check it against the addresses you expect so a change is caught before it breaks every integration that allow-listed the old one.",
+  "description": "Find out which public IP address your workflows reach the internet from, using Arul's Public APIs - a free, keyless web service with no account and no API key. Get the address to paste into a third-party allow-list, find every address when your network uses more than one, or check it against the addresses you expect so a change is caught before it breaks every integration that allow-listed the old one.",
   "display_name": "Arul's Public APIs",
   "id": "arul_public_apis",
   "logo": "https://www.lodol.com/app-icons/arul-public-apis-icon.svg",

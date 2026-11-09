@@ -1,5 +1,75 @@
 {
   "actions": {
+    "create_file_from_text": {
+      "description": "Save text as a new file in Drive, such as a summary, a note or a log, as a plain text file or a Google Doc, and return a link to it.",
+      "display_name": "Create file from text",
+      "display_str_template": "Create the file '{0}'.",
+      "handler": "actions.create_file_from_text",
+      "id": "google_drive_create_file_from_text",
+      "method": "POST",
+      "mock_response": {
+        "file_id": "abc123",
+        "file_link": "https://drive.google.com/file/d/abc123/view",
+        "name": "Call summary.txt"
+      },
+      "name": "create_file_from_text",
+      "output_formatter": "actions.format_create_file_from_text_output",
+      "parameters": [
+        {
+          "description": "The new file's name. For a text file, end it in .txt so it opens as one.",
+          "display_name": "File name",
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What to put in the file.",
+          "display_name": "Text",
+          "multiline": true,
+          "name": "text",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The Google Drive folder to put it in. Leave blank for My Drive.",
+          "display_name": "Folder",
+          "label_source": "file_names",
+          "name": "folder_url",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Turn on to make a Google Doc instead of a plain text file.",
+          "display_name": "Make it a Google Doc",
+          "name": "as_google_doc",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/google-drive/create-file-from-text",
+      "result_str_template": "Created the file.",
+      "returns": {
+        "properties": {
+          "file_id": {
+            "description": "Its id, for a Google Docs step when it's a Google Doc",
+            "type": "string"
+          },
+          "file_link": {
+            "description": "A link to the new file",
+            "type": "string"
+          },
+          "name": {
+            "description": "Its name",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
     "create_folder": {
       "description": "Create a folder and return a link to it.",
       "display_name": "Create folder",
@@ -21,8 +91,10 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The Google Drive URL of the folder to create the new folder in.",
+          "description": "The folder to create the new folder in: pick one, or paste its link. Leave empty for the top of My Drive.",
           "display_name": "Parent folder",
+          "dynamic_source": "folders",
+          "dynamic_source_allows_custom": true,
           "label_source": "file_names",
           "name": "parent_folder_url",
           "required": false,
@@ -46,9 +118,9 @@
       ]
     },
     "delete_file": {
-      "description": "Delete a file from Drive.",
+      "description": "Move a file to the Google Drive trash. It can be restored from the trash for 30 days, after which Google deletes it for good.",
       "display_name": "Delete file",
-      "display_str_template": "Delete '{0}'.",
+      "display_str_template": "Move '{0}' to the trash.",
       "handler": "actions.delete_file",
       "id": "google_drive_delete_file",
       "method": "POST",
@@ -59,7 +131,7 @@
       "output_formatter": "actions.format_delete_file_output",
       "parameters": [
         {
-          "description": "The Google Drive URL of the file to delete.",
+          "description": "The Google Drive URL of the file to move to the trash.",
           "display_name": "File",
           "label_source": "file_names",
           "name": "file_url",
@@ -68,12 +140,12 @@
         }
       ],
       "path": "/actions/library/google-drive/delete-file",
-      "result_str_template": "Deleted file {0}.",
+      "result_str_template": "Moved file {0} to the trash.",
       "returns": {
         "description": "Response envelope; the payload is in the \"deleted\" field.",
         "properties": {
           "deleted": {
-            "description": "Whether the file was deleted",
+            "description": "Whether the file was moved to the trash",
             "type": "boolean"
           }
         },
@@ -106,17 +178,13 @@
           "name": "file_url",
           "required": true,
           "type": "ParameterType.STRING"
-        },
-        {
-          "description": "The folder to save the downloaded file in.",
-          "display_name": "Download folder",
-          "name": "download_dir",
-          "required": false,
-          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/google-drive/download-file-from-url",
       "result_str_template": "Downloaded file to {0}.",
+      "retired_parameters": [
+        "download_dir"
+      ],
       "returns": {
         "properties": {
           "content_type": {
@@ -164,8 +232,10 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The Google Drive URL of the folder to place the copy in.",
+          "description": "The folder to put the copy in: pick one, or paste its link. Leave empty to keep it beside the original.",
           "display_name": "Destination folder",
+          "dynamic_source": "folders",
+          "dynamic_source_allows_custom": true,
           "label_source": "file_names",
           "name": "destination_folder_url",
           "required": false,
@@ -281,6 +351,90 @@
         "read"
       ]
     },
+    "list_access": {
+      "description": "List everyone who can open a file or folder, and what each can do: people, groups, a whole organization, or anyone with the link.",
+      "display_name": "List who has access",
+      "display_str_template": "List who has access to '{0}'.",
+      "handler": "actions.list_access",
+      "id": "google_drive_list_access",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "people": [
+          {
+            "access": "owner",
+            "email": "owner@example.com",
+            "inherited": false,
+            "name": "Avery Owner",
+            "type": "user",
+            "who": "owner@example.com"
+          },
+          {
+            "access": "can view",
+            "email": "",
+            "inherited": false,
+            "name": "",
+            "type": "anyone",
+            "who": "Anyone with the link"
+          }
+        ]
+      },
+      "name": "list_access",
+      "output_formatter": "actions.format_list_access_output",
+      "parameters": [
+        {
+          "description": "The Google Drive link of the file or folder.",
+          "display_name": "File or folder",
+          "label_source": "file_names",
+          "name": "file_url",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-drive/list-access",
+      "result_str_template": "Listed who has access.",
+      "returns": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "people": {
+            "items": {
+              "properties": {
+                "access": {
+                  "description": "owner, can edit, can comment or can view",
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "inherited": {
+                  "description": "True when it comes from a shared drive or a folder above",
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "description": "user, group, domain or anyone",
+                  "type": "string"
+                },
+                "who": {
+                  "description": "Their email, or Anyone with the link",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "move_file": {
       "description": "Move a file to a different folder.",
       "display_name": "Move file",
@@ -303,8 +457,10 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The Google Drive URL of the folder to move the file to.",
+          "description": "The folder to move the file to: pick one, or paste its link.",
           "display_name": "Destination folder",
+          "dynamic_source": "folders",
+          "dynamic_source_allows_custom": true,
           "label_source": "file_names",
           "name": "destination_folder_url",
           "required": true,
@@ -413,6 +569,67 @@
         "read"
       ]
     },
+    "remove_access": {
+      "description": "Stop someone being able to open a file or folder, by their email address, or turn off link sharing, or both. Someone who has no access already is left as they are. The owner can't be removed.",
+      "display_name": "Remove access",
+      "display_str_template": "Remove access to '{0}'.",
+      "handler": "actions.remove_access",
+      "id": "google_drive_remove_access",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "removed": [
+          "someone@example.com"
+        ]
+      },
+      "name": "remove_access",
+      "output_formatter": "actions.format_remove_access_output",
+      "parameters": [
+        {
+          "description": "The Google Drive link of the file or folder.",
+          "display_name": "File or folder",
+          "label_source": "file_names",
+          "name": "file_url",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The email address of the person or group to remove. Leave blank to only turn off link sharing.",
+          "display_name": "Email",
+          "name": "email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Turn on to also stop anyone with the link opening it.",
+          "display_name": "Turn off link sharing",
+          "name": "link_sharing",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/google-drive/remove-access",
+      "result_str_template": "Removed access.",
+      "returns": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "removed": {
+            "description": "Whose access was removed; empty when they had none",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "delete"
+      ]
+    },
     "rename_file": {
       "description": "Give a file or folder a new name.",
       "display_name": "Rename file",
@@ -462,6 +679,62 @@
         "modify"
       ]
     },
+    "replace_file": {
+      "description": "Upload new contents for a file already in Drive, keeping its name, link, sharing and folder; Drive keeps the old contents as an earlier version. For uploaded files such as PDFs and Word documents, not Google Docs, Sheets or Slides.",
+      "display_name": "Replace file",
+      "display_str_template": "Replace '{0}'.",
+      "handler": "actions.replace_file",
+      "id": "google_drive_replace_file",
+      "method": "POST",
+      "mock_response": {
+        "file_link": "https://drive.google.com/file/d/abc123/view",
+        "name": "Price list.pdf"
+      },
+      "name": "replace_file",
+      "output_formatter": "actions.format_replace_file_output",
+      "parameters": [
+        {
+          "description": "The Google Drive link of the file to replace.",
+          "display_name": "File to replace",
+          "label_source": "file_names",
+          "name": "file_url",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The file with the new contents, chosen with the file picker or from an earlier step.",
+          "display_name": "New file",
+          "name": "file_path",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The new file's format, for example 'application/pdf'. Leave blank to keep the file's own type.",
+          "display_name": "File type",
+          "name": "mime_type",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-drive/replace-file",
+      "result_str_template": "Replaced the file.",
+      "returns": {
+        "properties": {
+          "file_link": {
+            "description": "A link to the file, the same as before",
+            "type": "string"
+          },
+          "name": {
+            "description": "Its name",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
     "search_files": {
       "description": "Find files by words in their names or indexed contents, across My Drive and shared drives. No file link is needed. Returns file names and links; use Read file to answer questions from their contents. Gets one page; to see more, run it again with the next page it gives.",
       "display_name": "Search files",
@@ -494,8 +767,10 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Optional Drive folder link to search only its direct children. Leave empty to search across Drive.",
+          "description": "The folder to search only the files directly in: pick one, or paste its link. Leave empty to search across Drive.",
           "display_name": "Folder",
+          "dynamic_source": "folders",
+          "dynamic_source_allows_custom": true,
           "label_source": "file_names",
           "name": "folder_url",
           "required": false,
@@ -562,6 +837,70 @@
       },
       "scopes": [
         "read"
+      ]
+    },
+    "share_by_link": {
+      "description": "Let anyone with the link open a file or folder, and get the link to send. The file doesn't show up in searches. Some organizations don't allow sharing outside them; Google then refuses.",
+      "display_name": "Share by link",
+      "display_str_template": "Share '{0}' with anyone who has the link ({access}).",
+      "handler": "actions.share_by_link",
+      "id": "google_drive_share_by_link",
+      "method": "POST",
+      "mock_response": {
+        "access": "view",
+        "link": "https://drive.google.com/file/d/abc123/view?usp=sharing"
+      },
+      "name": "share_by_link",
+      "output_formatter": "actions.format_share_by_link_output",
+      "parameters": [
+        {
+          "description": "The Google Drive link of the file or folder to share.",
+          "display_name": "File or folder",
+          "label_source": "file_names",
+          "name": "file_url",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "view",
+          "description": "What anyone with the link can do with it.",
+          "display_name": "Access",
+          "name": "access",
+          "options": [
+            {
+              "label": "Can view",
+              "value": "view"
+            },
+            {
+              "label": "Can comment",
+              "value": "comment"
+            },
+            {
+              "label": "Can edit",
+              "value": "edit"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/google-drive/share-by-link",
+      "result_str_template": "Shared {0} by link.",
+      "returns": {
+        "properties": {
+          "access": {
+            "description": "What they can do: view, comment or edit",
+            "type": "string"
+          },
+          "link": {
+            "description": "The link to send: anyone with it can open the file",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
       ]
     },
     "share_file": {
@@ -662,30 +1001,30 @@
       "output_formatter": "actions.format_upload_file_output",
       "parameters": [
         {
-          "description": "The file to upload, chosen with the file picker.",
+          "accepts_file_upload": true,
+          "accepts_variable_reference": true,
+          "description": "The file to upload: upload one, or pick a file from an earlier step.",
           "display_name": "File",
           "name": "file_path",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The Google Drive folder URL to upload the file to.",
+          "description": "The folder to upload the file to: pick one, or paste its link. Leave empty for the top of My Drive.",
           "display_name": "Folder",
+          "dynamic_source": "folders",
+          "dynamic_source_allows_custom": true,
           "label_source": "file_names",
           "name": "folder_url",
-          "required": false,
-          "type": "ParameterType.STRING"
-        },
-        {
-          "description": "The file's format, for example 'application/pdf'.",
-          "display_name": "File type",
-          "name": "mime_type",
           "required": false,
           "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/google-drive/upload-file",
       "result_str_template": "Uploaded file to {0}.",
+      "retired_parameters": [
+        "mime_type"
+      ],
       "returns": {
         "description": "Response envelope; the payload is in the \"upload_link\" field.",
         "properties": {

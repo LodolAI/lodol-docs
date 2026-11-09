@@ -11,10 +11,7 @@
         "comment": {
           "body": "Sample text content",
           "id": "abc123xyz789",
-          "issue_key": {
-            "id": "abc123",
-            "name": "Sample"
-          }
+          "issue_key": "PROJ-123"
         }
       },
       "name": "add_comment",
@@ -62,6 +59,63 @@
       },
       "scopes": [
         "write"
+      ]
+    },
+    "add_watcher": {
+      "description": "Add someone to a Jira issue's watchers, so Jira tells them when it changes.",
+      "display_name": "Add a watcher to an issue",
+      "display_str_template": "Add a watcher to {issue_key}.",
+      "handler": "actions.add_watcher",
+      "id": "jira_add_watcher",
+      "method": "POST",
+      "mock_response": {
+        "account_id": "5b10a2844c20165700ede21g",
+        "issue_key": "PROJ-123",
+        "url": "https://example.atlassian.net/browse/PROJ-123"
+      },
+      "name": "add_watcher",
+      "parameters": [
+        {
+          "description": "The issue's key, such as PROJ-123.",
+          "display_name": "Issue",
+          "name": "issue_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The person to add. To add someone by email address, use the account ID from Find users.",
+          "display_name": "Person",
+          "dynamic_source": "issue_assignees",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "issue_key"
+          ],
+          "name": "account_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/jira/add-watcher",
+      "result_str_template": "Watcher added to the Jira issue.",
+      "returns": {
+        "properties": {
+          "account_id": {
+            "description": "Account ID of the person now watching it",
+            "type": "string"
+          },
+          "issue_key": {
+            "description": "Jira issue key (format: PROJ-123)",
+            "type": "string"
+          },
+          "url": {
+            "description": "Link that opens the issue in Jira",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
       ]
     },
     "assign_issue": {
@@ -121,8 +175,106 @@
         "modify"
       ]
     },
+    "attach_file": {
+      "description": "Attach a file to a Jira issue: one you upload, one from an earlier step, or some text saved as a text file.",
+      "display_name": "Attach a file to an issue",
+      "display_str_template": "Attach a file to {issue_key}.",
+      "handler": "actions.attach_file",
+      "id": "jira_attach_file",
+      "method": "POST",
+      "mock_response": {
+        "attachment": {
+          "content_url": "https://example.atlassian.net/rest/api/3/attachment/content/10001",
+          "filename": "notes.txt",
+          "id": "10001",
+          "mime_type": "text/plain",
+          "size": 1024
+        },
+        "issue_key": "PROJ-123",
+        "url": "https://example.atlassian.net/browse/PROJ-123"
+      },
+      "name": "attach_file",
+      "parameters": [
+        {
+          "description": "The issue's key, such as PROJ-123.",
+          "display_name": "Issue",
+          "name": "issue_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "accepts_file_upload": true,
+          "accepts_variable_reference": true,
+          "autofill_name_param": "file_name",
+          "description": "The file to attach: upload one or pick one from an earlier step. Leave blank to attach Text instead.",
+          "display_name": "File",
+          "name": "file",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Text to attach as a text file, when there is no File. Leave blank when attaching a file.",
+          "display_name": "Text",
+          "multiline": true,
+          "name": "text",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The name the attachment has in Jira, such as notes.txt. Leave blank to keep the file's own name.",
+          "display_name": "File name",
+          "name": "file_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/jira/attach-file",
+      "result_str_template": "File attached to the Jira issue.",
+      "returns": {
+        "properties": {
+          "attachment": {
+            "description": "The attachment Jira added",
+            "properties": {
+              "content_url": {
+                "description": "Jira's address for the file's content",
+                "type": "string"
+              },
+              "filename": {
+                "description": "The attachment's file name",
+                "type": "string"
+              },
+              "id": {
+                "description": "The attachment's ID",
+                "type": "string"
+              },
+              "mime_type": {
+                "description": "Its file type, such as text/plain",
+                "type": "string"
+              },
+              "size": {
+                "description": "Its size in bytes",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "issue_key": {
+            "description": "Jira issue key (format: PROJ-123)",
+            "type": "string"
+          },
+          "url": {
+            "description": "Link that opens the issue in Jira",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
     "create_issue": {
-      "description": "Create an issue in a Jira project, with a title and, if you like, a description, type, priority and assignee.",
+      "description": "Create an issue in a Jira project, with a title and, if you like, a description, type, priority, assignee, due date, labels and component. To make a sub-task, choose a sub-task type and the issue it belongs under.",
       "display_name": "Create an issue",
       "display_str_template": "Create the issue '{summary}' in {project_key}.",
       "handler": "actions.create_issue",
@@ -201,6 +353,32 @@
           "name": "due_date",
           "required": false,
           "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Labels to put on the issue, separated by commas, such as customer, needs-review. A label can't contain spaces.",
+          "display_name": "Labels",
+          "name": "labels",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The part of the project the issue is about.",
+          "display_name": "Component",
+          "dynamic_source": "components",
+          "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "project_key"
+          ],
+          "name": "component",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The issue this one belongs under, such as PROJ-123: the parent of a sub-task, or the epic of a story. Leave blank for none.",
+          "display_name": "Parent issue",
+          "name": "parent_key",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/jira/create-issue",
@@ -234,6 +412,78 @@
       },
       "scopes": [
         "write"
+      ]
+    },
+    "find_users": {
+      "description": "Find the people in your Jira whose name or email address starts with what you type, with the account ID that Assign an issue and Add a watcher to an issue take.",
+      "display_name": "Find users",
+      "display_str_template": "Find Jira users matching '{query}'.",
+      "handler": "actions.find_users",
+      "id": "jira_find_users",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "users": [
+          {
+            "accountId": "5b10a2844c20165700ede21g",
+            "displayName": "Alex Kim",
+            "emailAddress": "alex.kim@example.com"
+          }
+        ]
+      },
+      "name": "find_users",
+      "parameters": [
+        {
+          "description": "The start of a person's name or email address, such as alex or alex@example.com.",
+          "display_name": "Name or email",
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The most people to return, from 1 to 50. Leave blank for 10.",
+          "display_name": "Most to return",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "max_results",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/jira/find-users",
+      "result_str_template": "Found the matching Jira users.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many people were found",
+            "type": "number"
+          },
+          "users": {
+            "description": "The matching people, best match first",
+            "items": {
+              "properties": {
+                "accountId": {
+                  "description": "Their account ID, for Assign an issue or Add a watcher to an issue",
+                  "type": "string"
+                },
+                "displayName": {
+                  "description": "Their name as shown in Jira",
+                  "type": "string"
+                },
+                "emailAddress": {
+                  "description": "Their email address, empty when they have hidden it",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
       ]
     },
     "get_issue_details": {
@@ -388,6 +638,77 @@
         "read"
       ]
     },
+    "link_issues": {
+      "description": "Link one Jira issue to another, such as PROJ-1 blocks PROJ-2 or PROJ-1 relates to PROJ-2.",
+      "display_name": "Link two issues",
+      "display_str_template": "Link {issue_key} to {other_issue_key}.",
+      "handler": "actions.link_issues",
+      "id": "jira_link_issues",
+      "method": "POST",
+      "mock_response": {
+        "issue_key": "PROJ-1",
+        "link_type": "Blocks",
+        "other_issue_key": "PROJ-2",
+        "relationship": "blocks",
+        "url": "https://example.atlassian.net/browse/PROJ-1"
+      },
+      "name": "link_issues",
+      "parameters": [
+        {
+          "description": "The issue's key, such as PROJ-123.",
+          "display_name": "Issue",
+          "name": "issue_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How the first issue relates to the other, as your Jira words it, such as blocks, is blocked by or relates to.",
+          "display_name": "How it relates",
+          "dynamic_source": "link_relationships",
+          "dynamic_source_allows_custom": true,
+          "name": "relationship",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The issue to link it to, such as PROJ-456.",
+          "display_name": "Other issue",
+          "name": "other_issue_key",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/jira/link-issues",
+      "result_str_template": "Jira issues linked.",
+      "returns": {
+        "properties": {
+          "issue_key": {
+            "description": "The first issue's key",
+            "type": "string"
+          },
+          "link_type": {
+            "description": "The link's type, as Jira names it (Blocks)",
+            "type": "string"
+          },
+          "other_issue_key": {
+            "description": "The key of the issue it was linked to",
+            "type": "string"
+          },
+          "relationship": {
+            "description": "How the first issue now relates to the other (blocks, is blocked by)",
+            "type": "string"
+          },
+          "url": {
+            "description": "Link that opens the first issue in Jira",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
     "list_projects": {
       "description": "List the Jira projects your connected account can see.",
       "display_name": "List projects",
@@ -517,6 +838,14 @@
       "id": "jira_search_issues",
       "method": "POST",
       "mock_response": {
+        "by_person": [
+          {
+            "count": 1,
+            "email": "alex.kim@example.com",
+            "issue_lines": "\u2022 PROJ-1: Sample Task",
+            "name": "Alex Kim"
+          }
+        ],
         "issues": [
           {
             "assignee": {
@@ -563,14 +892,22 @@
           "type": "ParameterType.BOOLEAN"
         },
         {
-          "description": "Beta. With Only overdue issues: the project's key, such as PROJ, to look only at that project. Leave empty for every project.",
+          "description": "Beta. Turn on by giving a number of days to get the issues finished in the last this many days (7 for a weekly recap), grouped by assignee. Needs no search written; replaces Search.",
+          "display_name": "Finished in the last days",
+          "minimum": 1,
+          "name": "finished_in_last_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Beta. With Only overdue issues or Finished in the last days: the project's key, such as PROJ, to look only at that project. Leave empty for every project.",
           "display_name": "Project",
           "name": "project",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Beta. With Only overdue issues: leave out issues nobody is assigned to, for a message to each person about their own.",
+          "description": "Beta. With Only overdue issues or Finished in the last days: leave out issues nobody is assigned to, for a message to each person about their own. The result's by_person (beta) already groups them per person, with their issues written as lines, so no grouping or joining step is needed.",
           "display_name": "Only assigned issues",
           "name": "only_assigned",
           "required": false,
@@ -595,6 +932,31 @@
       "result_str_template": "Found the matching Jira issues.",
       "returns": {
         "properties": {
+          "by_person": {
+            "description": "Beta. The assigned issues grouped by person, for a message to each about their own: one entry per assignee, in order of appearance. Unassigned issues are left out.",
+            "items": {
+              "properties": {
+                "count": {
+                  "description": "How many of the issues are theirs",
+                  "type": "number"
+                },
+                "email": {
+                  "description": "Their email address, empty when they have hidden it in their Jira profile",
+                  "type": "string"
+                },
+                "issue_lines": {
+                  "description": "Their issues as a list, one per line (\u2022 PROJ-12: Fix login), ready to put in a message",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The person's name as shown in Jira",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
           "issues": {
             "description": "Array of Jira issues matching the search query. Each issue contains id, key, summary, status, assignee, created, updated, due_date, priority and issue_type. Use the key to perform actions on specific issues",
             "items": {
@@ -713,15 +1075,9 @@
       "id": "jira_transition_issue",
       "method": "POST",
       "mock_response": {
-        "issue_key": {
-          "id": "abc123",
-          "name": "Sample"
-        },
+        "issue_key": "PROJ-123",
         "status": "Done",
-        "transition_id": {
-          "id": "abc123",
-          "name": "Sample"
-        }
+        "transition_id": "31"
       },
       "name": "transition_issue",
       "parameters": [
@@ -873,7 +1229,7 @@
   "categories": [
     "Project Management"
   ],
-  "description": "Create, update, assign, move, comment on and find issues in your Jira projects.",
+  "description": "Create, update, assign, move, comment on, link, attach files to and find issues in your Jira projects.",
   "display_name": "Jira",
   "id": "jira",
   "logo": "https://www.lodol.com/app-icons/jira-icon.svg",
@@ -919,6 +1275,46 @@
           "description": "Only run when an issue moves into this status, such as Done. Leave blank to run for every move.",
           "display_name": "New status",
           "name": "to_status",
+          "required": false
+        }
+      ]
+    },
+    "jira_issue_updated_trigger": {
+      "description": "Runs when an existing issue changes in Jira: its fields, status, assignee or a new comment, with the issue as it is now.",
+      "display_name": "Issue updated",
+      "id": "jira_issue_updated_trigger",
+      "output": {
+        "assignee": "Who it is assigned to: displayName, emailAddress, accountId.",
+        "created": "When it was created.",
+        "description": "The description, as plain text.",
+        "due_date": "Its due date, if it has one.",
+        "id": "The issue's ID.",
+        "issue_type": "The issue type, such as Bug or Task.",
+        "key": "The issue key, such as ENG-123.",
+        "labels": "Its labels.",
+        "priority": "The priority, such as High.",
+        "project_key": "The project's key, such as ENG.",
+        "project_name": "The project's name.",
+        "reporter": "Who reported it: displayName, emailAddress, accountId.",
+        "status": "Its status, such as In Progress.",
+        "status_category": "Its status category: To Do, In Progress or Done.",
+        "summary": "The summary.",
+        "updated": "When it was last changed.",
+        "url": "The issue's page in Jira."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only run for issues in this project. Leave blank for every project the account can see.",
+          "display_name": "Project",
+          "name": "project",
+          "required": false
+        },
+        {
+          "arg_index": 1,
+          "description": "Beta. Only run for issues that match this search, written in JQL, Jira's search language, such as labels = customer AND priority = High. Leave blank for every issue.",
+          "display_name": "Search",
+          "name": "jql",
           "required": false
         }
       ]
@@ -989,6 +1385,27 @@
           "description": "Only run for issues in this project. Leave blank for every project the account can see.",
           "display_name": "Project",
           "name": "project",
+          "required": false
+        },
+        {
+          "arg_index": 1,
+          "description": "Beta. Only run for this type of issue, such as Bug or Task. Leave blank for every type.",
+          "display_name": "Issue type",
+          "name": "issue_type",
+          "required": false
+        },
+        {
+          "arg_index": 2,
+          "description": "Beta. Only run for issues with this priority, such as Highest or High, spelled the way your Jira names it. Leave blank for every priority.",
+          "display_name": "Priority",
+          "name": "priority",
+          "required": false
+        },
+        {
+          "arg_index": 3,
+          "description": "Beta. Only run for issues that match this search, written in JQL, Jira's search language, such as labels = customer AND priority = High. Leave blank for every issue.",
+          "display_name": "Search",
+          "name": "jql",
           "required": false
         }
       ]

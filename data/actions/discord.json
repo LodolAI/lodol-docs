@@ -446,106 +446,6 @@
         "delete"
       ]
     },
-    "count_channel_messages": {
-      "description": "Count how many messages were sent in a specific channel over the past number of days you choose.",
-      "display_name": "Count recent messages in a channel.",
-      "display_str_template": "Count messages in channel '{0}' from the last {1} day(s).",
-      "handler": "actions.count_channel_messages",
-      "id": "discord_count_channel_messages",
-      "method": "POST",
-      "mock_response": {
-        "count": 42,
-        "status": "success"
-      },
-      "name": "count_channel_messages",
-      "output_formatter": "actions.format_count_channel_messages_output",
-      "parameters": [
-        {
-          "description": "The Discord channel ID.",
-          "display_name": "Channel",
-          "dynamic_source": "text_channels",
-          "dynamic_source_allows_custom": true,
-          "name": "channel_id",
-          "required": true,
-          "type": "ParameterType.STRING"
-        },
-        {
-          "description": "How many days back to count, as a whole number (0 or higher). Use 0 to count messages from today only.",
-          "display_name": "Days",
-          "name": "days",
-          "required": true,
-          "type": "ParameterType.NUMBER"
-        }
-      ],
-      "path": "/actions/library/discord/count-channel-messages",
-      "result_str_template": "Found {count_channel_messages,count} messages.",
-      "returns": {
-        "description": "Response envelope; the payload is in the \"count\" field.",
-        "properties": {
-          "count": {
-            "description": "The count of messages in the channel within the time period.",
-            "type": "number"
-          },
-          "status": {
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "scopes": [
-        "read"
-      ]
-    },
-    "count_guild_messages": {
-      "description": "Count how many messages were sent across a Discord server over the past number of days you choose.",
-      "display_name": "Count recent messages.",
-      "display_str_template": "Count messages in the server from the last {1} day(s).",
-      "handler": "actions.count_guild_messages",
-      "id": "discord_count_guild_messages",
-      "method": "POST",
-      "mock_response": {
-        "count": 1250,
-        "status": "success"
-      },
-      "name": "count_guild_messages",
-      "output_formatter": "actions.format_count_guild_messages_output",
-      "parameters": [
-        {
-          "description": "The Discord server ID.",
-          "display_name": "Server",
-          "dynamic_source": "guilds",
-          "dynamic_source_allows_custom": true,
-          "name": "guild_id",
-          "required": true,
-          "type": "ParameterType.STRING"
-        },
-        {
-          "description": "How many days back to count, as a whole number (0 or higher). Use 0 to count messages from today only.",
-          "display_name": "Days",
-          "name": "days",
-          "required": true,
-          "type": "ParameterType.NUMBER"
-        }
-      ],
-      "path": "/actions/library/discord/count-guild-messages",
-      "result_str_template": "Found {count_guild_messages,count} messages.",
-      "returns": {
-        "description": "Response envelope; the payload is in the \"count\" field.",
-        "properties": {
-          "count": {
-            "description": "The total count of messages across all channels.",
-            "type": "number"
-          },
-          "status": {
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "scopes": [
-        "read"
-      ]
-    },
     "create_channel": {
       "description": "Create a channel in the specified Discord server. Choose text, voice, category, announcement, stage, forum or media.",
       "display_name": "Create a channel.",
@@ -596,10 +496,13 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The ID of the category to place the channel under.",
+          "description": "The category to place the channel under.",
           "display_name": "Parent category",
-          "dynamic_source": "channels",
+          "dynamic_source": "server_categories",
           "dynamic_source_allows_custom": true,
+          "dynamic_source_depends_on": [
+            "guild_id"
+          ],
           "name": "parent_id",
           "required": false,
           "type": "ParameterType.STRING"
@@ -3134,6 +3037,8 @@
         {
           "description": "Move the channel under this category.",
           "display_name": "Category",
+          "dynamic_source": "categories",
+          "dynamic_source_allows_custom": true,
           "name": "parent_id",
           "required": false,
           "type": "ParameterType.STRING"
@@ -3673,7 +3578,7 @@
       ]
     },
     "search_messages": {
-      "description": "Search a Discord server's message history by text, channel, author or attachment. Requires the Message Content intent to be enabled on your bot.",
+      "description": "Search a Discord server's message history by text, channel, author, attachment or how recently it was sent. The total number of matching messages comes back too, so to count a server's or a channel's recent messages, leave the text blank and choose a number of days. Requires the Message Content intent to be enabled on your bot.",
       "display_name": "Search messages in a server",
       "display_str_template": "Search messages in server '{0}'.",
       "handler": "actions.search_messages",
@@ -3750,6 +3655,15 @@
           "name": "limit",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only messages sent in this many past days. Leave blank to search all of the server's history.",
+          "display_name": "Sent in the last (days)",
+          "maximum": 3650,
+          "minimum": 1,
+          "name": "days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
         }
       ],
       "path": "/actions/library/discord/search-messages",
@@ -3763,6 +3677,7 @@
             "type": "array"
           },
           "total_results": {
+            "description": "How many messages match in all, which can be more than the messages returned. Discord says it may be slightly off while messages are being sent or deleted.",
             "type": "number"
           }
         },
@@ -3824,7 +3739,7 @@
       ]
     },
     "send_message": {
-      "description": "Send a text message to the specified Discord channel. The message can optionally be read aloud (text-to-speech) or include rich embeds.",
+      "description": "Send a text message to the specified Discord channel. The message can optionally be read aloud (text-to-speech).",
       "display_name": "Send a message to a channel.",
       "display_str_template": "Send a message to channel '{0}'.",
       "handler": "actions.send_message",
@@ -3848,7 +3763,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The message content (text) to send. Leave empty when the message has embeds.",
+          "description": "The message to send.",
           "display_name": "Content",
           "multiline": true,
           "name": "content",
@@ -3861,17 +3776,13 @@
           "name": "tts",
           "required": false,
           "type": "ParameterType.BOOLEAN"
-        },
-        {
-          "description": "A list of rich embeds to include with the message. Each embed can have a title, description, color, and fields.",
-          "display_name": "Embeds",
-          "name": "embeds",
-          "required": false,
-          "type": "ParameterType.ARRAY"
         }
       ],
       "path": "/actions/library/discord/send",
       "result_str_template": "Message sent.",
+      "retired_parameters": [
+        "embeds"
+      ],
       "returns": {
         "properties": {
           "channel_id": {
@@ -4558,6 +4469,13 @@
           "display_name": "Channel",
           "name": "channel_id",
           "required": true
+        },
+        {
+          "arg_index": 1,
+          "description": "Only start for messages that @mention this person or role: paste their ID (in Discord, right-click them and choose Copy ID). Leave blank to start for every message.",
+          "display_name": "Only messages mentioning",
+          "name": "mentions",
+          "required": false
         }
       ]
     },

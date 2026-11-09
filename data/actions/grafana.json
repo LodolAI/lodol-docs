@@ -354,6 +354,91 @@
         "write"
       ]
     },
+    "create_silence": {
+      "description": "Stop Grafana sending notifications for matching alerts until a time you choose, such as during a deploy or while someone works on the problem. The alerts still show in Grafana; only their notifications are held back. Name an alert rule, give labels to match, or both.",
+      "display_name": "Create silence",
+      "display_str_template": "Silence alerts until {ends_at}.",
+      "handler": "actions.create_silence",
+      "id": "grafana_create_silence",
+      "method": "POST",
+      "mock_response": {
+        "comment": "Deploying checkout",
+        "ends_at": "2026-11-07T11:00:00.000Z",
+        "matchers": [
+          "alertname=\"High CPU\"",
+          "env=\"prod\""
+        ],
+        "silence_id": "7d8b9a8e-3c1f-4a52-9f6e-2b0c1d4e5f60",
+        "starts_at": "2026-11-07T10:00:00.000Z"
+      },
+      "name": "create_silence",
+      "output_formatter": "actions.format_silence_output",
+      "parameters": [
+        {
+          "description": "The alert rule to silence, by its name as it shows in Grafana. Leave empty to match by labels only.",
+          "display_name": "Alert rule",
+          "name": "alert_rule",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only alerts with all of these labels, each written as severity=\"critical\" or team!=db. Leave empty to silence every alert of the rule above.",
+          "display_name": "Labels to match",
+          "name": "labels",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "When the silence ends and notifications resume.",
+          "display_name": "Ends",
+          "name": "ends_at",
+          "required": true,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "When the silence starts. Leave empty to start now.",
+          "display_name": "Starts",
+          "name": "starts_at",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Why the alerts are silenced, shown with the silence in Grafana. Leave empty for 'Silenced from a workflow'.",
+          "display_name": "Reason",
+          "name": "comment",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/grafana/create-silence",
+      "result_str_template": "Silence created.",
+      "returns": {
+        "properties": {
+          "comment": {
+            "type": "string"
+          },
+          "ends_at": {
+            "type": "string"
+          },
+          "matchers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "silence_id": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
     "delete_annotation": {
       "description": "Delete an annotation. This is permanent - annotations have no recycle bin.",
       "display_name": "Delete annotation",
@@ -506,6 +591,59 @@
       ],
       "path": "/actions/library/grafana/delete-folder",
       "result_str_template": "Folder deleted.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "number"
+          },
+          "message": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "uid": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "delete"
+      ]
+    },
+    "delete_silence": {
+      "description": "End a silence now, so the alerts it held back send notifications again. Grafana keeps it in its list of silences as expired.",
+      "display_name": "Delete silence",
+      "display_str_template": "Delete silence {silence_id}.",
+      "handler": "actions.delete_silence",
+      "id": "grafana_delete_silence",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "message": "silence deleted",
+        "resource": "silence",
+        "uid": "7d8b9a8e-3c1f-4a52-9f6e-2b0c1d4e5f60"
+      },
+      "name": "delete_silence",
+      "output_formatter": "actions.format_deletion_output",
+      "parameters": [
+        {
+          "description": "The silence to end, as 'Create silence' returned it or as it shows in Grafana under Alerting > Silences.",
+          "display_name": "Silence ID",
+          "name": "silence_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/grafana/delete-silence",
+      "result_str_template": "Silence deleted.",
       "returns": {
         "properties": {
           "deleted": {
@@ -2373,9 +2511,60 @@
     "Monitoring",
     "Analytics"
   ],
-  "description": "Manage Grafana dashboards, folders and annotations, and read alert state, alert rules and data sources.",
+  "description": "Manage Grafana dashboards, folders and annotations, read alert state, alert rules and data sources, and silence alerts.",
   "display_name": "Grafana",
   "id": "grafana",
   "logo": "https://www.lodol.com/app-icons/grafana-icon.svg",
-  "triggers": {}
+  "triggers": {
+    "grafana_alert_firing_trigger": {
+      "description": "Runs each time a Grafana alert starts firing, with the rule, what it saw and when. Runs even if the alert has already resolved. Alerts from before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Alert firing",
+      "id": "grafana_alert_firing_trigger",
+      "output": {
+        "alert_rule": "The alert rule's name.",
+        "alert_rule_uid": "The alert rule's UID.",
+        "annotation_id": "The id of the record Grafana kept of the change.",
+        "dashboard_uid": "The dashboard the rule is linked to, if any.",
+        "details": "What Grafana recorded: the alert's labels and the values seen.",
+        "happened_at": "When it changed.",
+        "previous_state": "What it was before, such as Pending or Alerting.",
+        "rule_url": "The alert rule's page in Grafana.",
+        "state": "What the alert changed to, such as Alerting or Normal."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only this alert rule, by its name as it shows in Grafana. Leave blank for every rule.",
+          "display_name": "Alert rule",
+          "name": "alert_rule",
+          "required": false
+        }
+      ]
+    },
+    "grafana_alert_resolved_trigger": {
+      "description": "Runs each time a firing Grafana alert resolves and goes back to normal. Alerts that resolved before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Alert resolved",
+      "id": "grafana_alert_resolved_trigger",
+      "output": {
+        "alert_rule": "The alert rule's name.",
+        "alert_rule_uid": "The alert rule's UID.",
+        "annotation_id": "The id of the record Grafana kept of the change.",
+        "dashboard_uid": "The dashboard the rule is linked to, if any.",
+        "details": "What Grafana recorded: the alert's labels and the values seen.",
+        "happened_at": "When it changed.",
+        "previous_state": "What it was before, such as Pending or Alerting.",
+        "rule_url": "The alert rule's page in Grafana.",
+        "state": "What the alert changed to, such as Alerting or Normal."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only this alert rule, by its name as it shows in Grafana. Leave blank for every rule.",
+          "display_name": "Alert rule",
+          "name": "alert_rule",
+          "required": false
+        }
+      ]
+    }
+  }
 }

@@ -1,5 +1,348 @@
 {
   "actions": {
+    "check_iss_over_area": {
+      "description": "Check whether the space station is over an area you mark out with four edges of latitude and longitude, such as a box around a country or a stretch of ocean, so a scheduled workflow can post when it is overhead. Open Notify reports only the point below the station, so the comparison is done here, and an area whose western edge is east of its eastern edge wraps across the 180th meridian, so the middle of the Pacific can be one area. The point checked is where Open Notify puts the station, which in November 2026 was about 7,600 km from where it really was. No API key required.",
+      "display_name": "Check if the ISS is over an area",
+      "display_str_template": "Check if the ISS is over the area from latitude {1} to {0}, longitude {2} to {3}.",
+      "handler": "actions.check_iss_over_area",
+      "id": "open_notify_check_iss_over_area",
+      "method": "POST",
+      "mock_response": {
+        "crosses_date_line": false,
+        "east_longitude": -34.5,
+        "iss": {
+          "latitude": -36.0989,
+          "longitude": -64.0851,
+          "map_url": "https://maps.google.com/maps?q=-36.0989,-64.0851&z=4",
+          "time": "2026-09-16T12:00:00Z",
+          "timestamp": 1789560000
+        },
+        "north_latitude": 12.5,
+        "over_area": true,
+        "south_latitude": -56.0,
+        "west_longitude": -81.5
+      },
+      "name": "check_iss_over_area",
+      "output_formatter": "actions.format_area_output",
+      "parameters": [
+        {
+          "description": "The latitude of the area's northern edge, in decimal degrees between -90 and 90. Negative is south of the equator.",
+          "display_name": "Northern edge (latitude)",
+          "examples": [
+            {
+              "label": "Continental United States",
+              "value": "49.4"
+            },
+            {
+              "label": "United Kingdom",
+              "value": "60.9"
+            }
+          ],
+          "maximum": 90,
+          "minimum": -90,
+          "name": "north_latitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The latitude of the area's southern edge, which must not be north of the northern edge.",
+          "display_name": "Southern edge (latitude)",
+          "examples": [
+            {
+              "label": "Continental United States",
+              "value": "24.5"
+            },
+            {
+              "label": "United Kingdom",
+              "value": "49.9"
+            }
+          ],
+          "maximum": 90,
+          "minimum": -90,
+          "name": "south_latitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The longitude of the area's western edge, in decimal degrees between -180 and 180. Negative is west of Greenwich. A western edge east of the eastern one makes an area that wraps across the 180th meridian.",
+          "display_name": "Western edge (longitude)",
+          "examples": [
+            {
+              "label": "Continental United States",
+              "value": "-124.8"
+            },
+            {
+              "label": "United Kingdom",
+              "value": "-8.2"
+            }
+          ],
+          "maximum": 180,
+          "minimum": -180,
+          "name": "west_longitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The longitude of the area's eastern edge, in decimal degrees between -180 and 180.",
+          "display_name": "Eastern edge (longitude)",
+          "examples": [
+            {
+              "label": "Continental United States",
+              "value": "-66.9"
+            },
+            {
+              "label": "United Kingdom",
+              "value": "1.8"
+            }
+          ],
+          "maximum": 180,
+          "minimum": -180,
+          "name": "east_longitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/open-notify/check-iss-over-area",
+      "result_str_template": "Checked whether the ISS is over the area.",
+      "returns": {
+        "properties": {
+          "crosses_date_line": {
+            "description": "Whether the area wraps across the 180th meridian, which it does when its western edge is east of its eastern edge.",
+            "type": "boolean"
+          },
+          "east_longitude": {
+            "description": "The area's eastern edge, as used.",
+            "type": "number"
+          },
+          "iss": {
+            "description": "Where the station is right now.",
+            "properties": {
+              "latitude": {
+                "description": "Latitude of the point on the ground directly below the station, in degrees. Negative is south of the equator. The service quotes this as a string; it is published here as a number.",
+                "type": "number"
+              },
+              "longitude": {
+                "description": "Longitude of that point, in degrees. Negative is west of the Greenwich meridian.",
+                "type": "number"
+              },
+              "map_url": {
+                "description": "Map link centred on the point below the station.",
+                "type": "string"
+              },
+              "time": {
+                "description": "The same instant as an ISO 8601 UTC date-time.",
+                "type": "string"
+              },
+              "timestamp": {
+                "description": "The instant this position is for, in Unix seconds.",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "north_latitude": {
+            "description": "The area's northern edge, as used.",
+            "type": "number"
+          },
+          "over_area": {
+            "description": "Whether the point on the ground below the station is inside the area, edges included.",
+            "type": "boolean"
+          },
+          "south_latitude": {
+            "description": "The area's southern edge, as used.",
+            "type": "number"
+          },
+          "west_longitude": {
+            "description": "The area's western edge, as used.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "check_iss_visibility": {
+      "description": "Check whether the space station could be seen with the naked eye from a place right now: high enough above the horizon there, still lit by the sun, and against a sky dark enough for it to stand out. Each of the three is returned on its own, with a sentence saying why when the answer is no, so a scheduled workflow can send an alert only when it is worth going outside. Open Notify reports only where the station is, so all of this is worked out from that position, the time and where the sun is. It does not know about cloud, and it answers for this moment, not when the station will next pass. The position itself has drifted: in November 2026 Open Notify put the station about 7,600 km from where it really was. No API key required.",
+      "display_name": "Check if the ISS is visible",
+      "display_str_template": "Check if the ISS is visible from {0}, {1}.",
+      "handler": "actions.check_iss_visibility",
+      "id": "open_notify_check_iss_visibility",
+      "method": "POST",
+      "mock_response": {
+        "assumed_altitude_km": 420.0,
+        "bearing_degrees": 250.5,
+        "compass_point": "WSW",
+        "elevation_degrees": 34.4,
+        "high_enough": true,
+        "iss": {
+          "latitude": -36.0989,
+          "longitude": -64.0851,
+          "map_url": "https://maps.google.com/maps?q=-36.0989,-64.0851&z=4",
+          "time": "2026-09-16T23:30:00Z",
+          "timestamp": 1789601400
+        },
+        "iss_sunlit": true,
+        "min_elevation_degrees": 10.0,
+        "observer_latitude": -34.6037,
+        "observer_longitude": -58.3816,
+        "sky_dark": true,
+        "summary": "The ISS is visible from there now: 34 degrees above the horizon to the WSW.",
+        "sun_elevation_degrees": -22.1,
+        "visible": true
+      },
+      "name": "check_iss_visibility",
+      "output_formatter": "actions.format_visibility_output",
+      "parameters": [
+        {
+          "description": "Latitude of the place to look from, in decimal degrees between -90 and 90. Negative is south of the equator.",
+          "display_name": "Latitude",
+          "examples": [
+            {
+              "label": "Buenos Aires",
+              "value": "-34.6037"
+            },
+            {
+              "label": "London",
+              "value": "51.5072"
+            }
+          ],
+          "maximum": 90,
+          "minimum": -90,
+          "name": "latitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Longitude of that place, in decimal degrees between -180 and 180. Negative is west of Greenwich.",
+          "display_name": "Longitude",
+          "examples": [
+            {
+              "label": "Buenos Aires",
+              "value": "-58.3816"
+            },
+            {
+              "label": "London",
+              "value": "-0.1276"
+            }
+          ],
+          "maximum": 180,
+          "minimum": -180,
+          "name": "longitude",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 10.0,
+          "description": "How high above the horizon the station has to be to count as visible, from 0 (anywhere above the horizon) to 90 (straight overhead). The default, 10, is the usual guide: lower than that, buildings, trees and haze tend to hide it.",
+          "display_name": "Lowest height above the horizon (degrees)",
+          "maximum": 90.0,
+          "minimum": 0.0,
+          "name": "min_elevation_degrees",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 420.0,
+          "description": "The height above the ground to assume for the station, in kilometres. Open Notify reports no altitude, so the figures derived from one assume 420 km, the station's usual operating height. Change it to match a published altitude if you have one.",
+          "display_name": "Assumed altitude (km)",
+          "maximum": 2000,
+          "minimum": 100,
+          "name": "altitude_km",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/open-notify/check-iss-visibility",
+      "result_str_template": "{open_notify_check_iss_visibility,summary}",
+      "returns": {
+        "properties": {
+          "assumed_altitude_km": {
+            "description": "The altitude the station's height in the sky and its sunlight were worked out from. Open Notify publishes none.",
+            "type": "number"
+          },
+          "bearing_degrees": {
+            "description": "Which way to face to look at it: degrees clockwise from north.",
+            "type": "number"
+          },
+          "compass_point": {
+            "description": "The same direction as a compass point, e.g. 'NW'.",
+            "type": "string"
+          },
+          "elevation_degrees": {
+            "description": "How high the station is above the horizon from that place, in degrees: 90 is straight overhead and a negative number is below the horizon. Worked out from its position and the assumed altitude.",
+            "type": "number"
+          },
+          "high_enough": {
+            "description": "Whether the station is at least the lowest height asked for above the horizon.",
+            "type": "boolean"
+          },
+          "iss": {
+            "description": "Where the station is right now.",
+            "properties": {
+              "latitude": {
+                "description": "Latitude of the point on the ground directly below the station, in degrees. Negative is south of the equator. The service quotes this as a string; it is published here as a number.",
+                "type": "number"
+              },
+              "longitude": {
+                "description": "Longitude of that point, in degrees. Negative is west of the Greenwich meridian.",
+                "type": "number"
+              },
+              "map_url": {
+                "description": "Map link centred on the point below the station.",
+                "type": "string"
+              },
+              "time": {
+                "description": "The same instant as an ISO 8601 UTC date-time.",
+                "type": "string"
+              },
+              "timestamp": {
+                "description": "The instant this position is for, in Unix seconds.",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "iss_sunlit": {
+            "description": "Whether sunlight is reaching the station. In the Earth's shadow it cannot be seen, however dark the sky.",
+            "type": "boolean"
+          },
+          "min_elevation_degrees": {
+            "description": "The lowest height above the horizon that counted.",
+            "type": "number"
+          },
+          "observer_latitude": {
+            "description": "Latitude of the place looked from.",
+            "type": "number"
+          },
+          "observer_longitude": {
+            "description": "Longitude of that place.",
+            "type": "number"
+          },
+          "sky_dark": {
+            "description": "Whether the sun is at least 6 degrees below the horizon at that place, dark enough for the station to stand out.",
+            "type": "boolean"
+          },
+          "summary": {
+            "description": "The answer as a sentence, saying why when it is no, ready to put in a message.",
+            "type": "string"
+          },
+          "sun_elevation_degrees": {
+            "description": "How high the sun is above the horizon at that place, in degrees; negative is below it. Worked out from the time, not reported by Open Notify.",
+            "type": "number"
+          },
+          "visible": {
+            "description": "Whether the station could be seen from that place now: high enough, lit by the sun and against a dark sky. Worked out here, not reported by Open Notify, and blind to cloud.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "check_service_status": {
       "description": "Check whether Open Notify is answering, and how quickly. This is the one action that reports a problem as a value instead of failing the step, so a workflow can decide what to do about it. Being asked to slow down is reported separately from being down. No API key required.",
       "display_name": "Check service status",
@@ -54,7 +397,7 @@
       ]
     },
     "get_distance_to_iss": {
-      "description": "Answer 'is the space station near me?' for a place on the ground: how far away it is in kilometres and miles, which compass direction to look in, and whether it is above the horizon there at all. Open Notify reports only where the station is, never how that relates to anywhere, so the comparison is done here. No API key required.",
+      "description": "Answer 'is the space station near me?' for a place on the ground: how far away it is in kilometres and miles, which compass direction to look in, and whether it is above the horizon there at all. Open Notify reports only where the station is, never how that relates to anywhere, so the comparison is done here. The distance is from where Open Notify puts the station, which in November 2026 was about 7,600 km from where it really was. No API key required.",
       "display_name": "Get the distance to the ISS",
       "display_str_template": "Get the distance from {0}, {1} to the ISS.",
       "handler": "actions.get_distance_to_iss",
@@ -204,7 +547,7 @@
       ]
     },
     "get_iss_position": {
-      "description": "Get where the International Space Station is right now: the latitude and longitude of the point on the ground directly below it, the instant that position is for, and a map link to open it. The station covers about 28,000 km every hour, so the answer is only good for a few seconds. No API key required.",
+      "description": "Get where the International Space Station is right now: the latitude and longitude of the point on the ground directly below it, the instant that position is for, and a map link to open it. The station covers about 28,000 km every hour, so the answer is only good for a few seconds. Open Notify works the position out from orbit data that has fallen behind, so it can be thousands of kilometres from where the station really is: about 7,600 km in November 2026. Use Where the ISS At? when the position has to be right. No API key required.",
       "display_name": "Get the ISS position",
       "display_str_template": "Get the ISS position.",
       "handler": "actions.get_iss_position",
@@ -252,7 +595,7 @@
       ]
     },
     "get_people_in_space": {
-      "description": "Get who is in space right now, with the spacecraft each person is aboard and a count per craft, so a step can say how many are on the station without counting a list itself. Name a spacecraft to get only its crew. Nobody aboard is an empty result rather than a failed step. No API key required.",
+      "description": "Get who Open Notify lists as being in space, with the spacecraft each person is aboard and a count per craft, so a step can say how many are on the station without counting a list itself. Name a spacecraft to get only its crew. Nobody aboard is an empty result rather than a failed step. The service's maintainer keeps the list by hand, and it can be months behind real launches and landings, so treat it as the service's list rather than an official record. No API key required.",
       "display_name": "Get the people in space",
       "display_str_template": "Get the people in space aboard {0}.",
       "handler": "actions.get_people_in_space",
@@ -386,6 +729,7 @@
           },
           "craft": {
             "description": "The spacecraft the list was filtered to, or empty when it was not filtered.",
+            "nullable": true,
             "type": "string"
           },
           "crafts": {
@@ -448,7 +792,7 @@
       ]
     },
     "get_space_report": {
-      "description": "Get both halves of what Open Notify knows in one step: where the station is, how many people are in space, who they are and which of them are aboard the ISS. Built for a daily post or digest, where two separate steps would describe two different moments. No API key required.",
+      "description": "Get both halves of what Open Notify knows in one step: where the station is, how many people it lists in space, who they are and which of them are aboard the ISS. Built for a daily post or digest, where two separate steps would describe two different moments. The list of people is kept by hand and can be months behind real crew changes, and the position has drifted: in November 2026 it was about 7,600 km from where the station really was. No API key required.",
       "display_name": "Get a space report",
       "display_str_template": "Get a space report.",
       "handler": "actions.get_space_report",
@@ -670,7 +1014,7 @@
       ]
     },
     "sample_iss_track": {
-      "description": "Watch the station move: take several positions a few seconds apart and get the path between them, how far it travelled and how fast. Open Notify only ever answers for the present instant, so this step waits between readings at the cadence the service asks for, which is why it takes as long as it does. No API key required.",
+      "description": "Watch the station move: take several positions a few seconds apart and get the path between them, how far it travelled, how fast and which way it is heading. Open Notify only ever reports where the station is at the present instant, so this step waits between readings at the cadence the service asks for, which is why it takes as long as it does, and works the distance, speed and heading out from them. No API key required.",
       "display_name": "Sample the ISS track",
       "display_str_template": "Sample {0} positions of the ISS.",
       "handler": "actions.sample_iss_track",
@@ -681,10 +1025,13 @@
         "count": 2,
         "elapsed_seconds": 5.0,
         "end_time": "2026-09-16T12:00:05Z",
-        "ground_distance_km": 36.0,
-        "ground_speed_kmh": 25894.8,
+        "ground_distance_km": 34.5,
+        "ground_speed_kmh": 24853.6,
+        "heading_compass_point": "NE",
+        "heading_degrees": 48.2,
         "interval_seconds": 5.0,
-        "orbital_speed_kmh": 27601.9,
+        "measured_seconds": 5.0,
+        "orbital_speed_kmh": 27582.1,
         "positions": [
           {
             "latitude": -36.0989,
@@ -694,9 +1041,9 @@
             "timestamp": 1789560000
           },
           {
-            "latitude": -35.9129,
-            "longitude": -63.758,
-            "map_url": "https://maps.google.com/maps?q=-35.9129,-63.758&z=4",
+            "latitude": -35.8915,
+            "longitude": -63.7996,
+            "map_url": "https://maps.google.com/maps?q=-35.8915,-63.7996&z=4",
             "time": "2026-09-16T12:00:05Z",
             "timestamp": 1789560005
           }
@@ -750,7 +1097,7 @@
             "type": "integer"
           },
           "elapsed_seconds": {
-            "description": "Seconds between the first and last reading, measured by the service's own timestamps rather than by this workflow's clock.",
+            "description": "Seconds between the first and last reading, by the service's own timestamps, which are whole seconds.",
             "type": "number"
           },
           "end_time": {
@@ -762,15 +1109,30 @@
             "type": "number"
           },
           "ground_speed_kmh": {
-            "description": "That distance as a speed, in kilometres per hour: how fast the station's shadow crosses the ground.",
+            "description": "That distance as a speed, in kilometres per hour: how fast the station's shadow crosses the ground, about 24,850 km/h. Over a single five-second gap it can be a tenth out either way, because Open Notify's positions move in half-second steps; more readings narrow that.",
+            "type": "number"
+          },
+          "heading_compass_point": {
+            "description": "The same heading as a compass point, e.g. 'NE'.",
+            "nullable": true,
+            "type": "string"
+          },
+          "heading_degrees": {
+            "description": "Which way the station was moving over the last two readings, in degrees clockwise from north. Worked out from the readings, since Open Notify reports no heading; empty if they were the same point.",
+            "nullable": true,
             "type": "number"
           },
           "interval_seconds": {
             "description": "The gap asked for between readings.",
             "type": "number"
           },
+          "measured_seconds": {
+            "description": "The same span timed from when each answer arrived, kept within a second of the service's timestamps. The speeds are worked out over this. Open Notify's positions move in half-second steps, so it can still be half a second out at each end. Empty if the service sent no timestamps.",
+            "nullable": true,
+            "type": "number"
+          },
           "orbital_speed_kmh": {
-            "description": "How fast the station itself is travelling, which is faster than its shadow because it sweeps a wider circle. Derived from the assumed altitude, so it is an estimate: about 28,000 km/h.",
+            "description": "How fast the station itself is travelling, which is faster than its shadow because it sweeps a wider circle and the ground below it turns with the Earth. Worked out from the readings with the Earth's turn taken out and from the assumed altitude, so it is an estimate: about 27,600 km/h, and as far out as the ground speed over a short track.",
             "type": "number"
           },
           "positions": {
@@ -810,17 +1172,14 @@
         "type": "object"
       },
       "scopes": [
-        "read",
-        "write",
-        "modify",
-        "delete"
+        "read"
       ]
     }
   },
   "categories": [
     "Weather & Space"
   ],
-  "description": "Track the International Space Station with Open Notify, the free keyless API behind open-notify.org. Get where the station is right now, who is in space and which spacecraft they are aboard, how far away the station is from any place on Earth and whether it is above the horizon there, or watch it move across several readings to see how fast it is going. There is one action that reports the service's own health as a value rather than failing a step, so a scheduled workflow can tell an outage from an empty answer. No account and no API key: connecting takes one click.",
+  "description": "Track the International Space Station with Open Notify, the free keyless API behind open-notify.org. Get where the station is right now and who the service lists in space, how far away the station is from any place on Earth, whether it could be seen from there right now, whether it is over an area you mark out, or watch it move across several readings to see how fast and which way it is going. Open Notify's position has drifted from the station's real one, by about 7,600 km in November 2026, so use Where the ISS At? when it has to be right. There is one action that reports the service's own health as a value rather than failing a step, so a scheduled workflow can tell an outage from an empty answer. No account and no API key: connecting takes one click.",
   "display_name": "Open Notify",
   "id": "open_notify",
   "logo": "https://www.lodol.com/app-icons/open-notify-icon.svg",
