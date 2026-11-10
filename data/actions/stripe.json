@@ -495,6 +495,151 @@
         "read"
       ]
     },
+    "list_failed_payments": {
+      "description": "List the subscription invoices Stripe tried to collect in a period and could not, each with the customer, what they owe and why the card was declined, plus how many there are and the total owed. Use it for a weekly list of payments to chase.",
+      "display_name": "List failed subscription payments",
+      "display_str_template": "List failed payments.",
+      "handler": "actions.list_failed_payments",
+      "id": "stripe_list_failed_payments",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "currency": "usd",
+        "payments": [
+          {
+            "amount_owed": 49.0,
+            "amount_owed_display": "$49.00",
+            "attempts": 2,
+            "currency": "usd",
+            "customer_email": "customer@example.com",
+            "customer_name": "Example Customer",
+            "invoice_id": "in_123",
+            "invoice_url": "https://invoice.stripe.com/i/acct_1/test_1",
+            "number": "A1B2-0001",
+            "reason": "Your card was declined."
+          }
+        ],
+        "period": "",
+        "total_owed": 49.0,
+        "total_owed_display": "$49.00"
+      },
+      "name": "list_failed_payments",
+      "output_formatter": "actions.format_list_failed_payments_output",
+      "parameters": [
+        {
+          "description": "Only invoices from the whole of last month or this month so far, for a monthly report that runs on the 1st. The month's name comes back as period (October 2026). Replaces the other dates when chosen.",
+          "display_name": "Calendar month",
+          "name": "calendar_month",
+          "options": [
+            {
+              "label": "Last month",
+              "value": "last"
+            },
+            {
+              "label": "This month so far",
+              "value": "this"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only invoices from the last this many whole days up to now: 7 for a weekly report, with no dates to work out in an earlier step. On or after wins when given.",
+          "display_name": "In the last days",
+          "minimum": 1,
+          "name": "created_in_last_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The start of the period. Needed unless you choose a calendar month or In the last days.",
+          "display_name": "On or after",
+          "name": "created_after",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "The end of the period. Leave empty to run the period up to now.",
+          "display_name": "Before",
+          "name": "created_before",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/stripe/list-failed-payments",
+      "result_str_template": "{stripe_list_failed_payments,count} failed payment(s) found.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many failed payments.",
+            "type": "number"
+          },
+          "currency": {
+            "description": "The currency the total is in (the first invoice's).",
+            "type": "string"
+          },
+          "payments": {
+            "description": "Each failed payment, with its invoice id and number, customer name and email, amount_owed in dollars and amount_owed_display ($49.00), reason (why the card was declined), attempts and a link the customer can open to pay.",
+            "items": {
+              "properties": {
+                "amount_owed": {
+                  "description": "In dollars.",
+                  "type": "number"
+                },
+                "amount_owed_display": {
+                  "description": "Such as $49.00.",
+                  "type": "string"
+                },
+                "attempts": {
+                  "type": "number"
+                },
+                "currency": {
+                  "type": "string"
+                },
+                "customer_email": {
+                  "type": "string"
+                },
+                "customer_name": {
+                  "type": "string"
+                },
+                "invoice_id": {
+                  "type": "string"
+                },
+                "invoice_url": {
+                  "description": "A link the customer can open to pay.",
+                  "type": "string"
+                },
+                "number": {
+                  "type": "string"
+                },
+                "reason": {
+                  "description": "Why the card was declined.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "period": {
+            "description": "The calendar month reported when Calendar month is chosen; blank otherwise.",
+            "type": "string"
+          },
+          "total_owed": {
+            "description": "Everything owed across them, in dollars.",
+            "type": "number"
+          },
+          "total_owed_display": {
+            "description": "The total owed as a person writes it, such as $147.00. Use it in a message.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "list_invoices": {
       "description": "List the invoices created in a period, with each invoice's number, customer, amount due and paid in dollars (or your currency), status and due date. Use it for a daily or weekly invoice summary or to chase unpaid invoices.",
       "display_name": "List invoices",
@@ -602,6 +747,8 @@
       "id": "stripe_list_payments",
       "method": "POST",
       "mock_response": {
+        "average": 50.0,
+        "average_display": "$50.00",
         "count": 1,
         "currency": "usd",
         "payments": [
@@ -708,6 +855,14 @@
       "result_str_template": "{stripe_list_payments,count} payment(s) found.",
       "returns": {
         "properties": {
+          "average": {
+            "description": "The average payment (the average order size), in dollars; 0 when there are none.",
+            "type": "number"
+          },
+          "average_display": {
+            "description": "The average payment as a person writes it, such as $42.50. Use it in a message.",
+            "type": "string"
+          },
           "count": {
             "description": "How many payments.",
             "type": "number"
@@ -806,6 +961,136 @@
               "type": "object"
             },
             "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_refunds": {
+      "description": "List the refunds made in a period, with how many there were, the total refunded in dollars (or your currency), and each refund's customer and reason. Use it for a monthly revenue report that shows what was given back.",
+      "display_name": "List refunds",
+      "display_str_template": "List refunds.",
+      "handler": "actions.list_refunds",
+      "id": "stripe_list_refunds",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "currency": "usd",
+        "period": "October 2026",
+        "refunds": [
+          {
+            "amount": 2500,
+            "created": 1767225600,
+            "currency": "usd",
+            "customer_email": "customer@example.com",
+            "customer_name": "Example Customer",
+            "reason": "requested_by_customer",
+            "refund_id": "re_123"
+          }
+        ],
+        "total": 25.0,
+        "total_display": "$25.00"
+      },
+      "name": "list_refunds",
+      "output_formatter": "actions.format_list_refunds_output",
+      "parameters": [
+        {
+          "description": "Only refunds from the whole of last month or this month so far, for a monthly report that runs on the 1st. The month's name comes back as period (October 2026). Replaces the other dates when chosen.",
+          "display_name": "Calendar month",
+          "name": "calendar_month",
+          "options": [
+            {
+              "label": "Last month",
+              "value": "last"
+            },
+            {
+              "label": "This month so far",
+              "value": "this"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only refunds from the last this many whole days up to now: 7 for a weekly report, with no dates to work out in an earlier step. On or after wins when given.",
+          "display_name": "In the last days",
+          "minimum": 1,
+          "name": "created_in_last_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The start of the period. Needed unless you choose a calendar month or In the last days.",
+          "display_name": "On or after",
+          "name": "created_after",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "The end of the period. Leave empty to run the period up to now.",
+          "display_name": "Before",
+          "name": "created_before",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/stripe/list-refunds",
+      "result_str_template": "{stripe_list_refunds,count} refund(s) found.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many refunds.",
+            "type": "number"
+          },
+          "currency": {
+            "description": "The currency the total is in (the first refund's).",
+            "type": "string"
+          },
+          "period": {
+            "description": "The calendar month reported, such as October 2026, when Calendar month is chosen; blank otherwise.",
+            "type": "string"
+          },
+          "refunds": {
+            "description": "Each refund, with its id, amount in cents, currency, reason, when it was made and who it went to (name and email).",
+            "items": {
+              "properties": {
+                "amount": {
+                  "description": "In cents.",
+                  "type": "number"
+                },
+                "created": {
+                  "type": "number"
+                },
+                "currency": {
+                  "type": "string"
+                },
+                "customer_email": {
+                  "type": "string"
+                },
+                "customer_name": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "refund_id": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total": {
+            "description": "Total refunded in the currency's usual units, such as dollars.",
+            "type": "number"
+          },
+          "total_display": {
+            "description": "The total as a person writes it, such as $120.00. Use it in a message.",
+            "type": "string"
           }
         },
         "type": "object"
@@ -971,7 +1256,7 @@
   "description": "Take payments, send payment links, issue refunds and follow customers and subscriptions.",
   "display_name": "Stripe",
   "id": "stripe",
-  "logo": "https://www.lodol.com/app-icons/stripe-icon.jpeg",
+  "logo": "https://www.lodol.com/app-icons/stripe-icon-128.webp",
   "triggers": {
     "stripe_checkout_completed_trigger": {
       "description": "Runs when a customer finishes a Stripe checkout page or payment link. Money from a bank debit may still be clearing.",
