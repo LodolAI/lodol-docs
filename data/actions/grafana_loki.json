@@ -1,0 +1,987 @@
+{
+  "actions": {
+    "count_logs": {
+      "description": "Count the log lines that match in the last few minutes or hours, such as errors from checkout in the last 15 minutes, in all or for each value of a label, to compare with a threshold.",
+      "display_name": "Count log lines",
+      "display_str_template": "Count Loki log lines.",
+      "handler": "actions.count_logs",
+      "id": "grafana_loki_count_logs",
+      "method": "POST",
+      "mock_response": {
+        "count": 151,
+        "groups": [
+          {
+            "count": 97,
+            "group": "info",
+            "labels": {
+              "level": "info"
+            }
+          },
+          {
+            "count": 54,
+            "group": "error",
+            "labels": {
+              "level": "error"
+            }
+          }
+        ],
+        "query": "sum by (level)(count_over_time({app=\"checkout\"} [1h]))",
+        "time": "2026-11-09T14:30:00Z",
+        "window": "1h"
+      },
+      "name": "count_logs",
+      "output_formatter": "actions.format_count",
+      "parameters": [
+        {
+          "description": "Which logs: labels and the value each must have, such as app checkout and env production. Leave empty when you give a LogQL query.",
+          "display_name": "Labels",
+          "name": "labels",
+          "object_key_name": "Label",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Only lines containing this text, ignoring case, such as error or timeout.",
+          "display_name": "Line contains",
+          "name": "contains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Leave out lines containing this text, ignoring case, such as healthcheck.",
+          "display_name": "Line doesn't contain",
+          "name": "excludes",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Instead of labels: a LogQL log query, such as {app=\"checkout\"} |= \"error\" | json. Leave empty to use the labels.",
+          "display_name": "LogQL query",
+          "multiline": true,
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "1h",
+          "description": "How far back to look. Defaults to the last hour. A length of time such as 30m or 2d works too, up to 30 days.",
+          "display_name": "Time range",
+          "name": "since",
+          "options": [
+            {
+              "label": "Last 5 minutes",
+              "value": "5m"
+            },
+            {
+              "label": "Last 15 minutes",
+              "value": "15m"
+            },
+            {
+              "label": "Last hour",
+              "value": "1h"
+            },
+            {
+              "label": "Last 6 hours",
+              "value": "6h"
+            },
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 7 days",
+              "value": "7d"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A label to count separately for each of its values, such as level or app. Leave empty for one total.",
+          "display_name": "Count for each",
+          "dynamic_source": "labels",
+          "dynamic_source_allows_custom": true,
+          "name": "group_by",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The moment to count back from. Leave empty for now.",
+          "display_name": "At",
+          "name": "at_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/grafana-loki/count-logs",
+      "result_str_template": "{grafana_loki_count_logs,count} matching line(s).",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many lines matched, in all",
+            "type": "number"
+          },
+          "groups": {
+            "description": "The count for each value of the label counted by, most first",
+            "items": {
+              "description": "One group's count",
+              "properties": {
+                "count": {
+                  "description": "How many lines matched in this group",
+                  "type": "number"
+                },
+                "group": {
+                  "description": "The value of the label counted by; empty without one",
+                  "type": "string"
+                },
+                "labels": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "The group's labels",
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "query": {
+            "description": "The LogQL query that ran",
+            "type": "string"
+          },
+          "time": {
+            "description": "The moment counted back from, in UTC (ISO 8601)",
+            "type": "string"
+          },
+          "window": {
+            "description": "How far back it counted, such as 1h",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_label_values": {
+      "description": "List the values a label takes, such as every app or host sending logs, optionally only on logs with some other labels.",
+      "display_name": "List label values",
+      "display_str_template": "List the values of Loki label {0}.",
+      "handler": "actions.list_label_values",
+      "id": "grafana_loki_list_label_values",
+      "method": "POST",
+      "mock_response": {
+        "count": 3,
+        "has_more": false,
+        "label": "app",
+        "label_values": [
+          "api",
+          "checkout",
+          "worker"
+        ]
+      },
+      "name": "list_label_values",
+      "output_formatter": "actions.format_label_values",
+      "parameters": [
+        {
+          "description": "The label, such as app or host.",
+          "display_name": "Label",
+          "dynamic_source": "labels",
+          "dynamic_source_allows_custom": true,
+          "name": "label",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Other labels the logs must have, such as env production. Leave empty for all logs.",
+          "display_name": "Only on logs with",
+          "name": "labels",
+          "object_key_name": "Label",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "default": "1h",
+          "description": "Only values on logs from this far back. Defaults to the last hour.",
+          "display_name": "Seen in the last",
+          "name": "since",
+          "options": [
+            {
+              "label": "Last 5 minutes",
+              "value": "5m"
+            },
+            {
+              "label": "Last 15 minutes",
+              "value": "15m"
+            },
+            {
+              "label": "Last hour",
+              "value": "1h"
+            },
+            {
+              "label": "Last 6 hours",
+              "value": "6h"
+            },
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 7 days",
+              "value": "7d"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The most values to return. Defaults to 1000.",
+          "display_name": "Limit",
+          "maximum": 5000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/grafana-loki/list-label-values",
+      "result_str_template": "{grafana_loki_list_label_values,count} value(s).",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many values were returned",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "True when it has more values than the limit",
+            "type": "boolean"
+          },
+          "label": {
+            "description": "The label",
+            "type": "string"
+          },
+          "label_values": {
+            "description": "Its values, in order",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_labels": {
+      "description": "List the labels Loki's logs are filed under, such as app, env and level.",
+      "display_name": "List labels",
+      "display_str_template": "List Loki labels.",
+      "handler": "actions.list_labels",
+      "id": "grafana_loki_list_labels",
+      "method": "POST",
+      "mock_response": {
+        "count": 4,
+        "labels": [
+          "app",
+          "env",
+          "host",
+          "level"
+        ]
+      },
+      "name": "list_labels",
+      "output_formatter": "actions.format_labels",
+      "parameters": [
+        {
+          "default": "1h",
+          "description": "Only labels on logs from this far back. Defaults to the last hour.",
+          "display_name": "Seen in the last",
+          "name": "since",
+          "options": [
+            {
+              "label": "Last 5 minutes",
+              "value": "5m"
+            },
+            {
+              "label": "Last 15 minutes",
+              "value": "15m"
+            },
+            {
+              "label": "Last hour",
+              "value": "1h"
+            },
+            {
+              "label": "Last 6 hours",
+              "value": "6h"
+            },
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 7 days",
+              "value": "7d"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/grafana-loki/list-labels",
+      "result_str_template": "{grafana_loki_list_labels,count} label(s).",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many labels there are",
+            "type": "number"
+          },
+          "labels": {
+            "description": "The label names, in order",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_streams": {
+      "description": "List the log streams (each set of labels, such as one app on one server) that match, and so which are sending logs.",
+      "display_name": "List streams",
+      "display_str_template": "List Loki streams.",
+      "handler": "actions.list_streams",
+      "id": "grafana_loki_list_streams",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "has_more": false,
+        "selector": "{app=\"checkout\"}",
+        "streams": [
+          {
+            "app": "checkout",
+            "env": "production",
+            "level": "error"
+          }
+        ]
+      },
+      "name": "list_streams",
+      "output_formatter": "actions.format_streams",
+      "parameters": [
+        {
+          "description": "Labels the streams must have, such as app checkout. Leave empty when you give a selector.",
+          "display_name": "Labels",
+          "name": "labels",
+          "object_key_name": "Label",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Instead of labels: a stream selector, such as {app=~\"check.*\"}.",
+          "display_name": "Selector",
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "1h",
+          "description": "Only streams with logs from this far back. Defaults to the last hour.",
+          "display_name": "Seen in the last",
+          "name": "since",
+          "options": [
+            {
+              "label": "Last 5 minutes",
+              "value": "5m"
+            },
+            {
+              "label": "Last 15 minutes",
+              "value": "15m"
+            },
+            {
+              "label": "Last hour",
+              "value": "1h"
+            },
+            {
+              "label": "Last 6 hours",
+              "value": "6h"
+            },
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 7 days",
+              "value": "7d"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The most to return. Defaults to 100.",
+          "display_name": "Limit",
+          "maximum": 5000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/grafana-loki/list-streams",
+      "result_str_template": "{grafana_loki_list_streams,count} stream(s).",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many streams were returned",
+            "type": "number"
+          },
+          "has_more": {
+            "description": "True when more streams match than the limit",
+            "type": "boolean"
+          },
+          "selector": {
+            "description": "The selector the streams match",
+            "type": "string"
+          },
+          "streams": {
+            "description": "The matching streams' labels",
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "One stream's labels",
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "push_logs": {
+      "description": "Send one or several log lines to Loki under labels you choose, such as an audit trail of what a workflow did. Each line keeps its order.",
+      "display_name": "Send log lines",
+      "display_str_template": "Send log lines to Loki.",
+      "handler": "actions.push_logs",
+      "id": "grafana_loki_push_logs",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "first_time": "2026-11-09T14:30:00Z",
+        "first_timestamp": "1794234600000000000",
+        "labels": {
+          "app": "billing-workflow",
+          "env": "production"
+        },
+        "last_time": "2026-11-09T14:30:00.000000001Z",
+        "last_timestamp": "1794234600000000001",
+        "selector": "{app=\"billing-workflow\", env=\"production\"}"
+      },
+      "name": "push_logs",
+      "output_formatter": "actions.format_pushed",
+      "parameters": [
+        {
+          "description": "The labels to file the lines under, such as app billing-workflow and env production. Keep them to a few values that repeat; put ids and details in the line.",
+          "display_name": "Labels",
+          "name": "labels",
+          "object_key_name": "Label",
+          "required": true,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "The text to log, one line each, or a list from an earlier step (records are written as JSON).",
+          "display_name": "Log lines",
+          "multiline": true,
+          "name": "lines",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "When it happened. Leave empty for now. Loki refuses times more than about an hour old or ahead.",
+          "display_name": "Time",
+          "name": "timestamp",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Extra name and value pairs kept with each line without being labels, such as order_id or trace_id. Needs Loki 3.",
+          "display_name": "Details",
+          "name": "metadata",
+          "object_key_name": "Name",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/grafana-loki/push-logs",
+      "result_str_template": "Sent {grafana_loki_push_logs,count} log line(s).",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many lines were sent",
+            "type": "number"
+          },
+          "first_time": {
+            "description": "The first line's time, in UTC (ISO 8601)",
+            "type": "string"
+          },
+          "first_timestamp": {
+            "description": "The first line's time in nanoseconds",
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The labels the lines were filed under",
+            "type": "object"
+          },
+          "last_time": {
+            "description": "The last line's time, in UTC (ISO 8601)",
+            "type": "string"
+          },
+          "last_timestamp": {
+            "description": "The last line's time in nanoseconds",
+            "type": "string"
+          },
+          "selector": {
+            "description": "Those labels as a LogQL selector, such as {app=\"billing\"}, to find the lines again",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
+    "run_metric_query": {
+      "description": "Run a LogQL metric query, such as an error rate or bytes logged per app, and get its numbers. 'value' holds the first result's number.",
+      "display_name": "Run metric query",
+      "display_str_template": "Run the Loki metric query {0}.",
+      "handler": "actions.run_metric_query",
+      "id": "grafana_loki_run_metric_query",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "query": "sum by (app)(rate({env=\"production\"} |= \"error\" [5m]))",
+        "results": [
+          {
+            "labels": {
+              "app": "checkout"
+            },
+            "raw_value": "0.42",
+            "value": 0.42
+          }
+        ],
+        "time": "2026-11-09T14:30:00Z",
+        "truncated": false,
+        "value": 0.42
+      },
+      "name": "run_metric_query",
+      "output_formatter": "actions.format_metric",
+      "parameters": [
+        {
+          "description": "A LogQL metric query, such as sum by (app) (rate({env=\"production\"} |= \"error\" [5m])).",
+          "display_name": "Metric query",
+          "examples": [
+            {
+              "label": "Errors per app, last 15 minutes",
+              "value": "sum by (app) (count_over_time({env=\"production\"} |= \"error\" [15m]))"
+            },
+            {
+              "label": "Lines per second",
+              "value": "sum(rate({app=\"checkout\"} [5m]))"
+            }
+          ],
+          "multiline": true,
+          "name": "query",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The moment to evaluate it at. Leave empty for now.",
+          "display_name": "At",
+          "name": "at_time",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/grafana-loki/run-metric-query",
+      "result_str_template": "Query returned {grafana_loki_run_metric_query,count} result(s).",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many results there are",
+            "type": "number"
+          },
+          "query": {
+            "description": "The LogQL query that ran",
+            "type": "string"
+          },
+          "results": {
+            "description": "Each result with its labels and value",
+            "items": {
+              "description": "One result",
+              "properties": {
+                "labels": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "The result's labels",
+                  "type": "object"
+                },
+                "raw_value": {
+                  "description": "The value exactly as Loki gave it",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "The value as a number; empty for NaN or infinity",
+                  "nullable": true,
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "time": {
+            "description": "The moment it was evaluated at, in UTC (ISO 8601)",
+            "type": "string"
+          },
+          "truncated": {
+            "description": "True when there were more than 1,000 results",
+            "type": "boolean"
+          },
+          "value": {
+            "description": "The first result's value; empty when there are none",
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "search_logs": {
+      "description": "Find the log lines from some apps or servers that contain a word, in the last few minutes or hours or between two times, newest first. Get each line with its time and labels, and all of them as text for an AI step or a message.",
+      "display_name": "Search logs",
+      "display_str_template": "Search Loki logs.",
+      "handler": "actions.search_logs",
+      "id": "grafana_loki_search_logs",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "end": "2026-11-09T14:30:00Z",
+        "limit_reached": false,
+        "lines": [
+          {
+            "labels": {
+              "app": "checkout",
+              "env": "production",
+              "level": "error"
+            },
+            "line": "level=error payment declined for order 48213: card expired",
+            "time": "2026-11-09T14:21:07.418532907Z",
+            "timestamp": "1794234067418532907"
+          }
+        ],
+        "query": "{app=\"checkout\"} |~ \"(?i)declined\"",
+        "start": "2026-11-09T13:30:00Z",
+        "text": "2026-11-09T14:21:07.418532907Z [app=checkout, env=production, level=error] level=error payment declined for order 48213: card expired"
+      },
+      "name": "search_logs",
+      "output_formatter": "actions.format_search",
+      "parameters": [
+        {
+          "description": "Which logs: labels and the value each must have, such as app checkout and env production. Leave empty when you give a LogQL query.",
+          "display_name": "Labels",
+          "name": "labels",
+          "object_key_name": "Label",
+          "required": false,
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "Only lines containing this text, ignoring case, such as error or timeout.",
+          "display_name": "Line contains",
+          "name": "contains",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Leave out lines containing this text, ignoring case, such as healthcheck.",
+          "display_name": "Line doesn't contain",
+          "name": "excludes",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Instead of labels: a LogQL log query, such as {app=\"checkout\"} |= \"error\" | json. Leave empty to use the labels.",
+          "display_name": "LogQL query",
+          "multiline": true,
+          "name": "query",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "1h",
+          "description": "How far back to look. Defaults to the last hour. A length of time such as 30m or 2d works too, up to 30 days.",
+          "display_name": "Time range",
+          "name": "since",
+          "options": [
+            {
+              "label": "Last 5 minutes",
+              "value": "5m"
+            },
+            {
+              "label": "Last 15 minutes",
+              "value": "15m"
+            },
+            {
+              "label": "Last hour",
+              "value": "1h"
+            },
+            {
+              "label": "Last 6 hours",
+              "value": "6h"
+            },
+            {
+              "label": "Last 24 hours",
+              "value": "24h"
+            },
+            {
+              "label": "Last 7 days",
+              "value": "7d"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Instead of the time range: when to start. Leave empty to use the time range.",
+          "display_name": "From",
+          "name": "start",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "When to stop. Leave empty for now.",
+          "display_name": "To",
+          "name": "end",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "The most lines to return. Defaults to 100, up to 5000.",
+          "display_name": "Limit",
+          "maximum": 5000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "backward",
+          "description": "Newest lines first (the default), or oldest first.",
+          "display_name": "Order",
+          "name": "direction",
+          "options": [
+            {
+              "label": "Newest first",
+              "value": "backward"
+            },
+            {
+              "label": "Oldest first",
+              "value": "forward"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/grafana-loki/search-logs",
+      "result_str_template": "Found {grafana_loki_search_logs,count} log line(s).",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many lines were returned",
+            "type": "number"
+          },
+          "end": {
+            "description": "Where it ended, in UTC (ISO 8601)",
+            "type": "string"
+          },
+          "limit_reached": {
+            "description": "True when the limit was reached, so there may be more",
+            "type": "boolean"
+          },
+          "lines": {
+            "description": "The matching lines, in the order asked for",
+            "items": {
+              "description": "One log line",
+              "properties": {
+                "labels": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Its stream's labels, such as app, env and level",
+                  "type": "object"
+                },
+                "line": {
+                  "description": "The log line",
+                  "type": "string"
+                },
+                "time": {
+                  "description": "When it was logged, in UTC (ISO 8601)",
+                  "type": "string"
+                },
+                "timestamp": {
+                  "description": "When it was logged, as Loki's Unix time in nanoseconds",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "query": {
+            "description": "The LogQL query that ran",
+            "type": "string"
+          },
+          "start": {
+            "description": "Where the time range began, in UTC (ISO 8601)",
+            "type": "string"
+          },
+          "text": {
+            "description": "Every line as text, one a line with its time and labels, ready for an AI step or a message",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    }
+  },
+  "categories": [
+    "Monitoring"
+  ],
+  "description": "Search your Grafana Loki logs without writing LogQL, count matching lines, run LogQL metric queries and send log lines from workflows. Start a workflow for each new matching line, or when a count of lines crosses a threshold.",
+  "display_name": "Grafana Loki",
+  "id": "grafana_loki",
+  "logo": "https://www.lodol.com/app-icons/grafana-loki-icon.png",
+  "triggers": {
+    "grafana_loki_log_count_threshold_trigger": {
+      "description": "Runs when the number of matching log lines over the last few minutes goes above (or below) a threshold, such as more than 50 errors in 5 minutes, once per crossing. It runs again only after the count has come back.",
+      "display_name": "Log count crosses a threshold",
+      "id": "grafana_loki_log_count_threshold_trigger",
+      "output": {
+        "count": "number",
+        "direction": "string",
+        "labels": "object",
+        "query": "string",
+        "series": "string",
+        "threshold": "number",
+        "time": "string",
+        "window": "string"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Which logs, as label=value pairs, such as app=checkout, env=production. Leave blank when you give a LogQL query.",
+          "display_name": "Labels",
+          "name": "labels",
+          "required": false
+        },
+        {
+          "arg_index": 1,
+          "description": "Only lines containing this text, ignoring case, such as error.",
+          "display_name": "Line contains",
+          "name": "contains",
+          "required": false
+        },
+        {
+          "arg_index": 2,
+          "description": "Instead of labels: a LogQL log query to count, or a metric query whose number to compare, such as sum(rate({app=\"api\"} |= \"error\" [5m])).",
+          "display_name": "LogQL query",
+          "name": "query",
+          "required": false
+        },
+        {
+          "arg_index": 3,
+          "description": "How far back each look counts, such as 5m or 1h. Defaults to 5m.",
+          "display_name": "Over the last",
+          "name": "window",
+          "required": false
+        },
+        {
+          "arg_index": 4,
+          "description": "Goes above or goes below the threshold. Defaults to goes above.",
+          "display_name": "When it",
+          "name": "direction",
+          "required": false
+        },
+        {
+          "arg_index": 5,
+          "description": "The count it crosses, such as 50.",
+          "display_name": "Threshold",
+          "name": "threshold",
+          "required": true
+        },
+        {
+          "arg_index": 6,
+          "description": "A label to count separately for each of its values, such as app. Leave blank for one total.",
+          "display_name": "Count for each",
+          "name": "group_by",
+          "required": false
+        }
+      ]
+    },
+    "grafana_loki_new_log_line_trigger": {
+      "description": "Runs for each new log line that matches, oldest first, such as each error from checkout, up to 50 lines a look. Lines logged before the workflow is turned on don't run it.",
+      "display_name": "New log line",
+      "id": "grafana_loki_new_log_line_trigger",
+      "output": {
+        "labels": "object",
+        "line": "string",
+        "query": "string",
+        "time": "string",
+        "timestamp": "string"
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Which logs, as label=value pairs, such as app=checkout, env=production. Leave blank when you give a LogQL query.",
+          "display_name": "Labels",
+          "name": "labels",
+          "required": false
+        },
+        {
+          "arg_index": 1,
+          "description": "Only lines containing this text, ignoring case, such as error.",
+          "display_name": "Line contains",
+          "name": "contains",
+          "required": false
+        },
+        {
+          "arg_index": 2,
+          "description": "Instead of labels: a LogQL log query, such as {app=\"api\"} |= \"500\" | json.",
+          "display_name": "LogQL query",
+          "name": "query",
+          "required": false
+        }
+      ]
+    }
+  }
+}
