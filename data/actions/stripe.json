@@ -53,9 +53,14 @@
       "id": "stripe_create_customer",
       "method": "POST",
       "mock_response": {
+        "created": 1767225600,
+        "delinquent": false,
+        "description": "",
         "email": "customer@example.com",
         "id": "cus_123",
-        "name": "Example Customer"
+        "metadata": {},
+        "name": "Example Customer",
+        "phone": "+15550100"
       },
       "name": "create_customer",
       "output_formatter": "actions.format_create_customer_output",
@@ -94,6 +99,40 @@
       "result_str_template": "Customer created.",
       "returns": {
         "description": "The new customer: their id, email, name and the rest of what Stripe keeps about them.",
+        "properties": {
+          "created": {
+            "description": "When the customer was added to Stripe, as a Unix timestamp.",
+            "type": "number"
+          },
+          "delinquent": {
+            "description": "True when their latest invoice is overdue or its payment failed.",
+            "type": "boolean"
+          },
+          "description": {
+            "description": "The note your team saved on the customer; blank when there is none.",
+            "type": "string"
+          },
+          "email": {
+            "description": "Their email address; blank when Stripe has none.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The customer's id in Stripe, which starts with cus_.",
+            "type": "string"
+          },
+          "metadata": {
+            "description": "Your own key-value data saved on the customer.",
+            "type": "object"
+          },
+          "name": {
+            "description": "Their full name or business name; blank when Stripe has none.",
+            "type": "string"
+          },
+          "phone": {
+            "description": "Their phone number; blank when Stripe has none.",
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "scopes": [
@@ -454,12 +493,24 @@
       "method": "POST",
       "mock_response": [
         {
+          "created": 1767225600,
+          "delinquent": false,
+          "description": "",
           "email": "customer@example.com",
-          "id": "cus_123"
+          "id": "cus_123",
+          "metadata": {},
+          "name": "Example Customer",
+          "phone": "+15550100"
         },
         {
+          "created": 1767225600,
+          "delinquent": false,
+          "description": "",
           "email": "other@example.com",
-          "id": "cus_124"
+          "id": "cus_124",
+          "metadata": {},
+          "name": "Other Customer",
+          "phone": "+15550100"
         }
       ],
       "name": "list_customers",
@@ -484,9 +535,43 @@
       "path": "/actions/library/stripe/list-customers",
       "result_str_template": "Customers listed.",
       "returns": {
-        "description": "The customers, newest first.",
+        "description": "The customers, newest first; an empty list when there are none.",
         "items": {
           "description": "A customer: their id, email, name and other details.",
+          "properties": {
+            "created": {
+              "description": "When the customer was added to Stripe, as a Unix timestamp.",
+              "type": "number"
+            },
+            "delinquent": {
+              "description": "True when their latest invoice is overdue or its payment failed.",
+              "type": "boolean"
+            },
+            "description": {
+              "description": "The note your team saved on the customer; blank when there is none.",
+              "type": "string"
+            },
+            "email": {
+              "description": "Their email address; blank when Stripe has none.",
+              "type": "string"
+            },
+            "id": {
+              "description": "The customer's id in Stripe, which starts with cus_.",
+              "type": "string"
+            },
+            "metadata": {
+              "description": "Your own key-value data saved on the customer.",
+              "type": "object"
+            },
+            "name": {
+              "description": "Their full name or business name; blank when Stripe has none.",
+              "type": "string"
+            },
+            "phone": {
+              "description": "Their phone number; blank when Stripe has none.",
+              "type": "string"
+            }
+          },
           "type": "object"
         },
         "type": "array"
@@ -1111,6 +1196,127 @@
         "read"
       ]
     },
+    "lookup_customer_billing": {
+      "description": "Beta. Find a customer by their email and get, in one step, the plan they are on and whether their last payment went through, with a summary ready to paste into a ticket note or a message. Use it to answer a billing question. Nobody with that email is an answer too (found is false), not a failure.",
+      "display_name": "Look up a customer's billing",
+      "display_str_template": "Look up a customer's billing.",
+      "handler": "actions.lookup_customer_billing",
+      "id": "stripe_lookup_customer_billing",
+      "method": "POST",
+      "mock_response": {
+        "customer_id": "cus_123",
+        "customer_url": "https://dashboard.stripe.com/customers/cus_123",
+        "customers_found": 1,
+        "email": "customer@example.com",
+        "found": true,
+        "has_active_subscription": true,
+        "last_payment_amount_display": "$49.00",
+        "last_payment_date": "2026-11-03",
+        "last_payment_date_display": "Nov 3, 2026",
+        "last_payment_failed": false,
+        "last_payment_failure_reason": "",
+        "last_payment_status": "paid",
+        "name": "Example Customer",
+        "plan_name": "Pro",
+        "subscription_status": "active",
+        "summary": "Plan: Pro (active). Last payment: $49.00 on Nov 3, 2026, paid."
+      },
+      "name": "lookup_customer_billing",
+      "output_formatter": "actions.format_lookup_customer_billing_output",
+      "parameters": [
+        {
+          "description": "The customer's email address, such as the address a support ticket came from. An address that finds nobody as typed is tried again in lower case. Needed unless you choose a customer.",
+          "display_name": "Email",
+          "name": "email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The customer to look up, instead of an email: one picked from the list, or a Stripe customer id from an earlier step, which starts with cus_. Used rather than the email when both are given.",
+          "display_name": "Customer",
+          "dynamic_source": "customers",
+          "dynamic_source_allows_custom": true,
+          "label_source": "customer_names",
+          "name": "customer_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/stripe/lookup-customer-billing",
+      "result_str_template": "{stripe_lookup_customer_billing,summary}",
+      "returns": {
+        "properties": {
+          "customer_id": {
+            "description": "The customer's id in Stripe, which starts with cus_.",
+            "type": "string"
+          },
+          "customer_url": {
+            "description": "A link that opens the customer in the Stripe dashboard.",
+            "type": "string"
+          },
+          "customers_found": {
+            "description": "How many Stripe customers have this email. When more than one, this step reports the one with a current plan, or else the newest.",
+            "type": "number"
+          },
+          "email": {
+            "description": "The customer's email address as Stripe has it.",
+            "type": "string"
+          },
+          "found": {
+            "description": "True when Stripe has a customer with this email (or id). When false, summary says nobody was found, the two statuses are none and the rest is blank.",
+            "type": "boolean"
+          },
+          "has_active_subscription": {
+            "description": "True when their subscription is active or on a free trial.",
+            "type": "boolean"
+          },
+          "last_payment_amount_display": {
+            "description": "The amount of that payment as a person writes it, such as $49.00; blank when there is none.",
+            "type": "string"
+          },
+          "last_payment_date": {
+            "description": "The day that payment was started, as a date other steps can read, such as 2026-11-03 (UTC); blank when there is none.",
+            "type": "string"
+          },
+          "last_payment_date_display": {
+            "description": "The same day as a person writes it, such as Nov 3, 2026.",
+            "type": "string"
+          },
+          "last_payment_failed": {
+            "description": "True when their most recent payment failed. Use it in a condition, such as to raise a ticket's priority.",
+            "type": "boolean"
+          },
+          "last_payment_failure_reason": {
+            "description": "Why the payment failed, in Stripe's words, such as Your card was declined; blank unless it failed.",
+            "type": "string"
+          },
+          "last_payment_status": {
+            "description": "How their most recent payment went, one of: paid, failed (the card or bank refused it), pending (still going through, or waiting for the customer to confirm with their bank) or none (they have never been charged). It covers subscription renewals and one-off payments; a payment that was started and never tried doesn't count.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The customer's name; blank when Stripe has none.",
+            "type": "string"
+          },
+          "plan_name": {
+            "description": "The plan they are on now: the name of the product they subscribe to, such as Pro. Several are separated by commas. Blank when they have no current subscription.",
+            "type": "string"
+          },
+          "subscription_status": {
+            "description": "Where their subscription stands, one of: active, trialing (on a free trial), past_due (a renewal payment failed and Stripe is still trying), unpaid, paused, incomplete (the first payment hasn't gone through), canceled (they had one and it ended) or none (they never had one).",
+            "type": "string"
+          },
+          "summary": {
+            "description": "The plan and the last payment in one short paragraph, ready to paste into a note or message: 'Plan: Pro (active). Last payment: $49.00 on Nov 3, 2026, paid.' When nobody is found: 'No Stripe customer with this email.'",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "refund_payment": {
       "description": "Give back all or part of a payment.",
       "display_name": "Refund a payment",
@@ -1168,8 +1374,14 @@
       "id": "stripe_retrieve_customer",
       "method": "POST",
       "mock_response": {
+        "created": 1767225600,
+        "delinquent": false,
+        "description": "",
         "email": "customer@example.com",
-        "id": "cus_123"
+        "id": "cus_123",
+        "metadata": {},
+        "name": "Example Customer",
+        "phone": "+15550100"
       },
       "name": "retrieve_customer",
       "output_formatter": "actions.format_retrieve_customer_output",
@@ -1189,6 +1401,40 @@
       "result_str_template": "Customer retrieved.",
       "returns": {
         "description": "The customer: their id, email, name and the rest of what Stripe keeps about them.",
+        "properties": {
+          "created": {
+            "description": "When the customer was added to Stripe, as a Unix timestamp.",
+            "type": "number"
+          },
+          "delinquent": {
+            "description": "True when their latest invoice is overdue or its payment failed.",
+            "type": "boolean"
+          },
+          "description": {
+            "description": "The note your team saved on the customer; blank when there is none.",
+            "type": "string"
+          },
+          "email": {
+            "description": "Their email address; blank when Stripe has none.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The customer's id in Stripe, which starts with cus_.",
+            "type": "string"
+          },
+          "metadata": {
+            "description": "Your own key-value data saved on the customer.",
+            "type": "object"
+          },
+          "name": {
+            "description": "Their full name or business name; blank when Stripe has none.",
+            "type": "string"
+          },
+          "phone": {
+            "description": "Their phone number; blank when Stripe has none.",
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "scopes": [
@@ -1203,9 +1449,14 @@
       "id": "stripe_update_customer",
       "method": "POST",
       "mock_response": {
+        "created": 1767225600,
+        "delinquent": false,
+        "description": "",
         "email": "customer@example.com",
         "id": "cus_123",
-        "name": "Example Customer"
+        "metadata": {},
+        "name": "Example Customer",
+        "phone": "+15550100"
       },
       "name": "update_customer",
       "output_formatter": "actions.format_update_customer_output",
@@ -1254,6 +1505,40 @@
       "result_str_template": "Customer updated.",
       "returns": {
         "description": "The customer as it now stands: their id, email, name and the rest of what Stripe keeps about them.",
+        "properties": {
+          "created": {
+            "description": "When the customer was added to Stripe, as a Unix timestamp.",
+            "type": "number"
+          },
+          "delinquent": {
+            "description": "True when their latest invoice is overdue or its payment failed.",
+            "type": "boolean"
+          },
+          "description": {
+            "description": "The note your team saved on the customer; blank when there is none.",
+            "type": "string"
+          },
+          "email": {
+            "description": "Their email address; blank when Stripe has none.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The customer's id in Stripe, which starts with cus_.",
+            "type": "string"
+          },
+          "metadata": {
+            "description": "Your own key-value data saved on the customer.",
+            "type": "object"
+          },
+          "name": {
+            "description": "Their full name or business name; blank when Stripe has none.",
+            "type": "string"
+          },
+          "phone": {
+            "description": "Their phone number; blank when Stripe has none.",
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "scopes": [
@@ -1303,13 +1588,20 @@
         "charge": "The id of the charge being disputed (ch_...).",
         "created": "When the dispute was opened, as a Unix timestamp.",
         "currency": "The three-letter currency code, such as usd.",
+        "customer_email": "Beta. Their email address, or the address the payment's receipt went to; blank when Stripe has neither.",
+        "customer_name": "Beta. The name of the customer who disputed; blank when Stripe has none.",
+        "dispute_url": "Beta. A link that opens the dispute in the Stripe dashboard.",
         "event_created": "When the event happened, as a Unix timestamp.",
         "event_id": "The id of the Stripe event (evt_...).",
-        "evidence_details": "due_by: when your evidence must reach Stripe, as a Unix timestamp.",
+        "evidence_details": "An object about your evidence: due_by (the deadline as a Unix timestamp; evidence_due_date holds it as a date), has_evidence (whether any has been added), past_due (whether the deadline has passed) and submission_count (how many times it has been sent).",
+        "evidence_due_date": "Beta. The last day your evidence can reach Stripe, as a date other steps can read, such as 2026-11-30 (UTC). Give it to a step that sets a due date or counts days from a date; blank when Stripe set no deadline.",
+        "evidence_due_display": "Beta. That deadline as a person writes it, such as Nov 30, 2026. Use it in a message.",
         "id": "The dispute's id (dp_...).",
         "metadata": "Your own key-value data saved on the dispute.",
+        "payer": "Beta. Who disputed, ready to put in a message: their name, else their email, else 'a customer'.",
         "payment_intent": "The payment's id (pi_...).",
-        "reason": "Why the customer's bank says it's disputed, such as fraudulent or product_not_received.",
+        "reason": "Why the customer's bank says it's disputed, as Stripe's code, such as fraudulent or product_not_received. For a message use reason_display.",
+        "reason_display": "Beta. Why it's disputed, in words, such as Product not received, Fraudulent or Charged twice. Use it in a message.",
         "status": "Where it stands, such as needs_response or warning_needs_response."
       },
       "parameters": []
@@ -1324,15 +1616,22 @@
         "charge": "The id of the charge being disputed (ch_...).",
         "created": "When the dispute was opened, as a Unix timestamp.",
         "currency": "The three-letter currency code, such as usd.",
+        "customer_email": "Beta. Their email address, or the address the payment's receipt went to; blank when Stripe has neither.",
+        "customer_name": "Beta. The name of the customer who disputed; blank when Stripe has none.",
+        "dispute_url": "Beta. A link that opens the dispute in the Stripe dashboard.",
         "event_created": "When the event happened, as a Unix timestamp.",
         "event_id": "The id of the Stripe event (evt_...).",
-        "evidence_details": "due_by: when your evidence must reach Stripe, as a Unix timestamp.",
+        "evidence_details": "An object about your evidence: due_by (the deadline as a Unix timestamp; evidence_due_date holds it as a date), has_evidence (whether any has been added), past_due (whether the deadline has passed) and submission_count (how many times it has been sent).",
+        "evidence_due_date": "Beta. The last day your evidence can reach Stripe, as a date other steps can read, such as 2026-11-30 (UTC). Give it to a step that sets a due date or counts days from a date; blank when Stripe set no deadline.",
+        "evidence_due_display": "Beta. That deadline as a person writes it, such as Nov 30, 2026. Use it in a message.",
         "id": "The dispute's id (dp_...).",
         "metadata": "Your own key-value data saved on the dispute.",
+        "payer": "Beta. Who disputed, ready to put in a message: their name, else their email, else 'a customer'.",
         "payment_intent": "The payment's id (pi_...).",
         "previous_attributes": "What it was before, for the parts that changed only, such as status or items.",
         "previous_status": "Beta. The status before this change, such as trialing, when the status changed; blank when it didn't. Compare it with status to catch a trial becoming paid or a subscription falling past_due.",
-        "reason": "Why the customer's bank says it's disputed, such as fraudulent or product_not_received.",
+        "reason": "Why the customer's bank says it's disputed, as Stripe's code, such as fraudulent or product_not_received. For a message use reason_display.",
+        "reason_display": "Beta. Why it's disputed, in words, such as Product not received, Fraudulent or Charged twice. Use it in a message.",
         "status": "Where it stands, such as needs_response or warning_needs_response."
       },
       "parameters": []

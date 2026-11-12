@@ -2025,22 +2025,57 @@
       ]
     },
     "list_deals": {
-      "description": "List deals, one page at a time, optionally narrowed to a pipeline, a stage, a status or the person they are with. Each deal shows how many days since it last changed.",
+      "description": "List deals, one page at a time, optionally narrowed to a pipeline, a stage, a status or the person they are with. Each deal shows how many days since it last changed, and always comes with its owner's name and email. Beta: it can keep only the deals with no next activity scheduled, gives each deal its link and readable value, and returns the deals grouped by owner and as one text ready to post, so a report of deals by owner needs no filter, grouping or lookup step.",
       "display_name": "List deals",
       "display_str_template": "List deals.",
       "handler": "actions.list_deals",
       "id": "pipedrive_list_deals",
       "method": "POST",
       "mock_response": {
+        "by_owner": [
+          {
+            "count": 1,
+            "deals": [
+              {
+                "days_since_update": 20,
+                "id": 42,
+                "link": "https://acme.pipedrive.com/deal/42",
+                "next_activity_date": null,
+                "title": "New engine order",
+                "value_display": "$12,000"
+              }
+            ],
+            "deals_text": "\u2022 New engine order ($12,000): https://acme.pipedrive.com/deal/42",
+            "owner_email": "ana@example.com",
+            "owner_id": 7,
+            "owner_name": "Ana Reyes",
+            "total_display": "$12,000"
+          }
+        ],
         "count": 1,
         "deals": [
-          {}
+          {
+            "currency": "USD",
+            "days_since_update": 20,
+            "id": 42,
+            "link": "https://acme.pipedrive.com/deal/42",
+            "next_activity_date": null,
+            "next_activity_id": null,
+            "owner_email": "ana@example.com",
+            "owner_id": 7,
+            "owner_name": "Ana Reyes",
+            "status": "open",
+            "title": "New engine order",
+            "value": 12000,
+            "value_display": "$12,000"
+          }
         ],
         "has_more": false,
-        "next_cursor": null
+        "next_cursor": null,
+        "text": "Ana Reyes (1 deal, $12,000)\n\u2022 New engine order ($12,000): https://acme.pipedrive.com/deal/42"
       },
       "name": "list_deals",
-      "output_formatter": "PipedriveProvider.<lambda>",
+      "output_formatter": "actions.format_deals",
       "parameters": [
         {
           "description": "Only return deals in these states. Choose none to return every deal that has not been deleted.",
@@ -2115,11 +2150,19 @@
           "type": "ParameterType.DATETIME"
         },
         {
-          "description": "Beta. Only return deals nobody has changed for at least this many days, such as 14 for a weekly list of deals gone quiet, so no filtering step is needed. Each deal also comes with its owner's name and email.",
+          "description": "Beta. Only return deals nobody has changed for at least this many days, such as 14 for a weekly list of deals gone quiet, so no filtering step is needed. Leave blank for no such filter; the owner's name and email come with every deal either way.",
           "display_name": "Idle for at least (days)",
           "name": "idle_days",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Beta. Only return deals that have no activity (call, meeting or task) scheduled, so a list of deals nobody is following up needs no list of activities and no filtering step. Every page of deals is read (up to 10,000 deals) and 'limit' is ignored. Only open deals are looked at unless Status says otherwise.",
+          "display_name": "Only deals with no next activity",
+          "name": "no_next_activity",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         },
         {
           "description": "Which field to order the results by.",
@@ -2181,7 +2224,74 @@
       "result_str_template": "Deals listed.",
       "returns": {
         "properties": {
+          "by_owner": {
+            "description": "Beta. The same deals grouped by who owns them, the owner with the most deals first, so a message for each owner needs no grouping step: loop over these and send 'deals_text' to 'owner_email'.",
+            "items": {
+              "properties": {
+                "count": {
+                  "description": "How many of the deals are theirs.",
+                  "type": "integer"
+                },
+                "deals": {
+                  "description": "Their deals, in short form.",
+                  "items": {
+                    "properties": {
+                      "days_since_update": {
+                        "description": "Whole days since the deal last changed.",
+                        "type": "integer"
+                      },
+                      "id": {
+                        "description": "The deal's ID.",
+                        "type": "integer"
+                      },
+                      "link": {
+                        "description": "The link that opens the deal in Pipedrive.",
+                        "type": "string"
+                      },
+                      "next_activity_date": {
+                        "description": "The day the deal's next activity is due, such as 2026-11-30, or blank when nothing is scheduled.",
+                        "type": "string"
+                      },
+                      "title": {
+                        "description": "The deal's title.",
+                        "type": "string"
+                      },
+                      "value_display": {
+                        "description": "The deal's value, such as $12,000. Blank when none.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "deals_text": {
+                  "description": "Their deals as text, one line per deal with its title, value and link, such as \u2022 New engine order ($12,000): https://acme.pipedrive.com/deal/42.",
+                  "type": "string"
+                },
+                "owner_email": {
+                  "description": "The owner's email address.",
+                  "type": "string"
+                },
+                "owner_id": {
+                  "description": "The owner's Pipedrive user ID.",
+                  "type": "integer"
+                },
+                "owner_name": {
+                  "description": "The owner's name, such as Ana Reyes.",
+                  "type": "string"
+                },
+                "total_display": {
+                  "description": "What their deals add up to, such as $15,500 (each currency's total, joined with +, when there are several). Blank when none has a value.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
           "count": {
+            "description": "How many deals are listed. 0 when there are none, so 'send nothing when the list is empty' is one check.",
             "type": "integer"
           },
           "deals": {
@@ -2234,6 +2344,10 @@
                   },
                   "type": "array"
                 },
+                "link": {
+                  "description": "Beta. The link that opens the deal in Pipedrive, such as https://acme.pipedrive.com/deal/42, ready to put in a message.",
+                  "type": "string"
+                },
                 "lost_reason": {
                   "type": "string"
                 },
@@ -2242,6 +2356,14 @@
                 },
                 "mrr": {
                   "type": "number"
+                },
+                "next_activity_date": {
+                  "description": "Beta. The day the deal's next activity is due, a date such as 2026-11-30, or blank when nothing is scheduled.",
+                  "type": "string"
+                },
+                "next_activity_id": {
+                  "description": "Beta. The ID of the next activity scheduled on the deal, or blank when nothing is scheduled.",
+                  "type": "integer"
                 },
                 "org_id": {
                   "type": "integer"
@@ -2293,6 +2415,10 @@
                 "value": {
                   "type": "number"
                 },
+                "value_display": {
+                  "description": "Beta. The deal's value the way a person reads it, such as $12,000 or 900 SEK. Blank when the deal has no value.",
+                  "type": "string"
+                },
                 "visible_to": {
                   "type": "integer"
                 },
@@ -2308,6 +2434,10 @@
             "type": "boolean"
           },
           "next_cursor": {
+            "type": "string"
+          },
+          "text": {
+            "description": "Beta. The whole list as text ready to post or email as it is: a section per owner, headed with their name, how many deals and their total, then one line per deal with its title, value and link. Empty when no deals are listed, so check 'count' first.",
             "type": "string"
           }
         },

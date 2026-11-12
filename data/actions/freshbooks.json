@@ -1111,7 +1111,7 @@
             "type": "string"
           },
           "outstanding": {
-            "description": "What is still owed",
+            "description": "What is still owed after any payments. This is the figure a payment reminder should quote, not amount",
             "properties": {
               "amount": {
                 "description": "The amount, as decimal text such as 10.50",
@@ -2515,7 +2515,7 @@
             "type": "string"
           },
           "outstanding": {
-            "description": "What is still owed",
+            "description": "What is still owed after any payments. This is the figure a payment reminder should quote, not amount",
             "properties": {
               "amount": {
                 "description": "The amount, as decimal text such as 10.50",
@@ -2979,7 +2979,7 @@
       ]
     },
     "list_invoices": {
-      "description": "List invoices, optionally by client, status or date.",
+      "description": "List invoices, optionally by client, status or date, or only those overdue by a number of days. Each comes with the client's email and its amounts and due date ready to put in a message.",
       "display_name": "List invoices",
       "display_str_template": "List invoices.",
       "handler": "actions.list_invoices",
@@ -2987,21 +2987,28 @@
       "method": "POST",
       "mock_response": {
         "count": 1,
+        "incomplete": false,
         "invoices": [
           {
             "amount": {
               "amount": "264.00",
               "code": "USD"
             },
+            "amount_display": "$264.00",
+            "client_email": "email1@freshbooks.com",
+            "client_first_name": "F_Name",
+            "client_name": "Test Client company",
             "create_date": "2021-08-17",
             "created_at": "2021-08-17 08:20:11",
             "currency_code": "USD",
             "current_organization": "Test Client company",
             "customerid": 2280,
             "date_paid": null,
+            "days_overdue": 32,
             "discount_value": "0",
             "display_status": "sent",
             "due_date": "2021-09-16",
+            "due_date_display": "Sep 16, 2021",
             "due_offset_days": 30,
             "fname": "F_Name",
             "id": 1627,
@@ -3034,6 +3041,7 @@
               "amount": "264.00",
               "code": "USD"
             },
+            "outstanding_display": "$264.00",
             "paid": {
               "amount": "0.00",
               "code": "USD"
@@ -3048,7 +3056,8 @@
         ],
         "page": 1,
         "pages": 1,
-        "total": 1
+        "total": 1,
+        "total_outstanding_display": "$264.00"
       },
       "name": "list_invoices",
       "output_formatter": "actions.format_invoices_output",
@@ -3114,6 +3123,14 @@
           "type": "ParameterType.DATE"
         },
         {
+          "description": "Beta. Only sent invoices that still owe money and whose due date was at least this many days ago, oldest first: 1 gives everything overdue, 31 gives invoices more than 30 days overdue. Every matching invoice is returned in one list, so no paging or date check is needed; leave Status, Page and Per page empty. Leave empty to list invoices whether overdue or not.",
+          "display_name": "Overdue by at least (days)",
+          "minimum": 1,
+          "name": "overdue_by_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
           "description": "Which page of results, starting at 1. Leave empty for the first.",
           "display_name": "Page",
           "minimum": 1,
@@ -3140,6 +3157,10 @@
             "description": "How many invoices are on this page",
             "type": "number"
           },
+          "incomplete": {
+            "description": "Beta. True only when Overdue by at least (days) had more than 5,000 unpaid invoices to look through and stopped there, so some may be missing",
+            "type": "boolean"
+          },
           "invoices": {
             "description": "The invoices on this page",
             "items": {
@@ -3158,6 +3179,22 @@
                     }
                   },
                   "type": "object"
+                },
+                "amount_display": {
+                  "description": "Beta. The total as a person writes it, such as $1,240.50 (or 1,240.50 CAD), ready to put in a message",
+                  "type": "string"
+                },
+                "client_email": {
+                  "description": "Beta. The client's email address, to send a reminder to; empty when FreshBooks has none",
+                  "type": "string"
+                },
+                "client_first_name": {
+                  "description": "Beta. The client contact's first name, to greet them by; empty when FreshBooks has none",
+                  "type": "string"
+                },
+                "client_name": {
+                  "description": "Beta. The client's company name, or the contact's first and last name when there is no company",
+                  "type": "string"
                 },
                 "create_date": {
                   "description": "The invoice date (YYYY-MM-DD)",
@@ -3184,6 +3221,10 @@
                   "nullable": true,
                   "type": "string"
                 },
+                "days_overdue": {
+                  "description": "Beta. How many days past its due date the invoice is; 0 when it is not overdue, is paid or is still a draft",
+                  "type": "number"
+                },
                 "discount_value": {
                   "description": "Discount, in percent",
                   "type": "string"
@@ -3194,6 +3235,10 @@
                 },
                 "due_date": {
                   "description": "The due date (YYYY-MM-DD)",
+                  "type": "string"
+                },
+                "due_date_display": {
+                  "description": "Beta. The due date as a person writes it, such as Oct 3, 2026",
                   "type": "string"
                 },
                 "due_offset_days": {
@@ -3303,7 +3348,7 @@
                   "type": "string"
                 },
                 "outstanding": {
-                  "description": "What is still owed",
+                  "description": "What is still owed after any payments. This is the figure a payment reminder should quote, not amount",
                   "properties": {
                     "amount": {
                       "description": "The amount, as decimal text such as 10.50",
@@ -3315,6 +3360,10 @@
                     }
                   },
                   "type": "object"
+                },
+                "outstanding_display": {
+                  "description": "Beta. What is still owed as a person writes it, such as $1,240.50, ready to put in a payment reminder",
+                  "type": "string"
                 },
                 "paid": {
                   "description": "What has been paid",
@@ -3372,6 +3421,10 @@
           "total": {
             "description": "How many invoices match, on every page",
             "type": "number"
+          },
+          "total_outstanding_display": {
+            "description": "Beta. What the invoices returned still owe, added up and written for a message, such as $4,200.50 (one total per currency)",
+            "type": "string"
           }
         },
         "type": "object"
@@ -4105,7 +4158,7 @@
             "type": "string"
           },
           "outstanding": {
-            "description": "What is still owed",
+            "description": "What is still owed after any payments. This is the figure a payment reminder should quote, not amount",
             "properties": {
               "amount": {
                 "description": "The amount, as decimal text such as 10.50",
@@ -4441,7 +4494,7 @@
                 "type": "string"
               },
               "outstanding": {
-                "description": "What is still owed",
+                "description": "What is still owed after any payments. This is the figure a payment reminder should quote, not amount",
                 "properties": {
                   "amount": {
                     "description": "The amount, as decimal text such as 10.50",
@@ -5064,7 +5117,7 @@
             "type": "string"
           },
           "outstanding": {
-            "description": "What is still owed",
+            "description": "What is still owed after any payments. This is the figure a payment reminder should quote, not amount",
             "properties": {
               "amount": {
                 "description": "The amount, as decimal text such as 10.50",

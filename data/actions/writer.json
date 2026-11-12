@@ -1,0 +1,3479 @@
+{
+  "actions": {
+    "ask_graph": {
+      "description": "Question.",
+      "display_name": "Ask graph",
+      "display_str_template": "Ask graph.",
+      "handler": "actions.ask_graph",
+      "id": "writer_ask_graph",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "answer": "example",
+          "question": "example",
+          "references": {
+            "files": [],
+            "web": []
+          },
+          "sources": [],
+          "subqueries": []
+        }
+      },
+      "name": "ask_graph",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "The unique identifiers of the Knowledge Graphs to query.",
+          "display_name": "Graph ids",
+          "dynamic_source": "graphs",
+          "dynamic_source_allows_custom": true,
+          "multi_select": true,
+          "name": "graph_ids",
+          "required": true,
+          "schema": {
+            "description": "The unique identifiers of the Knowledge Graphs to query.",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": false,
+          "description": "Specify whether to include subqueries.",
+          "display_name": "Subqueries",
+          "name": "subqueries",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "The question to answer using the Knowledge Graph.",
+          "display_name": "Question",
+          "name": "question",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Configuration options for Knowledge Graph queries, including search parameters and citation settings.",
+          "display_name": "Query config",
+          "name": "query_config",
+          "required": false,
+          "schema": {
+            "description": "Configuration options for Knowledge Graph queries, including search parameters and citation settings.",
+            "properties": {
+              "grounding_level": {
+                "default": 0,
+                "description": "Level of grounding required for responses, controlling how closely answers must be tied to source material. Set lower for grounded outputs, higher for creativity. Higher values (closer to 1.0) allow more creative interpretation, while lower values (closer to 0.0) stick more closely to source material. Range: 0.0-1.0, Default: 0.0.",
+                "format": "double",
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              "inline_citations": {
+                "default": false,
+                "description": "Whether to include inline citations in the response, showing which Knowledge Graph sources were used. Default: false.",
+                "type": "boolean"
+              },
+              "keyword_threshold": {
+                "default": 0.7,
+                "description": "Threshold for keyword-based matching when searching Knowledge Graph content. Set higher for stricter relevance, lower for broader range. Higher values (closer to 1.0) require stronger keyword matches, while lower values (closer to 0.0) allow more lenient matching. Range: 0.0-1.0, Default: 0.7.",
+                "format": "double",
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              "max_snippets": {
+                "default": 30,
+                "description": "Maximum number of text snippets to retrieve from the Knowledge Graph for context. Works in concert with `search_weight` to control best matches vs broader coverage. While technically supports 1-60, values below 5 may return no results due to RAG implementation. Recommended range: 5-25. Due to RAG system behavior, you may see more snippets than requested. Range: 1-60, Default: 30.",
+                "format": "int32",
+                "maximum": 60,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "max_subquestions": {
+                "default": 6,
+                "description": "Maximum number of subquestions to generate when processing complex queries. Set higher to improve detail, set lower to reduce response time. Range: 1-10, Default: 6.",
+                "format": "int32",
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "max_tokens": {
+                "default": 4000,
+                "description": "Maximum number of tokens the model can generate in the response. This controls the length of the AI's answer. Set higher for longer answers, set lower for shorter, faster answers. Range: 100-8000, Default: 4000.",
+                "format": "int32",
+                "maximum": 8000,
+                "minimum": 100,
+                "type": "integer"
+              },
+              "search_weight": {
+                "default": 50,
+                "description": "Weight given to search results when ranking and selecting relevant information. Higher values (closer to 100) prioritize keyword-based matching, while lower values (closer to 0) prioritize semantic similarity matching. Use higher values for exact keyword searches, lower values for conceptual similarity searches. Range: 0-100, Default: 50.",
+                "format": "int32",
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "semantic_threshold": {
+                "default": 0.7,
+                "description": "Threshold for semantic similarity matching when searching Knowledge Graph content. Set higher for stricter relevance, lower for broader range. Higher values (closer to 1.0) require stronger semantic similarity, while lower values (closer to 0.0) allow more lenient semantic matching. Range: 0.0-1.0, Default: 0.7.",
+                "format": "double",
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "title": "graph_query_config",
+            "type": "object"
+          },
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/writer/ask-graph",
+      "result_str_template": "Ask graph completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "answer": {
+                "description": "The answer to the question.",
+                "type": "string"
+              },
+              "question": {
+                "description": "The question that was asked.",
+                "type": "string"
+              },
+              "references": {
+                "description": "Detailed source information organized by reference type, providing comprehensive metadata about the sources used to generate the response.",
+                "properties": {
+                  "files": {
+                    "description": "Array of file-based references from uploaded documents in the Knowledge Graph.",
+                    "items": {
+                      "description": "A file-based reference containing text snippets from uploaded documents in the Knowledge Graph.",
+                      "properties": {
+                        "cite": {
+                          "description": "Unique citation ID that appears in inline citations within the response text (null if not cited).",
+                          "type": "string"
+                        },
+                        "fileId": {
+                          "description": "The unique identifier of the file in your Writer account.",
+                          "type": "string"
+                        },
+                        "page": {
+                          "description": "Page number where this snippet was found in the source document.",
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "score": {
+                          "description": "Internal score used during the retrieval process for ranking and selecting relevant snippets.",
+                          "type": "number"
+                        },
+                        "text": {
+                          "description": "The exact text snippet from the source document that was used to support the response.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "fileId",
+                        "score"
+                      ],
+                      "title": "file",
+                      "type": "object"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "web": {
+                    "description": "Array of web-based references from online sources accessed during the query.",
+                    "items": {
+                      "description": "A web-based reference containing text snippets from online sources accessed during the query.",
+                      "properties": {
+                        "score": {
+                          "description": "Internal score used during the retrieval process for ranking and selecting relevant snippets.",
+                          "type": "number"
+                        },
+                        "text": {
+                          "description": "The exact text snippet from the web source that was used to support the response.",
+                          "type": "string"
+                        },
+                        "title": {
+                          "description": "The title of the web page where this content was found.",
+                          "type": "string"
+                        },
+                        "url": {
+                          "description": "The URL of the web page where this content was found.",
+                          "format": "uri",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "url",
+                        "title",
+                        "score"
+                      ],
+                      "title": "web",
+                      "type": "object"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  }
+                },
+                "title": "references",
+                "type": "object"
+              },
+              "sources": {
+                "description": "Sources.",
+                "items": {
+                  "description": "A source snippet containing text and fileId from Knowledge Graph content.",
+                  "properties": {
+                    "file_id": {
+                      "description": "The unique identifier of the file in your Writer account.",
+                      "type": "string"
+                    },
+                    "snippet": {
+                      "description": "The exact text snippet from the source document that was used to support the response.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "file_id",
+                    "snippet"
+                  ],
+                  "title": "source",
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                },
+                "type": "array"
+              },
+              "subqueries": {
+                "description": "Subqueries.",
+                "items": {
+                  "description": "A sub-question generated to break down complex queries into more manageable parts, along with its answer and supporting sources.",
+                  "properties": {
+                    "answer": {
+                      "description": "The answer to the subquery based on Knowledge Graph content.",
+                      "type": "string"
+                    },
+                    "query": {
+                      "description": "The subquery that was generated to help answer the main question.",
+                      "type": "string"
+                    },
+                    "sources": {
+                      "description": "Array of source snippets that were used to answer this subquery.",
+                      "items": {
+                        "description": "A source snippet containing text and fileId from Knowledge Graph content.",
+                        "properties": {
+                          "file_id": {
+                            "description": "The unique identifier of the file in your Writer account.",
+                            "type": "string"
+                          },
+                          "snippet": {
+                            "description": "The exact text snippet from the source document that was used to support the response.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "file_id",
+                          "snippet"
+                        ],
+                        "title": "source",
+                        "type": [
+                          "object",
+                          "null"
+                        ]
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "query",
+                    "answer",
+                    "sources"
+                  ],
+                  "title": "sub_query",
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "question",
+              "answer",
+              "sources"
+            ],
+            "title": "question_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "chat": {
+      "description": "Chat completion.",
+      "display_name": "Chat",
+      "display_str_template": "Chat.",
+      "handler": "actions.chat",
+      "id": "writer_chat",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "choices": [],
+          "created": 1,
+          "id": "example",
+          "model": "example",
+          "object": "chat.completion",
+          "service_tier": "example",
+          "system_fingerprint": "example",
+          "usage": {
+            "completion_tokens": 1,
+            "completion_tokens_details": {
+              "reasoning_tokens": 1
+            },
+            "prompt_token_details": {
+              "cached_tokens": 1
+            },
+            "prompt_tokens": 1,
+            "total_tokens": 1
+          }
+        }
+      },
+      "name": "chat",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "The [ID of the model](https://dev.writer.com/home/models) to use for creating the chat completion. This can be a Palmyra model such as `palmyra-x5` or `palmyra-x4`, or the ID of an [external model](https://dev.writer.com/home/external-models) configured for your organization.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "An array of message objects that form the conversation history or context for the model to respond to. The array must contain at least one message.",
+          "display_name": "Messages",
+          "name": "messages",
+          "required": true,
+          "schema": {
+            "description": "An array of message objects that form the conversation history or context for the model to respond to. The array must contain at least one message.",
+            "items": {
+              "properties": {
+                "content": {
+                  "description": "The content of the message. Can be either a string (for text-only messages) or an array of content fragments (for mixed text and image messages).",
+                  "title": "TextContent",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "graph_data": {
+                  "properties": {
+                    "references": {
+                      "description": "Detailed source information organized by reference type, providing comprehensive metadata about the sources used to generate the response.",
+                      "properties": {
+                        "files": {
+                          "type": "array"
+                        },
+                        "web": {
+                          "type": "array"
+                        }
+                      },
+                      "title": "references",
+                      "type": "object"
+                    },
+                    "sources": {
+                      "items": {
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "status": {
+                      "enum": [
+                        "processing",
+                        "finished"
+                      ],
+                      "title": "graph_stage_status",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "subqueries": {
+                      "items": {
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "title": "graph_data",
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "An optional name for the message sender. Useful for identifying different users, personas, or tools in multi-participant conversations.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "refusal": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "role": {
+                  "description": "The role of the chat message. You can provide a system prompt by setting the role to `system`, or specify that a message is the result of a [tool call](https://dev.writer.com/home/tool-calling) by setting the role to `tool`.",
+                  "enum": [
+                    "user",
+                    "assistant",
+                    "system",
+                    "tool"
+                  ],
+                  "type": "string"
+                },
+                "tool_call_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "tool_calls": {
+                  "items": {
+                    "properties": {
+                      "function": {
+                        "type": "object"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "index": {
+                        "format": "int32",
+                        "type": "integer"
+                      },
+                      "type": {
+                        "enum": [
+                          "function"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "type",
+                      "function"
+                    ],
+                    "title": "tool_call",
+                    "type": "object"
+                  },
+                  "minItems": 1,
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "role"
+              ],
+              "title": "chat_message",
+              "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Defines the maximum number of tokens (words and characters) that the model can generate in the response. This can be adjusted to allow for longer or shorter responses as needed. The maximum value varies by model. See the [models overview](/home/models) for more information about the maximum number of tokens for each model.",
+          "display_name": "Max tokens",
+          "name": "max_tokens",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 1,
+          "description": "Controls the randomness or creativity of the model's responses. A higher temperature results in more varied and less predictable text, while a lower temperature produces more deterministic and conservative outputs.",
+          "display_name": "Temperature",
+          "name": "temperature",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Sets the threshold for \"nucleus sampling,\" a technique to focus the model's token generation on the most likely subset of tokens. Only tokens with cumulative probability above this threshold are considered, controlling the trade-off between creativity and coherence.",
+          "display_name": "Top p",
+          "name": "top_p",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Specifies the number of completions (responses) to generate from the model in a single request. This parameter allows for generating multiple responses, offering a variety of potential replies from which to choose.",
+          "display_name": "N",
+          "name": "n",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "A token or sequence of tokens that, when generated, will cause the model to stop producing further content. This can be a single token or an array of tokens, acting as a signal to end the output.",
+          "display_name": "Stop",
+          "name": "stop",
+          "required": false,
+          "schema": {
+            "description": "A token or sequence of tokens that, when generated, will cause the model to stop producing further content. This can be a single token or an array of tokens, acting as a signal to end the output.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": "false",
+          "description": "Specifies whether to return log probabilities of the output tokens.",
+          "display_name": "Logprobs",
+          "name": "logprobs",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "An array containing tool definitions for tools that the model can use to generate responses. The tool definitions use JSON schema. You can define your own functions or use one of the built-in `graph`, `llm`, or `web_search` tools. Note that you can only use one built-in tool type in the array (only one of `graph`, `llm`, or `web_search`). You can pass multiple [custom tools](https://dev.writer.com/home/tool-calling) of type `function` in the same request.",
+          "display_name": "Tools",
+          "name": "tools",
+          "required": false,
+          "schema": {
+            "description": "An array containing tool definitions for tools that the model can use to generate responses. The tool definitions use JSON schema. You can define your own functions or use one of the built-in `graph`, `llm`, or `web_search` tools. Note that you can only use one built-in tool type in the array (only one of `graph`, `llm`, or `web_search`). You can pass multiple [custom tools](https://dev.writer.com/home/tool-calling) of type `function` in the same request.",
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "function": "#/components/schemas/function_tool",
+                  "graph": "#/components/schemas/graph_tool",
+                  "llm": "#/components/schemas/llm_tool",
+                  "web_search": "#/components/schemas/web_search_tool"
+                },
+                "propertyName": "type"
+              },
+              "minItems": 1,
+              "properties": {
+                "function": {
+                  "description": "A tool that uses a custom function.",
+                  "properties": {
+                    "description": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "parameters": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "title": "tool_function",
+                  "type": "object"
+                },
+                "type": {
+                  "description": "The type of tool.",
+                  "enum": [
+                    "function"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "function",
+                "type"
+              ],
+              "title": "Function tool",
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Configure how the model will call functions:\n- `auto`: allows the model to automatically choose the tool to use, or not call a tool\n- `none`: disables tool calling; the model will instead generate a message\n- `required`: requires the model to call one or more tools\n\nYou can also use a JSON object to force the model to call a specific tool. For example, `{\"type\": \"function\", \"function\": {\"name\": \"get_current_weather\"}}` requires the model to call the `get_current_weather` function, regardless of the prompt.",
+          "display_name": "Tool choice",
+          "name": "tool_choice",
+          "required": false,
+          "schema": {
+            "description": "Configure how the model will call functions:\n- `auto`: allows the model to automatically choose the tool to use, or not call a tool\n- `none`: disables tool calling; the model will instead generate a message\n- `required`: requires the model to call one or more tools\n\nYou can also use a JSON object to force the model to call a specific tool. For example, `{\"type\": \"function\", \"function\": {\"name\": \"get_current_weather\"}}` requires the model to call the `get_current_weather` function, regardless of the prompt.",
+            "properties": {
+              "value": {
+                "enum": [
+                  "none",
+                  "auto",
+                  "required"
+                ],
+                "title": "string_tool_choice_options",
+                "type": "string"
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "title": "String",
+            "type": "object"
+          },
+          "type": "ParameterType.OBJECT"
+        },
+        {
+          "description": "The response format to use for the chat completion, available with `palmyra-x4` and `palmyra-x5`.\n\n`text` is the default response format. [JSON Schema](https://json-schema.org/) is supported for structured responses. If you specify `json_schema`, you must also provide a `json_schema` object.",
+          "display_name": "Response format",
+          "name": "response_format",
+          "required": false,
+          "schema": {
+            "description": "The response format to use for the chat completion, available with `palmyra-x4` and `palmyra-x5`.\n\n`text` is the default response format. [JSON Schema](https://json-schema.org/) is supported for structured responses. If you specify `json_schema`, you must also provide a `json_schema` object.",
+            "properties": {
+              "json_schema": {
+                "description": "The JSON schema to use for the response format.",
+                "type": "object"
+              },
+              "type": {
+                "description": "The type of response format to use.",
+                "enum": [
+                  "text",
+                  "json_schema"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "response_format",
+            "type": "object"
+          },
+          "type": "ParameterType.OBJECT"
+        }
+      ],
+      "path": "/actions/library/writer/chat",
+      "result_str_template": "Chat completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "example": {
+              "choices": [
+                {
+                  "finish_reason": "stop",
+                  "index": 0,
+                  "message": {
+                    "content": "The earnings report shows...",
+                    "graph_data": {
+                      "sources": [],
+                      "status": "finished",
+                      "subqueries": []
+                    },
+                    "llm_data": {
+                      "model": "palmyra-x5",
+                      "prompt": "Write a memo summarizing this earnings report."
+                    },
+                    "refusal": null,
+                    "role": "assistant",
+                    "tool_calls": [],
+                    "web_search_data": null
+                  }
+                }
+              ],
+              "created": 1715361795,
+              "id": "57e4f58f-f7b1-41d8-be17-a6279c073aad",
+              "model": "palmyra-x5",
+              "object": "chat.completion",
+              "service_tier": "standard",
+              "system_fingerprint": "v1",
+              "usage": {
+                "completion_token_details": {
+                  "reasoning_tokens": 0
+                },
+                "completion_tokens": 300,
+                "prompt_token_details": {
+                  "cached_tokens": 0
+                },
+                "prompt_tokens": 40,
+                "total_tokens": 340
+              }
+            },
+            "properties": {
+              "choices": {
+                "description": "An array of objects representing the different outcomes or results produced by the model based on the input provided.",
+                "items": {
+                  "description": "One record.",
+                  "properties": {
+                    "finish_reason": {
+                      "description": "Describes the condition under which the model ceased generating content. Common reasons include 'length' (reached the maximum output size), 'stop' (encountered a stop sequence), 'content_filter' (harmful content filtered out), or 'tool_calls' (encountered tool calls).",
+                      "enum": [
+                        "stop",
+                        "length",
+                        "content_filter",
+                        "tool_calls"
+                      ],
+                      "type": "string"
+                    },
+                    "index": {
+                      "description": "The index of the choice in the list of completions generated by the model.",
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "logprobs": {
+                      "description": "Log probability information for the choice.",
+                      "properties": {
+                        "content": {
+                          "description": "Content.",
+                          "items": {
+                            "description": "One record.",
+                            "type": "object"
+                          },
+                          "type": [
+                            "array",
+                            "null"
+                          ]
+                        },
+                        "refusal": {
+                          "description": "Refusal.",
+                          "items": {
+                            "description": "One record.",
+                            "type": "object"
+                          },
+                          "type": [
+                            "array",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "content",
+                        "refusal"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "message": {
+                      "description": "The chat completion message from the model. Note: this field is deprecated for streaming. Use `delta` instead.",
+                      "properties": {
+                        "content": {
+                          "description": "The text content produced by the model. This field contains the actual output generated, reflecting the model's response to the input query or command.",
+                          "type": "string"
+                        },
+                        "graph_data": {
+                          "description": "Graph data.",
+                          "properties": {
+                            "references": {
+                              "description": "References.",
+                              "type": "object"
+                            },
+                            "sources": {
+                              "description": "Sources.",
+                              "type": "array"
+                            },
+                            "status": {
+                              "description": "Status.",
+                              "type": "object"
+                            },
+                            "subqueries": {
+                              "description": "Subqueries.",
+                              "type": "array"
+                            }
+                          },
+                          "title": "graph_data",
+                          "type": "object"
+                        },
+                        "llm_data": {
+                          "description": "Llm data.",
+                          "properties": {
+                            "model": {
+                              "description": "Model.",
+                              "type": "string"
+                            },
+                            "prompt": {
+                              "description": "Prompt.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "prompt",
+                            "model"
+                          ],
+                          "title": "llm_data",
+                          "type": [
+                            "object",
+                            "null"
+                          ]
+                        },
+                        "refusal": {
+                          "description": "Refusal.",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "role": {
+                          "description": "Specifies the role associated with the content.",
+                          "enum": [
+                            "assistant"
+                          ],
+                          "type": "string"
+                        },
+                        "tool_calls": {
+                          "description": "Tool calls.",
+                          "items": {
+                            "description": "One record.",
+                            "type": "object"
+                          },
+                          "minItems": 1,
+                          "type": "array"
+                        },
+                        "web_search_data": {
+                          "description": "Web search data.",
+                          "properties": {
+                            "sources": {
+                              "description": "Sources.",
+                              "type": "array"
+                            }
+                          },
+                          "required": [
+                            "sources"
+                          ],
+                          "title": "web_search_data",
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "content",
+                        "role",
+                        "refusal"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "index",
+                    "finish_reason",
+                    "message"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "created": {
+                "description": "The Unix timestamp (in seconds) when the response was created. This timestamp can be used to verify the timing of the response relative to other events or operations.",
+                "format": "int64",
+                "type": "integer"
+              },
+              "id": {
+                "description": "A globally unique identifier (UUID) for the response generated by the API. This ID can be used to reference the specific operation or transaction within the system for tracking or debugging purposes.",
+                "format": "uuid",
+                "type": "string"
+              },
+              "model": {
+                "description": "Identifies the specific model used to generate the response.",
+                "type": "string"
+              },
+              "object": {
+                "description": "The type of object returned, which is always `chat.completion` for chat responses.",
+                "enum": [
+                  "chat.completion"
+                ],
+                "type": "string"
+              },
+              "service_tier": {
+                "description": "The service tier used for processing the request.",
+                "type": "string"
+              },
+              "system_fingerprint": {
+                "description": "A string representing the backend configuration that the model runs with.",
+                "type": "string"
+              },
+              "usage": {
+                "description": "Usage information for the chat completion response. Please note that at this time Knowledge Graph tool usage is not included in this object.",
+                "properties": {
+                  "completion_tokens": {
+                    "description": "Completion tokens.",
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "completion_tokens_details": {
+                    "description": "Completion tokens details.",
+                    "properties": {
+                      "reasoning_tokens": {
+                        "description": "Reasoning tokens.",
+                        "format": "int32",
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "reasoning_tokens"
+                    ],
+                    "title": "completion_token_details",
+                    "type": "object"
+                  },
+                  "prompt_token_details": {
+                    "description": "Prompt token details.",
+                    "properties": {
+                      "cached_tokens": {
+                        "description": "Cached tokens.",
+                        "format": "int32",
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "cached_tokens"
+                    ],
+                    "title": "prompt_token_details",
+                    "type": "object"
+                  },
+                  "prompt_tokens": {
+                    "description": "Prompt tokens.",
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "total_tokens": {
+                    "description": "Total tokens.",
+                    "format": "int32",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "prompt_tokens",
+                  "total_tokens",
+                  "completion_tokens"
+                ],
+                "title": "chat_completion_usage",
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "object",
+              "choices",
+              "created",
+              "model"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "create_application_job": {
+      "description": "Generate from application (async).",
+      "display_name": "Create application job",
+      "display_str_template": "Create application job.",
+      "handler": "actions.create_application_job",
+      "id": "writer_create_application_job",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "created_at": "2026-11-01T12:00:00Z",
+          "id": "example",
+          "status": "in_progress"
+        }
+      },
+      "name": "create_application_job",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "Application id.",
+          "display_name": "Application",
+          "dynamic_source": "applications",
+          "dynamic_source_allows_custom": true,
+          "name": "application_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A list of input objects to generate content for.",
+          "display_name": "Inputs",
+          "name": "inputs",
+          "required": true,
+          "schema": {
+            "description": "A list of input objects to generate content for.",
+            "items": {
+              "properties": {
+                "id": {
+                  "description": "The unique identifier for the input field from the application. All input types from the No-code application are supported (i.e. Text input, Dropdown, File upload, Image input). The identifier should be the name of the input type.",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "The value for the input field. \n\nIf the input type is \"File upload\", you must pass the `file_id` of an uploaded file. You cannot pass a file object directly. See the [file upload endpoint](https://dev.writer.com/api-reference/file-api/upload-files) for instructions on uploading files or the [list files endpoint](https://dev.writer.com/api-reference/file-api/get-all-files) for how to see a list of uploaded files and their IDs.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "id",
+                "value"
+              ],
+              "title": "generate_application_input",
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/writer/create-application-job",
+      "result_str_template": "Create application job completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "created_at": {
+                "description": "The timestamp when the job was created.",
+                "format": "date-time",
+                "type": "string"
+              },
+              "id": {
+                "description": "The unique identifier for the async job created.",
+                "format": "uuid",
+                "type": "string"
+              },
+              "status": {
+                "description": "The status of the job.",
+                "enum": [
+                  "in_progress",
+                  "failed",
+                  "completed"
+                ],
+                "title": "api_job_status",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "created_at"
+            ],
+            "title": "generate_application_async_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "create_graph": {
+      "description": "Create graph.",
+      "display_name": "Create graph",
+      "display_str_template": "Create graph.",
+      "handler": "actions.create_graph",
+      "id": "writer_create_graph",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "created_at": "2026-11-01T12:00:00Z",
+          "description": "example",
+          "id": "example",
+          "name": "example",
+          "team_ids": [],
+          "urls": []
+        }
+      },
+      "name": "create_graph",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "The name of the Knowledge Graph (max 255 characters). Omitting this field leaves the name unchanged.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A description of the Knowledge Graph (max 255 characters). Omitting this field leaves the description unchanged.",
+          "display_name": "Description",
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Optional list of team IDs to deploy the Knowledge Graph to. Omit the field or pass an empty array to create an org-wide Knowledge Graph (accessible to every team in the organization), which is the default. Provide one or more team IDs to scope the Knowledge Graph to those teams. Only applies when using an org-scoped API key; requests made with a team-scoped API key ignore this field and always assign the graph to that key's team.",
+          "display_name": "Team ids",
+          "name": "team_ids",
+          "required": false,
+          "schema": {
+            "description": "Optional list of team IDs to deploy the Knowledge Graph to. Omit the field or pass an empty array to create an org-wide Knowledge Graph (accessible to every team in the organization), which is the default. Provide one or more team IDs to scope the Knowledge Graph to those teams. Only applies when using an org-scoped API key; requests made with a team-scoped API key ignore this field and always assign the graph to that key's team.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/writer/create-graph",
+      "result_str_template": "Create graph completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "created_at": {
+                "description": "The timestamp when the Knowledge Graph was created.",
+                "format": "date-time",
+                "type": "string"
+              },
+              "description": {
+                "description": "A description of the Knowledge Graph (max 255 characters).",
+                "type": "string"
+              },
+              "id": {
+                "description": "A unique identifier of the Knowledge Graph.",
+                "format": "uuid",
+                "type": "string"
+              },
+              "name": {
+                "description": "The name of the Knowledge Graph (max 255 characters).",
+                "type": "string"
+              },
+              "team_ids": {
+                "description": "The team IDs the Knowledge Graph is deployed to. An empty array indicates an org-wide Knowledge Graph accessible to every team in the organization.",
+                "items": {
+                  "description": "One record.",
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "urls": {
+                "description": "An array of web connector URLs associated with this Knowledge Graph.",
+                "items": {
+                  "description": "One record.",
+                  "properties": {
+                    "exclude_urls": {
+                      "description": "An array of URLs to exclude from processing within this web connector.",
+                      "items": {
+                        "description": "One record.",
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "status": {
+                      "description": "The current status of the URL processing.",
+                      "properties": {
+                        "error_type": {
+                          "description": "The type of error that occurred during processing, if any.",
+                          "enum": [
+                            "invalid_url",
+                            "not_searchable",
+                            "not_found",
+                            "paywall_or_login_page",
+                            "unexpected_error"
+                          ],
+                          "title": "web_connector_url_error_type",
+                          "type": "string"
+                        },
+                        "status": {
+                          "description": "The current status of the URL processing.",
+                          "enum": [
+                            "validating",
+                            "success",
+                            "error"
+                          ],
+                          "title": "web_connector_url_status",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ],
+                      "title": "web_connector_url_state",
+                      "type": "object"
+                    },
+                    "type": {
+                      "description": "The type of web connector processing for this URL.",
+                      "enum": [
+                        "single_page",
+                        "sub_pages"
+                      ],
+                      "title": "web_connector_url_type",
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "The URL to be processed by the web connector.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "status",
+                    "type"
+                  ],
+                  "title": "web_connector_url",
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "id",
+              "created_at",
+              "name"
+            ],
+            "title": "graph_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "delete_file": {
+      "description": "Delete file.",
+      "display_name": "Delete file",
+      "display_str_template": "Delete file {file_id}.",
+      "handler": "actions.delete_file",
+      "id": "writer_delete_file",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "deleted": false,
+          "id": "example"
+        }
+      },
+      "name": "delete_file",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "File id.",
+          "display_name": "File",
+          "dynamic_source": "files",
+          "dynamic_source_allows_custom": true,
+          "name": "file_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/writer/delete-file",
+      "result_str_template": "Delete file completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "deleted": {
+                "description": "Indicates whether the file was successfully deleted.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "A unique identifier of the deleted file.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "deleted"
+            ],
+            "title": "delete_file_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "delete_graph": {
+      "description": "Delete graph.",
+      "display_name": "Delete graph",
+      "display_str_template": "Delete graph {graph_id}.",
+      "handler": "actions.delete_graph",
+      "id": "writer_delete_graph",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "deleted": false,
+          "id": "example"
+        }
+      },
+      "name": "delete_graph",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "Graph id.",
+          "display_name": "Graph",
+          "dynamic_source": "graphs",
+          "dynamic_source_allows_custom": true,
+          "name": "graph_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/writer/delete-graph",
+      "result_str_template": "Delete graph completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "deleted": {
+                "description": "Indicates whether the Knowledge Graph was successfully deleted.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "A unique identifier of the deleted Knowledge Graph.",
+                "format": "uuid",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "deleted"
+            ],
+            "title": "delete_graph_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "download_file": {
+      "description": "Download file.",
+      "display_name": "Download file",
+      "display_str_template": "Download file {file_id}.",
+      "handler": "actions.download_file",
+      "id": "writer_download_file",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "content_base64": "example",
+          "content_type": "example"
+        }
+      },
+      "name": "download_file",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "File id.",
+          "display_name": "File",
+          "dynamic_source": "files",
+          "dynamic_source_allows_custom": true,
+          "name": "file_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/writer/download-file",
+      "result_str_template": "Download file completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "content_base64": {
+                "description": "Content base64.",
+                "type": "string"
+              },
+              "content_type": {
+                "description": "Content type.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "generate_from_application": {
+      "description": "Generate from application.",
+      "display_name": "Generate from application",
+      "display_str_template": "Generate from application.",
+      "handler": "actions.generate_from_application",
+      "id": "writer_generate_from_application",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "suggestion": "example",
+          "title": "example"
+        }
+      },
+      "name": "generate_from_application",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "Application id.",
+          "display_name": "Application",
+          "dynamic_source": "applications",
+          "dynamic_source_allows_custom": true,
+          "name": "application_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Inputs.",
+          "display_name": "Inputs",
+          "name": "inputs",
+          "required": true,
+          "schema": {
+            "items": {
+              "properties": {
+                "id": {
+                  "description": "The unique identifier for the input field from the application. All input types from the No-code application are supported (i.e. Text input, Dropdown, File upload, Image input). The identifier should be the name of the input type.",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "The value for the input field. \n\nIf the input type is \"File upload\", you must pass the `file_id` of an uploaded file. You cannot pass a file object directly. See the [file upload endpoint](https://dev.writer.com/api-reference/file-api/upload-files) for instructions on uploading files or the [list files endpoint](https://dev.writer.com/api-reference/file-api/get-all-files) for how to see a list of uploaded files and their IDs.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "id",
+                "value"
+              ],
+              "title": "generate_application_input",
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/writer/generate-from-application",
+      "result_str_template": "Generate from application completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "suggestion": {
+                "description": "The response from the model specified in the application.",
+                "type": "string"
+              },
+              "title": {
+                "description": "The name of the output field.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "suggestion"
+            ],
+            "title": "generate_application_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "generate_text": {
+      "description": "Text generation.",
+      "display_name": "Generate text",
+      "display_str_template": "Generate text.",
+      "handler": "actions.generate_text",
+      "id": "writer_generate_text",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "choices": [],
+          "model": "example"
+        }
+      },
+      "name": "generate_text",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "The [ID of the model](https://dev.writer.com/home/models) to use for generating text. This can be a Palmyra model such as `palmyra-x5` or `palmyra-x4`, or the ID of an [external model](https://dev.writer.com/home/external-models) configured for your organization.",
+          "display_name": "Model",
+          "dynamic_source": "models",
+          "dynamic_source_allows_custom": true,
+          "name": "model",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The input text that the model will process to generate a response.",
+          "display_name": "Prompt",
+          "name": "prompt",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The maximum number of tokens that the model can generate in the response.",
+          "display_name": "Max tokens",
+          "name": "max_tokens",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Controls the randomness of the model's outputs. Higher values lead to more random outputs, while lower values make the model more deterministic.",
+          "display_name": "Temperature",
+          "name": "temperature",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Used to control the nucleus sampling, where only the most probable tokens with a cumulative probability of top_p are considered for sampling, providing a way to fine-tune the randomness of predictions.",
+          "display_name": "Top p",
+          "name": "top_p",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Specifies stopping conditions for the model's output generation. This can be an array of strings or a single string that the model will look for as a signal to stop generating further tokens.",
+          "display_name": "Stop",
+          "name": "stop",
+          "required": false,
+          "schema": {
+            "description": "Specifies stopping conditions for the model's output generation. This can be an array of strings or a single string that the model will look for as a signal to stop generating further tokens.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Specifies the number of completions to generate and return the best one. Useful for generating multiple outputs and choosing the best based on some criteria.",
+          "display_name": "Best of",
+          "name": "best_of",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "A seed used to initialize the random number generator for the model, ensuring reproducibility of the output when the same inputs are provided.",
+          "display_name": "Random seed",
+          "name": "random_seed",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/writer/generate-text",
+      "result_str_template": "Generate text completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "example": {
+              "choices": [
+                {
+                  "log_probs": null,
+                  "text": "Sure! Here's a search engine optimized article about..."
+                }
+              ],
+              "model": "palmyra-x5"
+            },
+            "properties": {
+              "choices": {
+                "description": "A list of choices generated by the model, each containing the text of the completion and associated metadata such as log probabilities.",
+                "items": {
+                  "description": "One record.",
+                  "properties": {
+                    "log_probs": {
+                      "description": "Log probs.",
+                      "properties": {
+                        "content": {
+                          "description": "Content.",
+                          "items": {
+                            "description": "One record.",
+                            "type": "object"
+                          },
+                          "type": [
+                            "array",
+                            "null"
+                          ]
+                        },
+                        "refusal": {
+                          "description": "Refusal.",
+                          "items": {
+                            "description": "One record.",
+                            "type": "object"
+                          },
+                          "type": [
+                            "array",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "content",
+                        "refusal"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "text": {
+                      "description": "The generated text output from the model, which forms the main content of the response.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "text"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "model": {
+                "description": "The identifier of the model that was used to generate the responses in the 'choices' array.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "choices"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "get_application": {
+      "description": "Application details.",
+      "display_name": "Get application",
+      "display_str_template": "Get application {application_id}.",
+      "handler": "actions.get_application",
+      "id": "writer_get_application",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "created_at": "2026-11-01T12:00:00Z",
+          "id": "example",
+          "inputs": [],
+          "last_deployed_at": "2026-11-01T12:00:00Z",
+          "name": "example",
+          "status": "deployed",
+          "type": "generation",
+          "updated_at": "2026-11-01T12:00:00Z"
+        }
+      },
+      "name": "get_application",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "Application id.",
+          "display_name": "Application",
+          "dynamic_source": "applications",
+          "dynamic_source_allows_custom": true,
+          "name": "application_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/writer/get-application",
+      "result_str_template": "Get application completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Detailed application object including its input configuration.",
+            "properties": {
+              "created_at": {
+                "description": "Timestamp when the application was created.",
+                "format": "date-time",
+                "type": "string"
+              },
+              "id": {
+                "description": "Unique identifier for the application.",
+                "format": "uuid",
+                "type": "string"
+              },
+              "inputs": {
+                "description": "List of input configurations for the application.",
+                "items": {
+                  "description": "Configuration for an individual input field in the application.",
+                  "properties": {
+                    "description": {
+                      "description": "Human-readable description of the input field's purpose.",
+                      "type": "string"
+                    },
+                    "input_type": {
+                      "description": "Type of input field determining its behavior and validation rules.",
+                      "enum": [
+                        "text",
+                        "dropdown",
+                        "file",
+                        "media"
+                      ],
+                      "title": "application_input_type",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Identifier for the input field.",
+                      "type": "string"
+                    },
+                    "options": {
+                      "description": "Type-specific configuration options for input fields.",
+                      "properties": {
+                        "list": {
+                          "description": "List.",
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "list"
+                      ],
+                      "title": "Dropdown",
+                      "type": "object"
+                    },
+                    "required": {
+                      "description": "Indicates if this input field is mandatory.",
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "input_type",
+                    "required"
+                  ],
+                  "title": "application_input",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "last_deployed_at": {
+                "description": "Timestamp when the application was last deployed.",
+                "format": "date-time",
+                "type": "string"
+              },
+              "name": {
+                "description": "Display name of the application.",
+                "type": "string"
+              },
+              "status": {
+                "description": "Current deployment status of the application. Note: currently only `deployed` applications are returned.",
+                "enum": [
+                  "deployed",
+                  "draft"
+                ],
+                "title": "application_status",
+                "type": "string"
+              },
+              "type": {
+                "description": "The type of no-code application.",
+                "enum": [
+                  "generation"
+                ],
+                "title": "application_type",
+                "type": "string"
+              },
+              "updated_at": {
+                "description": "Timestamp when the application was last updated.",
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "type",
+              "status",
+              "inputs",
+              "created_at",
+              "updated_at"
+            ],
+            "title": "application_with_inputs",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "get_application_job": {
+      "description": "Retrieve a single job.",
+      "display_name": "Get application job",
+      "display_str_template": "Get application job {job_id}.",
+      "handler": "actions.get_application_job",
+      "id": "writer_get_application_job",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "application_id": "example",
+          "completed_at": "2026-11-01T12:00:00Z",
+          "created_at": "2026-11-01T12:00:00Z",
+          "data": {
+            "suggestion": "example",
+            "title": "example"
+          },
+          "error": "example",
+          "id": "example",
+          "status": "in_progress",
+          "updated_at": "2026-11-01T12:00:00Z"
+        }
+      },
+      "name": "get_application_job",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "Job id.",
+          "display_name": "Job id",
+          "name": "job_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/writer/get-application-job",
+      "result_str_template": "Get application job completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "application_id": {
+                "description": "The ID of the application associated with this job.",
+                "type": "string"
+              },
+              "completed_at": {
+                "description": "The timestamp when the job was completed.",
+                "format": "date-time",
+                "type": "string"
+              },
+              "created_at": {
+                "description": "The timestamp when the job was created.",
+                "format": "date-time",
+                "type": "string"
+              },
+              "data": {
+                "description": "The result of the completed job, if applicable.",
+                "properties": {
+                  "suggestion": {
+                    "description": "The response from the model specified in the application.",
+                    "type": "string"
+                  },
+                  "title": {
+                    "description": "The name of the output field.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "suggestion"
+                ],
+                "title": "generate_application_response",
+                "type": "object"
+              },
+              "error": {
+                "description": "The error message if the job failed.",
+                "type": "string"
+              },
+              "id": {
+                "description": "The unique identifier for the job.",
+                "format": "uuid",
+                "type": "string"
+              },
+              "status": {
+                "description": "The status of the job.",
+                "enum": [
+                  "in_progress",
+                  "failed",
+                  "completed"
+                ],
+                "title": "api_job_status",
+                "type": "string"
+              },
+              "updated_at": {
+                "description": "The timestamp when the job was last updated.",
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "application_id",
+              "created_at"
+            ],
+            "title": "get_async_application_job_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "get_file": {
+      "description": "Retrieve file.",
+      "display_name": "Get file",
+      "display_str_template": "Get file {file_id}.",
+      "handler": "actions.get_file",
+      "id": "writer_get_file",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "created_at": "2026-11-01T12:00:00Z",
+          "graph_ids": [],
+          "id": "example",
+          "name": "example",
+          "status": "example"
+        }
+      },
+      "name": "get_file",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "File id.",
+          "display_name": "File",
+          "dynamic_source": "files",
+          "dynamic_source_allows_custom": true,
+          "name": "file_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/writer/get-file",
+      "result_str_template": "Get file completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "created_at": {
+                "description": "The timestamp when the file was uploaded.",
+                "format": "date-time",
+                "type": "string"
+              },
+              "graph_ids": {
+                "description": "A list of Knowledge Graph IDs that the file is associated with.\n\nIf you provided a `graphId` during upload, the file is associated with that Knowledge Graph. However, the `graph_ids` field in the upload response is an empty list. The association will be visible in the `graph_ids` list when you retrieve the file using the file retrieval endpoint.",
+                "items": {
+                  "description": "One record.",
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "id": {
+                "description": "A unique identifier of the file.",
+                "type": "string"
+              },
+              "name": {
+                "description": "The name of the file.",
+                "type": "string"
+              },
+              "status": {
+                "description": "The processing status of the file.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "created_at",
+              "name",
+              "graph_ids",
+              "status"
+            ],
+            "title": "file_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "get_graph": {
+      "description": "Retrieve graph.",
+      "display_name": "Get graph",
+      "display_str_template": "Get graph {graph_id}.",
+      "handler": "actions.get_graph",
+      "id": "writer_get_graph",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "created_at": "2026-11-01T12:00:00Z",
+          "description": "example",
+          "file_status": {
+            "completed": 1,
+            "failed": 1,
+            "in_progress": 1,
+            "total": 1
+          },
+          "id": "example",
+          "name": "example",
+          "team_ids": [],
+          "type": "manual",
+          "urls": []
+        }
+      },
+      "name": "get_graph",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "Graph id.",
+          "display_name": "Graph",
+          "dynamic_source": "graphs",
+          "dynamic_source_allows_custom": true,
+          "name": "graph_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/writer/get-graph",
+      "result_str_template": "Get graph completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "created_at": {
+                "description": "The timestamp when the Knowledge Graph was created.",
+                "format": "date-time",
+                "type": "string"
+              },
+              "description": {
+                "description": "A description of the Knowledge Graph.",
+                "type": "string"
+              },
+              "file_status": {
+                "description": "The processing status of files in the Knowledge Graph.",
+                "properties": {
+                  "completed": {
+                    "description": "The number of files that have been successfully processed.",
+                    "format": "int64",
+                    "type": "integer"
+                  },
+                  "failed": {
+                    "description": "The number of files that failed to process.",
+                    "format": "int64",
+                    "type": "integer"
+                  },
+                  "in_progress": {
+                    "description": "The number of files currently being processed.",
+                    "format": "int64",
+                    "type": "integer"
+                  },
+                  "total": {
+                    "description": "The total number of files associated with the Knowledge Graph.",
+                    "format": "int64",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "in_progress",
+                  "completed",
+                  "failed",
+                  "total"
+                ],
+                "title": "graph_file_status",
+                "type": "object"
+              },
+              "id": {
+                "description": "The unique identifier of the Knowledge Graph.",
+                "format": "uuid",
+                "type": "string"
+              },
+              "name": {
+                "description": "The name of the Knowledge Graph.",
+                "type": "string"
+              },
+              "team_ids": {
+                "description": "The team IDs the Knowledge Graph is deployed to. An empty array indicates an org-wide Knowledge Graph accessible to every team in the organization.",
+                "items": {
+                  "description": "One record.",
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "type": {
+                "description": "The type of Knowledge Graph.\n\n- `manual`: files are uploaded via UI or API\n- `connector`: files are uploaded via a data connector such as Google Drive or Confluence\n- `web`: URLs are connected to the Knowledge Graph",
+                "enum": [
+                  "manual",
+                  "connector",
+                  "web"
+                ],
+                "title": "graph_type",
+                "type": "string"
+              },
+              "urls": {
+                "description": "An array of web connector URLs associated with this Knowledge Graph.",
+                "items": {
+                  "description": "One record.",
+                  "properties": {
+                    "exclude_urls": {
+                      "description": "An array of URLs to exclude from processing within this web connector.",
+                      "items": {
+                        "description": "One record.",
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "status": {
+                      "description": "The current status of the URL processing.",
+                      "properties": {
+                        "error_type": {
+                          "description": "The type of error that occurred during processing, if any.",
+                          "enum": [
+                            "invalid_url",
+                            "not_searchable",
+                            "not_found",
+                            "paywall_or_login_page",
+                            "unexpected_error"
+                          ],
+                          "title": "web_connector_url_error_type",
+                          "type": "string"
+                        },
+                        "status": {
+                          "description": "The current status of the URL processing.",
+                          "enum": [
+                            "validating",
+                            "success",
+                            "error"
+                          ],
+                          "title": "web_connector_url_status",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ],
+                      "title": "web_connector_url_state",
+                      "type": "object"
+                    },
+                    "type": {
+                      "description": "The type of web connector processing for this URL.",
+                      "enum": [
+                        "single_page",
+                        "sub_pages"
+                      ],
+                      "title": "web_connector_url_type",
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "The URL to be processed by the web connector.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "status",
+                    "type"
+                  ],
+                  "title": "web_connector_url",
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "id",
+              "created_at",
+              "name",
+              "file_status",
+              "type"
+            ],
+            "title": "graph",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "list_application_graphs": {
+      "description": "Retrieve graphs.",
+      "display_name": "List application graphs",
+      "display_str_template": "List application graphs.",
+      "handler": "actions.list_application_graphs",
+      "id": "writer_list_application_graphs",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "graph_ids": []
+        }
+      },
+      "name": "list_application_graphs",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "Application id.",
+          "display_name": "Application",
+          "dynamic_source": "applications",
+          "dynamic_source_allows_custom": true,
+          "name": "application_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/writer/list-application-graphs",
+      "result_str_template": "List application graphs completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "graph_ids": {
+                "description": "A list of Knowledge Graphs associated with the application.",
+                "items": {
+                  "description": "One record.",
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "graph_ids"
+            ],
+            "title": "application_graphs_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "list_application_jobs": {
+      "description": "Retrieve all jobs.",
+      "display_name": "List application jobs",
+      "display_str_template": "List application jobs.",
+      "handler": "actions.list_application_jobs",
+      "id": "writer_list_application_jobs",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "pagination": {
+            "limit": 1,
+            "offset": 1
+          },
+          "result": [],
+          "totalCount": 1
+        }
+      },
+      "name": "list_application_jobs",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "Application id.",
+          "display_name": "Application",
+          "dynamic_source": "applications",
+          "dynamic_source_allows_custom": true,
+          "name": "application_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The status of the job.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "In progress",
+              "value": "in_progress"
+            },
+            {
+              "label": "Failed",
+              "value": "failed"
+            },
+            {
+              "label": "Completed",
+              "value": "completed"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Offset.",
+          "display_name": "Offset",
+          "name": "offset",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Limit.",
+          "display_name": "Limit",
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/writer/list-application-jobs",
+      "result_str_template": "List application jobs completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "pagination": {
+                "description": "Pagination.",
+                "properties": {
+                  "limit": {
+                    "description": "The pagination limit for retrieving the jobs.",
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "offset": {
+                    "description": "The pagination offset for retrieving the jobs.",
+                    "format": "int64",
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "result": {
+                "description": "Result.",
+                "items": {
+                  "description": "One record.",
+                  "properties": {
+                    "application_id": {
+                      "description": "The ID of the application associated with this job.",
+                      "type": "string"
+                    },
+                    "completed_at": {
+                      "description": "The timestamp when the job was completed.",
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "description": "The timestamp when the job was created.",
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "data": {
+                      "description": "The result of the completed job, if applicable.",
+                      "properties": {
+                        "suggestion": {
+                          "description": "The response from the model specified in the application.",
+                          "type": "string"
+                        },
+                        "title": {
+                          "description": "The name of the output field.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "suggestion"
+                      ],
+                      "title": "generate_application_response",
+                      "type": "object"
+                    },
+                    "error": {
+                      "description": "The error message if the job failed.",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "The unique identifier for the job.",
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "description": "The status of the job.",
+                      "enum": [
+                        "in_progress",
+                        "failed",
+                        "completed"
+                      ],
+                      "title": "api_job_status",
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "description": "The timestamp when the job was last updated.",
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "application_id",
+                    "created_at"
+                  ],
+                  "title": "get_async_application_job_response",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "totalCount": {
+                "description": "The total number of jobs associated with the application.",
+                "format": "int64",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "title": "get_async_application_jobs_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "list_applications": {
+      "description": "List applications.",
+      "display_name": "List applications",
+      "display_str_template": "List applications.",
+      "handler": "actions.list_applications",
+      "id": "writer_list_applications",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "data": [],
+          "first_id": "example",
+          "has_more": false,
+          "last_id": "example"
+        }
+      },
+      "name": "list_applications",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "default": "desc",
+          "description": "Order.",
+          "display_name": "Order",
+          "name": "order",
+          "options": [
+            {
+              "label": "Asc",
+              "value": "asc"
+            },
+            {
+              "label": "Desc",
+              "value": "desc"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Before.",
+          "display_name": "Before",
+          "name": "before",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "After.",
+          "display_name": "After",
+          "name": "after",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 50,
+          "description": "Limit.",
+          "display_name": "Limit",
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "generation",
+          "description": "The type of no-code application.",
+          "display_name": "Type",
+          "name": "type",
+          "options": [
+            {
+              "label": "Generation",
+              "value": "generation"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/writer/list-applications",
+      "result_str_template": "List applications completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Response object containing a paginated list of applications.",
+            "properties": {
+              "data": {
+                "description": "List of application objects with their configurations.",
+                "items": {
+                  "description": "Detailed application object including its input configuration.",
+                  "properties": {
+                    "created_at": {
+                      "description": "Timestamp when the application was created.",
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Unique identifier for the application.",
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "inputs": {
+                      "description": "List of input configurations for the application.",
+                      "items": {
+                        "description": "Configuration for an individual input field in the application.",
+                        "properties": {
+                          "description": {
+                            "description": "Human-readable description of the input field's purpose.",
+                            "type": "string"
+                          },
+                          "input_type": {
+                            "description": "Input type.",
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "Identifier for the input field.",
+                            "type": "string"
+                          },
+                          "options": {
+                            "description": "Options.",
+                            "type": "object"
+                          },
+                          "required": {
+                            "description": "Indicates if this input field is mandatory.",
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "input_type",
+                          "required"
+                        ],
+                        "title": "application_input",
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "last_deployed_at": {
+                      "description": "Timestamp when the application was last deployed.",
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Display name of the application.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "description": "Current deployment status of the application. Note: currently only `deployed` applications are returned.",
+                      "enum": [
+                        "deployed",
+                        "draft"
+                      ],
+                      "title": "application_status",
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "The type of no-code application.",
+                      "enum": [
+                        "generation"
+                      ],
+                      "title": "application_type",
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "description": "Timestamp when the application was last updated.",
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "type",
+                    "status",
+                    "inputs",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "title": "application_with_inputs",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "first_id": {
+                "description": "UUID of the first application in the current page.",
+                "format": "uuid",
+                "type": "string"
+              },
+              "has_more": {
+                "description": "Indicates if there are more results available in subsequent pages.",
+                "type": "boolean"
+              },
+              "last_id": {
+                "description": "UUID of the last application in the current page.",
+                "format": "uuid",
+                "type": "string"
+              }
+            },
+            "required": [
+              "data",
+              "has_more"
+            ],
+            "title": "get_applications_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "list_files": {
+      "description": "List files.",
+      "display_name": "List files",
+      "display_str_template": "List files.",
+      "handler": "actions.list_files",
+      "id": "writer_list_files",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "data": [],
+          "first_id": "example",
+          "has_more": false,
+          "last_id": "example"
+        }
+      },
+      "name": "list_files",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "Before.",
+          "display_name": "Before",
+          "name": "before",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "After.",
+          "display_name": "After",
+          "name": "after",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 50,
+          "description": "Limit.",
+          "display_name": "Limit",
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "desc",
+          "description": "Order.",
+          "display_name": "Order",
+          "name": "order",
+          "options": [
+            {
+              "label": "Asc",
+              "value": "asc"
+            },
+            {
+              "label": "Desc",
+              "value": "desc"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Graph id.",
+          "display_name": "Graph",
+          "dynamic_source": "graphs",
+          "dynamic_source_allows_custom": true,
+          "name": "graph_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Status.",
+          "display_name": "Status",
+          "name": "status",
+          "options": [
+            {
+              "label": "In progress",
+              "value": "in_progress"
+            },
+            {
+              "label": "Completed",
+              "value": "completed"
+            },
+            {
+              "label": "Failed",
+              "value": "failed"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "File types.",
+          "display_name": "File types",
+          "name": "file_types",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/writer/list-files",
+      "result_str_template": "List files completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "data": {
+                "description": "Data.",
+                "items": {
+                  "description": "One record.",
+                  "properties": {
+                    "created_at": {
+                      "description": "The timestamp when the file was uploaded.",
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "graph_ids": {
+                      "description": "A list of Knowledge Graph IDs that the file is associated with.\n\nIf you provided a `graphId` during upload, the file is associated with that Knowledge Graph. However, the `graph_ids` field in the upload response is an empty list. The association will be visible in the `graph_ids` list when you retrieve the file using the file retrieval endpoint.",
+                      "items": {
+                        "description": "One record.",
+                        "format": "uuid",
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "description": "A unique identifier of the file.",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The name of the file.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "description": "The processing status of the file.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "created_at",
+                    "name",
+                    "graph_ids",
+                    "status"
+                  ],
+                  "title": "file_response",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "first_id": {
+                "description": "The ID of the first file in the current response.",
+                "type": "string"
+              },
+              "has_more": {
+                "description": "Indicates if there are more files available beyond the current page.",
+                "type": "boolean"
+              },
+              "last_id": {
+                "description": "The ID of the last file in the current response.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "data",
+              "has_more"
+            ],
+            "title": "files_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "list_graphs": {
+      "description": "List graphs.",
+      "display_name": "List graphs",
+      "display_str_template": "List graphs.",
+      "handler": "actions.list_graphs",
+      "id": "writer_list_graphs",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "data": [],
+          "first_id": "example",
+          "has_more": false,
+          "last_id": "example"
+        }
+      },
+      "name": "list_graphs",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "default": "desc",
+          "description": "Order.",
+          "display_name": "Order",
+          "name": "order",
+          "options": [
+            {
+              "label": "Asc",
+              "value": "asc"
+            },
+            {
+              "label": "Desc",
+              "value": "desc"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Before.",
+          "display_name": "Before",
+          "name": "before",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "After.",
+          "display_name": "After",
+          "name": "after",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 50,
+          "description": "Limit.",
+          "display_name": "Limit",
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/writer/list-graphs",
+      "result_str_template": "List graphs completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "data": {
+                "description": "Data.",
+                "items": {
+                  "description": "One record.",
+                  "properties": {
+                    "created_at": {
+                      "description": "The timestamp when the Knowledge Graph was created.",
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "description": {
+                      "description": "A description of the Knowledge Graph.",
+                      "type": "string"
+                    },
+                    "file_status": {
+                      "description": "The processing status of files in the Knowledge Graph.",
+                      "properties": {
+                        "completed": {
+                          "description": "The number of files that have been successfully processed.",
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "failed": {
+                          "description": "The number of files that failed to process.",
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "in_progress": {
+                          "description": "The number of files currently being processed.",
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "total": {
+                          "description": "The total number of files associated with the Knowledge Graph.",
+                          "format": "int64",
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "in_progress",
+                        "completed",
+                        "failed",
+                        "total"
+                      ],
+                      "title": "graph_file_status",
+                      "type": "object"
+                    },
+                    "id": {
+                      "description": "The unique identifier of the Knowledge Graph.",
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The name of the Knowledge Graph.",
+                      "type": "string"
+                    },
+                    "team_ids": {
+                      "description": "The team IDs the Knowledge Graph is deployed to. An empty array indicates an org-wide Knowledge Graph accessible to every team in the organization.",
+                      "items": {
+                        "description": "One record.",
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      "type": "array"
+                    },
+                    "type": {
+                      "description": "The type of Knowledge Graph.\n\n- `manual`: files are uploaded via UI or API\n- `connector`: files are uploaded via a data connector such as Google Drive or Confluence\n- `web`: URLs are connected to the Knowledge Graph",
+                      "enum": [
+                        "manual",
+                        "connector",
+                        "web"
+                      ],
+                      "title": "graph_type",
+                      "type": "string"
+                    },
+                    "urls": {
+                      "description": "An array of web connector URLs associated with this Knowledge Graph.",
+                      "items": {
+                        "description": "One record.",
+                        "properties": {
+                          "exclude_urls": {
+                            "description": "An array of URLs to exclude from processing within this web connector.",
+                            "items": {
+                              "description": "One record.",
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "status": {
+                            "description": "Status.",
+                            "type": "object"
+                          },
+                          "type": {
+                            "description": "Type.",
+                            "type": "string"
+                          },
+                          "url": {
+                            "description": "The URL to be processed by the web connector.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "url",
+                          "status",
+                          "type"
+                        ],
+                        "title": "web_connector_url",
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "created_at",
+                    "name",
+                    "file_status",
+                    "type"
+                  ],
+                  "title": "graph",
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "first_id": {
+                "description": "The ID of the first Knowledge Graph in the current response.",
+                "format": "uuid",
+                "type": "string"
+              },
+              "has_more": {
+                "description": "Indicates if there are more Knowledge Graphs available beyond the current page.",
+                "type": "boolean"
+              },
+              "last_id": {
+                "description": "The ID of the last Knowledge Graph in the current response.",
+                "format": "uuid",
+                "type": "string"
+              }
+            },
+            "required": [
+              "data",
+              "has_more"
+            ],
+            "title": "graphs_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "list_models": {
+      "description": "List models.",
+      "display_name": "List models",
+      "display_str_template": "List models.",
+      "handler": "actions.list_models",
+      "id": "writer_list_models",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "models": []
+        }
+      },
+      "name": "list_models",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [],
+      "path": "/actions/library/writer/list-models",
+      "result_str_template": "List models completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "example": {
+              "models": [
+                {
+                  "id": "palmyra-x-003-instruct",
+                  "name": "Palmyra X 003 Instruct"
+                },
+                {
+                  "id": "palmyra-med",
+                  "name": "Palmyra Med"
+                },
+                {
+                  "id": "palmyra-fin",
+                  "name": "Palmyra Financial"
+                },
+                {
+                  "id": "palmyra-x4",
+                  "name": "Palmyra X4"
+                },
+                {
+                  "id": "palmyra-x5",
+                  "name": "Palmyra X5"
+                },
+                {
+                  "id": "palmyra-creative",
+                  "name": "Palmyra Creative"
+                }
+              ]
+            },
+            "properties": {
+              "models": {
+                "description": "The [ID of the model](https://dev.writer.com/home/models) to use for processing the request.",
+                "items": {
+                  "description": "One record.",
+                  "properties": {
+                    "id": {
+                      "description": "The ID of the particular LLM that you want to use",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The name of the particular LLM that you want to use.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "models"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "update_graph": {
+      "description": "Update graph.",
+      "display_name": "Update graph",
+      "display_str_template": "Update graph {graph_id}.",
+      "handler": "actions.update_graph",
+      "id": "writer_update_graph",
+      "method": "POST",
+      "mock_response": {
+        "data": {
+          "created_at": "2026-11-01T12:00:00Z",
+          "description": "example",
+          "id": "example",
+          "name": "example",
+          "team_ids": [],
+          "urls": []
+        }
+      },
+      "name": "update_graph",
+      "output_formatter": "WriterProvider.<lambda>",
+      "parameters": [
+        {
+          "description": "Graph id.",
+          "display_name": "Graph",
+          "dynamic_source": "graphs",
+          "dynamic_source_allows_custom": true,
+          "name": "graph_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The name of the Knowledge Graph (max 255 characters). Omitting this field leaves the name unchanged.",
+          "display_name": "Name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A description of the Knowledge Graph (max 255 characters). Omitting this field leaves the description unchanged.",
+          "display_name": "Description",
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "An array of web connector URLs to update for this Knowledge Graph. You can only connect URLs to Knowledge Graphs with the type `web`. To clear the list of URLs, set this field to an empty array.",
+          "display_name": "Urls",
+          "name": "urls",
+          "required": false,
+          "schema": {
+            "description": "An array of web connector URLs to update for this Knowledge Graph. You can only connect URLs to Knowledge Graphs with the type `web`. To clear the list of URLs, set this field to an empty array.",
+            "items": {
+              "properties": {
+                "exclude_urls": {
+                  "description": "An array of URLs to exclude from processing within this web connector.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "description": "The type of web connector processing for this URL.",
+                  "enum": [
+                    "single_page",
+                    "sub_pages"
+                  ],
+                  "title": "web_connector_url_type",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "The URL to be processed by the web connector.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url",
+                "type"
+              ],
+              "title": "update_graph_web_url",
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Optional list of team IDs the Knowledge Graph is deployed to. Omitting this field leaves the current team assignment unchanged. Passing an array replaces the whole team assignment: an empty array makes the graph org-wide, one or more team IDs scope it to exactly those teams. Not accepted from team-scoped API keys.",
+          "display_name": "Team ids",
+          "name": "team_ids",
+          "required": false,
+          "schema": {
+            "description": "Optional list of team IDs the Knowledge Graph is deployed to. Omitting this field leaves the current team assignment unchanged. Passing an array replaces the whole team assignment: an empty array makes the graph org-wide, one or more team IDs scope it to exactly those teams. Not accepted from team-scoped API keys.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/writer/update-graph",
+      "result_str_template": "Update graph completed.",
+      "returns": {
+        "properties": {
+          "data": {
+            "description": "Service response.",
+            "properties": {
+              "created_at": {
+                "description": "The timestamp when the Knowledge Graph was created.",
+                "format": "date-time",
+                "type": "string"
+              },
+              "description": {
+                "description": "A description of the Knowledge Graph (max 255 characters).",
+                "type": "string"
+              },
+              "id": {
+                "description": "A unique identifier of the Knowledge Graph.",
+                "format": "uuid",
+                "type": "string"
+              },
+              "name": {
+                "description": "The name of the Knowledge Graph (max 255 characters).",
+                "type": "string"
+              },
+              "team_ids": {
+                "description": "The team IDs the Knowledge Graph is deployed to. An empty array indicates an org-wide Knowledge Graph accessible to every team in the organization.",
+                "items": {
+                  "description": "One record.",
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "urls": {
+                "description": "An array of web connector URLs associated with this Knowledge Graph.",
+                "items": {
+                  "description": "One record.",
+                  "properties": {
+                    "exclude_urls": {
+                      "description": "An array of URLs to exclude from processing within this web connector.",
+                      "items": {
+                        "description": "One record.",
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "status": {
+                      "description": "The current status of the URL processing.",
+                      "properties": {
+                        "error_type": {
+                          "description": "The type of error that occurred during processing, if any.",
+                          "enum": [
+                            "invalid_url",
+                            "not_searchable",
+                            "not_found",
+                            "paywall_or_login_page",
+                            "unexpected_error"
+                          ],
+                          "title": "web_connector_url_error_type",
+                          "type": "string"
+                        },
+                        "status": {
+                          "description": "The current status of the URL processing.",
+                          "enum": [
+                            "validating",
+                            "success",
+                            "error"
+                          ],
+                          "title": "web_connector_url_status",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ],
+                      "title": "web_connector_url_state",
+                      "type": "object"
+                    },
+                    "type": {
+                      "description": "The type of web connector processing for this URL.",
+                      "enum": [
+                        "single_page",
+                        "sub_pages"
+                      ],
+                      "title": "web_connector_url_type",
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "The URL to be processed by the web connector.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "status",
+                    "type"
+                  ],
+                  "title": "web_connector_url",
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "id",
+              "created_at",
+              "name"
+            ],
+            "title": "graph_response",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    }
+  },
+  "categories": [
+    "AI Models"
+  ],
+  "description": "Generate text and chat responses, run applications, and manage knowledge graphs and files.",
+  "display_name": "Writer",
+  "id": "writer",
+  "logo": "https://www.lodol.com/app-icons/writer-icon.png",
+  "triggers": {
+    "writer_new_application_trigger": {
+      "description": "Runs for each new application in Writer. Ones already there when the workflow is turned on don't start it. It can watch up to 4,000. How often it checks follows your workspace plan.",
+      "display_name": "New application",
+      "id": "writer_new_application_trigger",
+      "output": {
+        "record": "object with the fields id, name, type, status, inputs, created_at, updated_at, last_deployed_at"
+      },
+      "parameters": []
+    },
+    "writer_new_file_trigger": {
+      "description": "Runs for each new file in Writer. Ones already there when the workflow is turned on don't start it. It can watch up to 4,000. How often it checks follows your workspace plan.",
+      "display_name": "New file",
+      "id": "writer_new_file_trigger",
+      "output": {
+        "record": "object with the fields id, created_at, name, graph_ids, status"
+      },
+      "parameters": []
+    },
+    "writer_new_graph_trigger": {
+      "description": "Runs for each new graph in Writer. Ones already there when the workflow is turned on don't start it. It can watch up to 4,000. How often it checks follows your workspace plan.",
+      "display_name": "New graph",
+      "id": "writer_new_graph_trigger",
+      "output": {
+        "record": "object with the fields id, created_at, name, description, file_status.in_progress, file_status.completed, file_status.failed, file_status.total, type, urls, team_ids"
+      },
+      "parameters": []
+    },
+    "writer_new_or_updated_application_trigger": {
+      "description": "Runs for each application added or changed in Writer. Ones already there when the workflow is turned on start it only when they change. It can watch up to 4,000. How often it checks follows your workspace plan.",
+      "display_name": "New or updated application",
+      "id": "writer_new_or_updated_application_trigger",
+      "output": {
+        "record": "object with the fields id, name, type, status, inputs, created_at, updated_at, last_deployed_at"
+      },
+      "parameters": []
+    },
+    "writer_new_or_updated_file_trigger": {
+      "description": "Runs for each file added or changed in Writer. Ones already there when the workflow is turned on start it only when they change. It can watch up to 4,000. How often it checks follows your workspace plan.",
+      "display_name": "New or updated file",
+      "id": "writer_new_or_updated_file_trigger",
+      "output": {
+        "record": "object with the fields id, created_at, name, graph_ids, status"
+      },
+      "parameters": []
+    },
+    "writer_new_or_updated_graph_trigger": {
+      "description": "Runs for each graph added or changed in Writer. Ones already there when the workflow is turned on start it only when they change. It can watch up to 4,000. How often it checks follows your workspace plan.",
+      "display_name": "New or updated graph",
+      "id": "writer_new_or_updated_graph_trigger",
+      "output": {
+        "record": "object with the fields id, created_at, name, description, file_status.in_progress, file_status.completed, file_status.failed, file_status.total, type, urls, team_ids"
+      },
+      "parameters": []
+    }
+  }
+}

@@ -203,6 +203,12 @@
               "supervisor": {
                 "type": "string"
               },
+              "supervisorEId": {
+                "type": "string"
+              },
+              "supervisorEmail": {
+                "type": "string"
+              },
               "terminationDate": {
                 "type": "string"
               },
@@ -562,7 +568,7 @@
       ]
     },
     "get_employee": {
-      "description": "Fetch one BambooHR employee's record by their internal employee ID.",
+      "description": "Fetch one BambooHR employee's record by their internal employee ID. Beta: also says who their manager is, with the manager's name and work email ready to use.",
       "display_name": "Get an employee",
       "display_str_template": "Get employee {0}.",
       "handler": "actions.get_employee",
@@ -577,8 +583,14 @@
           "id": "42",
           "jobTitle": "Software Engineer",
           "lastName": "Lovelace",
+          "supervisor": "Grace Hopper",
+          "supervisorEId": "7",
+          "supervisorEmail": "grace@example.com",
           "workEmail": "ada@example.com"
-        }
+        },
+        "manager_email": "grace@example.com",
+        "manager_id": "7",
+        "manager_name": "Grace Hopper"
       },
       "name": "get_employee",
       "output_formatter": "actions.format_employee_output",
@@ -731,6 +743,12 @@
               "supervisor": {
                 "type": "string"
               },
+              "supervisorEId": {
+                "type": "string"
+              },
+              "supervisorEmail": {
+                "type": "string"
+              },
               "terminationDate": {
                 "type": "string"
               },
@@ -745,6 +763,18 @@
               }
             },
             "type": "object"
+          },
+          "manager_email": {
+            "description": "Beta. Their manager's work email address, such as grace@example.com, ready to send an approval or a message to. Blank when they have no manager, or when the step names its own fields and leaves out supervisorEmail.",
+            "type": "string"
+          },
+          "manager_id": {
+            "description": "Beta. Their manager's BambooHR employee ID, for another 'Get an employee' step. Blank when they have no manager.",
+            "type": "string"
+          },
+          "manager_name": {
+            "description": "Beta. The name of the person they report to, as BambooHR writes it. Blank when they have no manager.",
+            "type": "string"
           }
         },
         "type": "object"
@@ -2481,6 +2511,12 @@
               "supervisor": {
                 "type": "string"
               },
+              "supervisorEId": {
+                "type": "string"
+              },
+              "supervisorEmail": {
+                "type": "string"
+              },
               "terminationDate": {
                 "type": "string"
               },
@@ -2516,7 +2552,7 @@
       ]
     },
     "update_time_off_request_status": {
-      "description": "Approve, deny or cancel an existing BambooHR time off request.",
+      "description": "Approve, deny or cancel an existing BambooHR time off request. Beta: give it an approval step's answer as it is (true approves, false denies), with no step in between to turn the answer into a status.",
       "display_name": "Approve or deny time off",
       "display_str_template": "Set time off request {0} to {1}.",
       "handler": "actions.update_time_off_request_status",
@@ -2532,14 +2568,14 @@
       "output_formatter": "actions.format_time_off_status_output",
       "parameters": [
         {
-          "description": "The time off request to act on, from 'List time off requests'.",
+          "description": "The time off request to act on, from the 'Time off requested' trigger or 'List time off requests'.",
           "display_name": "Request ID",
           "name": "request_id",
           "required": true,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "What to set the request to.",
+          "description": "What to set the request to: approved, denied or canceled. Beta: it also takes the answer of a 'Request approval' step directly, either its 'approved' (true sets approved, false sets denied) or its 'decision' (approved, or rejected which sets denied).",
           "display_name": "New status",
           "name": "status",
           "options": [
@@ -2643,18 +2679,25 @@
       "parameters": []
     },
     "bamboohr_time_off_requested_trigger": {
-      "description": "Runs for each new BambooHR time off request waiting for a decision, with who asked, the kind of time off and the dates, for one kind or all of them. Requests already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "description": "Runs for each new BambooHR time off request waiting for a decision, with who asked, the kind of time off and the dates, for one kind or all of them. Beta: each run also has the employee's work email, their manager's name and work email (to ask the manager to approve), how many days the request is, and the dates written out for a message. Requests already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
       "display_name": "Time off requested",
       "id": "bamboohr_time_off_requested_trigger",
       "output": {
-        "amount": "How much time off, in the unit below.",
+        "amount": "How much time off, in the unit below. For a length in days whatever the unit, use 'days'.",
+        "dates_display": "Beta. Both dates in one phrase for a message or a calendar event's title, such as Dec 22, 2026 to Jan 2, 2027 (or just Dec 22, 2026 for a single day), so no step has to format them.",
+        "days": "Beta. How many days off the request is, as a number such as 4 or 0.5, whether BambooHR counts this kind of time off in days or hours. Compare this, not 'amount', to ask whether a request is longer than so many days. For a kind counted in hours it is the number of days with any time booked, so a part day counts as one day; when BambooHR doesn't list the days, it is the hours divided by 8.",
+        "employee_email": "Beta. The work email address of the employee who asked, such as ada@example.com. Blank when BambooHR has none for them.",
         "employee_id": "The BambooHR id of the employee who asked.",
         "employee_name": "The name of the employee who asked.",
         "employee_note": "The note the employee left, if any.",
-        "end_date": "The last day off.",
+        "end_date": "The last day off, such as 2027-01-02.",
+        "end_date_display": "Beta. The last day off written for a message, such as Jan 2, 2027.",
+        "manager_email": "Beta. Their manager's work email address, such as grace@example.com, ready to use as the approver of a 'Request approval' step. Blank when they have no manager.",
+        "manager_name": "Beta. The name of the employee's manager (who they report to in BambooHR), such as Grace Hopper. Blank when they have no manager.",
         "request_id": "The request's id, for Update a time off request's status.",
         "requested_on": "The day the request was made.",
         "start_date": "The first day off, such as 2026-12-21.",
+        "start_date_display": "Beta. The first day off written for a message, such as Dec 22, 2026.",
         "status": "requested.",
         "time_off_type": "The kind of time off, such as Vacation.",
         "time_off_type_id": "The time off type's id.",

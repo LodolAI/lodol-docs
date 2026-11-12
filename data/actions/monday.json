@@ -188,7 +188,7 @@
       ]
     },
     "find_items": {
-      "description": "Find the items on a Monday.com board whose column holds a value, such as every item whose Status is Stuck or whose Email is ada@example.com, each with its group and its columns as text.",
+      "description": "Find the items on a Monday.com board whose column holds a value, such as every item whose Status is Stuck or whose Email is ada@example.com, each with its group and its columns as text. A people column, such as Owner, is a name in columns; the email addresses of the people in it come back in each item's people (by the column's title) and owner_emails (the item's first people column), ready to send an email to.",
       "display_name": "Find items",
       "display_str_template": "Find items on board {0} whose column {1} is {2}.",
       "handler": "actions.find_items",
@@ -205,7 +205,13 @@
             "group": "This week",
             "id": "item1",
             "name": "Task 1",
-            "state": "active"
+            "owner_emails": "ada@acme.com",
+            "owner_names": "Ada Lovelace",
+            "people": {
+              "Owner": "ada@acme.com"
+            },
+            "state": "active",
+            "url": "https://acme.monday.com/boards/123/pulses/456"
           }
         ]
       },
@@ -266,8 +272,24 @@
                   "description": "Item name.",
                   "type": "string"
                 },
+                "owner_emails": {
+                  "description": "Beta. The email addresses of the people in the item's first people column, whatever its title, as one text: \"ada@acme.com\", or \"ada@acme.com, bob@acme.com\" for several. Use it as an email step's To field, or group items by it to send each person their own list. Blank when nobody is assigned or the board has no people column. Teams are left out.",
+                  "type": "string"
+                },
+                "owner_names": {
+                  "description": "Beta. The names in the item's first people column, as Monday.com shows them, such as \"Ada Lovelace, Bob Stone\". Blank when nobody is assigned or the board has no people column.",
+                  "type": "string"
+                },
+                "people": {
+                  "description": "Beta. The email addresses of the people in each people column (such as Owner), by the column's title on the board, as one text: \"ada@acme.com\", or \"ada@acme.com, bob@acme.com\" for several, which an email step's To field takes as it is. Blank when nobody is assigned. A team in the column has no email address and is left out.",
+                  "type": "object"
+                },
                 "state": {
                   "description": "active, archived or deleted.",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "Beta. The link that opens the item in Monday.com.",
                   "type": "string"
                 }
               },
@@ -283,13 +305,37 @@
       ]
     },
     "list_board_items": {
-      "description": "List the items in a Monday.com board (up to 500), each with its group and its columns by title as text, such as Status, Owner and Due date.",
+      "description": "List the items in a Monday.com board (up to 500), each with its group and its columns by title as text, such as Status, Owner and Due date. Beta: it can keep only past-due items and leave out items with a status such as Done, gives each item its owners' names and emails, and lists the items by owner, so emailing each person their items needs no filter, grouping or lookup step.",
       "display_name": "List board items",
       "display_str_template": "List items in board {0}.",
       "handler": "actions.list_board_items",
       "id": "monday_list_board_items",
       "method": "POST",
       "mock_response": {
+        "by_owner": [
+          {
+            "count": 1,
+            "email": "ada@example.com",
+            "items": [
+              {
+                "columns": {
+                  "Due date": "2026-11-02",
+                  "Owner": "Ada Lovelace",
+                  "Status": "Working on it"
+                },
+                "days_overdue": 3,
+                "due_date": "2026-11-02",
+                "group": "This week",
+                "id": "item1",
+                "name": "Task 1",
+                "state": "active",
+                "url": "https://acme.monday.com/boards/1234/pulses/item1"
+              }
+            ],
+            "name": "Ada Lovelace"
+          }
+        ],
+        "count": 1,
         "items": [
           {
             "columns": {
@@ -297,10 +343,20 @@
               "Owner": "Ada Lovelace",
               "Status": "Working on it"
             },
+            "days_overdue": 3,
+            "due_date": "2026-11-02",
             "group": "This week",
             "id": "item1",
             "name": "Task 1",
-            "state": "active"
+            "owners": [
+              {
+                "email": "ada@example.com",
+                "id": "4012345",
+                "name": "Ada Lovelace"
+              }
+            ],
+            "state": "active",
+            "url": "https://acme.monday.com/boards/1234/pulses/item1"
           }
         ]
       },
@@ -313,12 +369,107 @@
           "name": "board_id",
           "required": true,
           "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Beta. Only list items whose due date is before today (UTC), so a list of overdue work needs no filtering step. Items with no due date are left out. The due date is read from the column named in Due date column, or the board's first date column when that is blank. With this or Leave out status set, the whole board is read (up to 5,000 items), not only its first 500.",
+          "display_name": "Only past-due items",
+          "name": "past_due_only",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Beta. The title of the date column that holds each item's due date, such as Due date, as it shows on the board. Leave blank to use the board's first date column.",
+          "display_name": "Due date column",
+          "name": "due_date_column",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. Leave out items whose status is this label, such as Done, in any case. Separate several labels with commas, such as Done, Cancelled. Leave blank to keep every status.",
+          "display_name": "Leave out status",
+          "name": "exclude_status",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. The title of the people column whose people own each item, such as Owner. Leave blank to use the board's first people column.",
+          "display_name": "Owner column",
+          "name": "owner_column",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/monday/list-board-items",
       "result_str_template": "Items listed.",
       "returns": {
         "properties": {
+          "by_owner": {
+            "description": "Beta. One entry per person in the owner column, with their name, email, their items and how many, so emailing each person their own items needs no grouping step. An item with two owners is in both people's lists; an item with no owner is in none.",
+            "items": {
+              "properties": {
+                "count": {
+                  "description": "How many of the items are theirs.",
+                  "type": "integer"
+                },
+                "email": {
+                  "description": "The person's email, or blank when Monday.com doesn't give it.",
+                  "type": "string"
+                },
+                "items": {
+                  "description": "Their items.",
+                  "items": {
+                    "properties": {
+                      "columns": {
+                        "description": "The item's columns as text, by title.",
+                        "type": "object"
+                      },
+                      "days_overdue": {
+                        "description": "Beta. How many days ago the due date passed; 0 when it hasn't.",
+                        "type": "integer"
+                      },
+                      "due_date": {
+                        "description": "Beta. The item's due date as YYYY-MM-DD, from the due date column, or blank when it has none.",
+                        "type": "string"
+                      },
+                      "group": {
+                        "description": "The item's group.",
+                        "type": "string"
+                      },
+                      "id": {
+                        "description": "Item ID.",
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "Item name.",
+                        "type": "string"
+                      },
+                      "state": {
+                        "description": "active, archived or deleted.",
+                        "type": "string"
+                      },
+                      "url": {
+                        "description": "Beta. The link that opens the item in monday.com, ready to put in an email or message.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "name": {
+                  "description": "The person's name.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "Beta. How many items are listed.",
+            "type": "integer"
+          },
           "items": {
             "description": "List of items.",
             "items": {
@@ -326,6 +477,14 @@
                 "columns": {
                   "description": "The item's columns as text, by the column's title on the board, such as Status, Owner or Due date. Read one with its title.",
                   "type": "object"
+                },
+                "days_overdue": {
+                  "description": "Beta. How many days ago the due date passed; 0 when it hasn't.",
+                  "type": "integer"
+                },
+                "due_date": {
+                  "description": "Beta. The item's due date as YYYY-MM-DD, from the due date column, or blank when it has none.",
+                  "type": "string"
                 },
                 "group": {
                   "description": "The title of the group the item sits in.",
@@ -339,8 +498,33 @@
                   "description": "Item name.",
                   "type": "string"
                 },
+                "owners": {
+                  "description": "Beta. The people in the item's owner column, each with their name and email, so no lookup of users is needed.",
+                  "items": {
+                    "properties": {
+                      "email": {
+                        "description": "The person's email, or blank when Monday.com doesn't give it.",
+                        "type": "string"
+                      },
+                      "id": {
+                        "description": "The person's Monday.com user ID (blank if unknown).",
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "The person's name.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
                 "state": {
                   "description": "active, archived or deleted.",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "Beta. The link that opens the item in monday.com, ready to put in an email or message.",
                   "type": "string"
                 }
               },
@@ -392,7 +576,7 @@
       ]
     },
     "list_users": {
-      "description": "List all users in the Monday.com account.",
+      "description": "List the users in the Monday.com account (the first 50), each with their name and email address.",
       "display_name": "List users",
       "display_str_template": "List users.",
       "handler": "actions.list_users",
@@ -416,6 +600,20 @@
           "users": {
             "description": "List of users.",
             "items": {
+              "properties": {
+                "email": {
+                  "description": "The user's email address. Blank when Monday.com gives none.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The user's ID in Monday.com.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The user's full name, as it shows in a people column.",
+                  "type": "string"
+                }
+              },
               "type": "object"
             },
             "type": "array"
@@ -519,7 +717,11 @@
           "group": "This week",
           "id": "item123",
           "name": "Task",
-          "state": "active"
+          "owner_emails": "",
+          "owner_names": "",
+          "people": {},
+          "state": "active",
+          "url": "https://acme.monday.com/boards/123/pulses/456"
         }
       },
       "name": "update_item_columns",
@@ -574,8 +776,24 @@
                 "description": "Item name.",
                 "type": "string"
               },
+              "owner_emails": {
+                "description": "Beta. The email addresses of the people in the item's first people column, whatever its title, as one text: \"ada@acme.com\", or \"ada@acme.com, bob@acme.com\" for several. Use it as an email step's To field, or group items by it to send each person their own list. Blank when nobody is assigned or the board has no people column. Teams are left out.",
+                "type": "string"
+              },
+              "owner_names": {
+                "description": "Beta. The names in the item's first people column, as Monday.com shows them, such as \"Ada Lovelace, Bob Stone\". Blank when nobody is assigned or the board has no people column.",
+                "type": "string"
+              },
+              "people": {
+                "description": "Beta. The email addresses of the people in each people column (such as Owner), by the column's title on the board, as one text: \"ada@acme.com\", or \"ada@acme.com, bob@acme.com\" for several, which an email step's To field takes as it is. Blank when nobody is assigned. A team in the column has no email address and is left out.",
+                "type": "object"
+              },
               "state": {
                 "description": "active, archived or deleted.",
+                "type": "string"
+              },
+              "url": {
+                "description": "Beta. The link that opens the item in Monday.com.",
                 "type": "string"
               }
             },
@@ -689,7 +907,7 @@
         "changed_at": "When it was changed.",
         "column": "The title of the column that changed, such as Status.",
         "column_id": "The ID of the column that changed.",
-        "item": "The item as it is now: id, name, state, group, and columns (its columns as text, by title).",
+        "item": "The item as it is now: id, name, state, group, and columns (its columns as text, by title). Beta: also url (the link that opens it in Monday.com), people (the email addresses of the people in each people column, by the column's title) and owner_emails and owner_names (the emails and names in its first people column).",
         "previous_value": "What the column held before, as text.",
         "value": "The column's value now, as text."
       },
@@ -720,7 +938,8 @@
         "group": "The title of the group the item was added to.",
         "id": "The item's ID.",
         "name": "The item's name.",
-        "state": "active, archived or deleted."
+        "state": "active, archived or deleted.",
+        "url": "Beta. The link that opens the item in Monday.com."
       },
       "parameters": [
         {
