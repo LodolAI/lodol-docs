@@ -1535,46 +1535,51 @@
       ]
     },
     "get_time_report": {
-      "description": "Hours tracked between two dates (up to a year), by client, project, task or person, with billable hours and amounts.",
+      "description": "Hours tracked between two dates (up to a year), by client, project, task or person, with billable hours and amounts. Beta: pick a Period such as This week instead of dates; and, grouped by person, get each person's email address, include people who logged nothing, and keep only those under a number of hours, to remind people to finish their timesheets.",
       "display_name": "Get time report",
-      "display_str_template": "Get a time report from {from_date}.",
+      "display_str_template": "Get a time report.",
       "handler": "actions.get_time_report",
       "id": "harvest_get_time_report",
       "method": "POST",
       "mock_response": {
-        "billable_hours": 2.5,
+        "billable_hours": 28.0,
         "count": 1,
+        "email_note": "",
         "from_date": "2017-01-01",
-        "group_by": "projects",
+        "group_by": "team",
         "results": [
           {
-            "billable_amount": 250.0,
-            "billable_hours": 2.5,
-            "client_id": 5735774,
-            "client_name": "ABC Corp",
+            "billable_amount": 2800.0,
+            "billable_hours": 28.0,
+            "client_id": null,
+            "client_name": null,
             "currency": "USD",
-            "id": 14307913,
-            "name": "Marketing Website",
-            "total_hours": 2.5
+            "email": "kim@example.com",
+            "first_name": "Kim",
+            "id": 1782959,
+            "name": "Kim Allen",
+            "total_hours": 31.5,
+            "total_hours_display": "31.5"
           }
         ],
         "to_date": "2017-12-31",
-        "total_hours": 2.5
+        "total_hours": 31.5,
+        "total_hours_display": "31.5"
       },
       "name": "get_time_report",
       "parameters": [
         {
-          "description": "The first day to include.",
+          "description": "The first day to include. Needed unless you pick a Period.",
           "display_name": "From",
           "name": "from_date",
-          "required": true,
+          "required": false,
           "type": "ParameterType.DATE"
         },
         {
-          "description": "The last day to include.",
+          "description": "The last day to include. Needed unless you pick a Period.",
           "display_name": "To",
           "name": "to_date",
-          "required": true,
+          "required": false,
           "type": "ParameterType.DATE"
         },
         {
@@ -1608,6 +1613,46 @@
           "name": "include_fixed_fee",
           "required": false,
           "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Beta. A ready-made span to use instead of From and To, worked out on the day the step runs: this week, last week, this month or last month, each in full. A week starts on the day set in your Harvest account when an Administrator connected Harvest, otherwise on Monday. Leave empty to use From and To; don't fill in both.",
+          "display_name": "Period",
+          "name": "period",
+          "options": [
+            {
+              "label": "This week",
+              "value": "this_week"
+            },
+            {
+              "label": "Last week",
+              "value": "last_week"
+            },
+            {
+              "label": "This month",
+              "value": "this_month"
+            },
+            {
+              "label": "Last month",
+              "value": "last_month"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. Only when Group by is Person. Yes also lists every active person who logged nothing in the period, with total_hours 0; Harvest's own report leaves them out. Needs Harvest connected by an Administrator, or by a Manager (who gets the teammates assigned to them); the step fails for anyone else. Leave empty for only people who logged time.",
+          "display_name": "Include people without hours",
+          "name": "include_people_without_hours",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Beta. Keep only the rows with fewer total hours than this, e.g. 35; the count and totals then cover only those rows. To find everyone short on hours, group by Person and set Include people without hours to Yes, or people with no hours at all are missed. Leave empty to keep every row.",
+          "display_name": "Only under this many hours",
+          "minimum": 0,
+          "name": "hours_below",
+          "required": false,
+          "type": "ParameterType.NUMBER"
         }
       ],
       "path": "/actions/library/harvest/get-time-report",
@@ -1621,6 +1666,10 @@
           "count": {
             "description": "How many rows.",
             "type": "number"
+          },
+          "email_note": {
+            "description": "Beta. Empty unless a report by person is missing someone's email address; then it says how many and what to do about it.",
+            "type": "string"
           },
           "from_date": {
             "description": "The first day covered (YYYY-MM-DD).",
@@ -1654,6 +1703,14 @@
                   "description": "The currency of billable_amount.",
                   "type": "string"
                 },
+                "email": {
+                  "description": "Beta. The person's email address, when grouped by person. Empty for other groupings, or when your Harvest role can't see it.",
+                  "type": "string"
+                },
+                "first_name": {
+                  "description": "Beta. The person's first name, e.g. Kim, when grouped by person. Empty for other groupings, or when your Harvest role can't see it.",
+                  "type": "string"
+                },
                 "id": {
                   "description": "ID of the client, project, task or person the row is for.",
                   "type": "number"
@@ -1665,6 +1722,10 @@
                 "total_hours": {
                   "description": "Hours tracked.",
                   "type": "number"
+                },
+                "total_hours_display": {
+                  "description": "Beta. total_hours ready to put in a message, e.g. 31.5, 40 or 0.",
+                  "type": "string"
                 }
               },
               "type": "object"
@@ -1678,6 +1739,10 @@
           "total_hours": {
             "description": "All hours tracked, added up.",
             "type": "number"
+          },
+          "total_hours_display": {
+            "description": "Beta. total_hours ready to put in a message, e.g. 112.5.",
+            "type": "string"
           }
         },
         "type": "object"
@@ -2564,6 +2629,112 @@
       },
       "scopes": [
         "read"
+      ]
+    },
+    "list_users": {
+      "description": "The people in your Harvest account, with their email address, weekly hours and roles: active ones, or archived ones too. Harvest only shows them to an Administrator, or to a Manager (who gets the teammates assigned to them); the step fails, saying so, when anyone else connected Harvest.",
+      "display_name": "List people",
+      "display_str_template": "List people.",
+      "handler": "actions.list_users",
+      "id": "harvest_list_users",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "users": [
+          {
+            "email": "jimallen@example.com",
+            "first_name": "Jim",
+            "id": 3230547,
+            "is_active": true,
+            "last_name": "Allen",
+            "name": "Jim Allen",
+            "roles": [
+              "Developer"
+            ],
+            "weekly_capacity_hours": 35.0
+          }
+        ]
+      },
+      "name": "list_users",
+      "parameters": [
+        {
+          "description": "Yes also lists archived people. Leave empty for active people only.",
+          "display_name": "Include archived",
+          "name": "include_archived",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "The most records to return, up to 2000. Default: 100.",
+          "display_name": "Limit",
+          "maximum": 2000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/harvest/list-users",
+      "result_str_template": "Found {harvest_list_users,count} people.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many were returned.",
+            "type": "number"
+          },
+          "users": {
+            "description": "The people, as Harvest lists them.",
+            "items": {
+              "properties": {
+                "email": {
+                  "description": "Their email address.",
+                  "type": "string"
+                },
+                "first_name": {
+                  "description": "Their first name, e.g. Kim.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The person's ID.",
+                  "type": "number"
+                },
+                "is_active": {
+                  "description": "False once the person is archived.",
+                  "type": "boolean"
+                },
+                "last_name": {
+                  "description": "Their last name, e.g. Lee.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Their full name, e.g. Kim Lee.",
+                  "type": "string"
+                },
+                "roles": {
+                  "description": "The roles they are labelled with in Harvest, e.g. Designer. Empty when they have none.",
+                  "items": {
+                    "description": "A role's name, e.g. Designer.",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "weekly_capacity_hours": {
+                  "description": "The hours a week they are expected to work, e.g. 35.",
+                  "type": "number"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
       ]
     },
     "send_invoice": {

@@ -229,13 +229,58 @@
       ]
     },
     "list_invoices": {
-      "description": "List invoices in your Chargebee site, one page at a time, optionally filtered by customer ID and/or status. Returns a 'list' of invoice records with a 'next_offset' cursor. Amounts are in the currency's minor units (e.g. cents). Useful for accounts-receivable checks, chasing unpaid invoices, or revenue reporting.",
+      "description": "List invoices in your Chargebee site, one page at a time, optionally filtered by customer ID and/or status. Returns a 'list' of invoice records with a 'next_offset' cursor. Amounts are in the currency's minor units (e.g. cents). Useful for accounts-receivable checks, chasing unpaid invoices, or revenue reporting. Beta: choose the 'Unpaid' status or set 'days_overdue_at_least' to get every unpaid or overdue invoice in one step, and read 'invoices', 'customers' and 'total_due_display' for a report of who owes what, already in dollars, with customer names and due dates in plain words.",
       "display_name": "List invoices",
       "display_str_template": "List invoices.",
       "handler": "actions.list_invoices",
       "id": "chargebee_list_invoices",
       "method": "POST",
       "mock_response": {
+        "count": 2,
+        "customers": [
+          {
+            "currency": "USD",
+            "customer": "Globex",
+            "customer_id": "cust_globex_3b90",
+            "invoice_list": "INV-00043 ($249.00, due Feb 25, 2026)",
+            "invoices": 1,
+            "owed": 249.0,
+            "owed_display": "$249.00"
+          },
+          {
+            "currency": "USD",
+            "customer": "Acme Corp",
+            "customer_id": "cust_acme_8f21",
+            "invoice_list": "INV-00042 ($0.00, due Jan 26, 2026)",
+            "invoices": 1,
+            "owed": 0.0,
+            "owed_display": "$0.00"
+          }
+        ],
+        "invoices": [
+          {
+            "amount_due": 0.0,
+            "amount_due_display": "$0.00",
+            "currency": "USD",
+            "customer": "Acme Corp",
+            "customer_id": "cust_acme_8f21",
+            "days_overdue": 0,
+            "due_display": "Jan 26, 2026",
+            "number": "INV-00042",
+            "status": "paid"
+          },
+          {
+            "amount_due": 249.0,
+            "amount_due_display": "$249.00",
+            "currency": "USD",
+            "customer": "Globex",
+            "customer_id": "cust_globex_3b90",
+            "days_overdue": 259,
+            "due_display": "Feb 25, 2026",
+            "number": "INV-00043",
+            "status": "payment_due"
+          }
+        ],
         "list": [
           {
             "invoice": {
@@ -268,7 +313,8 @@
             }
           }
         ],
-        "next_offset": null
+        "next_offset": null,
+        "total_due_display": "$249.00"
       },
       "name": "list_invoices",
       "output_formatter": "actions.format_list_invoices_output",
@@ -281,10 +327,14 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Filter by invoice status. One of: paid, posted, payment_due, not_paid, voided, pending. Leave blank for all statuses.",
+          "description": "Filter by invoice status. One of: paid, posted, payment_due, not_paid, voided, pending. Leave blank for all statuses. Beta: 'unpaid' asks for every invoice still owing money (payment due or not paid) in one call, reading every page, so there is no need to loop over the two statuses or walk pages.",
           "display_name": "Status",
           "name": "status",
           "options": [
+            {
+              "label": "Unpaid (beta)",
+              "value": "unpaid"
+            },
             {
               "label": "Paid",
               "value": "paid"
@@ -314,6 +364,14 @@
           "type": "ParameterType.STRING"
         },
         {
+          "description": "Beta. Keep only invoices still owing money whose due date was at least this many days ago: 31 for invoices more than 30 days past due. Every page is read (up to 5,000 invoices) and 'limit' is ignored, so a collections report needs no date filter or page loop. Leave status blank, or choose 'unpaid'. Leave blank for no due-date filter.",
+          "display_name": "Overdue by at least (days)",
+          "minimum": 0,
+          "name": "days_overdue_at_least",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
           "description": "How many records to return in one page, from 1 to 100. Defaults to 10.",
           "display_name": "Limit",
           "maximum": 100,
@@ -335,6 +393,76 @@
       "returns": {
         "description": "Paginated list. Each entry wraps an 'invoice'. 'total', 'amount_paid', and 'amount_due' are integers in the currency's minor units (e.g. cents). Dates are Unix epoch seconds.",
         "properties": {
+          "count": {
+            "description": "Beta. How many invoices are in 'list'.",
+            "type": "integer"
+          },
+          "customers": {
+            "description": "Beta. What each customer owes across these invoices, biggest first: customer (name), customer_id, invoices (how many), owed (in dollars), owed_display, currency and invoice_list (that customer's invoices in one line, such as INV-42 ($249.00, due Oct 9, 2026)). A report of who owes what, grouped by customer, is one table of these with no grouping or totalling step.",
+            "items": {
+              "properties": {
+                "currency": {
+                  "type": "string"
+                },
+                "customer": {
+                  "type": "string"
+                },
+                "customer_id": {
+                  "type": "string"
+                },
+                "invoice_list": {
+                  "type": "string"
+                },
+                "invoices": {
+                  "type": "integer"
+                },
+                "owed": {
+                  "type": "number"
+                },
+                "owed_display": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "invoices": {
+            "description": "Beta. The same invoices in plain words, one record each, ready for a table or a line per invoice with no conversion or lookup step: number, customer (the customer's name, else company, email or ID), customer_id, status, due_display (such as Oct 9, 2026), days_overdue, amount_due (in dollars, not cents), amount_due_display (such as $1,234.50) and currency. Sorted by customer, then the longest overdue first, so a table of them is already grouped by customer.",
+            "items": {
+              "properties": {
+                "amount_due": {
+                  "type": "number"
+                },
+                "amount_due_display": {
+                  "type": "string"
+                },
+                "currency": {
+                  "type": "string"
+                },
+                "customer": {
+                  "type": "string"
+                },
+                "customer_id": {
+                  "type": "string"
+                },
+                "days_overdue": {
+                  "type": "integer"
+                },
+                "due_display": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
           "list": {
             "items": {
               "properties": {
@@ -389,6 +517,10 @@
           },
           "next_offset": {
             "description": "Cursor for the next page; absent on the last page.",
+            "type": "string"
+          },
+          "total_due_display": {
+            "description": "Beta. The total still owed on these invoices, written the way a person reads it, such as $4,200.50 (each currency's total, joined with +, when there are several), ready for a message.",
             "type": "string"
           }
         },

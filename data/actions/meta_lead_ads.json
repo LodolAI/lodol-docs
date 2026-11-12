@@ -1,7 +1,7 @@
 {
   "actions": {
     "create_test_lead": {
-      "description": "Create test lead.",
+      "description": "Create a made-up test lead on a form, to try a workflow without running an ad. Meta usually keeps one test lead per form at a time, so delete the old one before creating another.",
       "display_name": "Create test lead",
       "display_str_template": "Create test lead.",
       "handler": "actions.create_test_lead",
@@ -16,7 +16,7 @@
       "output_formatter": "business_api.action_specs.<locals>.<lambda>",
       "parameters": [
         {
-          "description": "Form id.",
+          "description": "The lead form. Choose it from the list of the connected Page's forms, or give its ID, a long number such as 1234567890123456. List forms returns every form's ID; in Meta, your forms are listed under Instant Forms, in the All tools menu of Ads Manager or Meta Business Suite.",
           "display_name": "Form",
           "dynamic_source": "forms",
           "dynamic_source_allows_custom": true,
@@ -25,12 +25,12 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Field data.",
-          "display_name": "Field data",
+          "description": "The answers to give the test lead, as a list with one entry per question, such as [{\"name\": \"email\", \"values\": [\"ada@example.com\"]}]. Each name is a question's key (Get form lists them). Leave blank and Meta fills in sample answers.",
+          "display_name": "Answers",
           "name": "field_data",
           "required": false,
           "schema": {
-            "description": "Field data.",
+            "description": "The answers to give the test lead, as a list with one entry per question, such as [{\"name\": \"email\", \"values\": [\"ada@example.com\"]}]. Each name is a question's key (Get form lists them). Leave blank and Meta fills in sample answers.",
             "items": {
               "properties": {
                 "name": {
@@ -62,7 +62,7 @@
             "description": "Meta Lead Ads response data.",
             "properties": {
               "id": {
-                "description": "Id.",
+                "description": "The new test lead's ID. Get lead and Delete test lead take it.",
                 "type": "string"
               }
             },
@@ -76,7 +76,7 @@
       ]
     },
     "delete_test_lead": {
-      "description": "Delete test lead.",
+      "description": "Delete a test lead, so another can be created on its form. Leads from real people can't be deleted with this.",
       "display_name": "Delete test lead",
       "display_str_template": "Delete test lead {lead_id}.",
       "handler": "actions.delete_test_lead",
@@ -91,8 +91,8 @@
       "output_formatter": "business_api.action_specs.<locals>.<lambda>",
       "parameters": [
         {
-          "description": "Lead id.",
-          "display_name": "Lead id",
+          "description": "The test lead's ID, as returned by Create test lead or List test leads.",
+          "display_name": "Test lead ID",
           "name": "lead_id",
           "required": true,
           "type": "ParameterType.STRING"
@@ -106,7 +106,7 @@
             "description": "Meta Lead Ads response data.",
             "properties": {
               "success": {
-                "description": "Success.",
+                "description": "True when the test lead was deleted.",
                 "type": "boolean"
               }
             },
@@ -120,7 +120,7 @@
       ]
     },
     "get_form": {
-      "description": "Get form.",
+      "description": "Get one lead form: its name, status, how many leads it has collected and the questions it asks. Each question's key is the name its answer is filed under in a lead's answers.",
       "display_name": "Get form",
       "display_str_template": "Get form {form_id}.",
       "handler": "actions.get_form",
@@ -128,8 +128,12 @@
       "method": "POST",
       "mock_response": {
         "data": {
+          "created_time": "example",
           "id": "example",
+          "leads_count": 1,
+          "locale": "example",
           "name": "example",
+          "privacy_policy_url": "example",
           "questions": [],
           "status": "example"
         }
@@ -138,7 +142,7 @@
       "output_formatter": "business_api.action_specs.<locals>.<lambda>",
       "parameters": [
         {
-          "description": "Form id.",
+          "description": "The lead form. Choose it from the list of the connected Page's forms, or give its ID, a long number such as 1234567890123456. List forms returns every form's ID; in Meta, your forms are listed under Instant Forms, in the All tools menu of Ads Manager or Meta Business Suite.",
           "display_name": "Form",
           "dynamic_source": "forms",
           "dynamic_source_allows_custom": true,
@@ -154,24 +158,54 @@
           "data": {
             "description": "Meta Lead Ads response data.",
             "properties": {
+              "created_time": {
+                "description": "When the form was created, as Meta writes it, such as 2026-11-10T18:02:11+0000.",
+                "type": "string"
+              },
               "id": {
-                "description": "Id.",
+                "description": "The form's ID, a long number. Other steps take it as Form.",
+                "type": "string"
+              },
+              "leads_count": {
+                "description": "How many leads the form has collected.",
+                "type": "integer"
+              },
+              "locale": {
+                "description": "The form's language, such as en_US.",
                 "type": "string"
               },
               "name": {
-                "description": "Name.",
+                "description": "The form's name, as shown in Meta.",
+                "type": "string"
+              },
+              "privacy_policy_url": {
+                "description": "The privacy policy link shown on the form.",
                 "type": "string"
               },
               "questions": {
-                "description": "Questions.",
+                "description": "The questions the form asks.",
                 "items": {
-                  "description": "One questions record.",
+                  "description": "One question.",
+                  "properties": {
+                    "key": {
+                      "description": "The name the answer is filed under in a lead's answers, such as email or full_name.",
+                      "type": "string"
+                    },
+                    "label": {
+                      "description": "The question as the person sees it.",
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "Meta's kind of question, such as EMAIL, FULL_NAME, PHONE or CUSTOM.",
+                      "type": "string"
+                    }
+                  },
                   "type": "object"
                 },
                 "type": "array"
               },
               "status": {
-                "description": "Status.",
+                "description": "ACTIVE, ARCHIVED or DRAFT.",
                 "type": "string"
               }
             },
@@ -185,26 +219,55 @@
       ]
     },
     "get_lead": {
-      "description": "Get lead.",
+      "description": "Get one lead by its ID: their name, email, phone and every answer they gave on the form, ready to read, with the form, ad and campaign they came from.",
       "display_name": "Get lead",
       "display_str_template": "Get lead {lead_id}.",
       "handler": "actions.get_lead",
       "id": "meta_lead_ads_get_lead",
       "method": "POST",
       "mock_response": {
+        "ad_name": "Free quote - video",
+        "adset_name": "Homeowners 30-55",
+        "answers": {
+          "company_name": "Analytical Engines",
+          "email": "ada@example.com",
+          "full_name": "Ada Lovelace",
+          "phone_number": "+14155550123"
+        },
+        "answers_text": "Full name: Ada Lovelace\nEmail: ada@example.com\nPhone number: +14155550123\nCompany name: Analytical Engines",
+        "campaign_name": "Autumn quotes",
+        "created": "2026-11-10T18:02:11+00:00",
+        "created_display": "Tue, Nov 10, 2026 at 6:02 PM UTC",
         "data": {
+          "ad_id": "example",
+          "ad_name": "example",
+          "adset_id": "example",
+          "adset_name": "example",
+          "campaign_id": "example",
+          "campaign_name": "example",
           "created_time": "example",
           "field_data": [],
           "form_id": "example",
-          "id": "example"
-        }
+          "id": "example",
+          "is_organic": false,
+          "platform": "example"
+        },
+        "email": "ada@example.com",
+        "first_name": "Ada",
+        "form_id": "2345678901234567",
+        "full_name": "Ada Lovelace",
+        "is_organic": false,
+        "last_name": "Lovelace",
+        "lead_id": "1234567890123456",
+        "phone": "+14155550123",
+        "platform": "fb"
       },
       "name": "get_lead",
       "output_formatter": "business_api.action_specs.<locals>.<lambda>",
       "parameters": [
         {
-          "description": "Lead id.",
-          "display_name": "Lead id",
+          "description": "The lead's ID, a long number such as 1234567890123456. The New lead trigger gives it as lead_id, and List leads gives it for each lead.",
+          "display_name": "Lead ID",
           "name": "lead_id",
           "required": true,
           "type": "ParameterType.STRING"
@@ -214,31 +277,142 @@
       "result_str_template": "Get lead completed.",
       "returns": {
         "properties": {
+          "ad_name": {
+            "description": "Beta. The name of the ad the lead came from. Empty when the lead didn't come from an ad or the connection can't see ad details.",
+            "type": "string"
+          },
+          "adset_name": {
+            "description": "Beta. The name of the ad set that ad belongs to.",
+            "type": "string"
+          },
+          "answers": {
+            "additionalProperties": true,
+            "description": "Beta. Every answer on the form, by question, so any of them can be read on its own: answers.email, answers.company_name, answers.job_title, answers.city, or a question of your own such as answers.what_is_your_budget. A question is named by its key on the form (Get form lists them), in lower case with _ between words and no punctuation. A question with several answers gives a list.",
+            "type": "object"
+          },
+          "answers_text": {
+            "description": "Beta. Every answer ready to read, one 'Question: answer' per line, such as 'Full name: Ada Lovelace', ready to paste into a note, a row or a message with no step to join them.",
+            "type": "string"
+          },
+          "campaign_name": {
+            "description": "Beta. The name of the campaign that ad belongs to.",
+            "type": "string"
+          },
+          "created": {
+            "description": "Beta. When the person submitted the form, as a date and time in UTC, such as 2026-11-10T18:02:11+00:00.",
+            "type": "string"
+          },
+          "created_display": {
+            "description": "Beta. created written for a person, such as Tue, Nov 10, 2026 at 6:02 PM UTC, ready for a message or a row with no date step.",
+            "type": "string"
+          },
           "data": {
-            "description": "Meta Lead Ads response data.",
+            "description": "The lead exactly as Meta sends it. Prefer the fields beside data (full_name, email, phone, answers), which hold the same lead ready to read.",
             "properties": {
+              "ad_id": {
+                "description": "The ID of the ad the lead came from. Missing for a lead that didn't come from an ad.",
+                "type": "string"
+              },
+              "ad_name": {
+                "description": "The name of the ad the lead came from.",
+                "type": "string"
+              },
+              "adset_id": {
+                "description": "The ID of the ad set the ad belongs to.",
+                "type": "string"
+              },
+              "adset_name": {
+                "description": "The name of the ad set the ad belongs to.",
+                "type": "string"
+              },
+              "campaign_id": {
+                "description": "The ID of the campaign the ad belongs to.",
+                "type": "string"
+              },
+              "campaign_name": {
+                "description": "The name of the campaign the ad belongs to.",
+                "type": "string"
+              },
               "created_time": {
-                "description": "Created time.",
+                "description": "When the form was submitted, as Meta writes it, such as 2026-11-10T18:02:11+0000.",
                 "type": "string"
               },
               "field_data": {
-                "description": "Field data.",
+                "description": "The answers as Meta sends them: one entry per question, with the question's key as name and the answer in values.",
                 "items": {
-                  "description": "One field data record.",
+                  "description": "One question's answer.",
+                  "properties": {
+                    "name": {
+                      "description": "The question's key, such as email or full_name.",
+                      "type": "string"
+                    },
+                    "values": {
+                      "description": "The answer; almost always one value.",
+                      "items": {
+                        "description": "One values record.",
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
                   "type": "object"
                 },
                 "type": "array"
               },
               "form_id": {
-                "description": "Form id.",
+                "description": "The ID of the form the lead filled in.",
                 "type": "string"
               },
               "id": {
-                "description": "Id.",
+                "description": "The lead's ID, as Meta gives it.",
+                "type": "string"
+              },
+              "is_organic": {
+                "description": "True when the lead didn't come from a paid ad.",
+                "type": "boolean"
+              },
+              "platform": {
+                "description": "Where the form was filled in, as Meta reports it, such as fb for Facebook or ig for Instagram.",
                 "type": "string"
               }
             },
             "type": "object"
+          },
+          "email": {
+            "description": "Beta. The person's email address (their work email if that is the only one the form asked for). Empty when the form didn't ask for one.",
+            "type": "string"
+          },
+          "first_name": {
+            "description": "Beta. The person's first name, such as Ada, ready for 'Hi Ada,'. Taken from the full name when the form only asked for that.",
+            "type": "string"
+          },
+          "form_id": {
+            "description": "Beta. The ID of the form they filled in.",
+            "type": "string"
+          },
+          "full_name": {
+            "description": "Beta. The person's full name, such as Ada Lovelace. Put together from their first and last name when the form asked for those separately. Empty when the form didn't ask for a name.",
+            "type": "string"
+          },
+          "is_organic": {
+            "description": "Beta. True when the lead didn't come from a paid ad, false when it did.",
+            "type": "boolean"
+          },
+          "last_name": {
+            "description": "Beta. The person's last name, such as Lovelace. Taken from the full name when the form only asked for that.",
+            "type": "string"
+          },
+          "lead_id": {
+            "description": "Beta. The lead's ID, a long number. Get lead takes it.",
+            "type": "string"
+          },
+          "phone": {
+            "description": "Beta. The person's phone number as they gave it, usually with the country code, such as +14155550123, ready for a text message step. Empty when the form didn't ask for one.",
+            "type": "string"
+          },
+          "platform": {
+            "description": "Beta. Where the form was filled in, as Meta reports it, such as fb for Facebook or ig for Instagram.",
+            "type": "string"
           }
         },
         "type": "object"
@@ -248,7 +422,7 @@
       ]
     },
     "get_page": {
-      "description": "Get page.",
+      "description": "Get the name and ID of the Facebook Page this connection reads leads from.",
       "display_name": "Get page",
       "display_str_template": "Get page.",
       "handler": "actions.get_page",
@@ -271,11 +445,11 @@
             "description": "Meta Lead Ads response data.",
             "properties": {
               "id": {
-                "description": "Id.",
+                "description": "The Page's ID.",
                 "type": "string"
               },
               "name": {
-                "description": "Name.",
+                "description": "The Page's name.",
                 "type": "string"
               }
             },
@@ -289,7 +463,7 @@
       ]
     },
     "list_forms": {
-      "description": "List forms.",
+      "description": "List the lead forms (Instant Forms) on the connected Facebook Page, with each form's name, ID, status and how many leads it has collected.",
       "display_name": "List forms",
       "display_str_template": "List forms.",
       "handler": "actions.list_forms",
@@ -297,14 +471,20 @@
       "method": "POST",
       "mock_response": {
         "data": {
-          "data": []
+          "data": [],
+          "paging": {
+            "cursors": {
+              "after": "example"
+            },
+            "next": "example"
+          }
         }
       },
       "name": "list_forms",
       "output_formatter": "business_api.action_specs.<locals>.<lambda>",
       "parameters": [
         {
-          "description": "Limit.",
+          "description": "How many forms to return at once, from 1 to 100. Leave blank for Meta's usual batch size.",
           "display_name": "Limit",
           "maximum": 100,
           "minimum": 1,
@@ -313,14 +493,14 @@
           "type": "ParameterType.NUMBER"
         },
         {
-          "description": "After.",
+          "description": "To get the next batch, paste the value found at data.paging.cursors.after in the previous result. Leave blank to start from the beginning.",
           "display_name": "After",
           "name": "after",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Status.",
+          "description": "Only list forms in this state: ACTIVE (collecting leads), ARCHIVED or DRAFT. Leave blank to list them all.",
           "display_name": "Status",
           "name": "status",
           "options": [
@@ -349,34 +529,84 @@
             "description": "Meta Lead Ads response data.",
             "properties": {
               "data": {
-                "description": "Data.",
+                "description": "The forms.",
                 "items": {
-                  "description": "One data record.",
+                  "description": "One lead form.",
                   "properties": {
                     "created_time": {
-                      "description": "Created time.",
+                      "description": "When the form was created, as Meta writes it, such as 2026-11-10T18:02:11+0000.",
                       "type": "string"
                     },
                     "id": {
-                      "description": "Id.",
+                      "description": "The form's ID, a long number. Other steps take it as Form.",
                       "type": "string"
                     },
                     "leads_count": {
-                      "description": "Leads count.",
+                      "description": "How many leads the form has collected.",
                       "type": "integer"
                     },
-                    "name": {
-                      "description": "Name.",
+                    "locale": {
+                      "description": "The form's language, such as en_US.",
                       "type": "string"
                     },
+                    "name": {
+                      "description": "The form's name, as shown in Meta.",
+                      "type": "string"
+                    },
+                    "privacy_policy_url": {
+                      "description": "The privacy policy link shown on the form.",
+                      "type": "string"
+                    },
+                    "questions": {
+                      "description": "The questions the form asks.",
+                      "items": {
+                        "description": "One question.",
+                        "properties": {
+                          "key": {
+                            "description": "The name the answer is filed under in a lead's answers, such as email or full_name.",
+                            "type": "string"
+                          },
+                          "label": {
+                            "description": "The question as the person sees it.",
+                            "type": "string"
+                          },
+                          "type": {
+                            "description": "Meta's kind of question, such as EMAIL, FULL_NAME, PHONE or CUSTOM.",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
                     "status": {
-                      "description": "Status.",
+                      "description": "ACTIVE, ARCHIVED or DRAFT.",
                       "type": "string"
                     }
                   },
                   "type": "object"
                 },
                 "type": "array"
+              },
+              "paging": {
+                "description": "Where this batch sits in the whole list.",
+                "properties": {
+                  "cursors": {
+                    "description": "Markers for the batch before and after this one.",
+                    "properties": {
+                      "after": {
+                        "description": "Give this as After to get the next batch.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "next": {
+                    "description": "Present only when there are more to fetch.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               }
             },
             "type": "object"
@@ -389,7 +619,7 @@
       ]
     },
     "list_leads": {
-      "description": "List leads.",
+      "description": "List the people who filled in a lead form. Each one comes with their name, email, phone and every answer ready to read (in leads), so no step is needed to pick them out of Meta's raw data.",
       "display_name": "List leads",
       "display_str_template": "List leads.",
       "handler": "actions.list_leads",
@@ -397,14 +627,45 @@
       "method": "POST",
       "mock_response": {
         "data": {
-          "data": []
-        }
+          "data": [],
+          "paging": {
+            "cursors": {
+              "after": "example"
+            },
+            "next": "example"
+          }
+        },
+        "leads": [
+          {
+            "ad_name": "Free quote - video",
+            "adset_name": "Homeowners 30-55",
+            "answers": {
+              "company_name": "Analytical Engines",
+              "email": "ada@example.com",
+              "full_name": "Ada Lovelace",
+              "phone_number": "+14155550123"
+            },
+            "answers_text": "Full name: Ada Lovelace\nEmail: ada@example.com\nPhone number: +14155550123\nCompany name: Analytical Engines",
+            "campaign_name": "Autumn quotes",
+            "created": "2026-11-10T18:02:11+00:00",
+            "created_display": "Tue, Nov 10, 2026 at 6:02 PM UTC",
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "form_id": "2345678901234567",
+            "full_name": "Ada Lovelace",
+            "is_organic": false,
+            "last_name": "Lovelace",
+            "lead_id": "1234567890123456",
+            "phone": "+14155550123",
+            "platform": "fb"
+          }
+        ]
       },
       "name": "list_leads",
       "output_formatter": "business_api.action_specs.<locals>.<lambda>",
       "parameters": [
         {
-          "description": "Form id.",
+          "description": "The lead form. Choose it from the list of the connected Page's forms, or give its ID, a long number such as 1234567890123456. List forms returns every form's ID; in Meta, your forms are listed under Instant Forms, in the All tools menu of Ads Manager or Meta Business Suite.",
           "display_name": "Form",
           "dynamic_source": "forms",
           "dynamic_source_allows_custom": true,
@@ -413,7 +674,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Limit.",
+          "description": "How many leads to return at once, from 1 to 100. Leave blank for Meta's usual batch size.",
           "display_name": "Limit",
           "maximum": 100,
           "minimum": 1,
@@ -422,7 +683,7 @@
           "type": "ParameterType.NUMBER"
         },
         {
-          "description": "After.",
+          "description": "To get the next batch, paste the value found at data.paging.cursors.after in the previous result. Leave blank to start from the beginning.",
           "display_name": "After",
           "name": "after",
           "required": false,
@@ -437,37 +698,178 @@
             "description": "Meta Lead Ads response data.",
             "properties": {
               "data": {
-                "description": "Data.",
+                "description": "The leads exactly as Meta sends them. Prefer leads, beside data, which holds the same people ready to read.",
                 "items": {
-                  "description": "One data record.",
+                  "description": "One lead, as Meta sends it.",
                   "properties": {
+                    "ad_id": {
+                      "description": "The ID of the ad the lead came from. Missing for a lead that didn't come from an ad.",
+                      "type": "string"
+                    },
+                    "ad_name": {
+                      "description": "The name of the ad the lead came from.",
+                      "type": "string"
+                    },
+                    "adset_id": {
+                      "description": "The ID of the ad set the ad belongs to.",
+                      "type": "string"
+                    },
+                    "adset_name": {
+                      "description": "The name of the ad set the ad belongs to.",
+                      "type": "string"
+                    },
+                    "campaign_id": {
+                      "description": "The ID of the campaign the ad belongs to.",
+                      "type": "string"
+                    },
+                    "campaign_name": {
+                      "description": "The name of the campaign the ad belongs to.",
+                      "type": "string"
+                    },
                     "created_time": {
-                      "description": "Created time.",
+                      "description": "When the form was submitted, as Meta writes it, such as 2026-11-10T18:02:11+0000.",
                       "type": "string"
                     },
                     "field_data": {
-                      "description": "Field data.",
+                      "description": "The answers as Meta sends them: one entry per question, with the question's key as name and the answer in values.",
                       "items": {
-                        "description": "One field data record.",
+                        "description": "One question's answer.",
+                        "properties": {
+                          "name": {
+                            "description": "The question's key, such as email or full_name.",
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "The answer; almost always one value.",
+                            "items": {
+                              "description": "One values record.",
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
                         "type": "object"
                       },
                       "type": "array"
                     },
                     "form_id": {
-                      "description": "Form id.",
+                      "description": "The ID of the form the lead filled in.",
                       "type": "string"
                     },
                     "id": {
-                      "description": "Id.",
+                      "description": "The lead's ID, as Meta gives it.",
+                      "type": "string"
+                    },
+                    "is_organic": {
+                      "description": "True when the lead didn't come from a paid ad.",
+                      "type": "boolean"
+                    },
+                    "platform": {
+                      "description": "Where the form was filled in, as Meta reports it, such as fb for Facebook or ig for Instagram.",
                       "type": "string"
                     }
                   },
                   "type": "object"
                 },
                 "type": "array"
+              },
+              "paging": {
+                "description": "Where this batch sits in the whole list.",
+                "properties": {
+                  "cursors": {
+                    "description": "Markers for the batch before and after this one.",
+                    "properties": {
+                      "after": {
+                        "description": "Give this as After to get the next batch.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "next": {
+                    "description": "Present only when there are more to fetch.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               }
             },
             "type": "object"
+          },
+          "leads": {
+            "description": "Beta. The same leads ready to read, in the same order as data: each with full_name, first_name, last_name, email, phone, answers and answers_text, so no step is needed to pick them out of Meta's data.",
+            "items": {
+              "description": "One lead, ready to read.",
+              "properties": {
+                "ad_name": {
+                  "description": "Beta. The name of the ad the lead came from. Empty when the lead didn't come from an ad or the connection can't see ad details.",
+                  "type": "string"
+                },
+                "adset_name": {
+                  "description": "Beta. The name of the ad set that ad belongs to.",
+                  "type": "string"
+                },
+                "answers": {
+                  "additionalProperties": true,
+                  "description": "Beta. Every answer on the form, by question, so any of them can be read on its own: answers.email, answers.company_name, answers.job_title, answers.city, or a question of your own such as answers.what_is_your_budget. A question is named by its key on the form (Get form lists them), in lower case with _ between words and no punctuation. A question with several answers gives a list.",
+                  "type": "object"
+                },
+                "answers_text": {
+                  "description": "Beta. Every answer ready to read, one 'Question: answer' per line, such as 'Full name: Ada Lovelace', ready to paste into a note, a row or a message with no step to join them.",
+                  "type": "string"
+                },
+                "campaign_name": {
+                  "description": "Beta. The name of the campaign that ad belongs to.",
+                  "type": "string"
+                },
+                "created": {
+                  "description": "Beta. When the person submitted the form, as a date and time in UTC, such as 2026-11-10T18:02:11+00:00.",
+                  "type": "string"
+                },
+                "created_display": {
+                  "description": "Beta. created written for a person, such as Tue, Nov 10, 2026 at 6:02 PM UTC, ready for a message or a row with no date step.",
+                  "type": "string"
+                },
+                "email": {
+                  "description": "Beta. The person's email address (their work email if that is the only one the form asked for). Empty when the form didn't ask for one.",
+                  "type": "string"
+                },
+                "first_name": {
+                  "description": "Beta. The person's first name, such as Ada, ready for 'Hi Ada,'. Taken from the full name when the form only asked for that.",
+                  "type": "string"
+                },
+                "form_id": {
+                  "description": "Beta. The ID of the form they filled in.",
+                  "type": "string"
+                },
+                "full_name": {
+                  "description": "Beta. The person's full name, such as Ada Lovelace. Put together from their first and last name when the form asked for those separately. Empty when the form didn't ask for a name.",
+                  "type": "string"
+                },
+                "is_organic": {
+                  "description": "Beta. True when the lead didn't come from a paid ad, false when it did.",
+                  "type": "boolean"
+                },
+                "last_name": {
+                  "description": "Beta. The person's last name, such as Lovelace. Taken from the full name when the form only asked for that.",
+                  "type": "string"
+                },
+                "lead_id": {
+                  "description": "Beta. The lead's ID, a long number. Get lead takes it.",
+                  "type": "string"
+                },
+                "phone": {
+                  "description": "Beta. The person's phone number as they gave it, usually with the country code, such as +14155550123, ready for a text message step. Empty when the form didn't ask for one.",
+                  "type": "string"
+                },
+                "platform": {
+                  "description": "Beta. Where the form was filled in, as Meta reports it, such as fb for Facebook or ig for Instagram.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -477,7 +879,7 @@
       ]
     },
     "list_test_leads": {
-      "description": "List test leads.",
+      "description": "List the test leads on a form, each with their name, email, phone and every answer ready to read (in leads), the same way List leads does.",
       "display_name": "List test leads",
       "display_str_template": "List test leads.",
       "handler": "actions.list_test_leads",
@@ -486,13 +888,38 @@
       "mock_response": {
         "data": {
           "data": []
-        }
+        },
+        "leads": [
+          {
+            "ad_name": "Free quote - video",
+            "adset_name": "Homeowners 30-55",
+            "answers": {
+              "company_name": "Analytical Engines",
+              "email": "ada@example.com",
+              "full_name": "Ada Lovelace",
+              "phone_number": "+14155550123"
+            },
+            "answers_text": "Full name: Ada Lovelace\nEmail: ada@example.com\nPhone number: +14155550123\nCompany name: Analytical Engines",
+            "campaign_name": "Autumn quotes",
+            "created": "2026-11-10T18:02:11+00:00",
+            "created_display": "Tue, Nov 10, 2026 at 6:02 PM UTC",
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "form_id": "2345678901234567",
+            "full_name": "Ada Lovelace",
+            "is_organic": false,
+            "last_name": "Lovelace",
+            "lead_id": "1234567890123456",
+            "phone": "+14155550123",
+            "platform": "fb"
+          }
+        ]
       },
       "name": "list_test_leads",
       "output_formatter": "business_api.action_specs.<locals>.<lambda>",
       "parameters": [
         {
-          "description": "Form id.",
+          "description": "The lead form. Choose it from the list of the connected Page's forms, or give its ID, a long number such as 1234567890123456. List forms returns every form's ID; in Meta, your forms are listed under Instant Forms, in the All tools menu of Ads Manager or Meta Business Suite.",
           "display_name": "Form",
           "dynamic_source": "forms",
           "dynamic_source_allows_custom": true,
@@ -509,20 +936,42 @@
             "description": "Meta Lead Ads response data.",
             "properties": {
               "data": {
-                "description": "Data.",
+                "description": "The test leads exactly as Meta sends them. Prefer leads, beside data, which holds the same test leads ready to read.",
                 "items": {
-                  "description": "One data record.",
+                  "description": "One test lead, as Meta sends it.",
                   "properties": {
+                    "created_time": {
+                      "description": "When the form was submitted, as Meta writes it, such as 2026-11-10T18:02:11+0000.",
+                      "type": "string"
+                    },
                     "field_data": {
-                      "description": "Field data.",
+                      "description": "The answers as Meta sends them: one entry per question, with the question's key as name and the answer in values.",
                       "items": {
-                        "description": "One field data record.",
+                        "description": "One question's answer.",
+                        "properties": {
+                          "name": {
+                            "description": "The question's key, such as email or full_name.",
+                            "type": "string"
+                          },
+                          "values": {
+                            "description": "The answer; almost always one value.",
+                            "items": {
+                              "description": "One values record.",
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
                         "type": "object"
                       },
                       "type": "array"
                     },
+                    "form_id": {
+                      "description": "The ID of the form the lead filled in.",
+                      "type": "string"
+                    },
                     "id": {
-                      "description": "Id.",
+                      "description": "The lead's ID, as Meta gives it.",
                       "type": "string"
                     }
                   },
@@ -532,6 +981,81 @@
               }
             },
             "type": "object"
+          },
+          "leads": {
+            "description": "Beta. The same leads ready to read, in the same order as data: each with full_name, first_name, last_name, email, phone, answers and answers_text, so no step is needed to pick them out of Meta's data.",
+            "items": {
+              "description": "One lead, ready to read.",
+              "properties": {
+                "ad_name": {
+                  "description": "Beta. The name of the ad the lead came from. Empty when the lead didn't come from an ad or the connection can't see ad details.",
+                  "type": "string"
+                },
+                "adset_name": {
+                  "description": "Beta. The name of the ad set that ad belongs to.",
+                  "type": "string"
+                },
+                "answers": {
+                  "additionalProperties": true,
+                  "description": "Beta. Every answer on the form, by question, so any of them can be read on its own: answers.email, answers.company_name, answers.job_title, answers.city, or a question of your own such as answers.what_is_your_budget. A question is named by its key on the form (Get form lists them), in lower case with _ between words and no punctuation. A question with several answers gives a list.",
+                  "type": "object"
+                },
+                "answers_text": {
+                  "description": "Beta. Every answer ready to read, one 'Question: answer' per line, such as 'Full name: Ada Lovelace', ready to paste into a note, a row or a message with no step to join them.",
+                  "type": "string"
+                },
+                "campaign_name": {
+                  "description": "Beta. The name of the campaign that ad belongs to.",
+                  "type": "string"
+                },
+                "created": {
+                  "description": "Beta. When the person submitted the form, as a date and time in UTC, such as 2026-11-10T18:02:11+00:00.",
+                  "type": "string"
+                },
+                "created_display": {
+                  "description": "Beta. created written for a person, such as Tue, Nov 10, 2026 at 6:02 PM UTC, ready for a message or a row with no date step.",
+                  "type": "string"
+                },
+                "email": {
+                  "description": "Beta. The person's email address (their work email if that is the only one the form asked for). Empty when the form didn't ask for one.",
+                  "type": "string"
+                },
+                "first_name": {
+                  "description": "Beta. The person's first name, such as Ada, ready for 'Hi Ada,'. Taken from the full name when the form only asked for that.",
+                  "type": "string"
+                },
+                "form_id": {
+                  "description": "Beta. The ID of the form they filled in.",
+                  "type": "string"
+                },
+                "full_name": {
+                  "description": "Beta. The person's full name, such as Ada Lovelace. Put together from their first and last name when the form asked for those separately. Empty when the form didn't ask for a name.",
+                  "type": "string"
+                },
+                "is_organic": {
+                  "description": "Beta. True when the lead didn't come from a paid ad, false when it did.",
+                  "type": "boolean"
+                },
+                "last_name": {
+                  "description": "Beta. The person's last name, such as Lovelace. Taken from the full name when the form only asked for that.",
+                  "type": "string"
+                },
+                "lead_id": {
+                  "description": "Beta. The lead's ID, a long number. Get lead takes it.",
+                  "type": "string"
+                },
+                "phone": {
+                  "description": "Beta. The person's phone number as they gave it, usually with the country code, such as +14155550123, ready for a text message step. Empty when the form didn't ask for one.",
+                  "type": "string"
+                },
+                "platform": {
+                  "description": "Beta. Where the form was filled in, as Meta reports it, such as fb for Facebook or ig for Instagram.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -551,25 +1075,45 @@
   "logo": "https://www.lodol.com/app-icons/meta-lead-ads-icon.svg",
   "triggers": {
     "meta_lead_ads_new_form_trigger": {
-      "description": "Runs for each new lead form in Meta Lead Ads. Ones already there when the workflow is turned on don't start it. It can watch up to 4,000. How often it checks follows your workspace plan.",
+      "description": "Runs each time a new lead form (Instant Form) is created on the connected Facebook Page. In beta, it hands over the form's form_id, form_name and status ready to use. Forms already there when the workflow is turned on don't start it. It can watch a Page with up to 4,000 forms. How often it checks follows your workspace plan.",
       "display_name": "New lead form",
       "id": "meta_lead_ads_new_form_trigger",
       "output": {
-        "record": "object"
+        "created": "Beta. When the form was created, as a date and time in UTC, such as 2026-11-10T18:02:11+00:00.",
+        "form_id": "Beta. The new form's ID, a long number. Get form and List leads take it.",
+        "form_name": "Beta. The form's name, as shown in Meta.",
+        "record": "The form exactly as Meta sends it, for workflows saved before the fields beside it existed. Prefer those.",
+        "status": "Beta. The form's state: ACTIVE, ARCHIVED or DRAFT."
       },
       "parameters": []
     },
     "meta_lead_ads_new_lead_trigger": {
-      "description": "Runs for each new lead in Meta Lead Ads. Ones already there when the workflow is turned on don't start it. It can watch up to 4,000. How often it checks follows your workspace plan.",
+      "description": "Runs each time someone fills in the chosen Facebook or Instagram lead form. In beta, it hands over their full_name, email, phone and every answer (answers) ready to use, so no step is needed to pick them out of Meta's raw data. Leads already there when the workflow is turned on don't start it. It can watch a form with up to 4,000 leads. How often it checks follows your workspace plan.",
       "display_name": "New lead",
       "id": "meta_lead_ads_new_lead_trigger",
       "output": {
-        "record": "object"
+        "ad_name": "Beta. The name of the ad the lead came from. Empty when the lead didn't come from an ad or the connection can't see ad details.",
+        "adset_name": "Beta. The name of the ad set that ad belongs to.",
+        "answers": "Beta. Every answer on the form, by question, so any of them can be read on its own: answers.email, answers.company_name, answers.job_title, answers.city, or a question of your own such as answers.what_is_your_budget. A question is named by its key on the form (Get form lists them), in lower case with _ between words and no punctuation. A question with several answers gives a list.",
+        "answers_text": "Beta. Every answer ready to read, one 'Question: answer' per line, such as 'Full name: Ada Lovelace', ready to paste into a note, a row or a message with no step to join them.",
+        "campaign_name": "Beta. The name of the campaign that ad belongs to.",
+        "created": "Beta. When the person submitted the form, as a date and time in UTC, such as 2026-11-10T18:02:11+00:00.",
+        "created_display": "Beta. created written for a person, such as Tue, Nov 10, 2026 at 6:02 PM UTC, ready for a message or a row with no date step.",
+        "email": "Beta. The person's email address (their work email if that is the only one the form asked for). Empty when the form didn't ask for one.",
+        "first_name": "Beta. The person's first name, such as Ada, ready for 'Hi Ada,'. Taken from the full name when the form only asked for that.",
+        "form_id": "Beta. The ID of the form they filled in.",
+        "full_name": "Beta. The person's full name, such as Ada Lovelace. Put together from their first and last name when the form asked for those separately. Empty when the form didn't ask for a name.",
+        "is_organic": "Beta. True when the lead didn't come from a paid ad, false when it did.",
+        "last_name": "Beta. The person's last name, such as Lovelace. Taken from the full name when the form only asked for that.",
+        "lead_id": "Beta. The lead's ID, a long number. Get lead takes it.",
+        "phone": "Beta. The person's phone number as they gave it, usually with the country code, such as +14155550123, ready for a text message step. Empty when the form didn't ask for one.",
+        "platform": "Beta. Where the form was filled in, as Meta reports it, such as fb for Facebook or ig for Instagram.",
+        "record": "The lead exactly as Meta sends it, for workflows saved before the fields beside it existed. Prefer those."
       },
       "parameters": [
         {
           "arg_index": 0,
-          "description": "Form id.",
+          "description": "The lead form whose new leads start the workflow. Choose it from the list of the connected Page's forms, or give its ID, a long number such as 1234567890123456. The List forms action returns every form's ID; in Meta, your forms are listed under Instant Forms, in the All tools menu of Ads Manager or Meta Business Suite.",
           "display_name": "Form",
           "name": "form_id",
           "required": true
