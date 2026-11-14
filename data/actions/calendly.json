@@ -267,6 +267,7 @@
           {
             "cancel_url": "https://calendly.com/cancellations/MNOP1234567890",
             "email": "ann@example.com",
+            "first_name": "Ann",
             "name": "Ann Lee",
             "no_show": false,
             "questions_and_answers": [
@@ -329,6 +330,10 @@
                 },
                 "email": {
                   "description": "The person's email address.",
+                  "type": "string"
+                },
+                "first_name": {
+                  "description": "Beta. Their first name, ready for 'Hi Ada,' in an email with no step to split the name.",
                   "type": "string"
                 },
                 "name": {
@@ -511,6 +516,20 @@
           "name": "invitee_email",
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. Only meetings that start at or after this date or date and time, such as 2026-11-01. Leave blank for no earliest date.",
+          "display_name": "Starting from",
+          "name": "starting_from",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "Beta. Only meetings that start before this date or date and time. Set it to now to list only meetings that have already happened, most recent first. Leave blank to include upcoming meetings.",
+          "display_name": "Starting before",
+          "name": "starting_before",
+          "required": false,
+          "type": "ParameterType.DATETIME"
         }
       ],
       "path": "/actions/library/calendly/list-scheduled-events",
@@ -617,17 +636,80 @@
   "id": "calendly",
   "logo": "https://www.lodol.com/app-icons/calendly-icon.png",
   "triggers": {
+    "calendly_event_canceled_trigger": {
+      "description": "Runs when a scheduled Calendly meeting is canceled, by you or by the person who booked it, so a workflow can follow up on a cancelled booking. It gives the meeting (name, start_time, start_display), who booked it (invitee_name, invitee_email), and who canceled it and why (canceled_by, cancel_reason).",
+      "display_name": "Meeting canceled",
+      "id": "calendly_event_canceled_trigger",
+      "output": {
+        "answers": "The invitee's answers keyed by the question's exact text, such as {\"What would you like to discuss?\": \"Pricing\"}.",
+        "answers_text": "The invitee's booking answers, one 'Question: answer' per line.",
+        "cancel_reason": "The reason they gave when canceling. Empty when they gave none.",
+        "canceled_by": "The name of whoever canceled it: you, a teammate, or the invitee.",
+        "canceled_by_invitee": "True when the person who booked it canceled, false when the host did.",
+        "host_email": "Beta. The host's email address.",
+        "host_name": "Beta. Who hosted the meeting, such as Grace Hopper.",
+        "invitee_email": "The email address of who had booked it.",
+        "invitee_first_name": "The first word of invitee_name, ready for 'Hi Ada,' in an email.",
+        "invitee_last_name": "The last word of invitee_name, for a CRM's last name field.",
+        "invitee_name": "Who had booked it.",
+        "name": "The event type that was canceled, such as 30 minute meeting.",
+        "questions_and_answers": "The invitee's answers to the booking questions, as a list of question and answer pairs.",
+        "start_display": "start_time written for a person, such as Tue, Nov 10, 2026 at 2:30 PM UTC, ready for an email or message.",
+        "start_time": "When the meeting was to start, as machine text.",
+        "status": "Always canceled.",
+        "uri": "The event's Calendly address, which identifies it."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only run for meetings whose name contains this text. Leave blank for every canceled meeting.",
+          "display_name": "Event name filter",
+          "name": "event_name",
+          "required": false
+        }
+      ]
+    },
+    "calendly_invitee_no_show_trigger": {
+      "description": "Runs when someone is marked as a no-show for a Calendly meeting, once for each person. Calendly records a no-show only when the host marks it on the meeting (or a workflow does, with Mark an invitee as a no-show); it doesn't notice by itself that someone didn't join. Gives who it was (invitee_name, invitee_email), which meeting, and rebook_url, the link to send them to book again. On Calendly's free plan a no-show is picked up within a few minutes, for meetings that started in the last 7 days.",
+      "display_name": "Invitee marked as a no-show",
+      "id": "calendly_invitee_no_show_trigger",
+      "output": {
+        "event_name": "The kind of meeting they missed, such as 30 minute meeting.",
+        "event_uri": "The meeting's Calendly address, which identifies it.",
+        "invitee_email": "Their email address.",
+        "invitee_first_name": "Their first name, ready for 'Hi Ada,' in an email with no step to split the name.",
+        "invitee_name": "The full name of the person who didn't show up.",
+        "invitee_uri": "The invitee's Calendly address, which identifies this person's booking.",
+        "rebook_url": "The public booking page for the same kind of meeting, ready to send as the link to book a new time. Empty if that kind of meeting no longer exists.",
+        "start_display": "start_time written for a person in the invitee's own time zone, such as Tue, Nov 10, 2026 at 9:30 AM EST, ready for an email or note with no date step. In UTC when their time zone isn't known.",
+        "start_time": "When the meeting started, as machine text.",
+        "timezone": "The invitee's time zone, such as America/New_York."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only trigger for meetings whose name contains this text, such as Demo. Leave blank to match any meeting.",
+          "display_name": "Event name filter",
+          "name": "event_name",
+          "required": false
+        }
+      ]
+    },
     "calendly_new_event_trigger": {
       "description": "Runs when a new event is scheduled in Calendly. The booking is the event itself: its name, start_time, status, and who booked it (invitee_name and invitee_email), and in beta their answers to the booking questions (answers_text).",
       "display_name": "New event",
       "id": "calendly_new_event_trigger",
       "output": {
+        "answers": "Beta. The invitee's answers keyed by the question's exact text, such as {\"What would you like to discuss?\": \"Pricing\"}, so a step reads one answer as answers[\"What would you like to discuss?\"] with no step to search the list. Unanswered questions are left out. Empty when the event asks no questions.",
         "answers_text": "Beta. The invitee's booking answers ready to read, one 'Question: answer' per line (unanswered questions left out), ready for a note or an email with no step to join them. Empty when the event asks no questions.",
+        "host_email": "Beta. The host's email address, to message or assign the rep the meeting was booked with (a Slack message by email, a CRM owner) with no step to look them up.",
+        "host_name": "Beta. Who hosts the meeting, such as Grace Hopper: for a round-robin or team event, the person Calendly assigned it to.",
         "invitee_email": "The email address of who booked it.",
         "invitee_first_name": "Beta. The first word of invitee_name, ready for 'Hi Ada,' in an email with no step to split the name.",
+        "invitee_last_name": "Beta. The last word of invitee_name, for a CRM's last name field (their only name when they gave one).",
         "invitee_name": "Who booked it.",
         "name": "The event type that was booked, such as 30 minute meeting.",
-        "questions_and_answers": "Beta. The invitee's answers to the booking questions, as a list of question and answer pairs, so a workflow needs no step to list the event's invitees.",
+        "questions_and_answers": "Beta. The invitee's answers to the booking questions, as a list with one item per question, in the order the form asks them: each item has question (the question's text), answer (what the invitee wrote, blank when they skipped it) and position (its place on the form, from 0). A workflow needs no step to list the event's invitees. To read one answer by its question, use answers.",
         "start_display": "Beta. start_time written for a person, such as Tue, Nov 10, 2026 at 2:30 PM UTC, ready for an email or message with no date step.",
         "start_time": "When the meeting starts, as machine text.",
         "status": "The booking's status: active, or canceled.",
@@ -636,7 +718,7 @@
       "parameters": [
         {
           "arg_index": 0,
-          "description": "Only trigger for events whose name contains this text. Leave blank to match any event.",
+          "description": "Only trigger for events whose name contains this text, ignoring capitals (demo matches Product Demo). Leave blank to match any event.",
           "display_name": "Event name filter",
           "name": "event_name",
           "required": false

@@ -531,37 +531,55 @@
       ]
     },
     "list_subscriptions": {
-      "description": "List subscriptions in your Chargebee site, one page at a time, optionally filtered by customer ID and/or status. Returns a 'list' of subscription records with a 'next_offset' cursor for paging. Useful for monitoring active subscriptions, spotting cancellations, or auditing a customer's plans.",
+      "description": "List subscriptions in your Chargebee site, one page at a time, optionally filtered by customer ID and/or status. Returns a 'list' of subscription records with a 'next_offset' cursor for paging. Useful for monitoring active subscriptions, spotting cancellations, or auditing a customer's plans. Beta: 'Cancels within days' lists only subscriptions due to cancel soon, soonest first; 'Get every page' reads all pages in one step; and each entry has ready-to-read customer_name, customer_email, plan, mrr_display and cancel_date_display for a table or email.",
       "display_name": "List subscriptions",
       "display_str_template": "List subscriptions.",
       "handler": "actions.list_subscriptions",
       "id": "chargebee_list_subscriptions",
       "method": "POST",
       "mock_response": {
+        "count": 1,
         "list": [
           {
+            "cancel_date_display": "Nov 28, 2026",
             "customer": {
+              "company": "Acme Robotics",
               "email": "jordan.ellis@acme.example",
+              "first_name": "Jordan",
               "id": "cust_acme_8f21",
+              "last_name": "Ellis",
               "object": "customer"
             },
+            "customer_email": "jordan.ellis@acme.example",
+            "customer_name": "Acme Robotics",
+            "mrr_display": "$99.00",
+            "plan": "pro-USD-monthly",
             "subscription": {
               "billing_period": 1,
               "billing_period_unit": "month",
+              "cancelled_at": 1795824000,
               "created_at": 1769385600,
               "currency_code": "USD",
-              "current_term_end": 1772064000,
-              "current_term_start": 1769385600,
+              "current_term_end": 1795824000,
+              "current_term_start": 1793232000,
               "customer_id": "cust_acme_8f21",
               "id": "sub_acme_pro_01",
               "mrr": 9900,
-              "next_billing_at": 1772064000,
               "object": "subscription",
-              "status": "active"
+              "status": "non_renewing",
+              "subscription_items": [
+                {
+                  "amount": 9900,
+                  "item_price_id": "pro-USD-monthly",
+                  "item_type": "plan",
+                  "quantity": 1
+                }
+              ]
             }
           }
         ],
-        "next_offset": null
+        "next_offset": null,
+        "truncated": false
       },
       "name": "list_subscriptions",
       "output_formatter": "actions.format_list_subscriptions_output",
@@ -607,6 +625,23 @@
           "type": "ParameterType.STRING"
         },
         {
+          "description": "Beta. Only subscriptions scheduled to cancel within this many days from the day the step runs, soonest first, for example 30 for 'cancelling in the next month'. Subscriptions already cancelled are left out. Use it instead of working out dates and filtering and sorting in later steps. Leave blank to list subscriptions whatever their cancel date.",
+          "display_name": "Cancels within days",
+          "maximum": 3650,
+          "minimum": 1,
+          "name": "cancels_within_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Beta. Get every matching subscription at once, up to 2,000, instead of one page, so no loop over 'next_offset' is needed. 'truncated' says when it stopped early. How many per page is then ignored.",
+          "display_name": "Get every page",
+          "name": "all_pages",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
           "description": "How many records to return in one page, from 1 to 100. Defaults to 10.",
           "display_name": "Limit",
           "maximum": 100,
@@ -628,11 +663,62 @@
       "returns": {
         "description": "Paginated list. Each entry wraps a 'subscription' (and often the related 'customer' and 'card'). Money fields such as 'mrr' are in the currency's minor units (e.g. cents). Term timestamps are Unix epoch seconds.",
         "properties": {
+          "count": {
+            "description": "Beta. How many subscriptions are in 'list', for an If such as 'none are cancelling'.",
+            "type": "integer"
+          },
           "list": {
             "items": {
               "properties": {
+                "cancel_date_display": {
+                  "description": "Beta. The cancel date written out, such as 'Nov 28, 2026' (UTC), so no step has to convert 'cancelled_at'. Empty when no cancellation is set.",
+                  "type": "string"
+                },
+                "customer": {
+                  "properties": {
+                    "company": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "first_name": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "last_name": {
+                      "type": "string"
+                    },
+                    "object": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "customer_email": {
+                  "description": "Beta. The customer's email, or empty.",
+                  "type": "string"
+                },
+                "customer_name": {
+                  "description": "Beta. The customer's company, else their first and last name, else their email, ready to show, so no step has to put the name together.",
+                  "type": "string"
+                },
+                "mrr_display": {
+                  "description": "Beta. Monthly recurring revenue written as money with its currency, such as '$99.00', so no step has to convert cents. Empty when Chargebee gives no MRR.",
+                  "type": "string"
+                },
+                "plan": {
+                  "description": "Beta. The plan's id: 'plan_id', or the plan's item price id on Product Catalog 2.0, so no step has to dig it out of 'subscription_items'.",
+                  "type": "string"
+                },
                 "subscription": {
                   "properties": {
+                    "cancelled_at": {
+                      "description": "Unix epoch seconds when the subscription was or will be cancelled. Absent when no cancellation is set.",
+                      "type": "integer"
+                    },
                     "currency_code": {
                       "type": "string"
                     },
@@ -661,9 +747,36 @@
                     "object": {
                       "type": "string"
                     },
+                    "plan_id": {
+                      "description": "The plan, on sites using Chargebee's older product catalog.",
+                      "type": "string"
+                    },
                     "status": {
                       "description": "Enum: future, in_trial, active, non_renewing, paused, cancelled.",
                       "type": "string"
+                    },
+                    "subscription_items": {
+                      "description": "The plan, addons and charges, on sites using Product Catalog 2.0.",
+                      "items": {
+                        "properties": {
+                          "amount": {
+                            "description": "Minor units.",
+                            "type": "integer"
+                          },
+                          "item_price_id": {
+                            "type": "string"
+                          },
+                          "item_type": {
+                            "description": "plan, addon or charge.",
+                            "type": "string"
+                          },
+                          "quantity": {
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
                     }
                   },
                   "type": "object"
@@ -676,6 +789,10 @@
           "next_offset": {
             "description": "Cursor for the next page; absent on the last page.",
             "type": "string"
+          },
+          "truncated": {
+            "description": "Beta. True when 'Get every page' stopped at its limit before the last page.",
+            "type": "boolean"
           }
         },
         "type": "object"

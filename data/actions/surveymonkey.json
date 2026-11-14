@@ -1,7 +1,7 @@
 {
   "actions": {
     "get_response": {
-      "description": "Look up a single survey response and its answers.",
+      "description": "Look up a single survey response and its answers, with its Net Promoter Score, group and comment when the survey asks for them.",
       "display_name": "Get response",
       "display_str_template": "Get response '{1}'.",
       "handler": "actions.get_response",
@@ -10,12 +10,25 @@
       "mock_response": {
         "answers": [
           {
-            "answer": "Very satisfied",
+            "answer": "4",
+            "question": "How likely are you to recommend us?",
             "question_id": "133186412"
+          },
+          {
+            "answer": "Support took three days to reply.",
+            "question": "What is the main reason for your score?",
+            "question_id": "133186413"
           }
         ],
+        "answers_text": "How likely are you to recommend us?: 4\nWhat is the main reason for your score?: Support took three days to reply.",
+        "comment": "Support took three days to reply.",
         "date_created": "2026-01-15T10:00:00+00:00",
+        "email_address": "ada@example.com",
+        "first_name": "Ada",
         "id": "13307358020",
+        "last_name": "Lovelace",
+        "nps_group": "detractor",
+        "nps_score": 4,
         "response_status": "completed"
       },
       "name": "get_response",
@@ -47,6 +60,10 @@
                   "description": "The respondent's answer text, resolved from free text, a selected choice label, or a matrix row/column label",
                   "type": "string"
                 },
+                "question": {
+                  "description": "The question's wording, such as 'How did we do?'",
+                  "type": "string"
+                },
                 "question_id": {
                   "description": "ID of the question this answer belongs to",
                   "type": "string"
@@ -56,13 +73,44 @@
             },
             "type": "array"
           },
+          "answers_text": {
+            "description": "Every answer as a line of text, 'Question: answer', ready for an email, a ticket or a message.",
+            "type": "string"
+          },
+          "comment": {
+            "description": "What the person wrote in their own words: the answer to the comment box that follows the score question, or the survey's first comment box. Empty when they wrote nothing.",
+            "type": "string"
+          },
           "date_created": {
             "description": "Timestamp the response was submitted",
+            "type": "string"
+          },
+          "email_address": {
+            "description": "The person's email address. Empty unless they were invited by SurveyMonkey email invitation or the survey asks for it in an Email or Contact information question.",
+            "type": "string"
+          },
+          "first_name": {
+            "description": "Their first name, known the same way as email_address. Empty otherwise.",
             "type": "string"
           },
           "id": {
             "description": "Response ID",
             "type": "string"
+          },
+          "last_name": {
+            "description": "Their last name, known the same way as email_address. Empty otherwise.",
+            "type": "string"
+          },
+          "nps_group": {
+            "description": "Which group that score puts the person in, as one lowercase word: promoter (9 or 10), passive (7 or 8) or detractor (0 to 6). Empty when there is no score.",
+            "type": "string"
+          },
+          "nps_score": {
+            "description": "The number from 0 to 10 the person gave on the survey's 'How likely are you to recommend us' (Net Promoter Score) question, whatever its wording. Null when the survey has no such question or the person skipped it.",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "response_status": {
             "description": "Response status, for example 'completed' or 'partial'",
@@ -258,17 +306,23 @@
   "logo": "https://www.lodol.com/app-icons/surveymonkey-icon.png",
   "triggers": {
     "surveymonkey_new_response_trigger": {
-      "description": "Runs for each completed response to a SurveyMonkey survey, with its answers by question. Responses already there when the workflow is turned on don't start it. It checks every 10 minutes, to stay within SurveyMonkey's daily limit.",
+      "description": "Runs for each completed response to a SurveyMonkey survey, with its answers by question and, for a Net Promoter Score survey, the score, whether the person is a promoter, passive or detractor, and their comment. Responses already there when the workflow is turned on don't start it. It checks every 10 minutes, to stay within SurveyMonkey's daily limit.",
       "display_name": "New response",
       "id": "surveymonkey_new_response_trigger",
       "output": {
         "analyze_url": "The response's page in SurveyMonkey.",
-        "answers": "The answers, by question heading.",
+        "answers": "The answers keyed by each question's exact wording, such as answers['How did we do?']. Every answer is text: a choice reads as its label, several choices joined with ', '. The wording is the survey owner's, so read only the questions the request names; for the score or the comment use nps_score, nps_group and comment instead.",
+        "answers_text": "Every answer as a line of text, 'Question: answer', ready for an email, a ticket, a message or an AI step to read when the request doesn't name particular questions.",
         "collector_id": "The ID of the link or email invitation it came through.",
+        "comment": "What the person wrote in their own words, ready for a ticket or a message, with no step to find it among the answers. It is the answer to the comment box that follows the score question (or, in a survey with no score question, its first comment box). When there are several, the score question's own comment field comes first, then the first comment box after the score question, then the first single-line text answer after it. Empty when they wrote nothing.",
         "custom_variables": "Values passed in the survey link, by name.",
-        "email_address": "The person's email, if they were invited by email.",
-        "first_name": "Their first name, if they were invited by email.",
-        "last_name": "Their last name, if they were invited by email.",
+        "email_address": "The person's email address. Always text, and empty when SurveyMonkey doesn't know who answered: it is filled in when the survey was sent to them by SurveyMonkey email invitation, or when the survey asks for it in an Email or Contact information question. A survey shared as a web link that doesn't ask is anonymous, so check that this is not empty before emailing the person.",
+        "first_name": "Their first name, ready for 'Hi Ada,'. Empty unless they were invited by email as a contact with a name, or the survey asks in a Name or Contact information question.",
+        "greeting_name": "The name to greet them by, for 'Hi Ada,': their first name, or 'there' when it isn't known, so a greeting is never left blank and needs no step of its own.",
+        "last_name": "Their last name, known the same way as first_name.",
+        "nps_group": "Which group that score puts the person in, as one lowercase word: promoter (9 or 10), passive (7 or 8) or detractor (0 to 6). Compare it as it is, nps_group == 'detractor', with no step to work it out from the score. Empty when there is no score.",
+        "nps_question": "The wording of the question the score answers, for a ticket or a message that says what was asked. Empty when there is no score.",
+        "nps_score": "The number from 0 to 10 the person gave on the survey's 'How likely are you to recommend us' (Net Promoter Score) question, whatever its wording, such as 9. It is a number, so compare it directly: nps_score <= 6. Null when the survey has no such question or the person skipped it.",
         "response_id": "The response's ID, for the Get response step.",
         "started_at": "When the person started it.",
         "submitted_at": "When it was completed.",

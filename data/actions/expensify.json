@@ -37,7 +37,7 @@
       ]
     },
     "export_reports": {
-      "description": "Export expense reports from Expensify with flexible filters. Each report includes its expenses, with amounts in dollars (not cents).",
+      "description": "Find expense reports in Expensify by date, status, workspace or ID. The result is the list of reports itself (loop over it directly): each has who submitted it, the manager it went to for approval, its total, a link to it and its expenses, with amounts in whole currency units (dollars, not cents). To run a workflow when a report is submitted, use the 'Expense report submitted' trigger instead of calling this on a schedule. Expensify lets no outside app approve or reject a report: the approver does that in Expensify itself, so don't look for an approve or reject action.",
       "display_name": "Export expense reports",
       "display_str_template": "Export reports from {0}.",
       "handler": "actions.export_reports",
@@ -45,36 +45,54 @@
       "method": "POST",
       "mock_response": [
         {
+          "approved": "",
+          "created": "2026-03-15 18:02:10",
           "currency": "USD",
+          "expenseCount": 1,
           "expenses": [
             {
-              "amount": 350.0,
+              "amount": 450.75,
+              "amountDisplay": "450.75 USD",
+              "billable": false,
               "category": "Travel",
-              "date": "2024-03-15",
+              "comment": "Flight to the Denver offsite",
+              "currency": "USD",
+              "date": "2026-03-15",
               "merchant": "Delta Airlines",
+              "receiptURL": "https://www.expensify.com/receipts/w_abc123.jpg",
+              "reimbursable": true,
+              "tag": "",
               "transactionID": "T001"
             }
           ],
-          "policyName": "Default Policy",
-          "reportID": "R00abc123",
+          "managerEmail": "sam@example.com",
+          "managerName": "Sam Rivera",
+          "policyID": "ABC123DEF456",
+          "policyName": "Engineering Team",
+          "reportID": "R00bCluvcO4T",
           "reportName": "March Travel",
-          "status": "Approved",
-          "submitter": "user@example.com",
-          "total": 450.75
+          "reportURL": "https://new.expensify.com/r/4827163950284617",
+          "status": "Processing",
+          "submitted": "2026-03-16 09:12:44",
+          "submittedDisplay": "Mar 16, 2026",
+          "submitter": "jordan@example.com",
+          "submitterName": "Jordan Avery",
+          "total": 450.75,
+          "totalDisplay": "450.75 USD"
         }
       ],
       "name": "export_reports",
       "output_formatter": "actions.format_export_reports_output",
       "parameters": [
         {
-          "description": "Start date for the export range (YYYY-MM-DD). Required unless you provide a list of report IDs.",
+          "description": "Only include reports submitted on or after this day (YYYY-MM-DD). Expensify goes by the day a report was submitted, or the day it was created if it hasn't been submitted since (a draft). Required unless you provide a list of report IDs.",
           "display_name": "Start date",
           "name": "start_date",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "End date for the export range (YYYY-MM-DD). Date range cannot exceed one year.",
+          "description": "Only include reports submitted on or before this day (YYYY-MM-DD), counted the same way as the start date. The two can be at most a year apart.",
           "display_name": "End date",
           "name": "end_date",
           "required": false,
@@ -88,7 +106,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Optional. Only include reports with this status.",
+          "description": "Optional. Only include reports with this status. SUBMITTED is a report waiting for approval, which comes back with status 'Processing'.",
           "display_name": "Report status",
           "name": "report_state",
           "options": [
@@ -134,35 +152,75 @@
       "path": "/actions/library/expensify/export-reports",
       "result_str_template": "Reports exported.",
       "returns": {
-        "description": "Array of exported report objects with nested expenses.",
+        "description": "The step's result is the list of reports itself, not an object with the list inside: loop over the result directly. Empty when no report matches.",
         "items": {
           "properties": {
-            "currency": {
-              "description": "Report currency code.",
+            "approved": {
+              "description": "When the report was approved. Empty until it is.",
               "type": "string"
             },
+            "created": {
+              "description": "When the report was created, as Expensify writes it.",
+              "type": "string"
+            },
+            "currency": {
+              "description": "The report's currency code, such as USD.",
+              "type": "string"
+            },
+            "expenseCount": {
+              "description": "How many expenses are on the report.",
+              "type": "number"
+            },
             "expenses": {
-              "description": "List of expenses in this report.",
+              "description": "The report's expenses, each with transactionID, merchant, amount, amountDisplay, currency, category, date, tag, comment, billable, reimbursable and receiptURL.",
               "items": {
                 "properties": {
                   "amount": {
-                    "description": "Amount in dollars (modified/converted if applicable).",
+                    "description": "The expense's amount in the report's currency, in whole units (dollars, not cents), such as 350.5.",
                     "type": "number"
                   },
+                  "amountDisplay": {
+                    "description": "The amount ready to show a person, with the report's currency, such as '350.50 USD'.",
+                    "type": "string"
+                  },
+                  "billable": {
+                    "description": "true when the expense is to be billed on to a client.",
+                    "type": "boolean"
+                  },
                   "category": {
-                    "description": "Expense category.",
+                    "description": "The expense's category.",
+                    "type": "string"
+                  },
+                  "comment": {
+                    "description": "The note the submitter wrote on the expense. Empty when there is none.",
+                    "type": "string"
+                  },
+                  "currency": {
+                    "description": "The currency the expense was paid in, such as EUR, which can differ from the report's; amount is already converted.",
                     "type": "string"
                   },
                   "date": {
-                    "description": "Expense date.",
+                    "description": "The day of the expense, as YYYY-MM-DD.",
                     "type": "string"
                   },
                   "merchant": {
-                    "description": "Merchant name (modified name if edited).",
+                    "description": "Where the money was spent, as shown in Expensify.",
+                    "type": "string"
+                  },
+                  "receiptURL": {
+                    "description": "A link to the receipt. Empty when no receipt is attached.",
+                    "type": "string"
+                  },
+                  "reimbursable": {
+                    "description": "true when the submitter is to be paid back for it.",
+                    "type": "boolean"
+                  },
+                  "tag": {
+                    "description": "The expense's tag. Empty when it has none.",
                     "type": "string"
                   },
                   "transactionID": {
-                    "description": "Unique expense ID.",
+                    "description": "Expensify's ID for the expense.",
                     "type": "string"
                   }
                 },
@@ -170,29 +228,61 @@
               },
               "type": "array"
             },
+            "managerEmail": {
+              "description": "Email address of the submitter's manager for this report: the person it was submitted to for approval, or, once approved, the last person who approved it. Empty for a draft.",
+              "type": "string"
+            },
+            "managerName": {
+              "description": "That manager's full name. Empty when they haven't set a name in Expensify.",
+              "type": "string"
+            },
+            "policyID": {
+              "description": "That workspace's ID, as 'List policies' gives it.",
+              "type": "string"
+            },
             "policyName": {
-              "description": "Workspace/policy name.",
+              "description": "Name of the Expensify workspace (policy) the report is under.",
               "type": "string"
             },
             "reportID": {
-              "description": "Report ID. Use in update_report_status (report_id_list) or export_reports (report_id_list).",
+              "description": "The report's ID, such as R00bCluvcO4T. Use it as 'report_id_list' in 'Export expense reports' or 'Mark reports as reimbursed'.",
               "type": "string"
             },
             "reportName": {
-              "description": "Report name.",
+              "description": "The report's name.",
+              "type": "string"
+            },
+            "reportURL": {
+              "description": "A link that opens the report in Expensify, for the approver or the submitter to click. Empty if Expensify gave no number to build it from.",
               "type": "string"
             },
             "status": {
-              "description": "Report status: Open, Processing, Approved, Reimbursed, Closed.",
+              "description": "Where the report stands: Open (a draft), Processing (submitted, waiting for approval), Approved, Reimbursed or Closed.",
+              "type": "string"
+            },
+            "submitted": {
+              "description": "When the report was submitted, as Expensify writes it (YYYY-MM-DD, with a time when Expensify gives one). Empty for a draft.",
+              "type": "string"
+            },
+            "submittedDisplay": {
+              "description": "The day the report was submitted, ready to show a person, such as 'Nov 10, 2026'. Empty for a draft.",
               "type": "string"
             },
             "submitter": {
-              "description": "Email of the report creator.",
+              "description": "Email address of the employee who created and submitted the report.",
+              "type": "string"
+            },
+            "submitterName": {
+              "description": "The submitter's full name. Empty when they haven't set a name in Expensify; fall back to submitter.",
               "type": "string"
             },
             "total": {
-              "description": "Total amount in dollars.",
+              "description": "The report's total as a number in its own currency, in whole units (dollars, not cents), such as 450.75. Compare against this.",
               "type": "number"
+            },
+            "totalDisplay": {
+              "description": "The total ready to show a person, with its currency, such as '450.75 USD'.",
+              "type": "string"
             }
           },
           "type": "object"
@@ -265,7 +355,7 @@
       ]
     },
     "update_report_status": {
-      "description": "Mark reports as reimbursed. Only Approved reports will be updated; others are skipped. You can get report IDs from the 'Export expense reports' action.",
+      "description": "Mark reports as reimbursed. Only Approved reports will be updated; others are skipped. You can get report IDs from the 'Export expense reports' action. This is the only change Expensify lets an outside app make to a report. Expensify lets no outside app approve or reject a report: the approver does that in Expensify itself, so don't look for an approve or reject action.",
       "display_name": "Mark reports as reimbursed",
       "display_str_template": "Mark reports as reimbursed.",
       "handler": "actions.update_report_status",
@@ -335,5 +425,48 @@
   "display_name": "Expensify",
   "id": "expensify",
   "logo": "https://www.lodol.com/app-icons/expensify-icon.svg",
-  "triggers": {}
+  "triggers": {
+    "expensify_report_submitted_trigger": {
+      "description": "Beta. Runs once each time someone submits an expense report in Expensify for approval, with who submitted it, the person it was sent to for approval (managerEmail), its total, a link to it and its expenses. Set 'Minimum total' to run only for larger reports. A report sent back and submitted again runs again. Reports already waiting when the workflow is turned on don't start it. Expensify lets no outside app approve or reject a report, so a workflow can ask the approver and tell people the outcome, but the approver still clicks Approve in Expensify. Checks about once a minute at most; how often follows your workspace plan.",
+      "display_name": "Expense report submitted",
+      "id": "expensify_report_submitted_trigger",
+      "output": {
+        "approved": "When the report was approved. Empty until it is.",
+        "created": "When the report was created, as Expensify writes it.",
+        "currency": "The report's currency code, such as USD.",
+        "expenseCount": "How many expenses are on the report.",
+        "expenses": "The report's expenses, each with transactionID, merchant, amount, amountDisplay, currency, category, date, tag, comment, billable, reimbursable and receiptURL.",
+        "managerEmail": "Email address of the submitter's manager for this report: the person it was submitted to for approval, or, once approved, the last person who approved it. Empty for a draft.",
+        "managerName": "That manager's full name. Empty when they haven't set a name in Expensify.",
+        "policyID": "That workspace's ID, as 'List policies' gives it.",
+        "policyName": "Name of the Expensify workspace (policy) the report is under.",
+        "reportID": "The report's ID, such as R00bCluvcO4T. Use it as 'report_id_list' in 'Export expense reports' or 'Mark reports as reimbursed'.",
+        "reportName": "The report's name.",
+        "reportURL": "A link that opens the report in Expensify, for the approver or the submitter to click. Empty if Expensify gave no number to build it from.",
+        "status": "Where the report stands: Open (a draft), Processing (submitted, waiting for approval), Approved, Reimbursed or Closed.",
+        "submitted": "When the report was submitted, as Expensify writes it (YYYY-MM-DD, with a time when Expensify gives one). Empty for a draft.",
+        "submittedDisplay": "The day the report was submitted, ready to show a person, such as 'Nov 10, 2026'. Empty for a draft.",
+        "submitter": "Email address of the employee who created and submitted the report.",
+        "submitterName": "The submitter's full name. Empty when they haven't set a name in Expensify; fall back to submitter.",
+        "total": "The report's total as a number in its own currency, in whole units (dollars, not cents), such as 450.75. Compare against this.",
+        "totalDisplay": "The total ready to show a person, with its currency, such as '450.75 USD'."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Beta. Only run for reports whose total is at least this amount, in the report's own currency, such as 100. Leave empty to run for every submitted report.",
+          "display_name": "Minimum total",
+          "name": "min_total",
+          "required": false
+        },
+        {
+          "arg_index": 1,
+          "description": "Beta. Only run for reports in this Expensify workspace (policy): its ID, from the 'List policies' action. Leave empty to run for every workspace the connected account can see.",
+          "display_name": "Workspace",
+          "name": "policy_id",
+          "required": false
+        }
+      ]
+    }
+  }
 }

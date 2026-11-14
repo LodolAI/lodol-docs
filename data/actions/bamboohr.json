@@ -568,7 +568,7 @@
       ]
     },
     "get_employee": {
-      "description": "Fetch one BambooHR employee's record by their internal employee ID. Beta: also says who their manager is, with the manager's name and work email ready to use.",
+      "description": "Fetch one BambooHR employee's record by their internal employee ID. Beta: also says who their manager is, with the manager's name and work email, and the employee's personal email, ready to use whichever fields you pick.",
       "display_name": "Get an employee",
       "display_str_template": "Get employee {0}.",
       "handler": "actions.get_employee",
@@ -580,6 +580,7 @@
           "displayName": "Ada Lovelace",
           "firstName": "Ada",
           "hireDate": "2024-03-01",
+          "homeEmail": "ada.lovelace@gmail.com",
           "id": "42",
           "jobTitle": "Software Engineer",
           "lastName": "Lovelace",
@@ -590,7 +591,8 @@
         },
         "manager_email": "grace@example.com",
         "manager_id": "7",
-        "manager_name": "Grace Hopper"
+        "manager_name": "Grace Hopper",
+        "personal_email": "ada.lovelace@gmail.com"
       },
       "name": "get_employee",
       "output_formatter": "actions.format_employee_output",
@@ -603,7 +605,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Which fields to return. Leave empty for the standard identity and job fields. Run 'List fields' to see every name this account has.",
+          "description": "Which fields to return. Leave empty for the standard identity and job fields. The manager's name and email and the personal email are always returned as their own fields, so you don't need to name them. Run 'List fields' to see every name this account has.",
           "display_name": "Fields",
           "examples": [
             {
@@ -765,7 +767,7 @@
             "type": "object"
           },
           "manager_email": {
-            "description": "Beta. Their manager's work email address, such as grace@example.com, ready to send an approval or a message to. Blank when they have no manager, or when the step names its own fields and leaves out supervisorEmail.",
+            "description": "Beta. Their manager's work email address, such as grace@example.com, ready to send an approval or a message to. Blank when they have no manager.",
             "type": "string"
           },
           "manager_id": {
@@ -774,6 +776,10 @@
           },
           "manager_name": {
             "description": "Beta. The name of the person they report to, as BambooHR writes it. Blank when they have no manager.",
+            "type": "string"
+          },
+          "personal_email": {
+            "description": "Beta. Their personal (home) email address, such as ada.lovelace@gmail.com, for a welcome note before their work email works. Blank when BambooHR has none for them or the API key may not read it.",
             "type": "string"
           }
         },
@@ -1280,7 +1286,7 @@
       ]
     },
     "list_employees": {
-      "description": "List the employees in your BambooHR account, optionally filtered to one field's value and sorted, a page at a time.",
+      "description": "List the employees in your BambooHR account, optionally filtered to one field's value and sorted, a page at a time. Beta: can list only the people starting on a day counted from today (such as tomorrow), people hired for a future date included, and each employee comes with their full name, manager's name and email, and hire date written out.",
       "display_name": "List employees",
       "display_str_template": "List employees.",
       "handler": "actions.list_employees",
@@ -1294,9 +1300,17 @@
             "displayName": "Ada Lovelace",
             "employeeId": "42",
             "firstName": "Ada",
+            "full_name": "Ada Lovelace",
+            "hireDate": "2026-11-16",
+            "hire_date_display": "Nov 16, 2026",
             "jobTitleName": "Software Engineer",
             "lastName": "Lovelace",
+            "manager_email": "grace@example.com",
+            "manager_first_name": "Grace",
+            "manager_name": "Grace Hopper",
             "status": "Active",
+            "supervisor": "Hopper, Grace",
+            "supervisorEmail": "grace@example.com",
             "workEmail": "ada@example.com"
           }
         ],
@@ -1456,6 +1470,15 @@
           "name": "cursor",
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. List only the people whose hire date is this many days from today: 0 for today, 1 for tomorrow, 7 for a week from today, or -7 for a week ago. People hired for a date still to come are included, so a daily workflow can welcome tomorrow's starters with no filter step. Each one comes back with hire_date_display, manager_name and manager_email ready for a message. Days count from today where the workflow's owner is. Every matching person comes back at once, with no pages to read. Leave empty to list everyone.",
+          "display_name": "Only people starting in (days)",
+          "maximum": 366,
+          "minimum": -366,
+          "name": "starting_in_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
         }
       ],
       "path": "/actions/library/bamboohr/list-employees",
@@ -1492,7 +1515,15 @@
                 "firstName": {
                   "type": "string"
                 },
+                "full_name": {
+                  "description": "Beta. Their full name, such as Ada Lovelace, ready to put in a welcome message.",
+                  "type": "string"
+                },
                 "hireDate": {
+                  "type": "string"
+                },
+                "hire_date_display": {
+                  "description": "Beta. Their hire date written for a message, such as Nov 16, 2026, so no step has to format it.",
                   "type": "string"
                 },
                 "jobTitleName": {
@@ -1502,6 +1533,18 @@
                   "type": "string"
                 },
                 "locationName": {
+                  "type": "string"
+                },
+                "manager_email": {
+                  "description": "Beta. Their manager's work email address, such as grace@example.com, ready to send a first-day checklist or an approval to. Blank when they have no manager.",
+                  "type": "string"
+                },
+                "manager_first_name": {
+                  "description": "Beta. Their manager's first name, such as Grace, to greet them in an email. Blank when they have no manager.",
+                  "type": "string"
+                },
+                "manager_name": {
+                  "description": "Beta. The name of the person they report to, such as Grace Hopper. Blank when they have no manager.",
                   "type": "string"
                 },
                 "photoUrl": {
@@ -1740,23 +1783,45 @@
       ]
     },
     "list_time_off_requests": {
-      "description": "List the time off requests that overlap a date range, optionally narrowed to one employee, type or status.",
+      "description": "List the time off requests that overlap a date range, or (beta) this or next week or month, optionally narrowed to one employee, type or status. With each person's manager included, the requests also come grouped by manager, ready to send each manager their team's time off.",
       "display_name": "List time off requests",
       "display_str_template": "List time off requests from {0} to {1}.",
       "handler": "actions.list_time_off_requests",
       "id": "bamboohr_list_time_off_requests",
       "method": "POST",
       "mock_response": {
+        "by_manager": [
+          {
+            "count": 1,
+            "manager_email": "grace@example.com",
+            "manager_first_name": "Grace",
+            "manager_name": "Grace Hopper",
+            "requests": [
+              {
+                "employee_name": "Ada Lovelace",
+                "id": "901"
+              }
+            ]
+          }
+        ],
         "count": 1,
+        "dates_display": "Oct 5, 2026 to Oct 11, 2026",
+        "end_date": "2026-10-11",
         "requests": [
           {
             "amount": {
               "amount": 40,
               "unit": "hours"
             },
+            "amount_display": "40 hours",
+            "dates_display": "Oct 5, 2026 to Oct 9, 2026",
             "employeeId": "42",
+            "employee_name": "Ada Lovelace",
             "end": "2026-10-09",
             "id": "901",
+            "manager_email": "grace@example.com",
+            "manager_first_name": "Grace",
+            "manager_name": "Grace Hopper",
             "name": "Ada Lovelace",
             "start": "2026-10-05",
             "status": {
@@ -1767,24 +1832,50 @@
               "name": "Vacation"
             }
           }
-        ]
+        ],
+        "start_date": "2026-10-05"
       },
       "name": "list_time_off_requests",
       "output_formatter": "actions.format_time_off_requests_output",
       "parameters": [
         {
-          "description": "The start of the window. A request is included when it is still running on this date, even if it began earlier.",
+          "description": "The start of the window. A request is included when it is still running on this date, even if it began earlier. Leave empty when you choose a Period.",
           "display_name": "From",
           "name": "start",
-          "required": true,
+          "required": false,
           "type": "ParameterType.DATE"
         },
         {
-          "description": "The end of the window. A request is included when it has begun by this date, even if it runs on past it.",
+          "description": "The end of the window. A request is included when it has begun by this date, even if it runs on past it. Leave empty when you choose a Period.",
           "display_name": "To",
           "name": "end",
-          "required": true,
+          "required": false,
           "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Beta. Instead of From and To: the week (Monday to Sunday) or month the step runs in, or the next one. 'Next week' on a Friday is the coming Monday to Sunday, with no date steps.",
+          "display_name": "Period",
+          "name": "period",
+          "options": [
+            {
+              "label": "This week",
+              "value": "this_week"
+            },
+            {
+              "label": "Next week",
+              "value": "next_week"
+            },
+            {
+              "label": "This month",
+              "value": "this_month"
+            },
+            {
+              "label": "Next month",
+              "value": "next_month"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
         },
         {
           "description": "Only this employee's requests.",
@@ -1867,14 +1958,35 @@
           "name": "exclude_notes",
           "required": false,
           "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Beta. Turn on to give every request its employee's manager (manager_name and manager_email), and to group the requests by manager (by_manager), so you can send each manager their team's requests without looking people up yourself.",
+          "display_name": "Include each person's manager",
+          "name": "include_manager",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         }
       ],
       "path": "/actions/library/bamboohr/list-time-off-requests",
       "result_str_template": "Found {list_time_off_requests,count} time off requests",
       "returns": {
         "properties": {
+          "by_manager": {
+            "description": "Beta. With Include each person's manager on: one entry per manager (manager_name, manager_first_name, manager_email, their team's requests and count), for one email each. Requests from people without a manager email are left out. Empty otherwise.",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
           "count": {
             "type": "number"
+          },
+          "dates_display": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
           },
           "requests": {
             "items": {
@@ -1913,6 +2025,10 @@
                   },
                   "type": "object"
                 },
+                "amount_display": {
+                  "description": "Beta. How long it is, ready to read, such as 40 hours or 1 day.",
+                  "type": "string"
+                },
                 "balanceOnDateOfRequest": {
                   "type": "string"
                 },
@@ -1922,13 +2038,33 @@
                 "dates": {
                   "type": "object"
                 },
+                "dates_display": {
+                  "description": "Beta. The days it covers, ready to read, such as Oct 5, 2026 to Oct 9, 2026.",
+                  "type": "string"
+                },
                 "employeeId": {
+                  "type": "string"
+                },
+                "employee_name": {
+                  "description": "Beta. Who asked for the time off.",
                   "type": "string"
                 },
                 "end": {
                   "type": "string"
                 },
                 "id": {
+                  "type": "string"
+                },
+                "manager_email": {
+                  "description": "Beta. The manager's email, when Include each person's manager is on; blank if none.",
+                  "type": "string"
+                },
+                "manager_first_name": {
+                  "description": "Beta. The manager's first name, for 'Hi Grace,', when Include each person's manager is on.",
+                  "type": "string"
+                },
+                "manager_name": {
+                  "description": "Beta. The employee's manager, when Include each person's manager is on; blank if none.",
                   "type": "string"
                 },
                 "name": {
@@ -1986,6 +2122,9 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "start_date": {
+            "type": "string"
           }
         },
         "type": "object"
@@ -2575,7 +2714,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "What to set the request to: approved, denied or canceled. Beta: it also takes the answer of a 'Request approval' step directly, either its 'approved' (true sets approved, false sets denied) or its 'decision' (approved, or rejected which sets denied).",
+          "description": "What to set the request to: approved, denied or canceled. Beta: it also takes the answer of an Ask a person step directly, either its 'approved' (true sets approved, false sets denied) or its 'decision' (approved, or rejected which sets denied).",
           "display_name": "New status",
           "name": "status",
           "options": [
@@ -2636,6 +2775,28 @@
   "id": "bamboohr",
   "logo": "https://www.lodol.com/app-icons/bamboohr-icon.png",
   "triggers": {
+    "bamboohr_employee_terminated_trigger": {
+      "description": "Beta. Runs once when a termination is entered on an employee's BambooHR record, which is often before their last day, with their name, job, work email, last day and their manager's name and work email, for an offboarding checklist with no lookups. The last day is often weeks away when it runs, so a step that cuts off access straight away (suspending an account) locks out someone who is still working: say so, or leave that to IT on the day. How often it checks follows your workspace plan.",
+      "display_name": "Employee terminated",
+      "id": "bamboohr_employee_terminated_trigger",
+      "output": {
+        "changed_at": "When the termination was entered (UTC).",
+        "department": "Their department.",
+        "display_name": "Their name as BambooHR shows it.",
+        "employee_id": "The employee's BambooHR id, for later BambooHR steps.",
+        "employment_status": "Their employment status as BambooHR records it, such as Terminated.",
+        "first_name": "Their first name.",
+        "job_title": "Their job title.",
+        "last_name": "Their last name.",
+        "location": "Their work location.",
+        "manager_email": "Their manager's work email, to send the offboarding checklist to. Blank when they have no manager.",
+        "manager_name": "Their manager's name. Blank when they have no manager.",
+        "termination_date": "Their last day, such as 2026-11-30.",
+        "termination_date_display": "Their last day written for a message, such as Nov 30, 2026, so no step has to format it.",
+        "work_email": "Their work email address, such as ada@example.com (the account to suspend)."
+      },
+      "parameters": []
+    },
     "bamboohr_employee_updated_trigger": {
       "description": "Runs each time an employee's BambooHR record changes, such as a new job title, department or manager, with their details as they are now. Several changes between checks start one run. How often it checks follows your workspace plan.",
       "display_name": "Employee updated",
@@ -2658,7 +2819,7 @@
       "parameters": []
     },
     "bamboohr_new_employee_trigger": {
-      "description": "Runs for each employee added to BambooHR, with their name, job title, department, work email and hire date. Employees already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "description": "Runs for each employee added to BambooHR, with their name, job title, department, work email and hire date. Beta: each run also has their personal email and their manager's name and work email, so a workflow can welcome them and tell their manager without looking anyone up. Employees already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
       "display_name": "New employee",
       "id": "bamboohr_new_employee_trigger",
       "output": {
@@ -2672,8 +2833,11 @@
         "job_title": "Their job title.",
         "last_name": "Their last name.",
         "location": "Their work location.",
+        "manager_email": "Beta. Their manager's work email address, such as grace@example.com, ready to send a message to or to look the manager up in Slack. Blank when they have no manager.",
+        "manager_name": "Beta. The name of their manager (who they report to in BambooHR), such as Grace Hopper. Blank when they have no manager.",
+        "personal_email": "Beta. Their personal (home) email address, such as ada.lovelace@gmail.com, to welcome them before their work email works. Blank when BambooHR has none for them or the API key may not read it.",
         "status": "Active or Inactive.",
-        "supervisor": "Who they report to.",
+        "supervisor": "Who they report to, as BambooHR writes it. For a message, use 'manager_name'.",
         "work_email": "Their work email address."
       },
       "parameters": []
@@ -2692,7 +2856,7 @@
         "employee_note": "The note the employee left, if any.",
         "end_date": "The last day off, such as 2027-01-02.",
         "end_date_display": "Beta. The last day off written for a message, such as Jan 2, 2027.",
-        "manager_email": "Beta. Their manager's work email address, such as grace@example.com, ready to use as the approver of a 'Request approval' step. Blank when they have no manager.",
+        "manager_email": "Beta. Their manager's work email address, such as grace@example.com, ready to use as the person asked by an Ask a person step. Blank when they have no manager.",
         "manager_name": "Beta. The name of the employee's manager (who they report to in BambooHR), such as Grace Hopper. Blank when they have no manager.",
         "request_id": "The request's id, for Update a time off request's status.",
         "requested_on": "The day the request was made.",

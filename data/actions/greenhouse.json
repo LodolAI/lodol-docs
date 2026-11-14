@@ -1,5 +1,515 @@
 {
   "actions": {
+    "add_candidate_note": {
+      "description": "Add a note to a candidate's profile in Greenhouse, where the hiring team reads it. The note is written by the integration user of the connection's Harvest credential.",
+      "display_name": "Add a note to a candidate",
+      "display_str_template": "Add a note to candidate {candidate_id}.",
+      "handler": "actions.add_candidate_note",
+      "id": "greenhouse_add_candidate_note",
+      "method": "POST",
+      "mock_response": {
+        "author_user_id": 4080125,
+        "candidate_id": 30481772,
+        "candidate_url": "https://app.greenhouse.io/people/30481772",
+        "created_at": "2026-11-12T09:31:10.000Z",
+        "note": "AI resume score: 6 out of 10.",
+        "note_id": 90211458,
+        "visibility": "admin_only"
+      },
+      "name": "add_candidate_note",
+      "output_formatter": "applications.format_note",
+      "parameters": [
+        {
+          "description": "The candidate's ID, from the 'New application' trigger or 'List applications'. A link to the candidate copied from Greenhouse works too.",
+          "display_name": "Candidate",
+          "examples": [
+            {
+              "label": "Candidate ID",
+              "value": "30481772"
+            },
+            {
+              "label": "Link",
+              "value": "https://app.greenhouse.io/people/30481772"
+            }
+          ],
+          "name": "candidate_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "What the note says. Line breaks are kept.",
+          "display_name": "Note",
+          "max_length": 20000,
+          "multiline": true,
+          "name": "note",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "admin_only",
+          "description": "Who in Greenhouse can read the note. Leave as it is for job admins and site admins only.",
+          "display_name": "Who can see it",
+          "name": "visibility",
+          "options": [
+            {
+              "label": "Job admins and site admins only (default)",
+              "value": "admin_only"
+            },
+            {
+              "label": "People allowed to see private notes",
+              "value": "private"
+            },
+            {
+              "label": "Everyone who can see the candidate",
+              "value": "public"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/greenhouse/add-candidate-note",
+      "result_str_template": "Note added.",
+      "returns": {
+        "properties": {
+          "author_user_id": {
+            "description": "The ID of the Greenhouse user the note was written as.",
+            "type": "integer"
+          },
+          "candidate_id": {
+            "description": "The ID of the candidate the note is on.",
+            "type": "integer"
+          },
+          "candidate_url": {
+            "description": "A link that opens the candidate in Greenhouse.",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "When the note was added, as a date and time in UTC.",
+            "type": "string"
+          },
+          "note": {
+            "description": "What the note says.",
+            "type": "string"
+          },
+          "note_id": {
+            "description": "The new note's ID, for 'Delete a note'.",
+            "type": "integer"
+          },
+          "visibility": {
+            "description": "Who can see the note: admin_only, private or public.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
+    "delete_candidate_note": {
+      "description": "Delete a note from a candidate's Greenhouse profile for good. The integration user of the connection's Harvest credential must have written the note or be a Site Admin.",
+      "display_name": "Delete a note",
+      "display_str_template": "Delete note {note_id}.",
+      "handler": "actions.delete_candidate_note",
+      "id": "greenhouse_delete_candidate_note",
+      "method": "POST",
+      "mock_response": {
+        "deleted": true,
+        "note_id": 90211458
+      },
+      "name": "delete_candidate_note",
+      "output_formatter": "applications.format_deleted_note",
+      "parameters": [
+        {
+          "description": "The note's ID, from 'Add a note to a candidate'.",
+          "display_name": "Note",
+          "name": "note_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/greenhouse/delete-candidate-note",
+      "result_str_template": "Note deleted.",
+      "returns": {
+        "properties": {
+          "deleted": {
+            "description": "True once the note is gone.",
+            "type": "boolean"
+          },
+          "note_id": {
+            "description": "The deleted note's ID.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "delete"
+      ]
+    },
+    "find_candidate_by_email": {
+      "description": "Beta. Find the candidate in your Greenhouse account with this email address: their profile link, latest resume, and the job and stage they're at. Needs the Harvest client ID and secret on the Greenhouse connection.",
+      "display_name": "Find a candidate by email",
+      "display_str_template": "Find the Greenhouse candidate {0}.",
+      "handler": "actions.find_candidate_by_email",
+      "id": "greenhouse_find_candidate_by_email",
+      "method": "POST",
+      "mock_response": {
+        "application_id": "69306314",
+        "application_status": "in_process",
+        "company": "Acme",
+        "current_job": "Backend Engineer",
+        "current_stage": "Onsite Interview",
+        "email": "jane@example.com",
+        "found": true,
+        "id": "53883394",
+        "matches": 1,
+        "name": "Jane Doe",
+        "profile_url": "https://app.greenhouse.io/people/53883394?application_id=69306314",
+        "resume_display": "https://prod-heroku.s3.amazonaws.com/resume.pdf",
+        "resume_filename": "jane_doe_resume.pdf",
+        "resume_url": "https://prod-heroku.s3.amazonaws.com/resume.pdf",
+        "title": "Senior Engineer"
+      },
+      "name": "find_candidate_by_email",
+      "output_formatter": "candidates.format_candidate_output",
+      "parameters": [
+        {
+          "description": "The candidate's email address. 'Jane Doe <jane@example.com>' works too. Beta: several addresses (a list, or separated by commas, such as a meeting's outside guests) are tried in turn, and the first that belongs to a candidate is returned.",
+          "display_name": "Email",
+          "name": "email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/greenhouse/find-candidate-by-email",
+      "result_str_template": "Looked up the Greenhouse candidate.",
+      "returns": {
+        "properties": {
+          "application_id": {
+            "description": "That application's id.",
+            "type": "string"
+          },
+          "application_status": {
+            "description": "That application's status: in_process, hired, rejected or converted.",
+            "type": "string"
+          },
+          "company": {
+            "description": "Where they work now.",
+            "type": "string"
+          },
+          "current_job": {
+            "description": "The job they applied for most recently, by name.",
+            "type": "string"
+          },
+          "current_stage": {
+            "description": "The stage that application is at, such as 'Onsite Interview'.",
+            "type": "string"
+          },
+          "email": {
+            "description": "Their first email address.",
+            "type": "string"
+          },
+          "found": {
+            "description": "False when no candidate has that email address.",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "The candidate's Greenhouse id.",
+            "type": "string"
+          },
+          "matches": {
+            "description": "How many candidates have that address; the most recently updated one is returned.",
+            "type": "integer"
+          },
+          "name": {
+            "description": "Their first and last name.",
+            "type": "string"
+          },
+          "profile_url": {
+            "description": "A link to their profile in Greenhouse, for a recruiter or interviewer to open (they need to be signed in).",
+            "type": "string"
+          },
+          "resume_display": {
+            "description": "Beta. The resume link ready to put in a message, or 'No resume on file' when they have none, so the message needs no step to choose its wording. Blank when no candidate was found.",
+            "type": "string"
+          },
+          "resume_filename": {
+            "description": "The resume's file name.",
+            "type": "string"
+          },
+          "resume_url": {
+            "description": "A link to their latest resume. Greenhouse's link stops working after a few days, so send it rather than store it. Blank when they have none.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Their current job title.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_application": {
+      "description": "Get one application in your Greenhouse account: the candidate's name and email, the job's name and description, their answers, the stage they are at, and a fresh link to their resume (a resume link stops working after seven days).",
+      "display_name": "Get an application",
+      "display_str_template": "Get application {application_id}.",
+      "handler": "actions.get_application",
+      "id": "greenhouse_get_application",
+      "method": "POST",
+      "mock_response": {
+        "answers": [
+          {
+            "answer": "Yes",
+            "question": "Are you authorized to work in the US?"
+          }
+        ],
+        "application_id": 48192011,
+        "applied_at": "2026-11-12T09:30:00.000Z",
+        "candidate_id": 30481772,
+        "candidate_name": "Jane Doe",
+        "candidate_url": "https://app.greenhouse.io/people/30481772?application_id=48192011",
+        "current_company": "Acme Robotics",
+        "current_title": "Backend Engineer",
+        "email": "jane.doe@example.com",
+        "first_name": "Jane",
+        "job_description": "About the role\n\nYou will design and run the services behind our payments platform.\n\nWhat we're looking for\n\n- 5+ years building backend systems\n- Experience with Python and PostgreSQL",
+        "job_id": 4012345,
+        "job_name": "Senior Backend Engineer",
+        "job_post_url": "https://job-boards.greenhouse.io/acme/jobs/5550001?gh_jid=5550001",
+        "last_name": "Doe",
+        "phone": "+1 415 555 0134",
+        "resume_filename": "jane-doe-resume.pdf",
+        "resume_url": "https://harvest.greenhouse.io/v3/attachments/771203/download",
+        "stage": "Application Review",
+        "status": "in_process"
+      },
+      "name": "get_application",
+      "output_formatter": "applications.format_application",
+      "parameters": [
+        {
+          "description": "The application's ID, from the 'New application' trigger or 'List applications'. A link to the candidate copied from Greenhouse works too, when it names the application.",
+          "display_name": "Application",
+          "examples": [
+            {
+              "label": "Application ID",
+              "value": "48192011"
+            }
+          ],
+          "name": "application_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/greenhouse/get-application",
+      "result_str_template": "Got {candidate_name}'s application.",
+      "returns": {
+        "properties": {
+          "answers": {
+            "description": "The candidate's answers to the application form's questions.",
+            "items": {
+              "properties": {
+                "answer": {
+                  "description": "What the candidate answered.",
+                  "type": "string"
+                },
+                "question": {
+                  "description": "The question asked.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "application_id": {
+            "description": "The application's ID.",
+            "type": "integer"
+          },
+          "applied_at": {
+            "description": "When they applied, as a date and time in UTC (2026-11-12T09:30:00.000Z).",
+            "type": "string"
+          },
+          "candidate_id": {
+            "description": "The candidate's ID, for 'Add a note to a candidate'.",
+            "type": "integer"
+          },
+          "candidate_name": {
+            "description": "The candidate's full name.",
+            "type": "string"
+          },
+          "candidate_url": {
+            "description": "A link that opens the candidate in Greenhouse.",
+            "type": "string"
+          },
+          "current_company": {
+            "description": "Where the candidate works now, if their profile says.",
+            "type": "string"
+          },
+          "current_title": {
+            "description": "The candidate's current job title, if their profile says.",
+            "type": "string"
+          },
+          "email": {
+            "description": "The candidate's email address. Empty if they gave none.",
+            "type": "string"
+          },
+          "first_name": {
+            "description": "The candidate's first name.",
+            "type": "string"
+          },
+          "job_description": {
+            "description": "The job's description as plain text, from the job post they applied through. Empty if the job has no post.",
+            "type": "string"
+          },
+          "job_id": {
+            "description": "The ID of the job they applied for.",
+            "type": "integer"
+          },
+          "job_name": {
+            "description": "The name of the job they applied for.",
+            "type": "string"
+          },
+          "job_post_url": {
+            "description": "The job post's public page. Empty if the post isn't published.",
+            "type": "string"
+          },
+          "last_name": {
+            "description": "The candidate's last name.",
+            "type": "string"
+          },
+          "phone": {
+            "description": "The candidate's phone number. Empty if they gave none.",
+            "type": "string"
+          },
+          "resume_filename": {
+            "description": "The resume file's name, such as jane-doe.pdf.",
+            "type": "string"
+          },
+          "resume_url": {
+            "description": "A link to the candidate's resume file, which an AI step can read as a file. It stops working after seven days. Empty if they sent none.",
+            "type": "string"
+          },
+          "stage": {
+            "description": "The hiring stage the application is at, such as Application Review.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Where the application stands: in_process, rejected, hired or converted.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_candidate": {
+      "description": "Beta. Read one candidate in your Greenhouse account by their id: their profile link, latest resume, and the job and stage they're at. Needs the Harvest client ID and secret on the Greenhouse connection.",
+      "display_name": "Get a candidate",
+      "display_str_template": "Get the Greenhouse candidate {0}.",
+      "handler": "actions.get_candidate",
+      "id": "greenhouse_get_candidate",
+      "method": "POST",
+      "mock_response": {
+        "application_id": "69306314",
+        "application_status": "in_process",
+        "company": "Acme",
+        "current_job": "Backend Engineer",
+        "current_stage": "Onsite Interview",
+        "email": "jane@example.com",
+        "found": true,
+        "id": "53883394",
+        "name": "Jane Doe",
+        "profile_url": "https://app.greenhouse.io/people/53883394?application_id=69306314",
+        "resume_display": "https://prod-heroku.s3.amazonaws.com/resume.pdf",
+        "resume_filename": "jane_doe_resume.pdf",
+        "resume_url": "https://prod-heroku.s3.amazonaws.com/resume.pdf",
+        "title": "Senior Engineer"
+      },
+      "name": "get_candidate",
+      "output_formatter": "candidates.format_candidate_output",
+      "parameters": [
+        {
+          "description": "The candidate's Greenhouse id: the number at the end of their profile's address.",
+          "display_name": "Candidate ID",
+          "name": "candidate_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/greenhouse/get-candidate",
+      "result_str_template": "Read the Greenhouse candidate.",
+      "returns": {
+        "properties": {
+          "application_id": {
+            "description": "That application's id.",
+            "type": "string"
+          },
+          "application_status": {
+            "description": "That application's status: in_process, hired, rejected or converted.",
+            "type": "string"
+          },
+          "company": {
+            "description": "Where they work now.",
+            "type": "string"
+          },
+          "current_job": {
+            "description": "The job they applied for most recently, by name.",
+            "type": "string"
+          },
+          "current_stage": {
+            "description": "The stage that application is at, such as 'Onsite Interview'.",
+            "type": "string"
+          },
+          "email": {
+            "description": "Their first email address.",
+            "type": "string"
+          },
+          "found": {
+            "description": "False when no candidate has that email address.",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "The candidate's Greenhouse id.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Their first and last name.",
+            "type": "string"
+          },
+          "profile_url": {
+            "description": "A link to their profile in Greenhouse, for a recruiter or interviewer to open (they need to be signed in).",
+            "type": "string"
+          },
+          "resume_display": {
+            "description": "Beta. The resume link ready to put in a message, or 'No resume on file' when they have none, so the message needs no step to choose its wording. Blank when no candidate was found.",
+            "type": "string"
+          },
+          "resume_filename": {
+            "description": "The resume's file name.",
+            "type": "string"
+          },
+          "resume_url": {
+            "description": "A link to their latest resume. Greenhouse's link stops working after a few days, so send it rather than store it. Blank when they have none.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Their current job title.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "get_department": {
       "description": "Fetch one department from a Greenhouse job board by its id, with the jobs posted under it, also as one flat 'jobs' list that includes its sub-departments' posts.",
       "display_name": "Get department",
@@ -1357,6 +1867,184 @@
         "read"
       ]
     },
+    "list_applications": {
+      "description": "List the newest applications, for every job or one, newest first. Each comes with the candidate's name and email, the job's name and description, a link to their resume and a link to them in Greenhouse.",
+      "display_name": "List applications",
+      "display_str_template": "List the newest applications.",
+      "handler": "actions.list_applications",
+      "id": "greenhouse_list_applications",
+      "method": "POST",
+      "mock_response": {
+        "applications": [
+          {
+            "answers": [
+              {
+                "answer": "Yes",
+                "question": "Are you authorized to work in the US?"
+              }
+            ],
+            "application_id": 48192011,
+            "applied_at": "2026-11-12T09:30:00.000Z",
+            "candidate_id": 30481772,
+            "candidate_name": "Jane Doe",
+            "candidate_url": "https://app.greenhouse.io/people/30481772?application_id=48192011",
+            "current_company": "Acme Robotics",
+            "current_title": "Backend Engineer",
+            "email": "jane.doe@example.com",
+            "first_name": "Jane",
+            "job_description": "About the role\n\nYou will design and run the services behind our payments platform.\n\nWhat we're looking for\n\n- 5+ years building backend systems\n- Experience with Python and PostgreSQL",
+            "job_id": 4012345,
+            "job_name": "Senior Backend Engineer",
+            "job_post_url": "https://job-boards.greenhouse.io/acme/jobs/5550001?gh_jid=5550001",
+            "last_name": "Doe",
+            "phone": "+1 415 555 0134",
+            "resume_filename": "jane-doe-resume.pdf",
+            "resume_url": "https://harvest.greenhouse.io/v3/attachments/771203/download",
+            "stage": "Application Review",
+            "status": "in_process"
+          }
+        ],
+        "count": 1
+      },
+      "name": "list_applications",
+      "output_formatter": "applications.format_applications",
+      "parameters": [
+        {
+          "description": "Only applications for this job. Leave empty for every job.",
+          "display_name": "Job",
+          "dynamic_source": "jobs",
+          "dynamic_source_allows_custom": true,
+          "name": "job_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "How many applications to list, from 1 to 50. Leave empty for 10.",
+          "display_name": "How many",
+          "maximum": 50,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/greenhouse/list-applications",
+      "result_str_template": "Listed {count} applications.",
+      "returns": {
+        "properties": {
+          "applications": {
+            "description": "The applications, newest first.",
+            "items": {
+              "properties": {
+                "answers": {
+                  "description": "The candidate's answers to the application form's questions.",
+                  "items": {
+                    "properties": {
+                      "answer": {
+                        "description": "What the candidate answered.",
+                        "type": "string"
+                      },
+                      "question": {
+                        "description": "The question asked.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "application_id": {
+                  "description": "The application's ID.",
+                  "type": "integer"
+                },
+                "applied_at": {
+                  "description": "When they applied, as a date and time in UTC (2026-11-12T09:30:00.000Z).",
+                  "type": "string"
+                },
+                "candidate_id": {
+                  "description": "The candidate's ID, for 'Add a note to a candidate'.",
+                  "type": "integer"
+                },
+                "candidate_name": {
+                  "description": "The candidate's full name.",
+                  "type": "string"
+                },
+                "candidate_url": {
+                  "description": "A link that opens the candidate in Greenhouse.",
+                  "type": "string"
+                },
+                "current_company": {
+                  "description": "Where the candidate works now, if their profile says.",
+                  "type": "string"
+                },
+                "current_title": {
+                  "description": "The candidate's current job title, if their profile says.",
+                  "type": "string"
+                },
+                "email": {
+                  "description": "The candidate's email address. Empty if they gave none.",
+                  "type": "string"
+                },
+                "first_name": {
+                  "description": "The candidate's first name.",
+                  "type": "string"
+                },
+                "job_description": {
+                  "description": "The job's description as plain text, from the job post they applied through. Empty if the job has no post.",
+                  "type": "string"
+                },
+                "job_id": {
+                  "description": "The ID of the job they applied for.",
+                  "type": "integer"
+                },
+                "job_name": {
+                  "description": "The name of the job they applied for.",
+                  "type": "string"
+                },
+                "job_post_url": {
+                  "description": "The job post's public page. Empty if the post isn't published.",
+                  "type": "string"
+                },
+                "last_name": {
+                  "description": "The candidate's last name.",
+                  "type": "string"
+                },
+                "phone": {
+                  "description": "The candidate's phone number. Empty if they gave none.",
+                  "type": "string"
+                },
+                "resume_filename": {
+                  "description": "The resume file's name, such as jane-doe.pdf.",
+                  "type": "string"
+                },
+                "resume_url": {
+                  "description": "A link to the candidate's resume file, which an AI step can read as a file. It stops working after seven days. Empty if they sent none.",
+                  "type": "string"
+                },
+                "stage": {
+                  "description": "The hiring stage the application is at, such as Application Review.",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "Where the application stands: in_process, rejected, hired or converted.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many are listed.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "list_departments": {
       "description": "List the departments on a company's Greenhouse job board, each with the jobs posted under it and a count of the posts at or beneath it. Use it to build department-level views of a careers page.",
       "display_name": "List departments",
@@ -1956,6 +2644,103 @@
         "read"
       ]
     },
+    "list_missing_scorecards": {
+      "description": "Beta. For one candidate's application in your own Greenhouse account, list the interviewers who still owe a scorecard: each with their name, email, which interview it was and when, plus how many there are and the list as text ready to send. Only interviews that have already happened count, and a scorecard saved as a draft still counts as owed. Check that count is more than 0 before sending a reminder. Needs the Harvest client ID and secret on the Greenhouse connection.",
+      "display_name": "List interviewers who have not submitted a scorecard",
+      "display_str_template": "List who still owes a scorecard on application {application_id}.",
+      "handler": "actions.list_missing_scorecards",
+      "id": "greenhouse_list_missing_scorecards",
+      "method": "POST",
+      "mock_response": {
+        "application_id": 26234709,
+        "count": 2,
+        "interviewers": [
+          {
+            "email": "grace@example.com",
+            "interview_date": "2026-11-03T14:00:00.000Z",
+            "interview_date_display": "Nov 3, 2026 at 2:00 PM UTC",
+            "interview_name": "Technical Phone Screen",
+            "name": "Grace Hopper"
+          },
+          {
+            "email": "alan@example.com",
+            "interview_date": "2026-11-05T17:30:00.000Z",
+            "interview_date_display": "Nov 5, 2026 at 5:30 PM UTC",
+            "interview_name": "Onsite: System Design",
+            "name": "Alan Turing"
+          }
+        ],
+        "text": "- Grace Hopper (grace@example.com): Technical Phone Screen, Nov 3, 2026 at 2:00 PM UTC\n- Alan Turing (alan@example.com): Onsite: System Design, Nov 5, 2026 at 5:30 PM UTC"
+      },
+      "name": "list_missing_scorecards",
+      "output_formatter": "recruiting.format_missing_scorecards_output",
+      "parameters": [
+        {
+          "description": "Beta. The candidate's application: its number, such as 26234709, which the 'Candidate moved to a stage' trigger gives as application_id. The candidate's Greenhouse link that ends with application_id= works too.",
+          "display_name": "Application",
+          "examples": [
+            {
+              "label": "Example",
+              "value": "26234709"
+            }
+          ],
+          "name": "application_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/greenhouse/list-missing-scorecards",
+      "result_str_template": "Missing scorecards listed.",
+      "returns": {
+        "properties": {
+          "application_id": {
+            "description": "Beta. The application that was checked.",
+            "type": "integer"
+          },
+          "count": {
+            "description": "Beta. How many scorecards are still owed. 0 when everyone has submitted theirs, so 'send nothing when nobody is missing' is one check.",
+            "type": "integer"
+          },
+          "interviewers": {
+            "description": "Beta. One entry for each scorecard still owed, earliest interview first. Someone who owes two is listed twice, once for each interview. Empty when nobody owes one.",
+            "items": {
+              "properties": {
+                "email": {
+                  "description": "Beta. The interviewer's email address. Empty when Greenhouse gives none.",
+                  "type": "string"
+                },
+                "interview_date": {
+                  "description": "Beta. When the interview started, as ISO 8601 in UTC, such as 2026-11-03T14:00:00.000Z, or just the day (2026-11-03) for one that lasted all day. Empty for a take-home test, which has no time.",
+                  "type": "string"
+                },
+                "interview_date_display": {
+                  "description": "Beta. The same date ready to read, such as Nov 3, 2026 at 2:00 PM UTC. Empty when interview_date is.",
+                  "type": "string"
+                },
+                "interview_name": {
+                  "description": "Beta. The interview they owe a scorecard for, as the job names it, such as Technical Phone Screen. Empty when Greenhouse gives none.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Beta. The interviewer's full name. Empty when Greenhouse gives none.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "text": {
+            "description": "Beta. The same list as text ready to put in an email or message, one line for each scorecard owed: the interviewer's name and email, the interview and its date. Empty when count is 0.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "list_offices": {
       "description": "List the offices on a company's Greenhouse job board, each with its departments, the jobs posted under them, and a count of the posts at or beneath it. Use it to group a careers page by location.",
       "display_name": "List offices",
@@ -2182,6 +2967,192 @@
         "read"
       ]
     },
+    "list_scheduled_interviews": {
+      "description": "Beta. The interviews scheduled in your Greenhouse account for a day (today or tomorrow) or between two times, soonest first, each with its interviewers' names and emails and its candidate's name, profile link, latest resume and job. Use it for interview briefings and reminders instead of guessing interviews from a calendar. Cancelled interviews are left out, and so are interviews already over: Greenhouse moves those on to waiting for feedback. Needs the Harvest client ID and secret on the Greenhouse connection.",
+      "display_name": "List scheduled interviews",
+      "display_str_template": "List the Greenhouse interviews scheduled {0}.",
+      "handler": "actions.list_scheduled_interviews",
+      "id": "greenhouse_list_scheduled_interviews",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "interviews": [
+          {
+            "application_id": "69306314",
+            "candidate_email": "jane@example.com",
+            "candidate_id": "53883394",
+            "candidate_name": "Jane Doe",
+            "end": "2026-11-17T16:00:00.000Z",
+            "id": "1001",
+            "interview_name": "Technical Interview",
+            "interviewer_emails": [
+              "sam@example.com"
+            ],
+            "interviewers": [
+              {
+                "email": "sam@example.com",
+                "name": "Sam Lee"
+              }
+            ],
+            "job": "Backend Engineer",
+            "location": "",
+            "profile_url": "https://app.greenhouse.io/people/53883394?application_id=69306314",
+            "resume_display": "https://prod-heroku.s3.amazonaws.com/resume.pdf",
+            "resume_url": "https://prod-heroku.s3.amazonaws.com/resume.pdf",
+            "start": "2026-11-17T15:00:00.000Z",
+            "start_display": "Tue, Nov 17, 10:00 AM",
+            "video_link": "https://meet.example.com/abc"
+          }
+        ]
+      },
+      "name": "list_scheduled_interviews",
+      "output_formatter": "candidates.format_scheduled_interviews_output",
+      "parameters": [
+        {
+          "description": "Today's or tomorrow's interviews, midnight to midnight in the time zone below. Leave blank to give Starts after and Ends before instead.",
+          "display_name": "Day",
+          "name": "day",
+          "options": [
+            {
+              "label": "Today",
+              "value": "today"
+            },
+            {
+              "label": "Tomorrow",
+              "value": "tomorrow"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only interviews starting after this time (for example, 2026-11-16T00:00:00Z). Used when Day is blank.",
+          "display_name": "Starts after",
+          "name": "starts_after",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only interviews ending before this time. Used when Day is blank.",
+          "display_name": "Ends before",
+          "name": "ends_before",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The time zone the day and the start times are told in, such as America/New_York. Leave blank for the workflow owner's own.",
+          "display_name": "Time zone",
+          "name": "time_zone",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. Only the interviews this person is one of the interviewers on, by their email address (case does not matter). For \"my interviews today\" or \"the interviews on my calendar\", give the person's own email. Leave blank for every interview.",
+          "display_name": "Only interviews with this interviewer",
+          "name": "interviewer_email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/greenhouse/list-scheduled-interviews",
+      "result_str_template": "Listed the scheduled Greenhouse interviews.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many interviews there are.",
+            "type": "integer"
+          },
+          "interviews": {
+            "description": "The interviews, soonest first.",
+            "items": {
+              "properties": {
+                "application_id": {
+                  "type": "string"
+                },
+                "candidate_email": {
+                  "type": "string"
+                },
+                "candidate_id": {
+                  "type": "string"
+                },
+                "candidate_name": {
+                  "type": "string"
+                },
+                "end": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "interview_name": {
+                  "description": "Which interview it is, such as 'Technical Interview'.",
+                  "type": "string"
+                },
+                "interviewer_emails": {
+                  "description": "The interviewers' emails, ready to put in an email's To.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "interviewers": {
+                  "description": "Each interviewer's name and email.",
+                  "items": {
+                    "properties": {
+                      "email": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "job": {
+                  "description": "The job the candidate is interviewing for.",
+                  "type": "string"
+                },
+                "location": {
+                  "type": "string"
+                },
+                "profile_url": {
+                  "description": "A link to the candidate's profile in Greenhouse.",
+                  "type": "string"
+                },
+                "resume_display": {
+                  "description": "The resume link, or 'No resume on file'.",
+                  "type": "string"
+                },
+                "resume_url": {
+                  "description": "A link to their latest resume; blank when they have none.",
+                  "type": "string"
+                },
+                "start": {
+                  "description": "When it starts, as Greenhouse gives it.",
+                  "type": "string"
+                },
+                "start_display": {
+                  "description": "When it starts, ready to read, such as 'Tue, Nov 17, 10:00 AM', in the time zone chosen, so a message needs no date step.",
+                  "type": "string"
+                },
+                "video_link": {
+                  "description": "The video call's link, if it has one.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "list_sections": {
       "description": "List a Greenhouse job board's prospect post sections: the \"Don't see a job you like?\" style groupings that hold general applications. Boards without prospect posts return an empty list.",
       "display_name": "List prospect sections",
@@ -2368,6 +3339,271 @@
               "type": "object"
             },
             "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_waiting_candidates": {
+      "description": "Find the candidates in your own Greenhouse account who have sat in the same interview stage for a number of days or more, such as 5 for a daily nudge. Time is counted from the day the candidate entered the stage they are in now, not from the last note or email. Each candidate comes with their name, job, stage, the date they entered it, days waiting, their recruiter's name and email, and a link to them in Greenhouse. The same candidates also come grouped by recruiter, so emailing each recruiter their own list is one loop with no filter, lookup or grouping step. Only candidates still in the running are looked at. Needs the Harvest credential on the Greenhouse connection.",
+      "display_name": "List candidates waiting in a stage",
+      "display_str_template": "List candidates waiting {0} days or more in a stage.",
+      "handler": "actions.list_waiting_candidates",
+      "id": "greenhouse_list_waiting_candidates",
+      "method": "POST",
+      "mock_response": {
+        "by_recruiter": [
+          {
+            "candidates": [
+              {
+                "candidate_name": "Jordan Lee",
+                "days_waiting": 9,
+                "entered_stage_display": "Nov 3, 2026",
+                "job_name": "Research Engineer",
+                "link": "https://app.greenhouse.io/people/60304594?application_id=71980812",
+                "stage_name": "Phone Screen"
+              },
+              {
+                "candidate_name": "Priya Nair",
+                "days_waiting": 7,
+                "entered_stage_display": "Nov 5, 2026",
+                "job_name": "Product Designer",
+                "link": "https://app.greenhouse.io/people/60311207?application_id=71980990",
+                "stage_name": "Onsite"
+              }
+            ],
+            "candidates_text": "\u2022 Jordan Lee, Research Engineer, Phone Screen: 9 days (since Nov 3, 2026) https://app.greenhouse.io/people/60304594?application_id=71980812\n\u2022 Priya Nair, Product Designer, Onsite: 7 days (since Nov 5, 2026) https://app.greenhouse.io/people/60311207?application_id=71980990",
+            "count": 2,
+            "recruiter_email": "ana.reyes@example.com",
+            "recruiter_id": 4080,
+            "recruiter_name": "Ana Reyes"
+          }
+        ],
+        "candidates": [
+          {
+            "application_id": 71980812,
+            "candidate_id": 60304594,
+            "candidate_name": "Jordan Lee",
+            "days_waiting": 9,
+            "entered_stage_at": "2026-11-03T15:20:00Z",
+            "entered_stage_display": "Nov 3, 2026",
+            "job_id": 144381,
+            "job_name": "Research Engineer",
+            "link": "https://app.greenhouse.io/people/60304594?application_id=71980812",
+            "recruiter_email": "ana.reyes@example.com",
+            "recruiter_id": 4080,
+            "recruiter_name": "Ana Reyes",
+            "stage_name": "Phone Screen"
+          },
+          {
+            "application_id": 71980990,
+            "candidate_id": 60311207,
+            "candidate_name": "Priya Nair",
+            "days_waiting": 7,
+            "entered_stage_at": "2026-11-05T09:00:00Z",
+            "entered_stage_display": "Nov 5, 2026",
+            "job_id": 144382,
+            "job_name": "Product Designer",
+            "link": "https://app.greenhouse.io/people/60311207?application_id=71980990",
+            "recruiter_email": "ana.reyes@example.com",
+            "recruiter_id": 4080,
+            "recruiter_name": "Ana Reyes",
+            "stage_name": "Onsite"
+          }
+        ],
+        "checked": 37,
+        "count": 2,
+        "days": 5,
+        "text": "Ana Reyes (2 candidates)\n\u2022 Jordan Lee, Research Engineer, Phone Screen: 9 days (since Nov 3, 2026) https://app.greenhouse.io/people/60304594?application_id=71980812\n\u2022 Priya Nair, Product Designer, Onsite: 7 days (since Nov 5, 2026) https://app.greenhouse.io/people/60311207?application_id=71980990",
+        "truncated": false,
+        "undated": 0
+      },
+      "name": "list_waiting_candidates",
+      "output_formatter": "harvest.format_waiting_candidates_output",
+      "parameters": [
+        {
+          "description": "Keep candidates who entered their current stage more than this many days ago: 5 lists everyone who has been in their stage longer than 5 full days. Use 0 for everyone still in the running.",
+          "display_name": "Waiting more than (days)",
+          "examples": [
+            {
+              "label": "More than five days",
+              "value": "5"
+            }
+          ],
+          "maximum": 3650,
+          "minimum": 0,
+          "name": "days",
+          "required": true,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only look at candidates for this job. This is Greenhouse's ID for the job itself (a job post's 'internal_job_id'), not the job post's ID. Separate several with commas. Leave blank for every job.",
+          "display_name": "Job ID",
+          "name": "job_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only look at candidates in the stage with this name, such as Phone Screen or Onsite. Leave blank for every stage.",
+          "display_name": "Stage",
+          "name": "stage_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/greenhouse/list-waiting-candidates",
+      "result_str_template": "Greenhouse candidates waiting in a stage listed.",
+      "returns": {
+        "properties": {
+          "by_recruiter": {
+            "description": "The same candidates grouped by recruiter, the recruiter with the most first, so a message for each recruiter needs no grouping step: loop over these and send 'candidates' as a table, or 'candidates_text', to 'recruiter_email'. Candidates with no recruiter come last, in a group whose 'recruiter_email' is blank.",
+            "items": {
+              "properties": {
+                "candidates": {
+                  "description": "Their waiting candidates, the longest wait first, with only the columns a table in a message needs.",
+                  "items": {
+                    "properties": {
+                      "candidate_name": {
+                        "description": "The candidate's full name, such as Jordan Lee.",
+                        "type": "string"
+                      },
+                      "days_waiting": {
+                        "description": "Whole days since they entered that stage.",
+                        "type": "integer"
+                      },
+                      "entered_stage_display": {
+                        "description": "The date they entered that stage, ready to read, such as Nov 3, 2026.",
+                        "type": "string"
+                      },
+                      "job_name": {
+                        "description": "The job's name, such as Senior Backend Engineer.",
+                        "type": "string"
+                      },
+                      "link": {
+                        "description": "Link that opens the candidate in Greenhouse.",
+                        "type": "string"
+                      },
+                      "stage_name": {
+                        "description": "The stage they are in now, such as Phone Screen.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "candidates_text": {
+                  "description": "Their candidates as text ready to send: one line each with the name, job, stage, days waiting, the date they entered the stage and the link.",
+                  "type": "string"
+                },
+                "count": {
+                  "description": "How many of the candidates are theirs.",
+                  "type": "integer"
+                },
+                "recruiter_email": {
+                  "description": "The recruiter's email address. Blank when there is no recruiter, so check it before sending.",
+                  "type": "string"
+                },
+                "recruiter_id": {
+                  "description": "The recruiter's Greenhouse user ID. Empty for the group with no recruiter.",
+                  "type": "integer"
+                },
+                "recruiter_name": {
+                  "description": "The recruiter's name, such as Ana Reyes, or 'No recruiter'.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "candidates": {
+            "description": "One entry per waiting candidate, the longest wait first.",
+            "items": {
+              "properties": {
+                "application_id": {
+                  "description": "Greenhouse's ID for this candidate's application to the job.",
+                  "type": "integer"
+                },
+                "candidate_id": {
+                  "description": "Greenhouse's ID for the candidate.",
+                  "type": "integer"
+                },
+                "candidate_name": {
+                  "description": "The candidate's full name, such as Jordan Lee.",
+                  "type": "string"
+                },
+                "days_waiting": {
+                  "description": "Whole days since they entered that stage.",
+                  "type": "integer"
+                },
+                "entered_stage_at": {
+                  "description": "When they entered that stage (ISO 8601, UTC), for comparing or sorting.",
+                  "type": "string"
+                },
+                "entered_stage_display": {
+                  "description": "The date they entered that stage, ready to read, such as Nov 3, 2026.",
+                  "type": "string"
+                },
+                "job_id": {
+                  "description": "Greenhouse's ID for the job they are being considered for.",
+                  "type": "integer"
+                },
+                "job_name": {
+                  "description": "The job's name, such as Senior Backend Engineer.",
+                  "type": "string"
+                },
+                "link": {
+                  "description": "Link that opens the candidate in Greenhouse.",
+                  "type": "string"
+                },
+                "recruiter_email": {
+                  "description": "The recruiter's email address. Blank when none is assigned.",
+                  "type": "string"
+                },
+                "recruiter_id": {
+                  "description": "The Greenhouse user ID of the recruiter on their application. Empty when none is assigned.",
+                  "type": "integer"
+                },
+                "recruiter_name": {
+                  "description": "The recruiter's name, or 'No recruiter' when none is assigned.",
+                  "type": "string"
+                },
+                "stage_name": {
+                  "description": "The stage they are in now, such as Phone Screen.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "checked": {
+            "description": "How many candidates still in the running were looked at.",
+            "type": "integer"
+          },
+          "count": {
+            "description": "How many candidates are waiting. 0 when there are none, so 'send nothing when the list is empty' is one check.",
+            "type": "integer"
+          },
+          "days": {
+            "description": "The number of days asked for.",
+            "type": "integer"
+          },
+          "text": {
+            "description": "The whole list as text ready to post or email as it is: a section per recruiter, headed with their name and how many candidates, then one line per candidate. Empty when nobody is waiting, so check 'count' first.",
+            "type": "string"
+          },
+          "truncated": {
+            "description": "True when there were more candidates still in the running than one step reads (5,000), so some were not looked at. Narrow it to a job.",
+            "type": "boolean"
+          },
+          "undated": {
+            "description": "Candidates left out because Greenhouse has no date for when they entered their stage. Usually 0.",
+            "type": "integer"
           }
         },
         "type": "object"
@@ -2778,11 +4014,77 @@
   "categories": [
     "Hiring"
   ],
-  "description": "Read any company's public Greenhouse job board: list and search its open roles, newest first or since a date, pull a job post's full description, pay ranges and application questions, browse its departments, offices, and prospect sections, and start a workflow when a new job is posted, all with no API key. Add your organization's Job Board API key to also submit applications to your own job posts.",
+  "description": "Read any company's public Greenhouse job board: list and search its open roles, newest first or since a date, pull a job post's full description, pay ranges and application questions, browse its departments, offices, and prospect sections, and start a workflow when a new job is posted, all with no API key. Add your organization's Job Board API key to also submit applications to your own job posts, and its Harvest client ID and secret to start a workflow when a candidate reaches a stage such as Offer, to list the interviewers who still owe a scorecard, and to list the candidates who have been waiting in a stage, grouped by recruiter. With the same Harvest credential it starts a workflow when someone applies, with their resume and the job description ready for an AI step, lists and reads applications, finds candidates, lists the day's interviews, and adds notes to a candidate's profile.",
   "display_name": "Greenhouse",
   "id": "greenhouse",
   "logo": "https://www.lodol.com/app-icons/greenhouse-icon.png",
   "triggers": {
+    "greenhouse_candidate_moved_to_stage_trigger": {
+      "description": "Beta. Runs once each time a candidate in your own Greenhouse account reaches the stage you name, such as Offer, on any job, with the candidate's name and email, the job, the recruiter and coordinator, and a link to the candidate. A candidate who leaves the stage and comes back starts it again. Candidates already in the stage when the workflow is turned on don't start it. Needs the Harvest client ID and secret on the Greenhouse connection. How often it checks follows your workspace plan.",
+      "display_name": "Candidate moved to a stage",
+      "id": "greenhouse_candidate_moved_to_stage_trigger",
+      "output": {
+        "application_id": "The number of the candidate's application for this job, for 'List interviewers who have not submitted a scorecard'.",
+        "candidate_email": "The candidate's email address, the most recently added when they have several. Empty when they have none.",
+        "candidate_first_name": "The candidate's first name. Empty when not known.",
+        "candidate_id": "Greenhouse's number for the candidate.",
+        "candidate_last_name": "The candidate's last name. Empty when not known.",
+        "candidate_link": "A link that opens the candidate's application in Greenhouse, for someone signed in to it.",
+        "candidate_name": "The candidate's first and last name together. Empty when Greenhouse keeps the candidate hidden from this connection.",
+        "coordinator_email": "The coordinator's email address. Empty when the application has no coordinator.",
+        "coordinator_name": "The full name of the coordinator on the application. Empty when it has no coordinator.",
+        "job_id": "Greenhouse's number for the job.",
+        "job_name": "The job's name as your hiring team sees it, such as Senior Backend Engineer. Empty when Greenhouse gives none.",
+        "recruiter_email": "The recruiter's email address. Empty when the application has no recruiter.",
+        "recruiter_name": "The full name of the recruiter on the application. Empty when it has no recruiter.",
+        "stage_name": "The stage the candidate reached, such as Offer."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Beta. The stage to watch, exactly as Greenhouse names it, capitals included, such as Offer. Jobs that have no stage with this name never start a run.",
+          "display_name": "Stage",
+          "name": "stage_name",
+          "required": true
+        }
+      ]
+    },
+    "greenhouse_new_application_trigger": {
+      "description": "Runs each time a new candidate applies for a job in Greenhouse, with their name and email, the job's name and description, a link to their resume that an AI step can read, and a link to them in Greenhouse. Applications already there when the workflow is turned on don't start it. Needs the Harvest client ID and secret on the Greenhouse connection. How often it checks follows your workspace plan.",
+      "display_name": "New application",
+      "id": "greenhouse_new_application_trigger",
+      "output": {
+        "answers": "The candidate's answers to the application form's questions.",
+        "application_id": "The application's ID.",
+        "applied_at": "When they applied, as a date and time in UTC (2026-11-12T09:30:00.000Z).",
+        "candidate_id": "The candidate's ID, for 'Add a note to a candidate'.",
+        "candidate_name": "The candidate's full name.",
+        "candidate_url": "A link that opens the candidate in Greenhouse.",
+        "current_company": "Where the candidate works now, if their profile says.",
+        "current_title": "The candidate's current job title, if their profile says.",
+        "email": "The candidate's email address. Empty if they gave none.",
+        "first_name": "The candidate's first name.",
+        "job_description": "The job's description as plain text, from the job post they applied through. Empty if the job has no post.",
+        "job_id": "The ID of the job they applied for.",
+        "job_name": "The name of the job they applied for.",
+        "job_post_url": "The job post's public page. Empty if the post isn't published.",
+        "last_name": "The candidate's last name.",
+        "phone": "The candidate's phone number. Empty if they gave none.",
+        "resume_filename": "The resume file's name, such as jane-doe.pdf.",
+        "resume_url": "A link to the candidate's resume file, which an AI step can read as a file. It stops working after seven days. Empty if they sent none.",
+        "stage": "The hiring stage the application is at, such as Application Review.",
+        "status": "Where the application stands: in_process, rejected, hired or converted."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only applications for this job. Leave empty for every job.",
+          "display_name": "Job",
+          "name": "job_id",
+          "required": false
+        }
+      ]
+    },
     "greenhouse_new_job_trigger": {
       "description": "Runs for each new job posted on a company's Greenhouse job board, with its title, location and link. Jobs already on the board when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
       "display_name": "New job posted",

@@ -257,7 +257,7 @@
       ]
     },
     "add_conversation_tags": {
-      "description": "Add tags to a conversation, keeping the tags it already has.",
+      "description": "Add tags to a conversation, keeping the tags it already has. Pick the tags, or (beta) name them in 'Tags by name' when the tag comes from an earlier step; a name that isn't a tag yet is created.",
       "display_name": "Add tags to a conversation",
       "display_str_template": "Tag conversation {conversation_id}.",
       "handler": "actions.add_conversation_tags",
@@ -265,9 +265,13 @@
       "method": "POST",
       "mock_response": {
         "conversation_id": "cnv_55c8c149",
+        "created_tag_names": [],
         "status": "success",
         "tag_ids": [
           "tag_155"
+        ],
+        "tag_names": [
+          "refund request"
         ],
         "tagged": true
       },
@@ -281,12 +285,19 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The tags to apply. Use 'List tags' to see every tag available.",
+          "description": "The tags to apply. Use 'List tags' to see every tag available. Leave blank when the tags are named in 'Tags by name' instead.",
           "display_name": "Tags",
           "dynamic_source": "tags",
           "multi_select": true,
           "name": "tag_ids",
-          "required": true,
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Beta. Tags given by name instead of picked, such as refund request, or several separated by commas. Use this when the tag comes from an earlier step, such as the category an AI step chose. Capital letters don't matter. A name that isn't a tag in Front yet is created as a new tag everyone in the company can use.",
+          "display_name": "Tags by name",
+          "name": "tag_names",
+          "required": false,
           "type": "ParameterType.ARRAY"
         }
       ],
@@ -298,12 +309,26 @@
             "description": "The conversation that was tagged.",
             "type": "string"
           },
+          "created_tag_names": {
+            "description": "Beta. The names of any tags that didn't exist and were created by this step. Usually empty.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "status": {
             "description": "Status of the action execution (\"success\" on success).",
             "type": "string"
           },
           "tag_ids": {
             "description": "The tags that were added.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tag_names": {
+            "description": "Beta. The names, as Front spells them, of the tags given in 'Tags by name'. Empty when none were.",
             "items": {
               "type": "string"
             },
@@ -321,7 +346,7 @@
       ]
     },
     "assign_conversation": {
-      "description": "Assign a conversation to a teammate, or clear its assignee so it goes back to unassigned.",
+      "description": "Assign a conversation to a teammate, picked or (beta) given by their email address, or clear its assignee so it goes back to unassigned.",
       "display_name": "Assign a conversation",
       "display_str_template": "Assign conversation {conversation_id}.",
       "handler": "actions.assign_conversation",
@@ -329,7 +354,9 @@
       "method": "POST",
       "mock_response": {
         "assigned": true,
+        "assignee_email": "dana@acme.com",
         "assignee_id": "tea_55c8c149",
+        "assignee_name": "Dana Park",
         "conversation_id": "cnv_55c8c149",
         "status": "success"
       },
@@ -343,7 +370,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The teammate to assign the conversation to. Leave blank only if you are switching on 'Unassign' below.",
+          "description": "The teammate to assign the conversation to. Leave blank only if you are switching on 'Unassign' below or giving the teammate's email address instead.",
           "display_name": "Assign to",
           "dynamic_source": "teammates",
           "name": "assignee_id",
@@ -357,6 +384,13 @@
           "name": "unassign",
           "required": false,
           "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Beta. The email address of the teammate to assign the conversation to, such as dana@acme.com. Use this when the person comes from an earlier step. It must be the address they sign in to Front with; capital letters don't matter. Ignored when a teammate is picked under 'Assign to'.",
+          "display_name": "Assign to (by email)",
+          "name": "assignee_email",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/front/assign-conversation",
@@ -367,8 +401,16 @@
             "description": "True when a teammate was set, false when cleared.",
             "type": "boolean"
           },
+          "assignee_email": {
+            "description": "Beta. The teammate's email address, when they were given by email. Empty otherwise.",
+            "type": "string"
+          },
           "assignee_id": {
             "description": "The teammate it is now assigned to, if any.",
+            "type": "string"
+          },
+          "assignee_name": {
+            "description": "Beta. The teammate's name, such as Dana Park, when they were given by email. Empty otherwise.",
             "type": "string"
           },
           "conversation_id": {
@@ -546,6 +588,7 @@
                 "type": "object"
               },
               "created_at": {
+                "description": "When the conversation started, as a number of seconds since 1 January 1970 UTC (a Unix time, often with a fraction), such as 1701292649.333. It is not a date in words.",
                 "type": "number"
               },
               "custom_fields": {
@@ -555,6 +598,7 @@
                 "type": "string"
               },
               "due_at": {
+                "description": "When a task is due, as a number of seconds since 1 January 1970 UTC. Missing when nothing is due.",
                 "type": "number"
               },
               "id": {
@@ -719,9 +763,11 @@
                 "type": "string"
               },
               "updated_at": {
+                "description": "When the conversation last changed, as a number of seconds since 1 January 1970 UTC.",
                 "type": "number"
               },
               "waiting_since": {
+                "description": "When the oldest message nobody has replied to arrived, as a number of seconds since 1 January 1970 UTC (not milliseconds, and not a date in words). Front may leave it out. To get how long each conversation has waited, already worked out and written in words, use 'List unassigned conversations'.",
                 "type": "number"
               }
             },
@@ -743,7 +789,7 @@
       ]
     },
     "get_conversation": {
-      "description": "Get one conversation in full: its status, assignee, tags, recipient and reminders.",
+      "description": "Get one conversation in full: its status, assignee, tags, recipient and reminders, with the customer's email and name, the tags by name and a link that opens it in Front.",
       "display_name": "Get a conversation",
       "display_str_template": "Get conversation {conversation_id}.",
       "handler": "actions.get_conversation",
@@ -753,6 +799,11 @@
         "conversation": {
           "created_at": 1758038400.0,
           "id": "cnv_55c8c149",
+          "recipient": {
+            "handle": "ada@example.com",
+            "name": "Ada Okafor",
+            "role": "from"
+          },
           "status": "assigned",
           "subject": "Where is my order?",
           "tags": [
@@ -763,7 +814,14 @@
           ],
           "type": "email"
         },
-        "status": "success"
+        "conversation_url": "https://app.frontapp.com/open/cnv_55c8c149",
+        "customer_email": "ada@example.com",
+        "customer_handle": "ada@example.com",
+        "customer_name": "Ada Okafor",
+        "status": "success",
+        "tag_names": [
+          "Urgent"
+        ]
       },
       "name": "get_conversation",
       "parameters": [
@@ -840,6 +898,7 @@
                 "type": "object"
               },
               "created_at": {
+                "description": "When the conversation started, as a number of seconds since 1 January 1970 UTC (a Unix time, often with a fraction), such as 1701292649.333. It is not a date in words.",
                 "type": "number"
               },
               "custom_fields": {
@@ -849,6 +908,7 @@
                 "type": "string"
               },
               "due_at": {
+                "description": "When a task is due, as a number of seconds since 1 January 1970 UTC. Missing when nothing is due.",
                 "type": "number"
               },
               "id": {
@@ -1013,17 +1073,42 @@
                 "type": "string"
               },
               "updated_at": {
+                "description": "When the conversation last changed, as a number of seconds since 1 January 1970 UTC.",
                 "type": "number"
               },
               "waiting_since": {
+                "description": "When the oldest message nobody has replied to arrived, as a number of seconds since 1 January 1970 UTC (not milliseconds, and not a date in words). Front may leave it out. To get how long each conversation has waited, already worked out and written in words, use 'List unassigned conversations'.",
                 "type": "number"
               }
             },
             "type": "object"
           },
+          "conversation_url": {
+            "description": "A link that opens the conversation in Front, for a message or an approval request.",
+            "type": "string"
+          },
+          "customer_email": {
+            "description": "The customer's email address. Empty when the conversation is not by email (a text message, a chat); customer_handle has their number or username then.",
+            "type": "string"
+          },
+          "customer_handle": {
+            "description": "How the customer is reached on this conversation: their email address, phone number or username.",
+            "type": "string"
+          },
+          "customer_name": {
+            "description": "The customer's name, when Front knows it.",
+            "type": "string"
+          },
           "status": {
             "description": "Status of the action execution (\"success\" on success).",
             "type": "string"
+          },
+          "tag_names": {
+            "description": "The names of the conversation's tags.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -1944,7 +2029,7 @@
       "returns": {
         "properties": {
           "conversations": {
-            "description": "The conversations that matched.",
+            "description": "The conversations that matched, most recently updated first unless an order is chosen. A conversation here does not say which inbox it is in, and its times are numbers of seconds, not dates in words.",
             "items": {
               "properties": {
                 "_links": {
@@ -2005,6 +2090,7 @@
                   "type": "object"
                 },
                 "created_at": {
+                  "description": "When the conversation started, as a number of seconds since 1 January 1970 UTC (a Unix time, often with a fraction), such as 1701292649.333. It is not a date in words.",
                   "type": "number"
                 },
                 "custom_fields": {
@@ -2014,6 +2100,7 @@
                   "type": "string"
                 },
                 "due_at": {
+                  "description": "When a task is due, as a number of seconds since 1 January 1970 UTC. Missing when nothing is due.",
                   "type": "number"
                 },
                 "id": {
@@ -2178,9 +2265,11 @@
                   "type": "string"
                 },
                 "updated_at": {
+                  "description": "When the conversation last changed, as a number of seconds since 1 January 1970 UTC.",
                   "type": "number"
                 },
                 "waiting_since": {
+                  "description": "When the oldest message nobody has replied to arrived, as a number of seconds since 1 January 1970 UTC (not milliseconds, and not a date in words). Front may leave it out. To get how long each conversation has waited, already worked out and written in words, use 'List unassigned conversations'.",
                   "type": "number"
                 }
               },
@@ -2517,6 +2606,270 @@
         "read"
       ]
     },
+    "list_unassigned_conversations": {
+      "description": "List the open conversations nobody is assigned to, with the inbox each is in, who it is from, how long it has waited for a reply and a link that opens it in Front. Optionally keep only those that have waited at least a number of hours. The result comes as one list, grouped by inbox, and as text ready to post in a message under a heading for each inbox.",
+      "display_name": "List unassigned conversations",
+      "display_str_template": "List unassigned conversations.",
+      "handler": "actions.list_unassigned_conversations",
+      "id": "front_list_unassigned_conversations",
+      "method": "POST",
+      "mock_response": {
+        "by_inbox": [
+          {
+            "conversations": [
+              {
+                "from_address": "dana@example.com",
+                "from_name": "Dana Cruz",
+                "id": "cnv_55c8c149",
+                "inbox_id": "inb_55c8c149",
+                "inbox_name": "Support",
+                "link": "https://app.frontapp.com/open/cnv_55c8c149",
+                "status": "unassigned",
+                "subject": "Where is my order?",
+                "tags": [
+                  "Urgent"
+                ],
+                "waiting_display": "5 hours",
+                "waiting_hours": 5.0,
+                "waiting_since": "2026-11-12T04:00:00Z",
+                "waiting_since_display": "Thu, Nov 12, 2026 at 4:00 AM UTC"
+              }
+            ],
+            "conversations_text": "\u2022 Where is my order? - Dana Cruz - waiting 5 hours: https://app.frontapp.com/open/cnv_55c8c149",
+            "count": 1,
+            "inbox_id": "inb_55c8c149",
+            "inbox_name": "Support"
+          }
+        ],
+        "conversations": [
+          {
+            "from_address": "dana@example.com",
+            "from_name": "Dana Cruz",
+            "id": "cnv_55c8c149",
+            "inbox_id": "inb_55c8c149",
+            "inbox_name": "Support",
+            "link": "https://app.frontapp.com/open/cnv_55c8c149",
+            "status": "unassigned",
+            "subject": "Where is my order?",
+            "tags": [
+              "Urgent"
+            ],
+            "waiting_display": "5 hours",
+            "waiting_hours": 5.0,
+            "waiting_since": "2026-11-12T04:00:00Z",
+            "waiting_since_display": "Thu, Nov 12, 2026 at 4:00 AM UTC"
+          }
+        ],
+        "count": 1,
+        "has_more": false,
+        "inboxes_checked": 1,
+        "status": "success",
+        "text": "Support (1 conversation)\n\u2022 Where is my order? - Dana Cruz - waiting 5 hours: https://app.frontapp.com/open/cnv_55c8c149"
+      },
+      "name": "list_unassigned_conversations",
+      "parameters": [
+        {
+          "description": "Only list conversations that have waited this many hours or more for a reply, such as 4. Leave blank to list every unassigned conversation.",
+          "display_name": "Waiting at least (hours)",
+          "minimum": 0,
+          "name": "waiting_at_least_hours",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The inboxes to look in. Leave blank to look in every shared inbox; a teammate's own private inbox is only looked in when you choose it here.",
+          "display_name": "Inboxes",
+          "dynamic_source": "inboxes",
+          "multi_select": true,
+          "name": "inbox_ids",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        }
+      ],
+      "path": "/actions/library/front/list-unassigned-conversations",
+      "result_str_template": "Found {front_list_unassigned_conversations,count} unassigned conversations",
+      "returns": {
+        "properties": {
+          "by_inbox": {
+            "description": "The same conversations grouped by inbox, the inbox with the most first. Inboxes with none are left out.",
+            "items": {
+              "properties": {
+                "conversations": {
+                  "description": "This inbox's conversations, the longest-waiting first.",
+                  "items": {
+                    "properties": {
+                      "from_address": {
+                        "description": "That person's email address, or their phone number or handle on a text or social channel. Blank when Front gives none.",
+                        "type": "string"
+                      },
+                      "from_name": {
+                        "description": "The name of the person the conversation is with. Blank when Front has no name for them.",
+                        "type": "string"
+                      },
+                      "id": {
+                        "description": "The conversation's Front id, such as cnv_55c8c149, for a later Front step such as 'Assign a conversation'.",
+                        "type": "string"
+                      },
+                      "inbox_id": {
+                        "description": "The Front id of the inbox it was found in.",
+                        "type": "string"
+                      },
+                      "inbox_name": {
+                        "description": "The name of the inbox it was found in, such as Support.",
+                        "type": "string"
+                      },
+                      "link": {
+                        "description": "The link that opens the conversation in Front.",
+                        "type": "string"
+                      },
+                      "status": {
+                        "description": "The conversation's status in Front, which is always unassigned.",
+                        "type": "string"
+                      },
+                      "subject": {
+                        "description": "The conversation's subject. Blank when it has none.",
+                        "type": "string"
+                      },
+                      "tags": {
+                        "description": "The names of the tags on the conversation. Empty when none.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "waiting_display": {
+                        "description": "How long it has waited, in words, such as 35 minutes, 5 hours or 2 days. Blank when Front does not say since when.",
+                        "type": "string"
+                      },
+                      "waiting_hours": {
+                        "description": "How many hours the conversation has waited for a reply, such as 5.5. Empty when Front does not say since when.",
+                        "type": "number"
+                      },
+                      "waiting_since": {
+                        "description": "When the oldest message nobody has replied to arrived, as a UTC date and time such as 2026-11-12T05:00:00Z. Blank when Front does not say.",
+                        "type": "string"
+                      },
+                      "waiting_since_display": {
+                        "description": "That time written for a message, such as Thu, Nov 12, 2026 at 5:00 AM UTC. Blank when Front does not say.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "conversations_text": {
+                  "description": "This inbox's conversations ready to post, one line each: the subject, who it is from, how long it has waited and its link.",
+                  "type": "string"
+                },
+                "count": {
+                  "description": "How many conversations are listed for it.",
+                  "type": "integer"
+                },
+                "inbox_id": {
+                  "description": "The inbox's Front id.",
+                  "type": "string"
+                },
+                "inbox_name": {
+                  "description": "The inbox's name, such as Support.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "conversations": {
+            "description": "Every conversation found, the longest-waiting first. A conversation that is in two of the inboxes is listed once, under the first. Empty when there are none.",
+            "items": {
+              "properties": {
+                "from_address": {
+                  "description": "That person's email address, or their phone number or handle on a text or social channel. Blank when Front gives none.",
+                  "type": "string"
+                },
+                "from_name": {
+                  "description": "The name of the person the conversation is with. Blank when Front has no name for them.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The conversation's Front id, such as cnv_55c8c149, for a later Front step such as 'Assign a conversation'.",
+                  "type": "string"
+                },
+                "inbox_id": {
+                  "description": "The Front id of the inbox it was found in.",
+                  "type": "string"
+                },
+                "inbox_name": {
+                  "description": "The name of the inbox it was found in, such as Support.",
+                  "type": "string"
+                },
+                "link": {
+                  "description": "The link that opens the conversation in Front.",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "The conversation's status in Front, which is always unassigned.",
+                  "type": "string"
+                },
+                "subject": {
+                  "description": "The conversation's subject. Blank when it has none.",
+                  "type": "string"
+                },
+                "tags": {
+                  "description": "The names of the tags on the conversation. Empty when none.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "waiting_display": {
+                  "description": "How long it has waited, in words, such as 35 minutes, 5 hours or 2 days. Blank when Front does not say since when.",
+                  "type": "string"
+                },
+                "waiting_hours": {
+                  "description": "How many hours the conversation has waited for a reply, such as 5.5. Empty when Front does not say since when.",
+                  "type": "number"
+                },
+                "waiting_since": {
+                  "description": "When the oldest message nobody has replied to arrived, as a UTC date and time such as 2026-11-12T05:00:00Z. Blank when Front does not say.",
+                  "type": "string"
+                },
+                "waiting_since_display": {
+                  "description": "That time written for a message, such as Thu, Nov 12, 2026 at 5:00 AM UTC. Blank when Front does not say.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many conversations were found: 0 when there are none, so a later step can skip posting.",
+            "type": "integer"
+          },
+          "has_more": {
+            "description": "True when there were too many unassigned conversations to read in one go (more than about 4,000), so the list is incomplete. Choose fewer inboxes to see the rest.",
+            "type": "boolean"
+          },
+          "inboxes_checked": {
+            "description": "How many inboxes were looked in.",
+            "type": "integer"
+          },
+          "status": {
+            "description": "Status of the action execution (\"success\" on success).",
+            "type": "string"
+          },
+          "text": {
+            "description": "The whole list ready to post in one message: each inbox's name and how many it has, then one line per conversation with its subject, who it is from, how long it has waited and its link. Blank when there are none.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "remove_conversation_tags": {
       "description": "Take tags off a conversation. Any tag you do not name is left where it is.",
       "display_name": "Remove tags from a conversation",
@@ -2743,7 +3096,7 @@
       "name": "search_conversations",
       "parameters": [
         {
-          "description": "Words to search for, plus any of Front's filters: is:, inbox:, tag:, assignee:, from:, to:, before:, after:. is: accepts archived, assigned, open, resolved, snoozed, trashed, unassigned, unreplied, waiting. Trashed conversations are left out unless you ask for is:trashed.",
+          "description": "Words to search for (every word must appear in the subject or body; put a phrase in quotes), plus any of Front's filters, written as name:value with spaces between them, up to 15. is: takes a status: archived, assigned, open, resolved, snoozed, trashed, unassigned, unreplied, waiting (for example 'is:open is:unassigned'). inbox:, tag:, assignee:, participant:, author:, mention:, commenter:, contact: and link: take a Front id, not a name, such as inbox:inb_41w25, tag:tag_13o8r1 or assignee:tea_2thf (find them with 'List inboxes', 'List tags' and 'List teammates'). from:, to:, cc:, bcc: and recipient: take an email address or other handle. before:, after: and during: take a time as a number of seconds since 1 January 1970 UTC, such as after:1748000000, and match any message or comment in the conversation. Filters all have to match, except that repeating from:, to:, cc: or bcc: matches any of the repeated values. Trashed conversations are left out unless you ask for is:trashed. Results come most recently active first. There is no filter for how long a conversation has waited: use 'List unassigned conversations' for that.",
           "display_name": "Search query",
           "name": "query",
           "required": true,
@@ -2771,7 +3124,7 @@
       "returns": {
         "properties": {
           "conversations": {
-            "description": "The conversations on this page of results.",
+            "description": "The conversations on this page of results. A conversation here does not say which inbox it is in, and its times are numbers of seconds, not dates in words.",
             "items": {
               "properties": {
                 "_links": {
@@ -2832,6 +3185,7 @@
                   "type": "object"
                 },
                 "created_at": {
+                  "description": "When the conversation started, as a number of seconds since 1 January 1970 UTC (a Unix time, often with a fraction), such as 1701292649.333. It is not a date in words.",
                   "type": "number"
                 },
                 "custom_fields": {
@@ -2841,6 +3195,7 @@
                   "type": "string"
                 },
                 "due_at": {
+                  "description": "When a task is due, as a number of seconds since 1 January 1970 UTC. Missing when nothing is due.",
                   "type": "number"
                 },
                 "id": {
@@ -3005,9 +3360,11 @@
                   "type": "string"
                 },
                 "updated_at": {
+                  "description": "When the conversation last changed, as a number of seconds since 1 January 1970 UTC.",
                   "type": "number"
                 },
                 "waiting_since": {
+                  "description": "When the oldest message nobody has replied to arrived, as a number of seconds since 1 January 1970 UTC (not milliseconds, and not a date in words). Front may leave it out. To get how long each conversation has waited, already worked out and written in words, use 'List unassigned conversations'.",
                   "type": "number"
                 }
               },
@@ -3388,5 +3745,97 @@
   "display_name": "Front",
   "id": "front",
   "logo": "https://www.lodol.com/app-icons/front-icon.svg",
-  "triggers": {}
+  "triggers": {
+    "front_conversation_tagged_trigger": {
+      "description": "Beta. Runs each time a tag is added to a Front conversation, by a teammate or by a Front rule, with the conversation's subject, the customer's email and name, the tag, who it is assigned to and a link to open it in Front. Name a tag to run only for that one, such as refund. Tags added before the workflow was turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Conversation tagged",
+      "id": "front_conversation_tagged_trigger",
+      "output": {
+        "assignee_email": "That teammate's email address. Empty when it is unassigned.",
+        "assignee_name": "The name of the teammate the conversation is assigned to. Empty when it is unassigned.",
+        "conversation_id": "The conversation's id, such as cnv_55c8c149, for 'Add an internal comment', 'Reply to a conversation' and the other conversation steps.",
+        "conversation_url": "A link that opens the conversation in Front, for a message or an approval request.",
+        "customer_email": "The customer's email address. Empty when the conversation is not by email (a text message, a chat); customer_handle has their number or username then.",
+        "customer_handle": "How the customer is reached on this conversation: their email address, phone number or username.",
+        "customer_name": "The customer's name, when Front knows it.",
+        "status": "The conversation's status: assigned, unassigned, archived or deleted.",
+        "subject": "The conversation's subject line.",
+        "tag_id": "That tag's id, such as tag_155.",
+        "tag_name": "The name of the tag that was just added, such as refund.",
+        "tag_names": "The names of all the tags on the conversation, as a list.",
+        "tagged_at": "When the tag was added, as ISO 8601 in UTC, such as 2026-11-06T14:05:00Z.",
+        "tagged_at_display": "When the tag was added as a person writes it, such as Nov 6, 2026 at 14:05 UTC.",
+        "tagged_by": "Who added the tag: the teammate's name, or the name of the Front rule that did it. Empty when Front doesn't say."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Beta. Run only when this tag is added: pick it from your Front tags, or type its name, such as refund; capital letters don't matter. Leave blank to run when any tag is added.",
+          "display_name": "Only this tag",
+          "name": "tag",
+          "required": false
+        }
+      ]
+    },
+    "front_new_conversation_trigger": {
+      "description": "Runs for each new conversation a customer starts in Front, such as a new email or message arriving in a shared inbox, with its subject, the customer's message, who they are, its inbox, tags and assignee, and a link to open it in Front. It can run only for one inbox. Conversations already there when the workflow is turned on don't start it, and neither do replies or conversations a teammate starts. How often it checks follows your workspace plan.",
+      "display_name": "New conversation",
+      "id": "front_new_conversation_trigger",
+      "output": {
+        "assignee_email": "That teammate's email address. Blank when unassigned.",
+        "assignee_name": "The name of the teammate it is assigned to. Blank when unassigned.",
+        "conversation_link": "A link a teammate can click to open the conversation in Front.",
+        "created_at": "When the conversation started, such as 2026-11-03T14:05:00Z.",
+        "created_display": "The day it started, ready to read, such as Nov 3, 2026.",
+        "from_email": "The customer's email address, such as jo@example.com (their phone number or handle for a text or social message).",
+        "from_name": "The customer's name, such as Jo Lee. Blank if Front has none.",
+        "id": "The conversation's id, such as cnv_55c8c149, for 'Add an internal comment', 'Add tags to a conversation' and the other conversation steps.",
+        "inbox_name": "The name of the inbox it arrived in, such as Support.",
+        "message_preview": "The first line or two of that message.",
+        "message_text": "The customer's first message as plain text. Very long messages are cut at 10,000 characters.",
+        "status": "unassigned, assigned or archived.",
+        "subject": "Its subject line. Blank for a chat or text message.",
+        "tags": "The names of the conversation's tags."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Beta. Only conversations that arrive in this inbox. Pick the inbox, or write its name as Front shows it, such as Support (capital letters don't matter). Leave blank for every inbox.",
+          "display_name": "Inbox",
+          "name": "inbox",
+          "required": false
+        }
+      ]
+    },
+    "front_new_inbound_message_trigger": {
+      "description": "Beta. Runs each time a customer's message arrives in Front, whether it starts a conversation or replies in one, with the message as plain text, the conversation's subject, the customer's email and name, its tags, who it is assigned to and a link to open it in Front. Messages that arrived before the workflow was turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "New inbound message",
+      "id": "front_new_inbound_message_trigger",
+      "output": {
+        "assignee_email": "That teammate's email address. Empty when it is unassigned.",
+        "assignee_name": "The name of the teammate the conversation is assigned to. Empty when it is unassigned.",
+        "conversation_id": "The conversation's id, such as cnv_55c8c149, for 'Add an internal comment', 'Reply to a conversation' and the other conversation steps.",
+        "conversation_url": "A link that opens the conversation in Front, for a message or an approval request.",
+        "customer_email": "The customer's email address. Empty when the conversation is not by email (a text message, a chat); customer_handle has their number or username then.",
+        "customer_handle": "How the customer is reached on this conversation: their email address, phone number or username.",
+        "customer_name": "The customer's name, when Front knows it.",
+        "message": "The message as plain text. Very long messages are cut at 10,000 characters.",
+        "message_id": "The message's id, such as msg_1q15qmtq.",
+        "received_at": "When the message arrived, as ISO 8601 in UTC, such as 2026-11-06T14:05:00Z.",
+        "received_at_display": "When the message arrived as a person writes it, such as Nov 6, 2026 at 14:05 UTC.",
+        "status": "The conversation's status: assigned, unassigned, archived or deleted.",
+        "subject": "The conversation's subject line.",
+        "tag_names": "The names of all the tags on the conversation, as a list."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Beta. Run only for messages arriving in this inbox: pick it from your Front inboxes, or type its name, such as Support; capital letters don't matter. Leave blank for every inbox.",
+          "display_name": "Only this inbox",
+          "name": "inbox",
+          "required": false
+        }
+      ]
+    }
+  }
 }

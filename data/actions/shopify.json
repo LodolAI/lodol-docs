@@ -1864,7 +1864,7 @@
       ]
     },
     "get_order": {
-      "description": "Get everything about one order: what was bought, the totals and refunds, the customer and addresses, and any shipments with tracking.",
+      "description": "Get everything about one order: what was bought, the totals and refunds, the customer and addresses, any shipments with tracking, and (beta) how Shopify rates its risk of fraud.",
       "display_name": "Get an order",
       "display_str_template": "Get {order_id}.",
       "handler": "actions.get_order",
@@ -1920,8 +1920,12 @@
           },
           "name": "#1042",
           "note": null,
+          "order_link": "https://admin.shopify.com/store/northbound-supply/orders/5001234567890",
           "phone": null,
           "processedAt": "2026-08-30T14:02:11Z",
+          "risk_level": "low",
+          "risk_reasons": "",
+          "risk_recommendation": "accept",
           "shippingAddress": {
             "address1": "418 Bathurst St",
             "city": "Toronto",
@@ -1971,6 +1975,7 @@
               "currencyCode": "USD"
             }
           },
+          "total_refunded_display": "$0.00",
           "updatedAt": "2026-08-30T14:05:40Z"
         }
       },
@@ -2112,7 +2117,7 @@
                 "type": "object"
               },
               "displayFinancialStatus": {
-                "description": "PAID, PENDING, REFUNDED and the rest",
+                "description": "PENDING, AUTHORIZED, PARTIALLY_PAID, PAID, PARTIALLY_REFUNDED, REFUNDED, VOIDED or EXPIRED",
                 "type": "string"
               },
               "displayFulfillmentStatus": {
@@ -2278,12 +2283,28 @@
                 "description": "Staff note on the order",
                 "type": "string"
               },
+              "order_link": {
+                "description": "Beta. A link that opens the order in the Shopify admin, for someone who works in the store.",
+                "type": "string"
+              },
               "phone": {
                 "description": "Contact phone on the order",
                 "type": "string"
               },
               "processedAt": {
                 "description": "When it was processed",
+                "type": "string"
+              },
+              "risk_level": {
+                "description": "Beta. How likely Shopify (and any fraud app the store uses) rates the order to be fraud: high, medium, low or none, the highest any of them gives. pending while the analysis hasn't finished, which takes a few moments after an order is placed, or when the order isn't analysed at all, such as one made at a point of sale.",
+                "type": "string"
+              },
+              "risk_reasons": {
+                "description": "Beta. The reasons the analysis counts against the order, such as 'Billing address is far from the IP address', joined with '; '. Blank when there are none.",
+                "type": "string"
+              },
+              "risk_recommendation": {
+                "description": "Beta. What Shopify advises doing with the order: accept, investigate, cancel, or none while it hasn't said.",
                 "type": "string"
               },
               "shippingAddress": {
@@ -2464,6 +2485,10 @@
                   }
                 },
                 "type": "object"
+              },
+              "total_refunded_display": {
+                "description": "Beta. What has been refunded on the order so far as a person writes it, such as $20.00 (or 20.00 EUR in another currency), ready to put in a note or message.",
+                "type": "string"
               },
               "updatedAt": {
                 "description": "When it last changed",
@@ -3083,6 +3108,145 @@
       },
       "scopes": [
         "read"
+      ]
+    },
+    "hold_order_fulfillment": {
+      "description": "Stop an order from being shipped until someone releases it, as the admin's Hold fulfillment button does: for an order that needs checking or approving first. Release it with Release an order's fulfillment hold.",
+      "display_name": "Hold an order's fulfillment",
+      "display_str_template": "Hold the fulfillment of {order_id}.",
+      "handler": "actions.hold_order_fulfillment",
+      "id": "shopify_hold_order_fulfillment",
+      "method": "POST",
+      "mock_response": {
+        "fulfillment_orders": [
+          {
+            "id": "gid://shopify/FulfillmentOrder/6001234567890",
+            "status": "ON_HOLD"
+          }
+        ],
+        "held_count": 1,
+        "on_hold": true,
+        "order_id": "gid://shopify/Order/5001234567890",
+        "order_name": "#1042",
+        "reason": "OTHER"
+      },
+      "name": "hold_order_fulfillment",
+      "output_formatter": "actions.format_hold_output",
+      "parameters": [
+        {
+          "description": "The order, from an earlier step, or the number at the end of its page's address in the Shopify admin (not the #1001 customers see).",
+          "display_name": "Order",
+          "examples": [
+            {
+              "label": "From the Shopify admin",
+              "value": "5001234567890"
+            },
+            {
+              "label": "From an earlier step",
+              "value": "gid://shopify/Order/5001234567890"
+            }
+          ],
+          "label_source": "order_names",
+          "name": "order_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "OTHER",
+          "description": "Why it is held. Your team sees it on the order in the Shopify admin.",
+          "display_name": "Reason",
+          "name": "reason",
+          "options": [
+            {
+              "label": "Waiting for someone to check it",
+              "value": "OTHER"
+            },
+            {
+              "label": "It might be fraud",
+              "value": "HIGH_RISK_OF_FRAUD"
+            },
+            {
+              "label": "Waiting for payment",
+              "value": "AWAITING_PAYMENT"
+            },
+            {
+              "label": "The address needs checking",
+              "value": "INCORRECT_ADDRESS"
+            },
+            {
+              "label": "Out of stock",
+              "value": "INVENTORY_OUT_OF_STOCK"
+            },
+            {
+              "label": "The delivery date isn't known yet",
+              "value": "UNKNOWN_DELIVERY_DATE"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "A note for your team about the hold, such as 'Over $1,000 from a first-time customer: waiting for ops to approve'. The customer doesn't see it.",
+          "display_name": "Note",
+          "name": "reason_note",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "On, Shopify notifies the store's staff about the hold.",
+          "display_name": "Notify the store's staff",
+          "name": "notify_merchant",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/shopify/hold-order-fulfillment",
+      "result_str_template": "Order's fulfillment held.",
+      "returns": {
+        "properties": {
+          "fulfillment_orders": {
+            "description": "The order's fulfillment orders on hold",
+            "items": {
+              "properties": {
+                "id": {
+                  "description": "The fulfillment order's id (gid://shopify/FulfillmentOrder/...)",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "ON_HOLD while held, OPEN once released",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "held_count": {
+            "description": "How many of its fulfillment orders this step held: 1 for an order shipped from one location, 0 if it was already on hold",
+            "type": "number"
+          },
+          "on_hold": {
+            "description": "Whether the order's shipping is now on hold: true",
+            "type": "boolean"
+          },
+          "order_id": {
+            "description": "The order's id (gid://shopify/Order/...)",
+            "type": "string"
+          },
+          "order_name": {
+            "description": "The order's number customers see, such as #1042",
+            "type": "string"
+          },
+          "reason": {
+            "description": "The reason given, such as OTHER",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
       ]
     },
     "list_abandoned_checkouts": {
@@ -3907,6 +4071,7 @@
               "wholesale"
             ],
             "test": false,
+            "total": 54.6,
             "totalPriceSet": {
               "shopMoney": {
                 "amount": "54.60",
@@ -4294,7 +4459,7 @@
                   "type": "object"
                 },
                 "displayFinancialStatus": {
-                  "description": "PAID, PENDING, REFUNDED and the rest",
+                  "description": "PENDING, AUTHORIZED, PARTIALLY_PAID, PAID, PARTIALLY_REFUNDED, REFUNDED, VOIDED or EXPIRED",
                   "type": "string"
                 },
                 "displayFulfillmentStatus": {
@@ -4446,6 +4611,13 @@
                 "test": {
                   "description": "Whether it was placed with a test gateway",
                   "type": "boolean"
+                },
+                "total": {
+                  "description": "Beta. The order's total as a plain number in the store's currency, such as 49.0, for a comparison (an order under $100) without reading totalPriceSet.shopMoney.amount.",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
                 },
                 "totalPriceSet": {
                   "description": "What the customer paid. For sales figures, Get one field from every order (totalPriceSet.shopMoney.amount) and Calculate total on that; an average needs at least one order.",
@@ -5396,7 +5568,7 @@
                 "type": "object"
               },
               "displayFinancialStatus": {
-                "description": "PAID, PENDING, REFUNDED and the rest",
+                "description": "PENDING, AUTHORIZED, PARTIALLY_PAID, PAID, PARTIALLY_REFUNDED, REFUNDED, VOIDED or EXPIRED",
                 "type": "string"
               },
               "displayFulfillmentStatus": {
@@ -5602,6 +5774,181 @@
               }
             },
             "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "refund_order": {
+      "description": "Refund everything the customer paid for an order, items and shipping, back to the card or other way they paid. The order stays open, so one that has already shipped can be refunded too. To cancel an order that hasn't shipped, use Cancel an order instead.",
+      "display_name": "Refund an order",
+      "display_str_template": "Refund {order_id}.",
+      "handler": "actions.refund_order",
+      "id": "shopify_refund_order",
+      "method": "POST",
+      "mock_response": {
+        "amount": 54.6,
+        "amount_display": "$54.60",
+        "order_id": "gid://shopify/Order/5001234567890",
+        "order_name": "#1001",
+        "refund_id": "gid://shopify/Refund/8001234567890"
+      },
+      "name": "refund_order",
+      "output_formatter": "actions.format_refund_output",
+      "parameters": [
+        {
+          "description": "The order, from an earlier step, or the number at the end of its page's address in the Shopify admin (not the #1001 customers see).",
+          "display_name": "Order",
+          "examples": [
+            {
+              "label": "From the Shopify admin",
+              "value": "5001234567890"
+            },
+            {
+              "label": "From an earlier step",
+              "value": "gid://shopify/Order/5001234567890"
+            }
+          ],
+          "label_source": "order_names",
+          "name": "order_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "On, the order's items go back into stock, for goods the customer is returning. Off (the default), stock is left as it is.",
+          "display_name": "Put items back in stock",
+          "name": "restock",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "On, Shopify emails the customer a refund receipt.",
+          "display_name": "Email the customer",
+          "name": "notify_customer",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Why the order was refunded, kept on the order for your team.",
+          "display_name": "Note",
+          "name": "note",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/shopify/refund-order",
+      "result_str_template": "Order refunded.",
+      "returns": {
+        "properties": {
+          "amount": {
+            "description": "How much was refunded, in the store's currency",
+            "type": "number"
+          },
+          "amount_display": {
+            "description": "How much was refunded as a person writes it, such as $54.60, ready for a reply to the customer",
+            "type": "string"
+          },
+          "order_id": {
+            "description": "The order that was refunded",
+            "type": "string"
+          },
+          "order_name": {
+            "description": "The order's number as customers see it, such as #1042",
+            "type": "string"
+          },
+          "refund_id": {
+            "description": "The refund's id in Shopify",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "modify"
+      ]
+    },
+    "release_order_fulfillment_hold": {
+      "description": "Let a held order be shipped again, for example once someone has approved it. An order that isn't on hold is left as it is.",
+      "display_name": "Release an order's fulfillment hold",
+      "display_str_template": "Release the hold on {order_id}.",
+      "handler": "actions.release_order_fulfillment_hold",
+      "id": "shopify_release_order_fulfillment_hold",
+      "method": "POST",
+      "mock_response": {
+        "fulfillment_orders": [
+          {
+            "id": "gid://shopify/FulfillmentOrder/6001234567890",
+            "status": "OPEN"
+          }
+        ],
+        "on_hold": false,
+        "order_id": "gid://shopify/Order/5001234567890",
+        "order_name": "#1042",
+        "released_count": 1
+      },
+      "name": "release_order_fulfillment_hold",
+      "output_formatter": "actions.format_hold_output",
+      "parameters": [
+        {
+          "description": "The order, from an earlier step, or the number at the end of its page's address in the Shopify admin (not the #1001 customers see).",
+          "display_name": "Order",
+          "examples": [
+            {
+              "label": "From the Shopify admin",
+              "value": "5001234567890"
+            },
+            {
+              "label": "From an earlier step",
+              "value": "gid://shopify/Order/5001234567890"
+            }
+          ],
+          "label_source": "order_names",
+          "name": "order_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/shopify/release-order-fulfillment-hold",
+      "result_str_template": "Order's fulfillment hold released.",
+      "returns": {
+        "properties": {
+          "fulfillment_orders": {
+            "description": "The fulfillment orders released, now ready to ship",
+            "items": {
+              "properties": {
+                "id": {
+                  "description": "The fulfillment order's id (gid://shopify/FulfillmentOrder/...)",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "ON_HOLD while held, OPEN once released",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "on_hold": {
+            "description": "Whether the order's shipping is still on hold: false once released",
+            "type": "boolean"
+          },
+          "order_id": {
+            "description": "The order's id (gid://shopify/Order/...)",
+            "type": "string"
+          },
+          "order_name": {
+            "description": "The order's number customers see, such as #1042",
+            "type": "string"
+          },
+          "released_count": {
+            "description": "How many of its fulfillment orders were released: 0 if nothing was on hold",
+            "type": "number"
           }
         },
         "type": "object"
@@ -6342,7 +6689,7 @@
                 "type": "object"
               },
               "displayFinancialStatus": {
-                "description": "PAID, PENDING, REFUNDED and the rest",
+                "description": "PENDING, AUTHORIZED, PARTIALLY_PAID, PAID, PARTIALLY_REFUNDED, REFUNDED, VOIDED or EXPIRED",
                 "type": "string"
               },
               "displayFulfillmentStatus": {
@@ -7177,13 +7524,16 @@
       ]
     },
     "shopify_new_order_trigger": {
-      "description": "Runs when an order is placed in your store, paid or not. Use Order paid to run only once the money is in.",
+      "description": "Runs when an order is placed in your store, paid or not. Use Order paid to run only once the money is in. Can be kept to orders Shopify rates at high (or medium) risk of fraud.",
       "display_name": "New order",
       "id": "shopify_new_order_trigger",
       "output": {
+        "addresses_differ": "Beta. True when the order ships somewhere other than its billing address (street, city, postcode or country differ, ignoring case and spacing), as a fraud check reads it with no step to compare them. False when they match or when either is missing, such as an order with nothing to ship.",
+        "billingAddress": "Beta. The billing address the customer gave, with the same fields as shippingAddress. Empty when the order has none.",
+        "billing_address_display": "Beta. The billing address on one line, the same way. Empty when the order has none.",
         "createdAt": "When the order was placed.",
         "customer": "The customer: id, displayName, firstName, lastName, email, phone and numberOfOrders (their orders in your store so far, this one included: 1 means a first-time customer). Empty for a guest checkout, whose name is then blank: use the order's email to say who ordered.",
-        "displayFinancialStatus": "Payment status, such as PAID or PENDING.",
+        "displayFinancialStatus": "Payment status: PENDING, AUTHORIZED, PARTIALLY_PAID, PAID, PARTIALLY_REFUNDED, REFUNDED, VOIDED or EXPIRED.",
         "displayFulfillmentStatus": "Shipping status, such as UNFULFILLED or FULFILLED.",
         "email": "The customer's email address.",
         "fulfilled_at": "When its latest shipment was made; empty if none.",
@@ -7192,10 +7542,15 @@
         "legacyResourceId": "The order's number in the admin's address bar.",
         "name": "The order's name customers see, such as #1001.",
         "note": "The order note.",
+        "order_link": "Beta. The order's page in your Shopify admin, for a message that lets someone open it.",
         "paid_at": "When its latest payment went through; empty if unpaid.",
         "phone": "The customer's phone number.",
         "products": "The line items: title, quantity, sku and total (the first ten).",
+        "risk_level": "Beta. How likely Shopify (and any fraud app the store uses) rates the order to be fraud: high, medium, low or none, the highest any of them gives. pending while the analysis hasn't finished, as it often hasn't for a brand-new order (the risk filter waits for it), or for an order Shopify doesn't analyse, such as one made at a point of sale.",
+        "risk_reasons": "Beta. The reasons the analysis counts against the order, such as 'Billing address is far from the IP address', joined with '; '. Blank when there are none.",
+        "risk_recommendation": "Beta. What Shopify advises doing with the order: accept, investigate, cancel, or none while it hasn't said.",
         "shippingAddress": "Where it ships to: firstName, lastName, company, address1, address2, city, province, provinceCode, country (the name), countryCodeV2 (US, CA, GB), zip and phone. Empty for an order with nothing to ship, such as a digital product.",
+        "shipping_address_display": "Beta. The shipping address on one line, as a person writes it (Ada Lovelace, 12 Main St, Springfield, IL 62701, United States), for a message. Empty when there is nothing to ship.",
         "subtotalPriceSet": "The subtotal, as shopMoney.amount and shopMoney.currencyCode.",
         "tags": "The order's tags.",
         "test": "Whether it is a test order.",
@@ -7215,6 +7570,13 @@
           "description": "Beta. Enter yes to run only for a customer's first order in your store, so a first-order thank-you or welcome needs no check of its own. Guest checkouts, which Shopify does not link to a customer, are left out. Leave empty to run for every order.",
           "display_name": "Only a customer's first order",
           "name": "first_orders_only",
+          "required": false
+        },
+        {
+          "arg_index": 2,
+          "description": "Beta. Enter high to run only for orders Shopify rates at high risk of fraud, or medium for medium or high, so a fraud review needs no check of its own. Shopify rates an order a few moments after it is placed, so these runs start once the rating is in (up to 30 minutes later); an order Shopify never rates is left out. Leave empty to run for every order.",
+          "display_name": "Only orders Shopify rates as",
+          "name": "risk_level",
           "required": false
         }
       ]
@@ -7246,11 +7608,14 @@
       "display_name": "Order cancelled",
       "id": "shopify_order_cancelled_trigger",
       "output": {
+        "addresses_differ": "Beta. True when the order ships somewhere other than its billing address (street, city, postcode or country differ, ignoring case and spacing), as a fraud check reads it with no step to compare them. False when they match or when either is missing, such as an order with nothing to ship.",
+        "billingAddress": "Beta. The billing address the customer gave, with the same fields as shippingAddress. Empty when the order has none.",
+        "billing_address_display": "Beta. The billing address on one line, the same way. Empty when the order has none.",
         "cancelReason": "Why: CUSTOMER, DECLINED, FRAUD, INVENTORY, STAFF or OTHER.",
         "cancelledAt": "When it was cancelled.",
         "createdAt": "When the order was placed.",
         "customer": "The customer: id, displayName, firstName, lastName, email, phone and numberOfOrders (their orders in your store so far, this one included: 1 means a first-time customer). Empty for a guest checkout, whose name is then blank: use the order's email to say who ordered.",
-        "displayFinancialStatus": "Payment status, such as PAID or PENDING.",
+        "displayFinancialStatus": "Payment status: PENDING, AUTHORIZED, PARTIALLY_PAID, PAID, PARTIALLY_REFUNDED, REFUNDED, VOIDED or EXPIRED.",
         "displayFulfillmentStatus": "Shipping status, such as UNFULFILLED or FULFILLED.",
         "email": "The customer's email address.",
         "fulfilled_at": "When its latest shipment was made; empty if none.",
@@ -7259,10 +7624,15 @@
         "legacyResourceId": "The order's number in the admin's address bar.",
         "name": "The order's name customers see, such as #1001.",
         "note": "The order note.",
+        "order_link": "Beta. The order's page in your Shopify admin, for a message that lets someone open it.",
         "paid_at": "When its latest payment went through; empty if unpaid.",
         "phone": "The customer's phone number.",
         "products": "The line items: title, quantity, sku and total (the first ten).",
+        "risk_level": "Beta. How likely Shopify (and any fraud app the store uses) rates the order to be fraud: high, medium, low or none, the highest any of them gives. pending while the analysis hasn't finished, as it often hasn't for a brand-new order (the risk filter waits for it), or for an order Shopify doesn't analyse, such as one made at a point of sale.",
+        "risk_reasons": "Beta. The reasons the analysis counts against the order, such as 'Billing address is far from the IP address', joined with '; '. Blank when there are none.",
+        "risk_recommendation": "Beta. What Shopify advises doing with the order: accept, investigate, cancel, or none while it hasn't said.",
         "shippingAddress": "Where it ships to: firstName, lastName, company, address1, address2, city, province, provinceCode, country (the name), countryCodeV2 (US, CA, GB), zip and phone. Empty for an order with nothing to ship, such as a digital product.",
+        "shipping_address_display": "Beta. The shipping address on one line, as a person writes it (Ada Lovelace, 12 Main St, Springfield, IL 62701, United States), for a message. Empty when there is nothing to ship.",
         "subtotalPriceSet": "The subtotal, as shopMoney.amount and shopMoney.currencyCode.",
         "tags": "The order's tags.",
         "test": "Whether it is a test order.",
@@ -7276,9 +7646,12 @@
       "display_name": "Order shipped",
       "id": "shopify_order_fulfilled_trigger",
       "output": {
+        "addresses_differ": "Beta. True when the order ships somewhere other than its billing address (street, city, postcode or country differ, ignoring case and spacing), as a fraud check reads it with no step to compare them. False when they match or when either is missing, such as an order with nothing to ship.",
+        "billingAddress": "Beta. The billing address the customer gave, with the same fields as shippingAddress. Empty when the order has none.",
+        "billing_address_display": "Beta. The billing address on one line, the same way. Empty when the order has none.",
         "createdAt": "When the order was placed.",
         "customer": "The customer: id, displayName, firstName, lastName, email, phone and numberOfOrders (their orders in your store so far, this one included: 1 means a first-time customer). Empty for a guest checkout, whose name is then blank: use the order's email to say who ordered.",
-        "displayFinancialStatus": "Payment status, such as PAID or PENDING.",
+        "displayFinancialStatus": "Payment status: PENDING, AUTHORIZED, PARTIALLY_PAID, PAID, PARTIALLY_REFUNDED, REFUNDED, VOIDED or EXPIRED.",
         "displayFulfillmentStatus": "Shipping status, such as UNFULFILLED or FULFILLED.",
         "email": "The customer's email address.",
         "fulfilled_at": "When its latest shipment was made; empty if none.",
@@ -7287,10 +7660,15 @@
         "legacyResourceId": "The order's number in the admin's address bar.",
         "name": "The order's name customers see, such as #1001.",
         "note": "The order note.",
+        "order_link": "Beta. The order's page in your Shopify admin, for a message that lets someone open it.",
         "paid_at": "When its latest payment went through; empty if unpaid.",
         "phone": "The customer's phone number.",
         "products": "The line items: title, quantity, sku and total (the first ten).",
+        "risk_level": "Beta. How likely Shopify (and any fraud app the store uses) rates the order to be fraud: high, medium, low or none, the highest any of them gives. pending while the analysis hasn't finished, as it often hasn't for a brand-new order (the risk filter waits for it), or for an order Shopify doesn't analyse, such as one made at a point of sale.",
+        "risk_reasons": "Beta. The reasons the analysis counts against the order, such as 'Billing address is far from the IP address', joined with '; '. Blank when there are none.",
+        "risk_recommendation": "Beta. What Shopify advises doing with the order: accept, investigate, cancel, or none while it hasn't said.",
         "shippingAddress": "Where it ships to: firstName, lastName, company, address1, address2, city, province, provinceCode, country (the name), countryCodeV2 (US, CA, GB), zip and phone. Empty for an order with nothing to ship, such as a digital product.",
+        "shipping_address_display": "Beta. The shipping address on one line, as a person writes it (Ada Lovelace, 12 Main St, Springfield, IL 62701, United States), for a message. Empty when there is nothing to ship.",
         "subtotalPriceSet": "The subtotal, as shopMoney.amount and shopMoney.currencyCode.",
         "tags": "The order's tags.",
         "test": "Whether it is a test order.",
@@ -7304,9 +7682,12 @@
       "display_name": "Order paid",
       "id": "shopify_order_paid_trigger",
       "output": {
+        "addresses_differ": "Beta. True when the order ships somewhere other than its billing address (street, city, postcode or country differ, ignoring case and spacing), as a fraud check reads it with no step to compare them. False when they match or when either is missing, such as an order with nothing to ship.",
+        "billingAddress": "Beta. The billing address the customer gave, with the same fields as shippingAddress. Empty when the order has none.",
+        "billing_address_display": "Beta. The billing address on one line, the same way. Empty when the order has none.",
         "createdAt": "When the order was placed.",
         "customer": "The customer: id, displayName, firstName, lastName, email, phone and numberOfOrders (their orders in your store so far, this one included: 1 means a first-time customer). Empty for a guest checkout, whose name is then blank: use the order's email to say who ordered.",
-        "displayFinancialStatus": "Payment status, such as PAID or PENDING.",
+        "displayFinancialStatus": "Payment status: PENDING, AUTHORIZED, PARTIALLY_PAID, PAID, PARTIALLY_REFUNDED, REFUNDED, VOIDED or EXPIRED.",
         "displayFulfillmentStatus": "Shipping status, such as UNFULFILLED or FULFILLED.",
         "email": "The customer's email address.",
         "fulfilled_at": "When its latest shipment was made; empty if none.",
@@ -7315,10 +7696,15 @@
         "legacyResourceId": "The order's number in the admin's address bar.",
         "name": "The order's name customers see, such as #1001.",
         "note": "The order note.",
+        "order_link": "Beta. The order's page in your Shopify admin, for a message that lets someone open it.",
         "paid_at": "When its latest payment went through; empty if unpaid.",
         "phone": "The customer's phone number.",
         "products": "The line items: title, quantity, sku and total (the first ten).",
+        "risk_level": "Beta. How likely Shopify (and any fraud app the store uses) rates the order to be fraud: high, medium, low or none, the highest any of them gives. pending while the analysis hasn't finished, as it often hasn't for a brand-new order (the risk filter waits for it), or for an order Shopify doesn't analyse, such as one made at a point of sale.",
+        "risk_reasons": "Beta. The reasons the analysis counts against the order, such as 'Billing address is far from the IP address', joined with '; '. Blank when there are none.",
+        "risk_recommendation": "Beta. What Shopify advises doing with the order: accept, investigate, cancel, or none while it hasn't said.",
         "shippingAddress": "Where it ships to: firstName, lastName, company, address1, address2, city, province, provinceCode, country (the name), countryCodeV2 (US, CA, GB), zip and phone. Empty for an order with nothing to ship, such as a digital product.",
+        "shipping_address_display": "Beta. The shipping address on one line, as a person writes it (Ada Lovelace, 12 Main St, Springfield, IL 62701, United States), for a message. Empty when there is nothing to ship.",
         "subtotalPriceSet": "The subtotal, as shopMoney.amount and shopMoney.currencyCode.",
         "tags": "The order's tags.",
         "test": "Whether it is a test order.",
@@ -7342,14 +7728,52 @@
         }
       ]
     },
+    "shopify_order_refunded_trigger": {
+      "description": "Runs each time money is refunded on an order in your store, in full or in part, with the refund's amount, the order and how many of the customer's orders have been refunded.",
+      "display_name": "Order refunded",
+      "id": "shopify_order_refunded_trigger",
+      "output": {
+        "currency": "Beta. The store's currency for the amounts, such as USD.",
+        "customer_email": "Beta. The customer's email address, or the one given on the order for a guest checkout. Blank when there is none.",
+        "customer_id": "Beta. The customer's ID (gid://shopify/Customer/...), for a later step such as Add tags. Blank for a guest checkout.",
+        "customer_name": "Beta. The customer's full name, such as Ana Silva. Blank for a guest checkout.",
+        "customer_refunded_orders": "Beta. How many of this customer's orders have been refunded in full or in part, this one included (250 at most), so 3 means this is their third refunded order. Empty for a guest checkout.",
+        "fully_refunded": "Beta. True when the whole order has now been refunded, false when only part of it has.",
+        "order_id": "Beta. The refunded order's ID (gid://shopify/Order/...), for a later Shopify step.",
+        "order_link": "Beta. A link that opens the order in the Shopify admin, for someone who works in the store.",
+        "order_name": "Beta. The order's name customers see, such as #1001.",
+        "order_total": "Beta. The order's total as a number, such as 320.",
+        "order_total_display": "Beta. The order's total as a person writes it, such as $320.00.",
+        "refund_amount": "Beta. How much this refund gave back, as a number in the store's currency, such as 250 or 84.5, ready to compare.",
+        "refund_display": "Beta. This refund's amount as a person writes it, such as $250.00. Use it in a message.",
+        "refund_id": "Beta. The refund's ID (gid://shopify/Refund/...).",
+        "refund_note": "Beta. The reason or note your team typed when making the refund, blank when they left none.",
+        "refunded_at": "Beta. When the refund was made, such as 2026-11-10T14:05:00Z.",
+        "refunded_display": "Beta. That day as a person writes it, such as November 10, 2026.",
+        "total_refunded": "Beta. Everything refunded on the order so far, this refund included, as a number.",
+        "total_refunded_display": "Beta. Everything refunded on the order so far as a person writes it, such as $250.00."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Beta. Only run for refunds of at least this much, in the store's currency (200 means $200), so a rule for bigger refunds needs no check of its own. It looks at this refund's own amount, not everything refunded on the order so far. Leave empty to run for every refund.",
+          "display_name": "Refund of at least",
+          "name": "minimum_refund",
+          "required": false
+        }
+      ]
+    },
     "shopify_order_updated_trigger": {
       "description": "Runs each time an order in your store changes, from being placed to being paid, edited, tagged, shipped, refunded or cancelled.",
       "display_name": "Order updated",
       "id": "shopify_order_updated_trigger",
       "output": {
+        "addresses_differ": "Beta. True when the order ships somewhere other than its billing address (street, city, postcode or country differ, ignoring case and spacing), as a fraud check reads it with no step to compare them. False when they match or when either is missing, such as an order with nothing to ship.",
+        "billingAddress": "Beta. The billing address the customer gave, with the same fields as shippingAddress. Empty when the order has none.",
+        "billing_address_display": "Beta. The billing address on one line, the same way. Empty when the order has none.",
         "createdAt": "When the order was placed.",
         "customer": "The customer: id, displayName, firstName, lastName, email, phone and numberOfOrders (their orders in your store so far, this one included: 1 means a first-time customer). Empty for a guest checkout, whose name is then blank: use the order's email to say who ordered.",
-        "displayFinancialStatus": "Payment status, such as PAID or PENDING.",
+        "displayFinancialStatus": "Payment status: PENDING, AUTHORIZED, PARTIALLY_PAID, PAID, PARTIALLY_REFUNDED, REFUNDED, VOIDED or EXPIRED.",
         "displayFulfillmentStatus": "Shipping status, such as UNFULFILLED or FULFILLED.",
         "email": "The customer's email address.",
         "fulfilled_at": "When its latest shipment was made; empty if none.",
@@ -7358,10 +7782,15 @@
         "legacyResourceId": "The order's number in the admin's address bar.",
         "name": "The order's name customers see, such as #1001.",
         "note": "The order note.",
+        "order_link": "Beta. The order's page in your Shopify admin, for a message that lets someone open it.",
         "paid_at": "When its latest payment went through; empty if unpaid.",
         "phone": "The customer's phone number.",
         "products": "The line items: title, quantity, sku and total (the first ten).",
+        "risk_level": "Beta. How likely Shopify (and any fraud app the store uses) rates the order to be fraud: high, medium, low or none, the highest any of them gives. pending while the analysis hasn't finished, as it often hasn't for a brand-new order (the risk filter waits for it), or for an order Shopify doesn't analyse, such as one made at a point of sale.",
+        "risk_reasons": "Beta. The reasons the analysis counts against the order, such as 'Billing address is far from the IP address', joined with '; '. Blank when there are none.",
+        "risk_recommendation": "Beta. What Shopify advises doing with the order: accept, investigate, cancel, or none while it hasn't said.",
         "shippingAddress": "Where it ships to: firstName, lastName, company, address1, address2, city, province, provinceCode, country (the name), countryCodeV2 (US, CA, GB), zip and phone. Empty for an order with nothing to ship, such as a digital product.",
+        "shipping_address_display": "Beta. The shipping address on one line, as a person writes it (Ada Lovelace, 12 Main St, Springfield, IL 62701, United States), for a message. Empty when there is nothing to ship.",
         "subtotalPriceSet": "The subtotal, as shopMoney.amount and shopMoney.currencyCode.",
         "tags": "The order's tags.",
         "test": "Whether it is a test order.",

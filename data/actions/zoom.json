@@ -391,6 +391,7 @@
             }
           ],
           "share_url": "https://zoom.us/rec/share/example",
+          "topic": "Weekly team sync",
           "total_size": 20480,
           "uuid": "abcdEFGH12345=="
         }
@@ -434,7 +435,11 @@
                 "type": "array"
               },
               "share_url": {
-                "description": "Beta. The link to share so people can watch the recording in their browser.",
+                "description": "Beta. The link to watch the recording.",
+                "type": "string"
+              },
+              "topic": {
+                "description": "Beta. The meeting's name, such as Weekly team sync.",
                 "type": "string"
               },
               "total_size": {
@@ -443,6 +448,102 @@
               }
             },
             "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "get_meeting_transcript": {
+      "description": "Get everything said in a recorded Zoom meeting as plain text with speaker names, ready to summarise, along with the meeting's topic, the host's email and the link to watch the recording. The meeting must have a cloud recording, and Audio transcript must be turned on in Zoom's cloud recording settings; a recording with no transcript gives a blank one.",
+      "display_name": "Get a meeting's transcript",
+      "display_str_template": "Get the transcript of meeting {meeting_id}.",
+      "handler": "actions.get_meeting_transcript",
+      "id": "zoom_get_meeting_transcript",
+      "method": "POST",
+      "mock_response": {
+        "duration_minutes": 45,
+        "has_transcript": true,
+        "host_email": "ada@example.com",
+        "meeting_id": "89012345678",
+        "passcode": "8Jk#2pQ",
+        "recording_count": 3,
+        "share_url": "https://zoom.us/rec/share/example",
+        "start_display": "Tue, Nov 10, 2026 at 9:30 AM EST",
+        "start_time": "2026-11-10T14:30:00Z",
+        "topic": "Weekly team sync",
+        "transcript": "Ada Lovelace: Thanks for joining. Let's start with the launch date.\nSam Roe: We're on track for the 24th. I'll send the checklist by Friday.",
+        "uuid": "abcdEFGH12345=="
+      },
+      "name": "get_meeting_transcript",
+      "parameters": [
+        {
+          "description": "The recorded meeting whose transcript you want: its meeting ID, such as 89012345678, or the uuid of one session of it. For a recurring meeting the ID gives the latest recorded session.",
+          "display_name": "Meeting ID or UUID",
+          "examples": [
+            {
+              "label": "Meeting ID",
+              "value": "89012345678"
+            }
+          ],
+          "name": "meeting_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/zoom/get-meeting-transcript",
+      "result_str_template": "Transcript retrieved.",
+      "returns": {
+        "properties": {
+          "duration_minutes": {
+            "description": "How long the meeting ran, in minutes.",
+            "type": "number"
+          },
+          "has_transcript": {
+            "description": "True when transcript has text, false when the meeting has none.",
+            "type": "boolean"
+          },
+          "host_email": {
+            "description": "The email address of the meeting's host.",
+            "type": "string"
+          },
+          "meeting_id": {
+            "description": "The meeting's ID as Zoom shows it.",
+            "type": "string"
+          },
+          "passcode": {
+            "description": "The passcode a viewer needs to watch it; blank when the recording has none.",
+            "type": "string"
+          },
+          "recording_count": {
+            "description": "How many files the recording has.",
+            "type": "number"
+          },
+          "share_url": {
+            "description": "The link to watch the recording.",
+            "type": "string"
+          },
+          "start_display": {
+            "description": "start_time written for a person, such as Tue, Nov 10, 2026 at 9:30 AM EST, in the meeting's own time zone.",
+            "type": "string"
+          },
+          "start_time": {
+            "description": "When the meeting started (ISO 8601).",
+            "type": "string"
+          },
+          "topic": {
+            "description": "The meeting's name.",
+            "type": "string"
+          },
+          "transcript": {
+            "description": "Everything said in the meeting as plain text, one line per speaker turn with their name first. Blank when the meeting has no transcript. Very long transcripts are cut at 200,000 characters.",
+            "type": "string"
+          },
+          "uuid": {
+            "description": "The ID of this one session of the meeting.",
+            "type": "string"
           }
         },
         "type": "object"
@@ -1100,6 +1201,34 @@
         {
           "arg_index": 0,
           "description": "The Zoom host whose meetings to watch. Use their Zoom login email, or leave blank to watch the account that owns the connection.",
+          "display_name": "Host",
+          "name": "user_id",
+          "required": false
+        }
+      ]
+    },
+    "zoom_recording_ready_trigger": {
+      "description": "Runs when a Zoom meeting's cloud recording is ready, with the meeting's topic, the host's email, when it started, the link to watch it, and the full transcript as plain text with speaker names, ready to summarise into meeting notes with no other step. It waits for the transcript, which Zoom finishes a little after the video; a recording with no transcript half an hour after it finished runs with a blank transcript. For a transcript, turn on Audio transcript in Zoom's cloud recording settings. Recordings already there when the workflow is turned on don't start it. Zoom connections set up before this trigger need one more scope added to their Zoom app, cloud_recording:read:list_user_recordings, and reconnecting. How often it checks follows your workspace plan.",
+      "display_name": "Recording ready",
+      "id": "zoom_recording_ready_trigger",
+      "output": {
+        "duration_minutes": "How long the meeting ran, in minutes, such as 45.",
+        "has_transcript": "true when transcript has text, false when the meeting has none.",
+        "host_email": "The email address of the meeting's host, ready for the To field of an email.",
+        "meeting_id": "The meeting's ID as Zoom shows it, such as 89012345678, for 'Get meeting' and the other meeting steps.",
+        "passcode": "The passcode a viewer needs to watch it; blank when the recording has none.",
+        "recording_count": "How many files the recording has (video, audio, transcript, chat).",
+        "share_url": "The link to watch the recording.",
+        "start_display": "start_time written for a person, such as Tue, Nov 10, 2026 at 9:30 AM EST, in the meeting's own time zone, ready for an email or a page title with no date step.",
+        "start_time": "When the meeting started, as machine text.",
+        "topic": "The meeting's name, such as Weekly team sync.",
+        "transcript": "Everything said in the meeting as plain text, one line per speaker turn with their name first, such as Ada Lovelace: Thanks for joining. Ready to hand to an AI step to summarise. Blank when the meeting has no transcript. Very long transcripts are cut at 200,000 characters, about three hours of talk.",
+        "uuid": "The ID of this one session of the meeting, which tells apart the weeks of a recurring meeting."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The Zoom host whose recordings to watch. Use their Zoom login email, or leave blank to watch the account that owns the connection.",
           "display_name": "Host",
           "name": "user_id",
           "required": false

@@ -660,6 +660,319 @@
         "read"
       ]
     },
+    "list_expenses_missing_receipts": {
+      "description": "Find every expense in a date range that has no receipt attached, such as last week's, optionally only those over a set amount. Voided and cancelled expenses, and an expense that was split into parts, are left out. Every page is read for you, amounts come in dollars ready to read, and the expenses also come grouped by the person who made them, with their email and total, so a reminder to each person and one summary need no paging, lookup or grouping step.",
+      "display_name": "List expenses missing a receipt",
+      "display_str_template": "List Brex expenses missing a receipt.",
+      "handler": "actions.list_expenses_missing_receipts",
+      "id": "brex_list_expenses_missing_receipts",
+      "method": "POST",
+      "mock_response": {
+        "by_employee": [
+          {
+            "count": 2,
+            "employee_email": "ana@example.com",
+            "employee_first_name": "Ana",
+            "employee_name": "Ana Reyes",
+            "expenses": [
+              {
+                "amount": 112.5,
+                "amount_display": "$112.50",
+                "currency": "USD",
+                "employee_email": "ana@example.com",
+                "employee_first_name": "Ana",
+                "employee_name": "Ana Reyes",
+                "expense_id": "expense_abc123",
+                "memo": "",
+                "merchant": "DELTA AIR",
+                "purchased_on": "2026-11-03",
+                "purchased_on_display": "Nov 3, 2026",
+                "status": "SUBMITTED"
+              },
+              {
+                "amount": 86.4,
+                "amount_display": "$86.40",
+                "currency": "USD",
+                "employee_email": "ana@example.com",
+                "employee_first_name": "Ana",
+                "employee_name": "Ana Reyes",
+                "expense_id": "expense_def456",
+                "memo": "Client visit",
+                "merchant": "HILTON",
+                "purchased_on": "2026-11-05",
+                "purchased_on_display": "Nov 5, 2026",
+                "status": "APPROVED"
+              }
+            ],
+            "expenses_text": "\u2022 Nov 3, 2026: DELTA AIR, $112.50\n\u2022 Nov 5, 2026: HILTON, $86.40",
+            "total": 198.9,
+            "total_display": "$198.90"
+          }
+        ],
+        "count": 2,
+        "expenses": [
+          {
+            "amount": 112.5,
+            "amount_display": "$112.50",
+            "currency": "USD",
+            "employee_email": "ana@example.com",
+            "employee_first_name": "Ana",
+            "employee_name": "Ana Reyes",
+            "expense_id": "expense_abc123",
+            "memo": "",
+            "merchant": "DELTA AIR",
+            "purchased_on": "2026-11-03",
+            "purchased_on_display": "Nov 3, 2026",
+            "status": "SUBMITTED"
+          },
+          {
+            "amount": 86.4,
+            "amount_display": "$86.40",
+            "currency": "USD",
+            "employee_email": "ana@example.com",
+            "employee_first_name": "Ana",
+            "employee_name": "Ana Reyes",
+            "expense_id": "expense_def456",
+            "memo": "Client visit",
+            "merchant": "HILTON",
+            "purchased_on": "2026-11-05",
+            "purchased_on_display": "Nov 5, 2026",
+            "status": "APPROVED"
+          }
+        ],
+        "period_display": "Nov 2 \u2013 Nov 8, 2026",
+        "purchased_from": "2026-11-02",
+        "purchased_to": "2026-11-08",
+        "summary_text": "\u2022 Ana Reyes: 2 expenses, $198.90",
+        "total": 198.9,
+        "total_display": "$198.90"
+      },
+      "name": "list_expenses_missing_receipts",
+      "output_formatter": "actions.format_missing_receipts_output",
+      "parameters": [
+        {
+          "description": "Only expenses of more than this many dollars, such as 75: 75 leaves out an expense of exactly $75.00. Leave blank for every amount.",
+          "display_name": "Amount over ($)",
+          "minimum": 0,
+          "name": "amount_over",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": 7,
+          "description": "How many days back to look, up to but not including today (in UTC): 7, the default, is the past week. Ignored when 'Purchased from' is filled in.",
+          "display_name": "Look back (days)",
+          "maximum": 366,
+          "minimum": 1,
+          "name": "days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Instead of 'Look back', the first day to include, such as 2026-11-02.",
+          "display_name": "Purchased from",
+          "name": "purchased_from",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "The last day to include, such as 2026-11-08. Leave blank to include up to yesterday.",
+          "display_name": "Purchased to",
+          "name": "purchased_to",
+          "required": false,
+          "type": "ParameterType.DATE"
+        }
+      ],
+      "path": "/actions/library/brex/list-expenses-missing-receipts",
+      "result_str_template": "Expenses missing a receipt listed.",
+      "returns": {
+        "properties": {
+          "by_employee": {
+            "description": "The same expenses, one record per person, the largest total first: loop over these and send 'expenses_text' to 'employee_email'.",
+            "items": {
+              "properties": {
+                "count": {
+                  "description": "How many of the expenses are theirs.",
+                  "type": "integer"
+                },
+                "employee_email": {
+                  "description": "Their email address, such as ana@example.com.",
+                  "type": "string"
+                },
+                "employee_first_name": {
+                  "description": "Beta. Their first name, such as Ana, ready for 'Hi Ana'; empty if Brex has no name.",
+                  "type": "string"
+                },
+                "employee_name": {
+                  "description": "The person's name, such as Ana Reyes.",
+                  "type": "string"
+                },
+                "expenses": {
+                  "description": "Their expenses, oldest first.",
+                  "items": {
+                    "properties": {
+                      "amount": {
+                        "description": "The amount in dollars, such as 112.5.",
+                        "type": "number"
+                      },
+                      "amount_display": {
+                        "description": "The amount ready to read, such as $112.50 (or 112.50 EUR for another currency).",
+                        "type": "string"
+                      },
+                      "currency": {
+                        "description": "Its currency, such as USD.",
+                        "type": "string"
+                      },
+                      "employee_email": {
+                        "description": "Their email address, such as ana@example.com.",
+                        "type": "string"
+                      },
+                      "employee_first_name": {
+                        "description": "Beta. Their first name, the first word of their name, such as Ana, ready for a greeting; empty if Brex has no name.",
+                        "type": "string"
+                      },
+                      "employee_name": {
+                        "description": "The name of the person who made it, such as Ana Reyes.",
+                        "type": "string"
+                      },
+                      "expense_id": {
+                        "description": "The expense's ID. Use it in Get an expense or Upload a receipt.",
+                        "type": "string"
+                      },
+                      "memo": {
+                        "description": "The memo, empty if none.",
+                        "type": "string"
+                      },
+                      "merchant": {
+                        "description": "The merchant, as it appears on the statement.",
+                        "type": "string"
+                      },
+                      "purchased_on": {
+                        "description": "The day it was bought, such as 2026-11-03.",
+                        "type": "string"
+                      },
+                      "purchased_on_display": {
+                        "description": "The same day ready to read, such as Nov 3, 2026.",
+                        "type": "string"
+                      },
+                      "status": {
+                        "description": "Its status in Brex, such as SUBMITTED or APPROVED.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "expenses_text": {
+                  "description": "Their expenses as lines ready to put in an email, one per expense, such as '\u2022 Nov 3, 2026: DELTA AIR, $112.50'.",
+                  "type": "string"
+                },
+                "total": {
+                  "description": "What theirs add up to, in dollars, such as 187.5.",
+                  "type": "number"
+                },
+                "total_display": {
+                  "description": "Their total ready to read, such as $187.50.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many expenses are missing a receipt: 0 when none are, so 'send nothing when the list is empty' is one check.",
+            "type": "integer"
+          },
+          "expenses": {
+            "description": "Every expense missing a receipt, oldest first.",
+            "items": {
+              "properties": {
+                "amount": {
+                  "description": "The amount in dollars, such as 112.5.",
+                  "type": "number"
+                },
+                "amount_display": {
+                  "description": "The amount ready to read, such as $112.50 (or 112.50 EUR for another currency).",
+                  "type": "string"
+                },
+                "currency": {
+                  "description": "Its currency, such as USD.",
+                  "type": "string"
+                },
+                "employee_email": {
+                  "description": "Their email address, such as ana@example.com.",
+                  "type": "string"
+                },
+                "employee_first_name": {
+                  "description": "Beta. Their first name, the first word of their name, such as Ana, ready for a greeting; empty if Brex has no name.",
+                  "type": "string"
+                },
+                "employee_name": {
+                  "description": "The name of the person who made it, such as Ana Reyes.",
+                  "type": "string"
+                },
+                "expense_id": {
+                  "description": "The expense's ID. Use it in Get an expense or Upload a receipt.",
+                  "type": "string"
+                },
+                "memo": {
+                  "description": "The memo, empty if none.",
+                  "type": "string"
+                },
+                "merchant": {
+                  "description": "The merchant, as it appears on the statement.",
+                  "type": "string"
+                },
+                "purchased_on": {
+                  "description": "The day it was bought, such as 2026-11-03.",
+                  "type": "string"
+                },
+                "purchased_on_display": {
+                  "description": "The same day ready to read, such as Nov 3, 2026.",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "Its status in Brex, such as SUBMITTED or APPROVED.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "period_display": {
+            "description": "Beta. The days looked at, ready to read, such as 'Nov 2 \u2013 Nov 8, 2026' (or 'Nov 2, 2026' for one day).",
+            "type": "string"
+          },
+          "purchased_from": {
+            "description": "The first day looked at, such as 2026-11-02.",
+            "type": "string"
+          },
+          "purchased_to": {
+            "description": "The last day looked at, such as 2026-11-08.",
+            "type": "string"
+          },
+          "summary_text": {
+            "description": "One line per person with their count and total, such as '\u2022 Ana Reyes: 2 expenses, $187.50', ready for a summary email.",
+            "type": "string"
+          },
+          "total": {
+            "description": "What they add up to, in dollars, such as 1200.5.",
+            "type": "number"
+          },
+          "total_display": {
+            "description": "The total ready to read, such as $1,200.50 (each currency's total joined with +, when there are several).",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "list_users": {
       "description": "List users in the Brex account, with an optional email filter. Use the user IDs from this action to create cards or to filter expenses and cards by user.",
       "display_name": "List users",
