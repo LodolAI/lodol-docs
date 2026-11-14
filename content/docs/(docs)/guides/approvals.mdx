@@ -6,14 +6,9 @@ icon: UserCheck
 
 An **Ask a person** step pauses the run and asks people for an answer. They get an email and a notice in Lodol, each with a link, and anyone outside your workspace can answer from the link without an account. The run waits without using any resources, then carries on with the answer.
 
-You choose how they answer:
+They answer by pressing one of your buttons, such as **Approve** and **Reject**, **Post it** and **Skip**, or a single **Submit**. They can write something too, if you want, and change text you give them to check, such as a drafted email or post.
 
-- **Buttons** (the default): one or more buttons to press, such as **Approve** and **Reject**, **Post it** and **Skip**, or a single **Submit**. They can also write an answer, if you want one.
-- **Text to check**: text they can change before they answer, such as a drafted email or post. The run carries on with the text as they left it.
-
-Workflows built before buttons used **Request approval**, which asks to **Approve or reject**, or for **A written reply**. Those steps keep working as they always have, and both are still in **What you need back**.
-
-## Ask with buttons
+## Ask a person
 
 <WorkflowPreview
   title="Check a post before it goes out"
@@ -63,15 +58,15 @@ Add an **If** step after it that tests `@answer.answer`, the label of the button
   With no one listed, anyone in the workspace who can run workflows can answer. That's fine for a quick check, but not for a control. For tiered approvals especially, name the people at each level.
 </Callout>
 
-## Ask to approve or reject
+## Ask for a sign-off
 
-With **What you need back** set to **Approve or reject**, a step asks for a sign-off and gives the next steps `approved`, `true` or `false`.
+Keep **Approve** and **Reject**. Pressing **Approve** sets `approved` to true, so an If step can test `@approval.approved`, with the approved steps inside and the rejected steps under **Otherwise**.
 
 <WorkflowPreview
   title="Approve bills before they're paid"
   steps={[
     { step: 'New QuickBooks bill', app: 'QuickBooks', trigger: true },
-    { step: 'Ask a person', icon: 'UserCheck', note: 'Pay @bill.vendor_name $@bill.total?' },
+    { step: 'Ask a person', icon: 'UserCheck', note: 'Pay @bill.vendor_name $@bill.total? · Approve / Reject' },
     { step: 'If', icon: 'Split', note: '@approval.approved is true' },
     { step: 'Pay a QuickBooks bill', app: 'QuickBooks', depth: 1 },
     { step: 'Otherwise', icon: 'Split' },
@@ -80,58 +75,29 @@ With **What you need back** set to **Approve or reject**, a step asks for a sign
   ]}
 />
 
-<Steps>
-<Step>
+## Ask a question
 
-### Say what needs deciding
+For something only a person knows, such as which PO number a bill goes against, use a single **Submit** button with **A written answer** set to **Required**. Later steps read the answer as `@answer.reply`.
 
-**What to ask** is the one line people see first, such as `Pay @bill.vendor_name $@bill.total for bill @bill.doc_number`. Put everything else they need in **Details**: amounts, line items and links to the documents. Links are clickable in the email and in Lodol.
+## Choose who answers
 
-</Step>
-<Step>
-
-### Choose who decides
-
-Put their email addresses in **Who to ask**, separated by commas. People in your workspace answer in Lodol; anyone else gets a secure link by email. **Who can answer** sets whether only those people can decide, those people plus the workspace's owner and admins, or anyone in the workspace who can run workflows.
-
-</Step>
-<Step>
-
-### Act on the decision
-
-Add an **If** step after it that tests `@approval.approved`, with the approved steps inside and the rejected steps under **Otherwise**.
-
-</Step>
-</Steps>
-
-<Callout type="warn" title="Leave Who to ask empty, and anyone can decide">
-  With no one listed, anyone in the workspace who can run workflows can approve. That's fine for a quick check, but not for a control. For tiered approvals especially, name the people at each level.
-</Callout>
-
-## Ask for a written reply
-
-Set **What you need back** to a written reply and write the question as **What to ask**: `Which PO number should the @bill.vendor_name bill go against?`. Later steps read the answer as `@answer.reply`.
-
-Buttons with a **Required** written answer do the same, with a **Submit** button, and can carry text to check.
+Put their email addresses in **Who to ask**, separated by commas. People in your workspace answer in Lodol; anyone else gets a secure link by email. **Who can answer** sets whether only those people can answer, those people plus the workspace's owner and admins, or anyone in the workspace who can run workflows.
 
 ## When nobody answers
 
 | Setting | What it does |
 | --- | --- |
 | **Time limit (hours)** | How long to wait. 72 hours if left empty, at most 720 (30 days). Fractions work: `0.5` is half an hour. |
-| **If nobody answers in time** | Left empty, a request with buttons or a written reply stops the run with an error, and an approval is rejected. An approval can instead **Treat it as approved** or **Stop with an error**. Buttons and a reply can **Continue without a reply**, which gives the next steps an empty answer with `timed_out` set. |
-| **Answer when time runs out** | For buttons: one of them, pressed for them if nobody answers in time, such as **Skip**. The run carries on with it. |
+| **If nobody answers in time** | A button to press for them, such as **Skip** or **Reject**: the run carries on with it, with `timed_out` set. Left empty, the run stops with an error. |
 | **Remind every (hours)** | Reminds the people asked this often while the request waits, up to 10 reminders. |
 | **Escalate after (hours)** | If nobody has answered after this long, also asks the people in **Escalate to**, or the workspace's owner and admins if that's empty. It must be shorter than the time limit. |
 
 ## Keep approvals honest
 
-Two settings keep the person who asked from approving their own request:
+Two settings keep the person who asked from answering their own request:
 
-- **Require a different approver** stops the person the run runs as from approving it: whoever started the run, or the workflow's owner for a scheduled or triggered run.
-- **Prepared by** names whoever prepared the item, such as the person who entered the bill. They can't approve it.
-
-These apply to buttons and approvals, not to written replies.
+- **Someone else must answer** stops the person the run runs as from answering it: whoever started the run, or the workflow's owner for a scheduled or triggered run.
+- **Prepared by** names whoever prepared the item, such as the person who entered the bill. They can't answer it.
 
 ## Approve in steps
 
@@ -147,12 +113,12 @@ These apply to buttons and approvals, not to written replies.
 
 | Output | What it holds |
 | --- | --- |
-| `answer` | The button pressed, exactly as labelled: **Approve** or **Reject** on an approval. Empty for a written reply |
+| `answer` | The button pressed, exactly as labelled |
 | `reply` | What they wrote |
 | `draft` | The text to check, as they left it |
-| `approved` | `true` or `false` for an approval; `false` for every other button |
-| `decision` | The decision, in words |
-| `comment` | Any comment left with a decision |
+| `approved` | `true` when they pressed **Approve** |
+| `decision` | `approved` or `rejected` for **Approve** or **Reject**, otherwise `replied` |
+| `comment` | What they wrote, when they pressed **Approve** or **Reject** |
 | `decided_by` | Who answered |
 | `decided_at` | When they answered |
 | `timed_out` | Whether the time limit ran out |
