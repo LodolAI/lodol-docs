@@ -5873,7 +5873,7 @@
       ]
     },
     "create_invoice": {
-      "description": "Create an invoice for a customer, with one line from the line fields or several from Line items. It isn't emailed; use 'Send a QuickBooks invoice' for that.",
+      "description": "Create an invoice for a customer, with one line from the line fields or several from Line items. Pick the customer, or give their email and name to use the customer with that email or name, adding them when there is none. It isn't emailed; use 'Send a QuickBooks invoice' for that.",
       "display_name": "Create a QuickBooks invoice",
       "display_str_template": "Create QuickBooks invoice for customer '{0}'.",
       "handler": "actions.create_invoice",
@@ -5918,18 +5918,42 @@
           "TotalAmt": 300.0,
           "TxnDate": "2026-09-30"
         },
+        "customer_created": false,
+        "customer_id": "58",
+        "customer_name": "Acme Corp",
         "time": "2026-09-30T10:15:00.000-07:00"
       },
       "name": "create_invoice",
       "output_formatter": "actions.format_create_invoice_output",
       "parameters": [
         {
-          "description": "The customer. Pick one, or use an Id from 'Create a QuickBooks customer' or 'List QuickBooks customers'.",
+          "description": "The customer. Pick one, or use an Id from 'Create a QuickBooks customer' or 'List QuickBooks customers'. Leave blank to find or add the customer from Customer email and Customer name instead.",
           "display_name": "Customer",
           "dynamic_source": "customers",
           "dynamic_source_allows_custom": true,
           "name": "customer_id",
-          "required": true,
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. When Customer is blank: the customer's email address, such as billing@acme.com. The invoice goes to the customer with this email; if there is none, one is added.",
+          "display_name": "Customer email",
+          "name": "customer_email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. When Customer is blank: the customer's name, such as Jane Doe. Used to find the customer when no email matches, and as the new customer's name if one is added.",
+          "display_name": "Customer name",
+          "name": "customer_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. When Customer is blank: the customer's company, such as Acme Corp. A new customer is listed under it rather than the person's name.",
+          "display_name": "Customer company",
+          "name": "customer_company",
+          "required": false,
           "type": "ParameterType.STRING"
         },
         {
@@ -6863,6 +6887,18 @@
               }
             },
             "type": "object"
+          },
+          "customer_created": {
+            "description": "Beta. true when the step added this customer to QuickBooks because none matched Customer email or Customer name.",
+            "type": "boolean"
+          },
+          "customer_id": {
+            "description": "Beta. The Id of the customer the invoice is for.",
+            "type": "string"
+          },
+          "customer_name": {
+            "description": "Beta. That customer's name in QuickBooks, such as Acme Corp.",
+            "type": "string"
           },
           "time": {
             "type": "string"
@@ -13473,6 +13509,287 @@
             "type": "number"
           },
           "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "find_deposits": {
+      "description": "Find the bank deposits recorded in a period, or around a day give or take some days, optionally of one exact amount. To check a list of payouts or payments (Stripe, PayPal, Square) against the deposits, give the whole list in Payments to check (beta): one step, no loop, and unmatched lists the ones with no deposit. Deposits recorded after the run can't be seen yet, so a payment whose days either side run past today is returned in too_recent (beta), not unmatched.",
+      "display_name": "Find QuickBooks deposits",
+      "display_str_template": "Find QuickBooks deposits.",
+      "handler": "actions.find_deposits",
+      "id": "quickbooks_find_deposits",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "deposits": [
+          {
+            "account": "Checking",
+            "amount": 1250.0,
+            "amount_display": "$1,250.00",
+            "date": "2026-10-14",
+            "date_display": "Oct 14, 2026",
+            "id": "151",
+            "memo": "Stripe payout"
+          }
+        ],
+        "matched": [],
+        "too_recent": [],
+        "too_recent_count": 0,
+        "unmatched": [],
+        "unmatched_count": 0
+      },
+      "name": "find_deposits",
+      "output_formatter": "actions.format_find_deposits_output",
+      "parameters": [
+        {
+          "description": "A day to look around, such as the day a payout reached the bank. Used with Days either side; replaces From and To.",
+          "display_name": "Around this day",
+          "name": "around_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "How many days before and after Around this day still count: 3 for a deposit recorded within 3 days.",
+          "display_name": "Days either side",
+          "minimum": 0,
+          "name": "days_either_side",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Only deposits of exactly this total, to the cent. Leave blank for every deposit in the period.",
+          "display_name": "Amount",
+          "name": "amount",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The first day of the period, included.",
+          "display_name": "From",
+          "name": "date_from",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "The last day of the period, included.",
+          "display_name": "To",
+          "name": "date_to",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Beta. A list of payouts or payments from an earlier step, such as Stripe List payouts' payouts, to check against the deposits: each is paired with at most one deposit of the same amount within Days either side of its date (closest first, and a deposit never counts for two), and the ones with none come back in unmatched. Replaces Around this day, From, To and Amount.",
+          "display_name": "Payments to check",
+          "name": "check_payments",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Beta. The field of each payment that holds its amount in dollars (or your currency's usual units). Leave blank for amount, which Stripe payouts use.",
+          "display_name": "Payment amount field",
+          "name": "payment_amount_field",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. The field of each payment that holds the day it reached the bank. Leave blank for arrival_date, which Stripe payouts use.",
+          "display_name": "Payment date field",
+          "name": "payment_date_field",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The most deposits to read, up to 1000. Leave blank for 1000.",
+          "display_name": "Maximum deposits",
+          "maximum": 1000,
+          "minimum": 1,
+          "name": "limit",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/quickbooks/find-deposits",
+      "result_str_template": "Deposits found.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many deposits were found: 0 when none matched.",
+            "type": "number"
+          },
+          "deposits": {
+            "description": "The deposits found, oldest first.",
+            "items": {
+              "properties": {
+                "account": {
+                  "description": "The bank account it went into.",
+                  "type": "string"
+                },
+                "amount": {
+                  "description": "The deposit's total.",
+                  "type": "number"
+                },
+                "amount_display": {
+                  "description": "The total as a person writes it, such as $1,250.00.",
+                  "type": "string"
+                },
+                "date": {
+                  "description": "The day it was recorded, YYYY-MM-DD.",
+                  "type": "string"
+                },
+                "date_display": {
+                  "description": "The day as a person writes it, such as Oct 14, 2026.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The deposit's Id.",
+                  "type": "string"
+                },
+                "memo": {
+                  "description": "The deposit's memo; blank when it has none.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "matched": {
+            "description": "Beta. With Payments to check: each payment that has a deposit, with the deposit paired to it.",
+            "items": {
+              "properties": {
+                "deposit": {
+                  "description": "The deposit paired with it, shaped like each of deposits.",
+                  "type": "object"
+                },
+                "payment": {
+                  "description": "The payment, as it was given.",
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "too_recent": {
+            "description": "Beta. With Payments to check: payments with no deposit yet whose days either side run past today, so their deposit may simply not be recorded yet. They are not in unmatched; a check run soon after a period ends can mention them separately or leave them for the next run.",
+            "items": {
+              "description": "One payment exactly as it was given, like each of unmatched.",
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "too_recent_count": {
+            "description": "Beta. With Payments to check: how many payments are too recent to judge.",
+            "type": "number"
+          },
+          "unmatched": {
+            "description": "Beta. With Payments to check: the payments that no deposit accounts for, each exactly as it was given (a Stripe payout keeps its amount_display, arrival_date_display and link). Empty when every one was recorded. A payment too recent to judge is in too_recent instead.",
+            "items": {
+              "description": "One payment exactly as it was given, so it has the fields of the list given in Payments to check (a Stripe payout: payout_id, amount, amount_display, arrival_date, arrival_date_display, description, link).",
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "unmatched_count": {
+            "description": "Beta. With Payments to check: how many payments have no deposit.",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
+    "find_or_create_customer": {
+      "description": "Get the customer to invoice in one step: the one with this email, else the one with exactly this name, else a new customer. Returns its id, name and email, and whether it was created.",
+      "display_name": "Find or create a QuickBooks customer",
+      "display_str_template": "Find or create QuickBooks customer '{0}'.",
+      "handler": "actions.find_or_create_customer",
+      "id": "quickbooks_find_or_create_customer",
+      "method": "POST",
+      "mock_response": {
+        "created": false,
+        "email": "billing@acme.example",
+        "id": "58",
+        "name": "Acme Corp"
+      },
+      "name": "find_or_create_customer",
+      "output_formatter": "actions.format_find_or_create_customer_output",
+      "parameters": [
+        {
+          "description": "The customer's name as QuickBooks shows it, usually the company. Matches only exactly (ignoring case), so Acme never picks Acme Holdings.",
+          "display_name": "Customer name",
+          "name": "display_name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The customer's email. Tried first, since it is the surer match, and saved on a new customer.",
+          "display_name": "Email",
+          "name": "email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The contact's first name, for a new customer.",
+          "display_name": "First name",
+          "name": "given_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The contact's last name, for a new customer.",
+          "display_name": "Last name",
+          "name": "family_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The company's name, for a new customer.",
+          "display_name": "Company",
+          "name": "company_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Main phone number, for a new customer.",
+          "display_name": "Phone",
+          "name": "phone",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/quickbooks/find-or-create-customer",
+      "result_str_template": "Customer ready.",
+      "returns": {
+        "properties": {
+          "created": {
+            "description": "True when the customer was new and has just been created.",
+            "type": "boolean"
+          },
+          "email": {
+            "description": "The customer's email; blank when it has none.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The customer's Id, for an invoice's customer.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The customer's name as QuickBooks shows it.",
             "type": "string"
           }
         },
@@ -21737,7 +22054,7 @@
       ]
     },
     "list_bills": {
-      "description": "List bills from vendors, optionally narrowed by vendor, payment status or date. Gets one page; to see more, run it again with the next page it gives.",
+      "description": "List bills from vendors, optionally narrowed by vendor, bill number, payment status or date. To check a bill isn't already in QuickBooks before creating it, give its number and see whether count is 0. Gets one page; to see more, run it again with the next page it gives.",
       "display_name": "List QuickBooks bills",
       "display_str_template": "List up to {0} QuickBooks bills.",
       "handler": "actions.list_bills",
@@ -21870,6 +22187,13 @@
           "name": "date_to",
           "required": false,
           "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Only the bill with this number: the vendor's invoice number, as entered in the bill's Bill no. field. Matches the whole number exactly.",
+          "display_name": "Bill number",
+          "name": "doc_number",
+          "required": false,
+          "type": "ParameterType.STRING"
         },
         {
           "description": "Only records created or changed at or after this moment.",
@@ -25536,8 +25860,11 @@
             "balance": 300.0,
             "balance_display": "$300.00",
             "customer": "Acme Corp",
+            "customer_id": "58",
             "days_overdue": 32,
             "due_display": "Oct 30, 2026",
+            "email": "ap@acme.example",
+            "id": "130",
             "number": "1037"
           }
         ],
@@ -25630,6 +25957,13 @@
           "name": "due_before",
           "required": false,
           "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Beta. Only invoices still unpaid more than this many days after their due date: 30 for a reminder once an invoice is a month late, with no date to work out in an earlier step. Every matching invoice comes back at once (up to 10,000), so no loop over pages is needed. Each invoice's days_overdue says how late it is, for a stronger message past 60.",
+          "display_name": "Overdue by more than (days)",
+          "name": "overdue_more_than_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
         },
         {
           "description": "Only records created or changed at or after this moment.",
@@ -26459,7 +26793,7 @@
             "type": "boolean"
           },
           "invoices": {
-            "description": "Beta. The same invoices in plain words, one record each, ready for a table or a line per invoice with no step to dig the customer out of the QuickBooks record: number, customer, due_display, days_overdue, balance and balance_display.",
+            "description": "Beta. The same invoices in plain words, one record each, ready for a table or a line per invoice with no step to dig the customer out of the QuickBooks record: id, number, customer, customer_id, email (the address the invoice is billed to, blank when it has none), due_display, days_overdue, balance and balance_display.",
             "items": {
               "type": "object"
             },

@@ -136,6 +136,8 @@
         "issue": {
           "id": "abc123xyz789",
           "identifier": "abc123xyz789",
+          "priority": 1,
+          "priority_label": "Urgent",
           "state": {
             "id": "state123",
             "name": "Todo",
@@ -179,11 +181,33 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Priority level, from 1 to 5",
+          "description": "How urgent the issue is: Urgent, High, Medium, Low or No priority. Leave blank for no priority. Linear's own numbers are taken too: 1 is urgent, 2 high, 3 medium, 4 low and 0 none.",
           "display_name": "Priority",
           "name": "priority",
+          "options": [
+            {
+              "label": "Urgent",
+              "value": "urgent"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "No priority",
+              "value": "none"
+            }
+          ],
           "required": false,
-          "type": "ParameterType.NUMBER"
+          "type": "ParameterType.STRING"
         },
         {
           "description": "ID of the user to assign the issue to",
@@ -206,6 +230,14 @@
               },
               "identifier": {
                 "description": "Human-readable issue identifier",
+                "type": "string"
+              },
+              "priority": {
+                "description": "Priority as Linear numbers it: 1 urgent, 2 high, 3 medium, 4 low, or 0 for no priority. A lower number is more urgent.",
+                "type": "integer"
+              },
+              "priority_label": {
+                "description": "The priority in words: Urgent, High, Medium, Low or No priority",
                 "type": "string"
               },
               "state": {
@@ -426,15 +458,22 @@
       "method": "POST",
       "mock_response": {
         "issue": {
+          "assignee": {
+            "email": "sam.rivera@example.com",
+            "name": "Sam Rivera"
+          },
           "description": "example_value",
           "id": "abc123xyz789",
           "identifier": "abc123xyz789",
+          "priority": 2,
+          "priority_label": "High",
           "state": {
             "id": "state123",
             "name": "Active",
             "type": "started"
           },
           "title": "Sample Item",
+          "updated_at": "2026-11-09T11:20:00.000Z",
           "url": "https://example.com/path/123"
         }
       },
@@ -456,6 +495,20 @@
           "issue": {
             "description": "Issue details",
             "properties": {
+              "assignee": {
+                "description": "Who the issue is assigned to. Empty (no name or email) when nobody is.",
+                "properties": {
+                  "email": {
+                    "description": "Beta. The person's email address, to message or look them up in another app without matching by name.",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "The person's name.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
               "description": {
                 "description": "Full issue description in markdown format. May be empty if no description was provided",
                 "type": "string"
@@ -466,6 +519,14 @@
               },
               "identifier": {
                 "description": "Human-readable issue identifier",
+                "type": "string"
+              },
+              "priority": {
+                "description": "Priority as Linear numbers it: 1 urgent, 2 high, 3 medium, 4 low, or 0 for no priority. A lower number is more urgent.",
+                "type": "integer"
+              },
+              "priority_label": {
+                "description": "The priority in words: Urgent, High, Medium, Low or No priority",
                 "type": "string"
               },
               "state": {
@@ -488,6 +549,10 @@
               },
               "title": {
                 "description": "Issue title/summary text",
+                "type": "string"
+              },
+              "updated_at": {
+                "description": "Beta. When the issue was last changed (ISO 8601).",
                 "type": "string"
               },
               "url": {
@@ -591,21 +656,27 @@
       ]
     },
     "list_issues": {
-      "description": "Fetch the latest Linear issues for a specific team.",
+      "description": "List Linear issues, newest first, for one team or every team. Can narrow to one status (such as In Review), to issues that have sat in their status for some days, and to issues that have someone assigned. Each issue comes with its assignee's email and how long it has been in its status.",
       "display_name": "List issues for a team",
-      "display_str_template": "List issues for team '{0}'.",
+      "display_str_template": "List Linear issues.",
       "handler": "actions.list_issues",
       "id": "linear_list_issues",
       "method": "POST",
       "mock_response": {
+        "has_more": false,
         "issues": [
           {
             "assignee": {
+              "email": "sam.rivera@example.com",
               "name": "Sam Rivera"
             },
+            "assignee_name": "Sam Rivera",
             "completed_at": "",
             "completed_display": "",
             "created_at": "2026-11-04T09:00:00.000Z",
+            "days_in_status": 7,
+            "due_date": "2026-11-10",
+            "due_display": "Nov 10, 2026",
             "id": "6f1c2b0e-3d4a-4b5c-9e8f-0a1b2c3d4e5f",
             "identifier": "ENG-124",
             "priority": 2,
@@ -615,14 +686,23 @@
               "name": "In Progress",
               "type": "started"
             },
+            "status_since": "2026-11-05T10:15:00.000Z",
             "title": "Fix the login page",
+            "updated_at": "2026-11-09T11:20:00.000Z",
             "url": "https://linear.app/acme/issue/ENG-124"
           },
           {
-            "assignee": {},
+            "assignee": {
+              "email": "priya.shah@example.com",
+              "name": "Priya Shah"
+            },
+            "assignee_name": "Unassigned",
             "completed_at": "2026-11-06T16:45:00.000Z",
             "completed_display": "Nov 6, 2026",
             "created_at": "2026-11-02T14:30:00.000Z",
+            "days_in_status": 6,
+            "due_date": "",
+            "due_display": "",
             "id": "0e9d8c7b-6a5f-4e3d-8c2b-1a0f9e8d7c6b",
             "identifier": "ENG-121",
             "priority": 3,
@@ -632,7 +712,9 @@
               "name": "Done",
               "type": "completed"
             },
+            "status_since": "2026-11-06T16:45:00.000Z",
             "title": "Add a dark mode toggle",
+            "updated_at": "2026-11-06T16:45:00.000Z",
             "url": "https://linear.app/acme/issue/ENG-121"
           }
         ]
@@ -641,15 +723,15 @@
       "output_formatter": "actions.format_list_issues_output",
       "parameters": [
         {
-          "description": "The Linear team to list issues for",
+          "description": "The Linear team to list issues for. Beta: leave blank to list issues from every team.",
           "display_name": "Team",
           "dynamic_source": "teams",
           "name": "team_id",
-          "required": true,
+          "required": false,
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Maximum number of issues to return (1-50), newest first",
+          "description": "Maximum number of issues to return (1-50), newest first. Not used when Status, In this status for at least, Leave out unassigned issues or Finished in the last days is filled in: those look at up to 250 issues.",
           "display_name": "Maximum issues",
           "name": "first",
           "required": false,
@@ -668,19 +750,65 @@
           "name": "completed_in_last_days",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Beta. Only issues in this status, by its name as it appears in Linear, such as In Review. Capital letters don't matter. Looks at up to 250 issues, newest first. Leave blank for every status.",
+          "display_name": "Status",
+          "name": "state_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. Only issues that have been in their current status for at least this many days (3 for 'stuck for more than 3 days'), counted from when the issue was moved into that status, not from when it was created or last edited. Use with Status to find, say, issues waiting In Review. Looks at up to 250 issues.",
+          "display_name": "In this status for at least (days)",
+          "name": "in_status_for_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Beta. Turn on to list only issues that have someone assigned. Looks at up to 250 issues.",
+          "display_name": "Leave out unassigned issues",
+          "name": "assigned_only",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "Beta. True returns only issues whose due date has passed and that are not finished or canceled, up to 250, each with its due date. Needs no date or state steps.",
+          "display_name": "Only overdue issues",
+          "name": "overdue_only",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         }
       ],
       "path": "/actions/library/linear/list-issues",
       "result_str_template": "Retrieved Linear issues.",
       "returns": {
         "properties": {
+          "has_more": {
+            "description": "Beta. True when Linear had more issues than this step looked at (250 with a filter, otherwise Maximum issues), so the list may be missing older ones.",
+            "type": "boolean"
+          },
           "issues": {
-            "description": "Array of Linear issues for the specified team, newest first. Each issue contains id (UUID for actions), identifier (human-readable), title, and state. Use issue id with linear_update_issue_state or linear_add_comment actions",
+            "description": "Array of Linear issues, newest first. Each issue contains id (UUID for actions), identifier (human-readable), title, and state. Use issue id with linear_update_issue_state or linear_add_comment actions",
             "items": {
               "properties": {
                 "assignee": {
-                  "description": "Who it is assigned to: name. Empty when unassigned",
+                  "description": "Who the issue is assigned to. Empty (no name or email) when nobody is.",
+                  "properties": {
+                    "email": {
+                      "description": "Beta. The person's email address, to message or look them up in another app without matching by name.",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The person's name.",
+                      "type": "string"
+                    }
+                  },
                   "type": "object"
+                },
+                "assignee_name": {
+                  "description": "Beta. The assignee's name, or Unassigned when nobody has it, ready to group or list by.",
+                  "type": "string"
                 },
                 "completed_at": {
                   "description": "Beta. When the issue was completed (ISO 8601); blank when not completed.",
@@ -692,6 +820,18 @@
                 },
                 "created_at": {
                   "description": "When the issue was created (ISO 8601)",
+                  "type": "string"
+                },
+                "days_in_status": {
+                  "description": "Beta. How many whole days the issue has been in its current status.",
+                  "type": "number"
+                },
+                "due_date": {
+                  "description": "Beta. The day it is due as a date, such as 2026-11-03; blank when none was set.",
+                  "type": "string"
+                },
+                "due_display": {
+                  "description": "Beta. The day it is due written for a person, such as Nov 3, 2026; blank when none was set.",
                   "type": "string"
                 },
                 "id": {
@@ -712,10 +852,32 @@
                 },
                 "state": {
                   "description": "Current workflow state: name (such as In Progress) and type (backlog, unstarted, started, completed or canceled)",
+                  "properties": {
+                    "id": {
+                      "description": "State ID (UUID).",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The status's name, such as Todo, In Review or Done.",
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "The kind of status: triage, backlog, unstarted, started, completed or canceled. The same in every team, unlike the name.",
+                      "type": "string"
+                    }
+                  },
                   "type": "object"
+                },
+                "status_since": {
+                  "description": "Beta. When the issue was moved into its current status (ISO 8601); when it was created, if it has never been moved.",
+                  "type": "string"
                 },
                 "title": {
                   "description": "Issue title",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "Beta. When the issue was last changed (ISO 8601).",
                   "type": "string"
                 },
                 "url": {
@@ -878,6 +1040,7 @@
         "issues": [
           {
             "assignee": {
+              "email": "ada@example.com",
               "name": "Ada Lovelace"
             },
             "created_at": "2026-11-02T09:00:00.000Z",
@@ -890,6 +1053,7 @@
               "type": "unstarted"
             },
             "title": "Fix the login page",
+            "updated_at": "2026-11-03T15:00:00.000Z",
             "url": "https://linear.app/acme/issue/ENG-123"
           }
         ]
@@ -933,7 +1097,17 @@
             "items": {
               "properties": {
                 "assignee": {
-                  "description": "Who it is assigned to: name. Blank when unassigned",
+                  "description": "Who the issue is assigned to. Empty (no name or email) when nobody is.",
+                  "properties": {
+                    "email": {
+                      "description": "Beta. The person's email address, to message or look them up in another app without matching by name.",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The person's name.",
+                      "type": "string"
+                    }
+                  },
                   "type": "object"
                 },
                 "created_at": {
@@ -954,10 +1128,28 @@
                 },
                 "state": {
                   "description": "Current workflow state: id, name and type",
+                  "properties": {
+                    "id": {
+                      "description": "State ID (UUID).",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "The status's name, such as Todo, In Review or Done.",
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "The kind of status: triage, backlog, unstarted, started, completed or canceled. The same in every team, unlike the name.",
+                      "type": "string"
+                    }
+                  },
                   "type": "object"
                 },
                 "title": {
                   "description": "Issue title",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "Beta. When the issue was last changed (ISO 8601).",
                   "type": "string"
                 },
                 "url": {
@@ -997,6 +1189,7 @@
             "Bug"
           ],
           "priority": "High",
+          "priority_label": "High",
           "state": {
             "id": "state123",
             "name": "Todo",
@@ -1039,7 +1232,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "How urgent the issue is",
+          "description": "How urgent the issue is: Urgent, High, Medium, Low or No priority. Leave blank to keep the priority it has. Linear's own numbers are taken too: 1 is urgent, 2 high, 3 medium, 4 low and 0 none.",
           "display_name": "Priority",
           "name": "priority",
           "options": [
@@ -1124,7 +1317,11 @@
                 "type": "array"
               },
               "priority": {
-                "description": "Urgent, High, Medium, Low or No priority",
+                "description": "The priority in words: Urgent, High, Medium, Low or No priority",
+                "type": "string"
+              },
+              "priority_label": {
+                "description": "The same words, under the name the other issue steps use: Urgent, High, Medium, Low or No priority",
                 "type": "string"
               },
               "state": {
@@ -1276,7 +1473,8 @@
         "identifier": "string",
         "issue_id": "string",
         "priority": "How urgent it is: Urgent, High, Medium, Low or No priority.",
-        "state": "object",
+        "priority_label": "Beta. The same words, under the name the issue steps use.",
+        "state": "The issue's status: id, name (such as In Review) and type (triage, backlog, unstarted, started, completed or canceled).",
         "title": "string",
         "url": "A link that opens the issue in Linear."
       },
@@ -1305,7 +1503,8 @@
         "identifier": "string",
         "issue_id": "string",
         "priority": "How urgent it is: Urgent, High, Medium, Low or No priority.",
-        "state": "object",
+        "priority_label": "Beta. The same words, under the name the issue steps use.",
+        "state": "The issue's status: id, name (such as In Review) and type (triage, backlog, unstarted, started, completed or canceled).",
         "title": "string",
         "url": "A link that opens the issue in Linear."
       },

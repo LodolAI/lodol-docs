@@ -4028,7 +4028,7 @@
       ]
     },
     "invite_user_to_channel": {
-      "description": "Add one or more workspace members to a Slack channel.",
+      "description": "Add one or more people to a Slack channel, chosen as members or given by email address, so no step to find them first is needed. Someone whose email address has no Slack account yet is skipped and listed in the result, and the step still succeeds.",
       "display_name": "Invite people to channel",
       "display_str_template": "Invite {1} to {0}.",
       "handler": "actions.invite_user_to_channel",
@@ -4036,6 +4036,7 @@
       "method": "POST",
       "mock_response": {
         "channel_id": "C0567QRST",
+        "not_found": [],
         "status": "success",
         "user_ids": [
           "U0123ABCD",
@@ -4054,7 +4055,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The people to add to the channel. Enter one member, or several separated by commas.",
+          "description": "The people to add to the channel: members you pick, or their email addresses or Slack member IDs. Enter one, or several separated by commas.",
           "display_name": "People",
           "dynamic_source": "users",
           "name": "user_ids",
@@ -4078,12 +4079,19 @@
             "description": "ID of the channel the people were added to.",
             "type": "string"
           },
+          "not_found": {
+            "description": "The email addresses given that no active Slack member has, so those people were not added: usually someone who hasn't joined Slack yet. Empty when everyone was found.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "status": {
             "description": "Operation status (typically 'success').",
             "type": "string"
           },
           "user_ids": {
-            "description": "IDs of the people who were added.",
+            "description": "Slack member IDs of the people who were added. Empty if nobody given has a Slack account.",
             "items": {
               "type": "string"
             },
@@ -6399,7 +6407,7 @@
       ]
     },
     "send_direct_message": {
-      "description": "Send a direct message to a member.",
+      "description": "Send a direct message to a member, chosen by name or, when the person changes from run to run (a deal's owner, a ticket's assignee), by their email address.",
       "display_name": "Send direct message",
       "display_str_template": "Send a direct message to {0}.",
       "handler": "actions.send_direct_message",
@@ -6407,6 +6415,8 @@
       "method": "POST",
       "mock_response": {
         "channel": "D0123ABCD",
+        "reason": "",
+        "sent": true,
         "status": "success",
         "ts": "1772547300.000300"
       },
@@ -6414,12 +6424,26 @@
       "output_formatter": "actions.format_send_direct_message_output",
       "parameters": [
         {
-          "description": "The person to send the direct message to. To message yourself, pick your own name; it is chosen in Lodol after the workflow is built, so leave it empty in the workflow instead of asking the person for a Slack user id.",
+          "description": "The person to send the direct message to. When it is always the same person (yourself, a manager), they are picked in Lodol after the workflow is built, so leave it empty instead of asking for a Slack user id. When it changes each run, pass the person's email in 'email' instead, or the user.id an earlier Find user step returned.",
           "display_name": "Recipient",
           "dynamic_source": "users",
           "name": "user_id",
-          "required": true,
+          "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. The recipient's email address, for a person who changes each run (a deal owner's or assignee's email from an earlier step). The step finds them in Slack itself, so no Find user step is needed; it fails if no one in the Slack workspace has that email. Used when Recipient is empty.",
+          "display_name": "Recipient's email",
+          "name": "email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. When the recipient's email is blank or no one in the Slack workspace has it, send nothing and carry on (sent is false, reason says why) instead of failing the step. Turn it on when the person may be missing (a deal with no owner) and earlier steps have already acted.",
+          "display_name": "Skip if they aren't in Slack",
+          "name": "skip_if_not_found",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         },
         {
           "description": "The message text to send.",
@@ -6498,6 +6522,14 @@
           "channel": {
             "description": "ID of the direct message channel created or used.",
             "type": "string"
+          },
+          "reason": {
+            "description": "Beta. Why nothing was sent; empty when it was.",
+            "type": "string"
+          },
+          "sent": {
+            "description": "Beta. Whether the message went out: false only when 'Skip if they aren't in Slack' was on and no one had the email.",
+            "type": "boolean"
           },
           "status": {
             "description": "Operation status (typically 'success').",
@@ -6779,7 +6811,7 @@
       "output_formatter": "actions.format_send_message_output",
       "parameters": [
         {
-          "description": "The channel to post the message to.",
+          "description": "The channel to post the message to. Pick one, or write the name the request gave, such as #incidents.",
           "display_name": "Channel",
           "dynamic_source": "channels",
           "name": "channel_id",
@@ -6895,7 +6927,7 @@
       ]
     },
     "send_message_to_user_by_email": {
-      "description": "Send a direct message to the workspace member with an email address, without looking up their Slack ID first. Fails if no active member has that address.",
+      "description": "Send a direct message to the workspace member with an email address, without looking up their Slack ID first. Fails if no active member has that address, unless 'If nobody has that address' is set to skip: use that when messaging each person on a list, so one person who isn't in Slack doesn't stop the rest.",
       "display_name": "Send direct message by email",
       "display_str_template": "Send a direct message to '{0}'.",
       "handler": "actions.send_message_to_user_by_email",
@@ -6903,6 +6935,7 @@
       "method": "POST",
       "mock_response": {
         "channel": "D0123ABCD",
+        "sent": true,
         "status": "success",
         "ts": "1772547300.000300",
         "user_id": "U0123ABCD"
@@ -6985,6 +7018,24 @@
           "name": "icon_url",
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "default": "fail",
+          "description": "What to do when no active member has the address: stop the run, or send nothing and carry on (the result's `sent` is then false).",
+          "display_name": "If nobody has that address",
+          "name": "if_not_found",
+          "options": [
+            {
+              "label": "Stop the run",
+              "value": "fail"
+            },
+            {
+              "label": "Send nothing and carry on",
+              "value": "skip"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/slack/send-message-to-user-by-email",
@@ -6995,6 +7046,10 @@
             "description": "ID of the conversation the message was posted in.",
             "type": "string"
           },
+          "sent": {
+            "description": "True when the message was sent; false when nobody has the address and the step was set to carry on.",
+            "type": "boolean"
+          },
           "status": {
             "description": "Operation status (typically 'success').",
             "type": "string"
@@ -7004,7 +7059,7 @@
             "type": "string"
           },
           "user_id": {
-            "description": "ID of the member the address belongs to.",
+            "description": "ID of the member the address belongs to; empty when nothing was sent.",
             "type": "string"
           }
         },
@@ -8160,14 +8215,18 @@
       ]
     },
     "slack_new_message_trigger": {
-      "description": "Runs when a new message is posted in a Slack channel.",
+      "description": "Runs when a new message is posted in a Slack channel. Replies inside a thread don't start it, so a workflow that answers in the thread doesn't start itself again.",
       "display_name": "New message",
       "id": "slack_new_message_trigger",
       "output": {
-        "channel_id": "string",
-        "message_ts": "string",
-        "text": "string",
-        "user_id": "string"
+        "channel_id": "The channel it was posted in.",
+        "is_bot": "Beta. True when an app or bot posted it rather than a person.",
+        "message_ts": "The message's Slack timestamp, which identifies it: pass it as a reply's thread to answer in its thread.",
+        "text": "What the message says.",
+        "user_email": "Beta. Their email address, when Slack shares it (it needs the users:read.email permission); otherwise blank.",
+        "user_first_name": "Beta. Their first name, such as Ana, for a greeting.",
+        "user_id": "The Slack ID of the person who posted it.",
+        "user_name": "Beta. The full name of the person who posted it, such as Ana Silva. Blank when an app posted it. Use it in a message."
       },
       "parameters": [
         {
@@ -8189,6 +8248,13 @@
           "description": "Only run when the message text contains this text (case-insensitive). Leave blank to match any message.",
           "display_name": "Message contains",
           "name": "keyword",
+          "required": false
+        },
+        {
+          "arg_index": 3,
+          "description": "Beta. Enter yes to leave out messages posted by apps and bots, Lodol's own included, so a help desk channel only runs for what people write. Leave blank to run for every message.",
+          "display_name": "Only messages from people",
+          "name": "people_only",
           "required": false
         }
       ]

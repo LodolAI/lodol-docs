@@ -561,7 +561,7 @@
       ]
     },
     "get_summary_report": {
-      "description": "Total hours tracked in a workspace between two dates, by project, client or team member. Covers any dates, not just recent ones.",
+      "description": "Total hours tracked in a workspace between two dates, by project, client or team member. Covers any dates, not just recent ones. To compare hours with each project's estimate, use List projects instead: it returns the estimate, hours used and left, and can add the hours tracked between two dates.",
       "display_name": "Get summary report",
       "display_str_template": "Get a summary report from {from_date}.",
       "handler": "actions.get_summary_report",
@@ -800,7 +800,7 @@
       ]
     },
     "list_projects": {
-      "description": "Your projects, optionally only those matching a name or a client.",
+      "description": "Your active projects, optionally only those matching a name or a client. Each comes with (beta) the estimate set for it in Toggl Track, all the hours tracked to it so far, the hours left and the percentage used, as numbers and as text ready for a message (85%, 12.5 hours left), so no other source of estimates and no calculation step is needed. Used at least (% of estimate) keeps only the projects that have reached that share of their estimate, and Hours from adds each project's hours for a period such as this week. Estimates are a paid Toggl Track feature: a project without one has those fields empty, and is left out when Used at least is set, so on a plan without estimates that filter lists nothing (count is 0).",
       "display_name": "List projects",
       "display_str_template": "List projects.",
       "handler": "actions.list_projects",
@@ -809,31 +809,57 @@
       "mock_response": {
         "count": 2,
         "first": {
+          "actual_hours": 0,
           "archived": false,
           "client_id": null,
           "client_name": null,
+          "estimated_hours": null,
+          "hours_in_period": 0,
+          "hours_in_period_display": "0 hours",
+          "hours_left": null,
+          "hours_left_display": null,
           "id": 201234568,
           "name": "Internal",
+          "percent_used": null,
+          "percent_used_display": null,
           "workspace_id": 7654321
         },
+        "from_date": "2026-09-21",
         "projects": [
           {
+            "actual_hours": 0,
             "archived": false,
             "client_id": null,
             "client_name": null,
+            "estimated_hours": null,
+            "hours_in_period": 0,
+            "hours_in_period_display": "0 hours",
+            "hours_left": null,
+            "hours_left_display": null,
             "id": 201234568,
             "name": "Internal",
+            "percent_used": null,
+            "percent_used_display": null,
             "workspace_id": 7654321
           },
           {
+            "actual_hours": 68,
             "archived": false,
             "client_id": 61234567,
             "client_name": "Acme Corp",
+            "estimated_hours": 80,
+            "hours_in_period": 6,
+            "hours_in_period_display": "6 hours",
+            "hours_left": 12,
+            "hours_left_display": "12 hours left",
             "id": 201234567,
             "name": "Website redesign",
+            "percent_used": 85,
+            "percent_used_display": "85%",
             "workspace_id": 7654321
           }
-        ]
+        ],
+        "to_date": "2026-09-25"
       },
       "name": "list_projects",
       "output_formatter": "formatters.format_projects",
@@ -854,11 +880,58 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Also list archived projects.",
+          "description": "Also list archived projects. Default: No, so only active projects are listed.",
           "display_name": "Include archived",
           "name": "include_archived",
           "required": false,
           "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "description": "(beta) Only projects that have used at least this percentage of their estimated hours, counting all time tracked to the project so far: 80 lists the projects at 80% or more, including those over 100%. This replaces working out percentages and filtering in later steps. Projects without an estimate in Toggl Track are left out when this is set. Leave empty to list every project.",
+          "display_name": "Used at least (% of estimate)",
+          "minimum": 0,
+          "name": "min_percent_used",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "(beta) Pick a period to also get, on each project, the hours the whole team tracked to it in that period, as a number and as text ready for a message (12.5 hours): this week so far, last week, this month so far or last month. Weeks run Monday to Sunday, in your Toggl Track time zone. This replaces working out the week's first day in earlier steps. It doesn't change which projects are listed, or the estimate figures, which always count all time so far. Use Hours from instead for any other dates; fill in one or the other, not both.",
+          "display_name": "Hours in",
+          "name": "hours_period",
+          "options": [
+            {
+              "label": "This week so far",
+              "value": "this_week"
+            },
+            {
+              "label": "Last week",
+              "value": "last_week"
+            },
+            {
+              "label": "This month so far",
+              "value": "this_month"
+            },
+            {
+              "label": "Last month",
+              "value": "last_month"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "(beta) Fill this in to also get, on each project, the hours the whole team tracked to it from this day on (its hours in the period), for example Monday of this week. It doesn't change which projects are listed, or the estimate figures, which always count all time so far. Leave empty to skip it.",
+          "display_name": "Hours from",
+          "name": "from_date",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "(beta) The last day of that period. Leave empty for today. Only used with Hours from.",
+          "display_name": "Hours to",
+          "name": "to_date",
+          "required": false,
+          "type": "ParameterType.DATE"
         }
       ],
       "path": "/actions/library/toggl-track/list-projects",
@@ -866,12 +939,16 @@
       "returns": {
         "properties": {
           "count": {
-            "description": "How many projects there are.",
+            "description": "How many projects are listed; 0 when none matched.",
             "type": "number"
           },
           "first": {
             "description": "The first project listed (the exact match, if there is one), or null.",
             "properties": {
+              "actual_hours": {
+                "description": "(beta) All the hours the whole team has tracked to the project so far, as Toggl Track counts them against the estimate. Null when Toggl Track doesn't say.",
+                "type": "number"
+              },
               "archived": {
                 "description": "True when the project is archived, so no new time goes to it.",
                 "type": "boolean"
@@ -884,12 +961,40 @@
                 "description": "Name of the project's client, or null for none.",
                 "type": "string"
               },
+              "estimated_hours": {
+                "description": "(beta) The project's estimate in hours, as set on the project in Toggl Track. Null when it has no estimate; estimates are a paid Toggl Track feature, so on a plan without them every project's is null.",
+                "type": "number"
+              },
+              "hours_in_period": {
+                "description": "(beta) Hours the whole team tracked to the project from Hours from to Hours to (or in the period picked in Hours in), to two decimal places; 0 when none. Null when both are left empty.",
+                "type": "number"
+              },
+              "hours_in_period_display": {
+                "description": "(beta) The same as text, ready for a message: 12.5 hours. Null when no period is asked for.",
+                "type": "string"
+              },
+              "hours_left": {
+                "description": "(beta) Estimated hours minus hours tracked so far. Negative when the project is over its estimate (-3.5 is 3.5 hours over). Null without an estimate.",
+                "type": "number"
+              },
+              "hours_left_display": {
+                "description": "(beta) The same, written for a person: 12.5 hours left, or 3.5 hours over. Null without an estimate.",
+                "type": "string"
+              },
               "id": {
                 "description": "The project's ID, which the Project fields of other steps take.",
                 "type": "number"
               },
               "name": {
                 "description": "The project's name.",
+                "type": "string"
+              },
+              "percent_used": {
+                "description": "(beta) How much of the estimate is used, as a percentage to one decimal place (85 is 85%; over 100 is over the estimate). Null without an estimate.",
+                "type": "number"
+              },
+              "percent_used_display": {
+                "description": "(beta) The same as text, rounded to a whole number: 85%. Null without an estimate.",
                 "type": "string"
               },
               "workspace_id": {
@@ -899,10 +1004,18 @@
             },
             "type": "object"
           },
+          "from_date": {
+            "description": "(beta) The first day hours_in_period counts (YYYY-MM-DD), or null when Hours from is left empty.",
+            "type": "string"
+          },
           "projects": {
-            "description": "The projects, an exact name match first, then by name.",
+            "description": "The projects, an exact name match first, then by name. Each has its name, client, estimate, hours used and left, and percentage used, ready to write into a message.",
             "items": {
               "properties": {
+                "actual_hours": {
+                  "description": "(beta) All the hours the whole team has tracked to the project so far, as Toggl Track counts them against the estimate. Null when Toggl Track doesn't say.",
+                  "type": "number"
+                },
                 "archived": {
                   "description": "True when the project is archived, so no new time goes to it.",
                   "type": "boolean"
@@ -915,12 +1028,40 @@
                   "description": "Name of the project's client, or null for none.",
                   "type": "string"
                 },
+                "estimated_hours": {
+                  "description": "(beta) The project's estimate in hours, as set on the project in Toggl Track. Null when it has no estimate; estimates are a paid Toggl Track feature, so on a plan without them every project's is null.",
+                  "type": "number"
+                },
+                "hours_in_period": {
+                  "description": "(beta) Hours the whole team tracked to the project from Hours from to Hours to (or in the period picked in Hours in), to two decimal places; 0 when none. Null when both are left empty.",
+                  "type": "number"
+                },
+                "hours_in_period_display": {
+                  "description": "(beta) The same as text, ready for a message: 12.5 hours. Null when no period is asked for.",
+                  "type": "string"
+                },
+                "hours_left": {
+                  "description": "(beta) Estimated hours minus hours tracked so far. Negative when the project is over its estimate (-3.5 is 3.5 hours over). Null without an estimate.",
+                  "type": "number"
+                },
+                "hours_left_display": {
+                  "description": "(beta) The same, written for a person: 12.5 hours left, or 3.5 hours over. Null without an estimate.",
+                  "type": "string"
+                },
                 "id": {
                   "description": "The project's ID, which the Project fields of other steps take.",
                   "type": "number"
                 },
                 "name": {
                   "description": "The project's name.",
+                  "type": "string"
+                },
+                "percent_used": {
+                  "description": "(beta) How much of the estimate is used, as a percentage to one decimal place (85 is 85%; over 100 is over the estimate). Null without an estimate.",
+                  "type": "number"
+                },
+                "percent_used_display": {
+                  "description": "(beta) The same as text, rounded to a whole number: 85%. Null without an estimate.",
                   "type": "string"
                 },
                 "workspace_id": {
@@ -931,6 +1072,10 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "to_date": {
+            "description": "(beta) The last day hours_in_period counts (YYYY-MM-DD), or null when Hours from is left empty.",
+            "type": "string"
           }
         },
         "type": "object"

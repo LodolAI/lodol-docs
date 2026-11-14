@@ -401,7 +401,7 @@
       ]
     },
     "create_lead": {
-      "description": "Add a new lead: someone who might become a customer. Only a last name and a company are needed.",
+      "description": "Add a new lead: someone who might become a customer. Only a last name (or a full name) and a company are needed. It always creates one, even when a lead with the same email exists; to add a lead only when there is none yet, use 'Find or create a lead'. The result's lead_link (beta) opens the new lead in Salesforce.",
       "display_name": "Create lead",
       "display_str_template": "Create the lead '{last_name}' at '{company}'.",
       "handler": "actions.create_lead",
@@ -409,16 +409,17 @@
       "method": "POST",
       "mock_response": {
         "id": "00Q5g00000ABCDEEA1",
+        "lead_link": "https://acme.my.salesforce.com/lightning/r/Lead/00Q5g00000ABCDEEA1/view",
         "object_type": "Lead",
         "success": true
       },
       "name": "create_lead",
       "parameters": [
         {
-          "description": "The lead's last name.",
+          "description": "The lead's last name. Needed unless Full name is given.",
           "display_name": "Last name",
           "name": "last_name",
-          "required": true,
+          "required": false,
           "type": "ParameterType.STRING"
         },
         {
@@ -488,6 +489,20 @@
           "type": "ParameterType.STRING"
         },
         {
+          "description": "Beta. How promising the lead is. Salesforce's standard choices are Hot, Warm and Cold; your org may have its own.",
+          "display_name": "Rating",
+          "name": "rating",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. The lead's whole name as one value, such as Ana Silva, for a form that asks for one name. It fills First name and Last name (its last word), so leave those empty.",
+          "display_name": "Full name",
+          "name": "full_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
           "default": false,
           "description": "Save the record even when your org's duplicate rules find a matching one, the same choice Salesforce offers a person as 'Save anyway'. A rule set to block rather than warn is refused either way.",
           "display_name": "Save even if a duplicate exists",
@@ -501,6 +516,10 @@
       "returns": {
         "properties": {
           "id": {
+            "type": "string"
+          },
+          "lead_link": {
+            "description": "(beta) The link that opens the new lead in Salesforce, ready to put in a message.",
             "type": "string"
           },
           "object_type": {
@@ -686,7 +705,7 @@
       ]
     },
     "create_task": {
-      "description": "Add a follow-up task, optionally about a person and related to an account or opportunity.",
+      "description": "Add a follow-up task, optionally about a person and related to an account or opportunity. Beta: assign it to someone by email and mark it as a call or an email.",
       "display_name": "Create task",
       "display_str_template": "Create the task '{subject}'.",
       "handler": "actions.create_task",
@@ -723,14 +742,21 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The date the task is due.",
+          "description": "The date the task is due, such as 2026-11-20.",
           "display_name": "Due date",
           "name": "activity_date",
           "required": false,
           "type": "ParameterType.DATE"
         },
         {
-          "description": "The lead or contact this task is about.",
+          "description": "Beta. Instead of a due date, how many days from today the task is due: 0 for today, 1 for tomorrow. Counted in UTC. Ignored when Due date is filled in.",
+          "display_name": "Due in days",
+          "name": "due_in_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The lead or contact this task is about. Beta: usually leave this and Related to empty and fill in About record instead. Use these two only when the task is about a person and a record at once, such as a contact (here) on an opportunity (Related to).",
           "display_name": "Who it's about",
           "label_source": "record_names",
           "name": "who_id",
@@ -738,7 +764,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The account or opportunity this task relates to.",
+          "description": "The account or opportunity this task relates to. Beta: usually leave this and Who it's about empty and fill in About record instead. Use these two only when the task is about a person and a record at once.",
           "display_name": "Related to",
           "label_source": "record_names",
           "name": "what_id",
@@ -750,6 +776,42 @@
           "display_name": "Description",
           "multiline": true,
           "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. The email address of the Salesforce user who should do the task, such as jordan@example.com. Leave blank to assign it to the connected user.",
+          "display_name": "Assigned to (email)",
+          "name": "assigned_to_email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. The one field to use for what the task is about: the id of a lead, contact, account or opportunity, such as 00Q5g00000AbCdE from a trigger or an earlier step. Salesforce files a lead or contact under Who it's about and anything else under Related to, so those two can stay empty. Fill them only to link a person and a record at once.",
+          "display_name": "About record",
+          "label_source": "record_names",
+          "name": "related_to_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. What kind of task it is. A call shows with a phone in the record's activity list. Leave blank for an ordinary task.",
+          "display_name": "Type",
+          "name": "task_type",
+          "options": [
+            {
+              "label": "Call",
+              "value": "Call"
+            },
+            {
+              "label": "Email",
+              "value": "Email"
+            },
+            {
+              "label": "Other",
+              "value": "Other"
+            }
+          ],
           "required": false,
           "type": "ParameterType.STRING"
         }
@@ -856,6 +918,203 @@
       },
       "scopes": [
         "delete"
+      ]
+    },
+    "find_or_create_lead": {
+      "description": "Look for a lead by email and create it only if there is none, in one step: no need to list leads and branch. If a lead with this email exists (the newest one, leaving out leads already converted to a contact), it is returned unchanged, and gets a note when the 'Note for an existing lead' fields are filled in. If none exists, a lead is created from the fields here. Made for web forms: it takes a full name from one box and doesn't need a company. The result says which happened (created, and outcome in plain words) and gives the lead's ID, name, company, owner and a link to open it, the same fields either way.",
+      "display_name": "Find or create a lead",
+      "display_str_template": "Find the lead with the email '{email}', or create it.",
+      "handler": "actions.find_or_create_lead",
+      "id": "salesforce_find_or_create_lead",
+      "method": "POST",
+      "mock_response": {
+        "company": "Northwind Traders",
+        "created": true,
+        "email": "alex.rivera@example.com",
+        "first_name": "Alex",
+        "last_name": "Rivera",
+        "lead_id": "00Q5g00000ABCDEEA1",
+        "lead_link": "https://acme.my.salesforce.com/lightning/r/Lead/00Q5g00000ABCDEEA1/view",
+        "name": "Alex Rivera",
+        "note_added": false,
+        "note_id": "",
+        "outcome": "Created a new lead",
+        "owner_first_name": "Dana",
+        "owner_name": "Dana Whitfield",
+        "status": "Open - Not Contacted"
+      },
+      "name": "find_or_create_lead",
+      "parameters": [
+        {
+          "description": "The email address to look for, and the new lead's email if none has it. Capitals don't matter.",
+          "display_name": "Email",
+          "name": "email",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The person's whole name as typed in one box, such as Alex Rivera. Used for a new lead when 'Last name' is empty: the last word becomes the last name and the rest the first name, and a single word is the last name. Fill in this or 'Last name'; there is no need to split a name in an earlier step.",
+          "display_name": "Full name",
+          "name": "name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The new lead's first name, when the form asks for first and last names separately.",
+          "display_name": "First name",
+          "name": "first_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The new lead's last name, when the form asks for first and last names separately. Leave empty to use 'Full name'.",
+          "display_name": "Last name",
+          "name": "last_name",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The company the new lead works for. Salesforce won't save a lead without one, so when this is empty the lead's company is written as [not provided], as Salesforce's own web forms do.",
+          "display_name": "Company",
+          "name": "company",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The new lead's phone number.",
+          "display_name": "Phone",
+          "name": "phone",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The new lead's job title.",
+          "display_name": "Job title",
+          "name": "title",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where a new lead starts in your qualification process, from your org's Lead Status picklist. Leave empty for your org's default.",
+          "display_name": "Status",
+          "dynamic_source": "lead_statuses",
+          "name": "status",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Where a new lead came from, from your org's Lead Source picklist, such as Web.",
+          "display_name": "Lead source",
+          "dynamic_source": "lead_sources",
+          "name": "lead_source",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The new lead's company website.",
+          "display_name": "Website",
+          "name": "website",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Free-text notes stored on a new lead, such as the message typed into the form. Not written to a lead that already exists; use the note fields for that.",
+          "display_name": "Description",
+          "multiline": true,
+          "name": "description",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The title of the note to add when a lead with this email already exists, such as 'Contact Sales form submitted again'. Leave both note fields empty to add no note. A new lead never gets the note. If only the text is filled in, the title is 'Note'.",
+          "display_name": "Note for an existing lead: title",
+          "name": "note_title",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The text of that note, such as the message typed into the form. Plain text; new lines are kept.",
+          "display_name": "Note for an existing lead: text",
+          "multiline": true,
+          "name": "note_body",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Save the record even when your org's duplicate rules find a matching one, the same choice Salesforce offers a person as 'Save anyway'. A rule set to block rather than warn is refused either way.",
+          "display_name": "Save even if a duplicate exists",
+          "name": "allow_duplicates",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        }
+      ],
+      "path": "/actions/library/salesforce/find-or-create-lead",
+      "result_str_template": "Lead found or created.",
+      "returns": {
+        "properties": {
+          "company": {
+            "description": "The lead's company: for an existing lead, the one already on it.",
+            "type": "string"
+          },
+          "created": {
+            "description": "true when no lead had this email and a new one was created; false when an existing lead was found.",
+            "type": "boolean"
+          },
+          "email": {
+            "description": "The lead's email address, as Salesforce holds it.",
+            "type": "string"
+          },
+          "first_name": {
+            "description": "The lead's first name. Empty if it has none.",
+            "type": "string"
+          },
+          "last_name": {
+            "description": "The lead's last name.",
+            "type": "string"
+          },
+          "lead_id": {
+            "description": "The lead's ID, for any later Salesforce step.",
+            "type": "string"
+          },
+          "lead_link": {
+            "description": "The link that opens the lead in Salesforce, ready to put in a message.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The lead's full name, such as Alex Rivera.",
+            "type": "string"
+          },
+          "note_added": {
+            "description": "true when a note was added to an existing lead.",
+            "type": "boolean"
+          },
+          "note_id": {
+            "description": "The added note's ID. Empty when none was added.",
+            "type": "string"
+          },
+          "outcome": {
+            "description": "What happened, in words a message can include as they are: 'Created a new lead', 'Added a note to the existing lead' or 'Found the existing lead'.",
+            "type": "string"
+          },
+          "owner_first_name": {
+            "description": "Beta. The lead owner's first name, such as Jordan, to greet them by. Empty for a queue or if it could not be read.",
+            "type": "string"
+          },
+          "owner_name": {
+            "description": "The name of the person (or queue) in Salesforce who owns the lead. Empty if it could not be read.",
+            "type": "string"
+          },
+          "status": {
+            "description": "The lead's status, such as Open - Not Contacted.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write"
       ]
     },
     "get_account": {
@@ -1069,13 +1328,14 @@
       ]
     },
     "get_lead": {
-      "description": "Get one lead and its details.",
+      "description": "Get one lead and its details. Beta: also its company size, annual revenue and who owns it, with the owner's name and email.",
       "display_name": "Get lead",
       "display_str_template": "Get {lead_id}.",
       "handler": "actions.get_lead",
       "id": "salesforce_get_lead",
       "method": "POST",
       "mock_response": {
+        "AnnualRevenue": 12000000,
         "Company": "Northwind Traders",
         "CreatedDate": "2026-09-01T09:12:44.000+0000",
         "Description": "Downloaded the pricing guide.",
@@ -1088,6 +1348,8 @@
         "LastName": "Rivera",
         "LeadSource": "Web",
         "Name": "Alex Rivera",
+        "NumberOfEmployees": 750,
+        "OwnerId": "0055g00000OWNERAA1",
         "Phone": "+1 415 555 0134",
         "Status": "Open - Not Contacted",
         "Title": "Head of Operations",
@@ -1095,7 +1357,11 @@
         "attributes": {
           "type": "Lead",
           "url": "/services/data/v67.0/sobjects/Lead/00Q5g00000ABCDEEA1"
-        }
+        },
+        "lead_link": "https://acme.my.salesforce.com/lightning/r/Lead/00Q5g00000ABCDEEA1/view",
+        "owner_email": "jordan.lee@example.com",
+        "owner_first_name": "Jordan",
+        "owner_name": "Jordan Lee"
       },
       "name": "get_lead",
       "parameters": [
@@ -1112,6 +1378,13 @@
       "result_str_template": "Lead retrieved.",
       "returns": {
         "properties": {
+          "AnnualRevenue": {
+            "description": "Beta. Their company's yearly revenue in the org's currency, a plain number such as 12000000. Empty when nobody filled it in.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "Company": {
             "type": "string"
           },
@@ -1148,6 +1421,17 @@
           "Name": {
             "type": "string"
           },
+          "NumberOfEmployees": {
+            "description": "Beta. How many people work at their company, a whole number such as 750. Empty when nobody filled it in.",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "OwnerId": {
+            "description": "Beta. The ID of the user (or queue) who owns the lead, starting 005 for a user or 00G for a queue.",
+            "type": "string"
+          },
           "Phone": {
             "type": "string"
           },
@@ -1170,6 +1454,22 @@
               }
             },
             "type": "object"
+          },
+          "lead_link": {
+            "description": "(beta) The link that opens this lead in Salesforce, ready to put in a message.",
+            "type": "string"
+          },
+          "owner_email": {
+            "description": "Beta. The lead owner's email address, such as jordan@example.com. Blank for a queue with no email.",
+            "type": "string"
+          },
+          "owner_first_name": {
+            "description": "Beta. The lead owner's first name, such as Jordan, to greet them by. Blank for a queue.",
+            "type": "string"
+          },
+          "owner_name": {
+            "description": "Beta. The name of the user (or queue) who owns the lead, such as Jordan Lee.",
+            "type": "string"
           }
         },
         "type": "object"
@@ -1179,7 +1479,7 @@
       ]
     },
     "get_opportunity": {
-      "description": "Get one opportunity and its details.",
+      "description": "Get one opportunity and its details, with its owner's name and email, its account's name and a link to it (beta), so no further step is needed to look them up.",
       "display_name": "Get opportunity",
       "display_str_template": "Get {opportunity_id}.",
       "handler": "actions.get_opportunity",
@@ -1199,10 +1499,19 @@
         "Probability": 65,
         "StageName": "Proposal/Price Quote",
         "Type": "Existing Customer - Upgrade",
+        "account_name": "Northwind Traders",
+        "amount_display": "48,000",
         "attributes": {
           "type": "Opportunity",
           "url": "/services/data/v67.0/sobjects/Opportunity/0065g00000LMNOPAA1"
-        }
+        },
+        "custom_fields": {
+          "Discount_Percent__c": 18
+        },
+        "opportunity_link": "https://acme.my.salesforce.com/lightning/r/Opportunity/0065g00000LMNOPAA1/view",
+        "owner_email": "dana.whitfield@example.com",
+        "owner_first_name": "Dana",
+        "owner_name": "Dana Whitfield"
       },
       "name": "get_opportunity",
       "parameters": [
@@ -1212,6 +1521,13 @@
           "label_source": "opportunity_names",
           "name": "opportunity_id",
           "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. Your org's own fields to read as well, by their API names with commas between them, such as Discount_Percent__c, Region__c. Each comes back under custom_fields, such as custom_fields.Discount_Percent__c. A field's API name is shown in Salesforce under Setup > Object Manager > Opportunity > Fields & Relationships.",
+          "display_name": "Extra fields",
+          "name": "extra_fields",
+          "required": false,
           "type": "ParameterType.STRING"
         }
       ],
@@ -1258,6 +1574,14 @@
           "Type": {
             "type": "string"
           },
+          "account_name": {
+            "description": "Beta. The name of its account (the customer); blank when it has none.",
+            "type": "string"
+          },
+          "amount_display": {
+            "description": "Beta. Its value as a person writes it, such as 62,500. Use it in a message, with your currency sign in front; compare with Amount.",
+            "type": "string"
+          },
           "attributes": {
             "properties": {
               "type": {
@@ -1268,6 +1592,27 @@
               }
             },
             "type": "object"
+          },
+          "custom_fields": {
+            "additionalProperties": true,
+            "description": "Beta. The fields named in Extra fields, each by its API name, such as custom_fields.Discount_Percent__c. Empty when none were asked for.",
+            "type": "object"
+          },
+          "opportunity_link": {
+            "description": "Beta. A link that opens the opportunity in Salesforce.",
+            "type": "string"
+          },
+          "owner_email": {
+            "description": "Beta. Their email address, ready to send them a message.",
+            "type": "string"
+          },
+          "owner_first_name": {
+            "description": "Beta. The owner's first name, such as Dana, to greet them by in a message.",
+            "type": "string"
+          },
+          "owner_name": {
+            "description": "Beta. The name of the person who owns the opportunity, usually its sales rep.",
+            "type": "string"
           }
         },
         "type": "object"
@@ -1518,7 +1863,7 @@
       ]
     },
     "list_leads": {
-      "description": "List leads, newest first, optionally only those with a given email, company or status.",
+      "description": "List leads, newest first, optionally only those with a given email, company or status. The result is the list of leads itself, not wrapped in anything, and is an empty list when none match. Each lead carries lead_link (beta), which opens it in Salesforce. To add a lead only when none has a given email, use 'Find or create a lead' instead of listing first.",
       "display_name": "List leads",
       "display_str_template": "List leads.",
       "handler": "actions.list_leads",
@@ -1538,13 +1883,14 @@
           "attributes": {
             "type": "Lead",
             "url": "/services/data/v67.0/sobjects/Lead/00Q5g00000ABCDEEA1"
-          }
+          },
+          "lead_link": "https://acme.my.salesforce.com/lightning/r/Lead/00Q5g00000ABCDEEA1/view"
         }
       ],
       "name": "list_leads",
       "parameters": [
         {
-          "description": "Return only leads with exactly this email address.",
+          "description": "Return only leads with exactly this email address (capitals don't matter).",
           "display_name": "Email",
           "name": "email",
           "required": false,
@@ -1581,6 +1927,13 @@
       "returns": {
         "items": {
           "properties": {
+            "AnnualRevenue": {
+              "description": "Beta. Their company's yearly revenue in the org's currency, a plain number such as 12000000. Empty when nobody filled it in.",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
             "Company": {
               "type": "string"
             },
@@ -1617,6 +1970,17 @@
             "Name": {
               "type": "string"
             },
+            "NumberOfEmployees": {
+              "description": "Beta. How many people work at their company, a whole number such as 750. Empty when nobody filled it in.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "OwnerId": {
+              "description": "Beta. The ID of the user (or queue) who owns the lead, starting 005 for a user or 00G for a queue.",
+              "type": "string"
+            },
             "Phone": {
               "type": "string"
             },
@@ -1639,6 +2003,10 @@
                 }
               },
               "type": "object"
+            },
+            "lead_link": {
+              "description": "(beta) The link that opens this lead in Salesforce, ready to put in a message.",
+              "type": "string"
             }
           },
           "type": "object"
@@ -1784,7 +2152,7 @@
       ]
     },
     "run_soql_query": {
-      "description": "Read any records with SOQL, Salesforce's query language: the way to reach custom objects and fields the other actions don't cover.",
+      "description": "Read any records with SOQL, Salesforce's query language: the way to reach custom objects and fields the other actions don't cover. Each record comes back with the fields the query names; a field reached through a relationship, such as Owner.Email, comes back nested, read as records[0].Owner.Email.",
       "display_name": "Run a query",
       "display_str_template": "Run a query.",
       "handler": "actions.run_soql_query",
@@ -1844,6 +2212,8 @@
           },
           "records": {
             "items": {
+              "additionalProperties": true,
+              "description": "One record, with the fields the query's SELECT names, by their API names. A field reached through a relationship comes back nested: Owner.Email is read as records[0].Owner.Email.",
               "properties": {
                 "Id": {
                   "type": "string"
@@ -2207,7 +2577,7 @@
       ]
     },
     "update_lead": {
-      "description": "Change a lead's details. Only the fields you fill in are changed; the rest are left as they are.",
+      "description": "Change a lead's details, or assign it to someone else. Only the fields you fill in are changed; the rest are left as they are.",
       "display_name": "Update lead",
       "display_str_template": "Update {lead_id}.",
       "handler": "actions.update_lead",
@@ -2300,6 +2670,27 @@
           "name": "description",
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. Assign the lead to the Salesforce user with this email address, such as jordan@example.com. Leave blank to keep its owner.",
+          "display_name": "Assign to (email)",
+          "name": "owner_email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. Or assign it by the user's or queue's ID, starting 005 or 00G, such as an owner an earlier step gave. Fill in this or the email, not both.",
+          "display_name": "Assign to (user ID)",
+          "name": "owner_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. How promising the lead is. Salesforce's standard choices are Hot, Warm and Cold; your org may have its own.",
+          "display_name": "Rating",
+          "name": "rating",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/salesforce/update-lead",
@@ -2323,7 +2714,7 @@
       ]
     },
     "update_opportunity": {
-      "description": "Change an opportunity's details, most often to move it to a new stage. Only the fields you fill in are changed.",
+      "description": "Change an opportunity's details, most often to move it to a new stage, or set one of your org's own fields on it (beta), such as marking a discount approved. Only the fields you fill in are changed.",
       "display_name": "Update opportunity",
       "display_str_template": "Update {opportunity_id}.",
       "handler": "actions.update_opportunity",
@@ -2397,6 +2788,13 @@
           "name": "description",
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. New values for your org's own fields on the opportunity, each by its API name, such as {\"Discount_Approved__c\": true, \"Approved_By__c\": \"Dana Whitfield\"}. A field's API name is shown in Salesforce under Setup > Object Manager > Opportunity > Fields & Relationships, and usually ends in __c.",
+          "display_name": "Custom fields",
+          "name": "custom_fields",
+          "required": false,
+          "type": "ParameterType.OBJECT"
         }
       ],
       "path": "/actions/library/salesforce/update-opportunity",
@@ -2434,7 +2832,7 @@
       "name": "update_record",
       "parameters": [
         {
-          "description": "What kind of record it is, such as Case.",
+          "description": "What kind of record it is, by the object's API name, such as Opportunity, Case or one of your own objects (Invoice__c). Always needed.",
           "display_name": "Object",
           "dynamic_source": "objects",
           "name": "object_type",
@@ -2450,7 +2848,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The new value for each field to change. Fields left empty keep their value.",
+          "description": "The new value for each field to change, each by the field's API name, such as {\"Discount_Approved__c\": true, \"StageName\": \"Closed Won\"}. One of your org's own fields usually ends in __c. Fields left empty keep their value.",
           "display_name": "Fields",
           "dynamic_source": "updateable_fields",
           "dynamic_source_depends_on": [
@@ -2594,10 +2992,11 @@
       "parameters": []
     },
     "salesforce_new_lead_trigger": {
-      "description": "Runs for each new lead in Salesforce, from a web form, an import, a person or another app. Leads already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "description": "Runs for each new lead in Salesforce, from a web form, an import, a person or another app, or only those from one lead source, such as Web. Leads already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
       "display_name": "New lead",
       "id": "salesforce_new_lead_trigger",
       "output": {
+        "AnnualRevenue": "Beta. Their company's yearly revenue, a plain number such as 12000000. Empty when nobody filled it in.",
         "Company": "Their company.",
         "CreatedDate": "When the lead was created.",
         "Description": "Notes on the lead.",
@@ -2610,15 +3009,28 @@
         "LastName": "Their last name.",
         "LeadSource": "Where the lead came from, such as Web.",
         "Name": "Their full name.",
+        "NumberOfEmployees": "Beta. How many people work at their company, a whole number such as 750. Empty when nobody filled it in.",
+        "OwnerId": "Beta. The ID of the user (or queue) who owns the lead.",
         "Phone": "Their phone number.",
         "Status": "The lead's status, such as Open - Not Contacted.",
         "Title": "Their job title.",
-        "Website": "Their website."
+        "Website": "Their website.",
+        "owner_email": "Beta. The lead owner's email address, such as jordan@example.com.",
+        "owner_first_name": "Beta. The lead owner's first name, such as Jordan, to greet them by. Blank for a queue.",
+        "owner_name": "Beta. The name of the user (or queue) who owns the lead."
       },
-      "parameters": []
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Beta. Only run for leads with this Lead Source, written as it appears in Salesforce, such as Web. Leave blank to run for every new lead.",
+          "display_name": "Lead source",
+          "name": "lead_source",
+          "required": false
+        }
+      ]
     },
     "salesforce_new_opportunity_trigger": {
-      "description": "Runs for each new opportunity (deal) in Salesforce. Opportunities already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "description": "Runs for each new opportunity (deal) in Salesforce, or only for those worth at least an amount you choose. It arrives with its owner's name and email, its account's name and a link to it. Opportunities already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
       "display_name": "New opportunity",
       "id": "salesforce_new_opportunity_trigger",
       "output": {
@@ -2635,9 +3047,31 @@
         "Name": "The opportunity's name.",
         "Probability": "How likely it is to close, in percent.",
         "StageName": "The stage it is in, such as Prospecting.",
-        "Type": "Its type, such as New Customer."
+        "Type": "Its type, such as New Customer.",
+        "account_name": "Beta. The name of its account (the customer); blank when it has none.",
+        "amount_display": "Beta. Its value as a person writes it, such as 62,500. Use it in a message, with your currency sign in front; compare with Amount.",
+        "custom_fields": "Beta. The fields named in Extra fields, each by its API name, such as custom_fields.Discount_Percent__c. Empty when none were asked for.",
+        "opportunity_link": "Beta. A link that opens the opportunity in Salesforce.",
+        "owner_email": "Beta. Their email address, ready to send them a message.",
+        "owner_first_name": "Beta. The owner's first name, such as Dana, to greet them by in a message.",
+        "owner_name": "Beta. The name of the person who owns the opportunity, usually its sales rep."
       },
-      "parameters": []
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Beta. Only run for opportunities worth this much or more, as a plain number such as 50000. An opportunity with no amount doesn't run it. Leave blank to run whatever the amount.",
+          "display_name": "Amount of at least",
+          "name": "min_amount",
+          "required": false
+        },
+        {
+          "arg_index": 1,
+          "description": "Beta. Your org's own fields to read as well, by their API names with commas between them, such as Discount_Percent__c, Region__c. Each arrives under custom_fields, such as custom_fields.Discount_Percent__c. A field's API name is shown in Salesforce under Setup > Object Manager > Opportunity > Fields & Relationships. Leave blank for none.",
+          "display_name": "Extra fields",
+          "name": "extra_fields",
+          "required": false
+        }
+      ]
     },
     "salesforce_new_record_trigger": {
       "description": "Runs for each new record of the object you choose, such as an account, a case or one of your org's own objects, with its fields by their API names. Records already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
@@ -2661,7 +3095,7 @@
       ]
     },
     "salesforce_opportunity_stage_changed_trigger": {
-      "description": "Runs when an opportunity moves to a new stage in Salesforce, or only when it moves to the stage you choose, such as Closed Won. A deal that moves on and back again runs it again. How often it checks follows your workspace plan.",
+      "description": "Runs when an opportunity moves to a new stage in Salesforce, or only when it moves to the stage you choose, such as Closed Won, or is worth at least an amount you choose. It arrives with its owner's name and email, its account's name and a link to it, so no further step is needed to look them up. A deal that moves on and back again runs it again. How often it checks follows your workspace plan.",
       "display_name": "Opportunity stage changed",
       "id": "salesforce_opportunity_stage_changed_trigger",
       "output": {
@@ -2678,14 +3112,35 @@
         "Name": "The opportunity's name.",
         "Probability": "How likely it is to close, in percent.",
         "StageName": "The stage it is in, such as Prospecting.",
-        "Type": "Its type, such as New Customer."
+        "Type": "Its type, such as New Customer.",
+        "account_name": "Beta. The name of its account (the customer); blank when it has none.",
+        "amount_display": "Beta. Its value as a person writes it, such as 62,500. Use it in a message, with your currency sign in front; compare with Amount.",
+        "custom_fields": "Beta. The fields named in Extra fields, each by its API name, such as custom_fields.Discount_Percent__c. Empty when none were asked for.",
+        "opportunity_link": "Beta. A link that opens the opportunity in Salesforce.",
+        "owner_email": "Beta. Their email address, ready to send them a message.",
+        "owner_first_name": "Beta. The owner's first name, such as Dana, to greet them by in a message.",
+        "owner_name": "Beta. The name of the person who owns the opportunity, usually its sales rep."
       },
       "parameters": [
         {
           "arg_index": 0,
-          "description": "Only run when an opportunity moves to this stage, written as it appears in Salesforce, such as Closed Won. Leave blank to run for every move.",
+          "description": "Only run when an opportunity moves to this stage, written as it appears in Salesforce, such as Closed Won. Leave blank to run for every move. Capitals don't matter, but the name must be the whole of one of your org's stages: turning the workflow on is refused, listing them, when it isn't. Salesforce's standard stages are Prospecting, Qualification, Needs Analysis, Value Proposition, Id. Decision Makers, Perception Analysis, Proposal/Price Quote, Negotiation/Review, Closed Won and Closed Lost.",
           "display_name": "Stage",
           "name": "stage_name",
+          "required": false
+        },
+        {
+          "arg_index": 1,
+          "description": "Beta. Only run for opportunities worth this much or more, as a plain number such as 50000. An opportunity with no amount doesn't run it. Leave blank to run whatever the amount.",
+          "display_name": "Amount of at least",
+          "name": "min_amount",
+          "required": false
+        },
+        {
+          "arg_index": 2,
+          "description": "Beta. Your org's own fields to read as well, by their API names with commas between them, such as Discount_Percent__c, Region__c. Each arrives under custom_fields, such as custom_fields.Discount_Percent__c. A field's API name is shown in Salesforce under Setup > Object Manager > Opportunity > Fields & Relationships. Leave blank for none.",
+          "display_name": "Extra fields",
+          "name": "extra_fields",
           "required": false
         }
       ]
