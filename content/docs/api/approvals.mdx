@@ -1,10 +1,10 @@
 ---
 title: Approvals
-description: See which runs are waiting for someone to approve, reject or reply, and answer them from your own systems.
+description: See which runs are waiting for a person's answer, and answer them from your own systems.
 icon: CircleCheck
 ---
 
-A workflow's [Request approval](/docs/guides/approvals) step pauses its run until someone answers: approves or rejects it, or, when the step asks for one, replies in writing. While it waits, the run's status is `awaiting_approval`. These endpoints let your own system, such as a practice-management tool or an ERP, do the answering. An answer sent with an API key is recorded as that key's, by name, and the run carries on straight away.
+A workflow's [Ask a person](/docs/guides/approvals) step pauses its run until someone answers: presses one of its buttons (**Approve** or **Reject**, on an approval), with as much writing as it asks for, or, when the step asks for one, replies in writing. While it waits, the run's status is `awaiting_approval`. These endpoints let your own system, such as a practice-management tool or an ERP, do the answering. An answer sent with an API key is recorded as that key's, by name, and the run carries on straight away.
 
 ## The approval request object
 
@@ -23,13 +23,17 @@ A workflow's [Request approval](/docs/guides/approvals) step pauses its run unti
   "created_at": "2026-10-27T09:00:00+00:00",
   "expires_at": "2026-10-30T09:00:00+00:00",
   "on_timeout": "reject",
+  "buttons": ["Approve", "Reject"],
+  "written_answer": "optional",
+  "draft": "",
+  "timeout_answer": "",
   "decision": null
 }
 ```
 
 <Fields title="Fields">
 <Field id="id" type="string" description="The request's ID." />
-<Field id="kind" type="string" description="approval, answered by approving or rejecting it; or reply, answered in writing." />
+<Field id="kind" type="string" description="approval, answered with Approve or Reject; or reply, for every other request: one with buttons of its own, or one answered in writing alone." />
 <Field id="status" type="string" description="pending while it waits for an answer; approved, rejected or replied once answered; expired when nobody answered in time and the step was set to fail; or cancelled when the run was stopped, or its workflow deleted, first." />
 <Field id="title" type="string" description="What the step asks, as it wrote it." />
 <Field id="details" type="string" description="More about what's being asked, as the step wrote it." />
@@ -41,7 +45,11 @@ A workflow's [Request approval](/docs/guides/approvals) step pauses its run unti
 <Field id="created_at" type="string" description="When it asked, in ISO 8601." />
 <Field id="expires_at" type="string or null" description="When the step stops waiting, in ISO 8601, or null if it waits as long as it takes." />
 <Field id="on_timeout" type="string" description="What happens if nobody answers by then: the request is rejected or approved, or the run fails or carries on without a reply." />
-<Field id="decision" type="object or null" description="How it was answered: decision (approved, rejected or replied), comment, reply, decided_by (who answered, with their name), decided_at and via (app, email, api or timeout). Null until it's answered." />
+<Field id="buttons" type="array of strings" description="What a person presses to answer, as labelled: Approve and Reject on an approval, the step's own otherwise. Empty for a request answered in writing alone." />
+<Field id="written_answer" type="string" description="How much they write alongside: none, optional or required." />
+<Field id="draft" type="string" description="Text the person can change before they answer, as the step gave it; empty when there is none." />
+<Field id="timeout_answer" type="string" description="The button pressed for them if nobody answers in time; empty when there is none." />
+<Field id="decision" type="object or null" description="How it was answered: answer (the button pressed; empty for a written reply), reply (what was written), draft (the text as left), decision (approved, rejected or replied), comment, decided_by (who answered, with their name), decided_at and via (app, email, api or timeout). Null until it's answered." />
 </Fields>
 
 A request also lists who may answer it in Lodol (`approvers`, `approver_group`), the member the run runs as (`requested_by`), and its history (`events`).
@@ -117,27 +125,26 @@ curl https://api-prod.lodol.com/api/v1/approvals/6ae123ec738a4977fdb31728 \
 
 <Endpoint method="POST" path="/api/v1/approvals/:id/decision" />
 
-Approves or rejects a request, or replies to one that asks for a reply, so its run carries on. Requires the `workflows:execute` scope, and the member who created the key must be allowed to run workflows. An API key answers for the workspace, so it isn't held to the request's list of approvers. It is held to who may not answer: a key made by the member who prepared the item, or by the member the run runs as when the step needs someone else, gets `403`.
+Presses one of a request's buttons, or replies to one answered in writing alone, so its run carries on. Requires the `workflows:execute` scope, and the member who created the key must be allowed to run workflows. An API key answers for the workspace, so it isn't held to the request's list of approvers. It is held to who may not answer: a key made by the member who prepared the item, or by the member the run runs as when the step needs someone else, gets `403`.
 
 <Fields title="Headers">
 <Field id="Idempotency-Key" type="string" description="Makes the request safe to retry: a repeat with the same key returns the first answer instead of a conflict with it. See Idempotency." />
 </Fields>
 
-<Fields title="Body" description="For a request whose kind is approval:">
-<Field id="decision" type="string" description="approved or rejected." facts="Required." />
-<Field id="comment" type="string" description="Why, for the record." />
+<Fields title="Body">
+<Field id="answer" type="string" description="The button to press, one of the request's buttons. Leave it out for a request answered in writing alone." />
+<Field id="reply" type="string" description="What to write alongside: a comment on an approval, the answer to a request answered in writing alone. Required when written_answer is required; ignored when it is none." />
+<Field id="draft" type="string" description="The request's text as changed, for a request that carries text to check. Left out, the text goes on as the step gave it." />
 </Fields>
 
-<Fields title="Body" description="For a request whose kind is reply:">
-<Field id="reply" type="string" description="The answer, which the run carries on with." facts="Required." />
-</Fields>
+Requests answered before buttons were sent with `decision` (`approved` or `rejected`) and `comment`. That body still works for an approval.
 
 ```bash tab="cURL" tab-group="lang"
 curl -X POST https://api-prod.lodol.com/api/v1/approvals/6ae123ec738a4977fdb31728/decision \
   -H "Authorization: Bearer $LODOL_API_KEY" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: approve-inv-7" \
-  -d '{"decision": "approved", "comment": "Matches the purchase order"}'
+  -d '{"answer": "Approve", "reply": "Matches the purchase order"}'
 ```
 
 ```js tab="JavaScript"
@@ -148,7 +155,7 @@ await fetch('https://api-prod.lodol.com/api/v1/approvals/6ae123ec738a4977fdb3172
     'Content-Type': 'application/json',
     'Idempotency-Key': 'approve-inv-7',
   },
-  body: JSON.stringify({ decision: 'approved', comment: 'Matches the purchase order' }),
+  body: JSON.stringify({ answer: 'Approve', reply: 'Matches the purchase order' }),
 });
 ```
 
@@ -159,7 +166,7 @@ requests.post(
         "Authorization": f"Bearer {os.environ['LODOL_API_KEY']}",
         "Idempotency-Key": "approve-inv-7",
     },
-    json={"decision": "approved", "comment": "Matches the purchase order"},
+    json={"answer": "Approve", "reply": "Matches the purchase order"},
 )
 ```
 
