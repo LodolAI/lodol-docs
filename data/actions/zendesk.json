@@ -161,6 +161,7 @@
                     "type": "number"
                   },
                   "score": {
+                    "description": "What the customer answered when asked how the ticket went: good or bad once they have answered, offered while the survey is sent and unanswered, unoffered when none was sent.",
                     "type": "string"
                   }
                 },
@@ -440,6 +441,7 @@
           "subject": "Printer on fire"
         },
         "ticket_id": 12345,
+        "ticket_link": "https://acme.zendesk.com/agent/tickets/12345",
         "url": "https://acme.zendesk.com/agent/tickets/12345"
       },
       "name": "create_ticket",
@@ -583,6 +585,13 @@
           "name": "group_id",
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. The email address of the agent to assign the ticket to, such as dana@acme.com, with no step to look them up first. The step stops with a message naming the address if no agent or admin in Zendesk has it. Ignored when Assignee is filled in.",
+          "display_name": "Assign to (email)",
+          "name": "assignee_email",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/zendesk/create-ticket",
@@ -699,6 +708,7 @@
                     "type": "number"
                   },
                   "score": {
+                    "description": "What the customer answered when asked how the ticket went: good or bad once they have answered, offered while the survey is sent and unanswered, unoffered when none was sent.",
                     "type": "string"
                   }
                 },
@@ -752,7 +762,12 @@
           "ticket_id": {
             "type": "number"
           },
+          "ticket_link": {
+            "description": "Beta. The link that opens the new ticket in Zendesk (https://<subdomain>.zendesk.com/agent/tickets/<id>), the same field the other Zendesk steps give, ready for an email or message to the team with no step to build it.",
+            "type": "string"
+          },
           "url": {
+            "description": "The page that opens the ticket in Zendesk.",
             "type": "string"
           }
         },
@@ -1533,6 +1548,7 @@
           "subject": "Printer on fire"
         },
         "ticket_id": 12345,
+        "ticket_link": "https://acme.zendesk.com/agent/tickets/12345",
         "url": "https://acme.zendesk.com/agent/tickets/12345"
       },
       "name": "get_ticket",
@@ -1659,6 +1675,7 @@
                     "type": "number"
                   },
                   "score": {
+                    "description": "What the customer answered when asked how the ticket went: good or bad once they have answered, offered while the survey is sent and unanswered, unoffered when none was sent.",
                     "type": "string"
                   }
                 },
@@ -1711,6 +1728,10 @@
           },
           "ticket_id": {
             "type": "number"
+          },
+          "ticket_link": {
+            "description": "Beta. The link that opens the ticket in Zendesk, for a message or an email. The same field Search Zendesk gives each ticket.",
+            "type": "string"
           },
           "url": {
             "type": "string"
@@ -2454,6 +2475,7 @@
                       "type": "number"
                     },
                     "score": {
+                      "description": "What the customer answered when asked how the ticket went: good or bad once they have answered, offered while the survey is sent and unanswered, unoffered when none was sent.",
                       "type": "string"
                     }
                   },
@@ -2576,7 +2598,7 @@
       ]
     },
     "search": {
-      "description": "Search tickets, users, organizations and groups with Zendesk search syntax, for example 'type:ticket status:open'. A ticket comes back with its subject, description (what the customer wrote), status, priority, and the name and email of its assignee and requester, the day it was created and how many days it has waited (created_display and days_waiting, beta), and ticket_link, the page that opens it in Zendesk (beta). To react to each new ticket, start the workflow with the New ticket trigger instead of searching on a schedule.",
+      "description": "Search tickets, users, organizations and groups with Zendesk search syntax, for example 'type:ticket status:open'. A ticket comes back with its subject, description (what the customer wrote), status, priority, and the name and email of its assignee and requester, the day it was created and how many days it has waited (created_display and days_waiting, beta; hours_waiting and waiting_display such as '5 hours', beta), who has it (assignee_display, the name or Unassigned, beta), and ticket_link, the page that opens it in Zendesk (beta). For tickets still waiting for a first reply, turn on 'Only tickets with no agent reply yet' (beta). To react to each new ticket, start the workflow with the New ticket trigger instead of searching on a schedule.",
       "display_name": "Search Zendesk",
       "display_str_template": "Search for '{0}'.",
       "handler": "actions.search",
@@ -2586,12 +2608,14 @@
         "count": 1,
         "results": [
           {
+            "assignee_display": "Sam Rivera",
             "assignee_email": "sam@example.com",
             "assignee_id": 20123,
             "assignee_name": "Sam Rivera",
             "created_display": "Nov 3, 2026",
             "days_waiting": 3,
             "description": "The printer in accounting is smoking.",
+            "hours_waiting": 74,
             "id": 12345,
             "priority": "high",
             "requester_email": "alex@example.com",
@@ -2600,7 +2624,8 @@
             "result_type": "ticket",
             "status": "open",
             "subject": "Printer on fire",
-            "ticket_link": "https://acme.zendesk.com/agent/tickets/101"
+            "ticket_link": "https://acme.zendesk.com/agent/tickets/101",
+            "waiting_display": "3 days"
           }
         ],
         "returned": 1,
@@ -2609,7 +2634,7 @@
       "name": "search",
       "parameters": [
         {
-          "description": "What to look for. Zendesk search syntax works here, such as type:ticket status:open priority:urgent. To look back from now, write the time with no spaces, such as created>30minutes or updated>2days; created<2days is older than two days. solved>7days finds tickets solved in the last week (updated> also catches tickets edited after they were solved). status<solved means new, open, pending or on hold, and assignee:none finds tickets nobody has taken.",
+          "description": "What to look for. Zendesk search syntax works here, such as type:ticket status:open priority:urgent. To look back from now, write the time with no spaces, such as created>30minutes or updated>2days; created<2days is older than two days. solved>7days finds tickets solved in the last week (updated> also catches tickets edited after they were solved). status<solved means new, open, pending or on hold, and assignee:none finds tickets nobody has taken. Beta: satisfaction:bad finds tickets a customer rated bad, satisfaction:badwithcomment those where they also wrote why, and satisfaction:good the ones rated good.",
           "display_name": "Search terms",
           "examples": [
             {
@@ -2697,6 +2722,14 @@
           "name": "per_page",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Beta. On keeps only the tickets no agent has publicly replied to, whatever their status: the question behind 'waiting for a first reply' and first-reply SLA checks, which status:new misses once a ticket is assigned or has an internal note. Combine it with a time in the search terms (type:ticket status<solved created<4hours for tickets unanswered after 4 hours). The results are then tickets only, and count is how many on this page.",
+          "display_name": "Only tickets with no agent reply yet",
+          "name": "only_unanswered",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         }
       ],
       "path": "/actions/library/zendesk/search",
@@ -2709,6 +2742,10 @@
           "results": {
             "items": {
               "properties": {
+                "assignee_display": {
+                  "description": "Beta. On a ticket: who has it, as a digest line says it: the assignee's name, or Unassigned.",
+                  "type": "string"
+                },
                 "assignee_email": {
                   "type": "string"
                 },
@@ -2733,6 +2770,10 @@
                   "type": "string"
                 },
                 "group_id": {
+                  "type": "number"
+                },
+                "hours_waiting": {
+                  "description": "Beta. On a ticket: whole hours since it was created, for an hours-long reply target such as 4 hours.",
                   "type": "number"
                 },
                 "id": {
@@ -2770,6 +2811,10 @@
                   "type": "string"
                 },
                 "url": {
+                  "type": "string"
+                },
+                "waiting_display": {
+                  "description": "Beta. On a ticket: how long it has waited as a person says it, such as 45 minutes, 5 hours or 3 days, for a message or digest.",
                   "type": "string"
                 }
               },
@@ -3148,6 +3193,7 @@
           "subject": "Printer on fire"
         },
         "ticket_id": 12345,
+        "ticket_link": "https://acme.zendesk.com/agent/tickets/12345",
         "ticket_status": "open",
         "url": "https://acme.zendesk.com/agent/tickets/12345"
       },
@@ -3277,6 +3323,13 @@
             "type": "array"
           },
           "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Beta. The email address of the agent to assign the ticket to, such as dana@acme.com, with no step to look them up first. The step stops with a message naming the address if no agent or admin in Zendesk has it. Ignored when Assignee is filled in.",
+          "display_name": "Assign to (email)",
+          "name": "assignee_email",
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/zendesk/update-ticket",
@@ -3393,6 +3446,7 @@
                     "type": "number"
                   },
                   "score": {
+                    "description": "What the customer answered when asked how the ticket went: good or bad once they have answered, offered while the survey is sent and unanswered, unoffered when none was sent.",
                     "type": "string"
                   }
                 },
@@ -3445,6 +3499,10 @@
           },
           "ticket_id": {
             "type": "number"
+          },
+          "ticket_link": {
+            "description": "Beta. The link that opens the ticket in Zendesk, for a message or an email. The same field Search Zendesk gives each ticket.",
+            "type": "string"
           },
           "ticket_status": {
             "type": "string"
@@ -3731,7 +3789,7 @@
         "created_at": "When it was created.",
         "description": "What the customer wrote.",
         "id": "The ticket's number.",
-        "priority": "How urgent it is, empty if not set.",
+        "priority": "How urgent it is: low, normal, high or urgent; empty if not set.",
         "requester_email": "The sender's email address.",
         "requester_first_name": "Beta. The first word of requester_name, ready for 'Hi Ada,' in a reply with no step to split the name.",
         "requester_name": "Who sent it.",
@@ -3761,7 +3819,7 @@
         "created_at": "When it was created.",
         "description": "What the customer wrote.",
         "id": "The ticket's number.",
-        "priority": "How urgent it is, empty if not set.",
+        "priority": "How urgent it is: low, normal, high or urgent; empty if not set.",
         "requester_email": "The sender's email address.",
         "requester_first_name": "Beta. The first word of requester_name, ready for 'Hi Ada,' in a reply with no step to split the name.",
         "requester_name": "Who sent it.",
@@ -3770,7 +3828,15 @@
         "tags": "The ticket's tags.",
         "url": "The ticket's page in Zendesk."
       },
-      "parameters": []
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Beta. Only tickets created with this priority: low, normal, high or urgent, or several separated by commas (high, urgent), so an urgent-ticket alert needs no check of its own. Leave empty to run for every new ticket.",
+          "display_name": "Only priority",
+          "name": "priority",
+          "required": false
+        }
+      ]
     },
     "zendesk_new_user_trigger": {
       "description": "Runs for each new person in Zendesk: a customer who writes in or signs up, or a new agent. Use its role to tell them apart. People already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
@@ -3790,6 +3856,65 @@
       },
       "parameters": []
     },
+    "zendesk_satisfaction_rating_trigger": {
+      "description": "Runs when a customer rates a Zendesk ticket good or bad in the satisfaction survey, with their comment, the ticket and who handled it. Set Score to bad to follow up on unhappy customers. Runs once per ticket and score: a customer who changes good to bad starts it again, one who only adds a comment doesn't. Ratings given before the workflow is turned on don't start it. Zendesk shows ratings only to admins, so whoever connected Zendesk must be a Zendesk admin. How often it checks follows your workspace plan.",
+      "display_name": "New satisfaction rating",
+      "id": "zendesk_satisfaction_rating_trigger",
+      "output": {
+        "assignee_name": "The agent the ticket is assigned to, empty if nobody.",
+        "comment": "What the customer wrote with the rating, empty if nothing.",
+        "organization_name": "The customer's organization (company), empty if none.",
+        "rated_at": "When they rated it, such as 2026-11-20T14:05:00Z.",
+        "rated_display": "The day they rated it, ready to read: Nov 20, 2026.",
+        "rating_id": "The rating's Zendesk ID.",
+        "reason": "The reason the customer picked for a bad rating, such as 'The issue was not resolved', empty if none.",
+        "requester_email": "The customer's email address.",
+        "requester_first_name": "The first word of requester_name, ready for 'Hi Ada,'.",
+        "requester_name": "The customer who rated it.",
+        "score": "What the customer chose: bad or good.",
+        "ticket_id": "The rated ticket's number.",
+        "ticket_subject": "The rated ticket's subject.",
+        "ticket_url": "The ticket's page in Zendesk, for agents, such as https://acme.zendesk.com/agent/tickets/123."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Only ratings with this score: bad or good. Leave it empty for both.",
+          "display_name": "Score",
+          "name": "score",
+          "required": false
+        }
+      ]
+    },
+    "zendesk_ticket_priority_set_trigger": {
+      "description": "Beta. Runs when a Zendesk ticket has the priority you choose, such as urgent: a new ticket that arrives with it, or one raised to it later. Runs once per ticket, so later replies to an urgent ticket don't start it again. Tickets already at that priority when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Ticket set to a priority",
+      "id": "zendesk_ticket_priority_set_trigger",
+      "output": {
+        "assignee_name": "The agent it is assigned to, empty if nobody.",
+        "created_at": "When it was created.",
+        "description": "What the customer wrote.",
+        "id": "The ticket's number.",
+        "priority": "How urgent it is: low, normal, high or urgent; empty if not set.",
+        "requester_email": "The sender's email address.",
+        "requester_first_name": "Beta. The first word of requester_name, ready for 'Hi Ada,' in a reply with no step to split the name.",
+        "requester_name": "Who sent it.",
+        "status": "The ticket's status, such as new or open.",
+        "subject": "The ticket's subject.",
+        "tags": "The ticket's tags.",
+        "updated_at": "When it last changed.",
+        "url": "The ticket's page in Zendesk."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The priority to watch for: urgent, high, normal or low.",
+          "display_name": "Priority",
+          "name": "priority",
+          "required": true
+        }
+      ]
+    },
     "zendesk_ticket_solved_trigger": {
       "description": "Runs when a Zendesk ticket is solved, such as to send a follow-up or note the outcome somewhere else. Runs once per ticket: one reopened and solved again doesn't start it twice. Tickets solved before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
       "display_name": "Ticket solved",
@@ -3799,7 +3924,7 @@
         "created_at": "When it was created.",
         "description": "What the customer wrote.",
         "id": "The ticket's number.",
-        "priority": "How urgent it is, empty if not set.",
+        "priority": "How urgent it is: low, normal, high or urgent; empty if not set.",
         "requester_email": "The sender's email address.",
         "requester_first_name": "Beta. The first word of requester_name, ready for 'Hi Ada,' in a reply with no step to split the name.",
         "requester_name": "Who sent it.",
@@ -3811,6 +3936,36 @@
       },
       "parameters": []
     },
+    "zendesk_ticket_tagged_trigger": {
+      "description": "Runs when a Zendesk ticket has a tag you choose, such as refund: a new ticket created with it, or one it is added to later. Runs once per ticket, however often the ticket changes after. Tickets that already have the tag when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Ticket tagged",
+      "id": "zendesk_ticket_tagged_trigger",
+      "output": {
+        "assignee_name": "The agent it is assigned to, empty if nobody.",
+        "created_at": "When it was created.",
+        "description": "What the customer wrote.",
+        "id": "The ticket's number.",
+        "priority": "How urgent it is: low, normal, high or urgent; empty if not set.",
+        "requester_email": "The sender's email address.",
+        "requester_first_name": "Beta. The first word of requester_name, ready for 'Hi Ada,' in a reply with no step to split the name.",
+        "requester_name": "Who sent it.",
+        "status": "The ticket's status, such as new or open.",
+        "subject": "The ticket's subject.",
+        "tag": "The tag it was found with.",
+        "tags": "The ticket's tags.",
+        "updated_at": "When it last changed.",
+        "url": "The ticket's page in Zendesk."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "The tag to watch for, as it appears on tickets in Zendesk, such as refund. Capitals and spaces around it don't matter.",
+          "display_name": "Tag",
+          "name": "tag",
+          "required": true
+        }
+      ]
+    },
     "zendesk_ticket_updated_trigger": {
       "description": "Runs each time a Zendesk ticket changes: a reply, a new status, a new assignee, a tag. Runs once per change. A brand-new ticket doesn't start it; use New ticket for those. How often it checks follows your workspace plan.",
       "display_name": "Ticket updated",
@@ -3820,7 +3975,7 @@
         "created_at": "When it was created.",
         "description": "What the customer wrote.",
         "id": "The ticket's number.",
-        "priority": "How urgent it is, empty if not set.",
+        "priority": "How urgent it is: low, normal, high or urgent; empty if not set.",
         "requester_email": "The sender's email address.",
         "requester_first_name": "Beta. The first word of requester_name, ready for 'Hi Ada,' in a reply with no step to split the name.",
         "requester_name": "Who sent it.",

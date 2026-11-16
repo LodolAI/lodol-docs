@@ -1020,29 +1020,69 @@
       ]
     },
     "list_merge_requests": {
-      "description": "List a project's merge requests, newest first: open, merged, closed or all, optionally only those matching some text.",
+      "description": "List a project's merge requests, newest first: open, merged, closed or all, optionally only those matching some text. Can keep only the ones opened some days ago or longer, leave out drafts, and gives each one's author, reviewers and days open, with a count of how many it found.",
       "display_name": "List merge requests",
       "display_str_template": "List merge requests in project {0}.",
       "handler": "actions.list_merge_requests",
       "id": "gitlab_list_merge_requests",
       "method": "POST",
       "mock_response": {
+        "count": 2,
         "merge_requests": [
           {
-            "author": "ann",
+            "assignees_text": "Ana Ruiz",
+            "author": "aruiz",
+            "author_name": "Ana Ruiz",
+            "author_username": "aruiz",
             "created_at": "2026-11-06T10:00:00.000Z",
+            "created_display": "Nov 6, 2026",
+            "days_open": 4,
             "description": "Adds the login page.",
             "draft": false,
+            "has_conflicts": false,
             "id": 555,
             "iid": 3,
             "labels": [
               "frontend"
             ],
+            "reference": "!3",
+            "reviewers": [
+              "Sam Lee",
+              "Priya Patel"
+            ],
+            "reviewers_text": "Sam Lee, Priya Patel",
             "source_branch": "feature/login",
             "state": "opened",
             "target_branch": "main",
             "title": "Add login page",
+            "updated_at": "2026-11-09T15:30:00.000Z",
             "web_url": "https://gitlab.com/user/project/-/merge_requests/3"
+          },
+          {
+            "assignees_text": "Sam Lee",
+            "author": "slee",
+            "author_name": "Sam Lee",
+            "author_username": "slee",
+            "created_at": "2026-11-03T08:15:00.000Z",
+            "created_display": "Nov 3, 2026",
+            "days_open": 7,
+            "description": "Still moving the export to the new report format.",
+            "draft": true,
+            "has_conflicts": true,
+            "id": 561,
+            "iid": 7,
+            "labels": [
+              "backend"
+            ],
+            "reference": "!7",
+            "reviewers": [],
+            "reviewers_text": "",
+            "source_branch": "billing-export",
+            "state": "opened",
+            "target_branch": "main",
+            "title": "Draft: Rework the billing export",
+            "updated_at": "2026-11-04T11:00:00.000Z",
+            "web_url": "https://gitlab.com/user/project/-/merge_requests/7"
           }
         ]
       },
@@ -1107,6 +1147,98 @@
           "name": "per_page",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Beta. Only merge requests opened this many days ago or longer, such as 2 for ones that have waited more than two days. Leave blank for any age.",
+          "display_name": "Opened at least this many days ago",
+          "minimum": 0,
+          "name": "opened_at_least_days_ago",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Beta. Only merge requests nobody has touched for this many days: no comment, commit or edit. Such as 7 for ones gone quiet for a week. Leave blank for any.",
+          "display_name": "Not changed in this many days",
+          "minimum": 0,
+          "name": "not_updated_in_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": "include",
+          "description": "Beta. Whether to list merge requests marked as drafts: include them, leave them out, or list only drafts.",
+          "display_name": "Drafts",
+          "name": "drafts",
+          "options": [
+            {
+              "label": "Include drafts",
+              "value": "include"
+            },
+            {
+              "label": "Leave out drafts",
+              "value": "leave_out"
+            },
+            {
+              "label": "Only drafts",
+              "value": "only"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. Only merge requests opened by this person: their GitLab username, such as aruiz.",
+          "display_name": "Opened by",
+          "name": "author_username",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. Only merge requests this person has been asked to review: their GitLab username, such as slee.",
+          "display_name": "Reviewer",
+          "name": "reviewer_username",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. Only merge requests that have every one of these labels.",
+          "display_name": "With labels",
+          "dynamic_source": "labels",
+          "dynamic_source_depends_on": [
+            "project"
+          ],
+          "name": "labels",
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Beta. Only merge requests that would merge into this branch, such as main.",
+          "display_name": "Merging into",
+          "dynamic_source": "branches",
+          "dynamic_source_depends_on": [
+            "project"
+          ],
+          "name": "target_branch",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": "newest",
+          "description": "Beta. Newest first, or oldest first to put the ones that have waited longest at the top.",
+          "display_name": "Order",
+          "name": "order",
+          "options": [
+            {
+              "label": "Newest first",
+              "value": "newest"
+            },
+            {
+              "label": "Oldest first",
+              "value": "oldest"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/library/gitlab/list-merge-requests",
@@ -1114,17 +1246,41 @@
       "returns": {
         "description": "Response envelope; the list is in the \"merge_requests\" field.",
         "properties": {
+          "count": {
+            "description": "Beta. How many merge requests are in the list, such as 2. 0 when none match.",
+            "type": "number"
+          },
           "merge_requests": {
-            "description": "The merge requests, newest first.",
+            "description": "The merge requests, newest first unless Order says oldest first.",
             "items": {
               "properties": {
+                "assignees_text": {
+                  "description": "Beta. The names of the people it's assigned to in one line, such as Ana Ruiz, Sam Lee. Blank when it's assigned to nobody.",
+                  "type": "string"
+                },
                 "author": {
                   "description": "Who opened it (their username).",
+                  "type": "string"
+                },
+                "author_name": {
+                  "description": "Beta. The name of the person who opened it, such as Ana Ruiz.",
+                  "type": "string"
+                },
+                "author_username": {
+                  "description": "Beta. The username of the person who opened it, such as aruiz.",
                   "type": "string"
                 },
                 "created_at": {
                   "description": "When it was opened.",
                   "type": "string"
+                },
+                "created_display": {
+                  "description": "Beta. The day it was opened, ready to read, such as Nov 6, 2026.",
+                  "type": "string"
+                },
+                "days_open": {
+                  "description": "Beta. How many whole days ago it was opened, such as 4. 0 for one opened in the last day.",
+                  "type": "number"
                 },
                 "description": {
                   "description": "Its main text.",
@@ -1132,6 +1288,10 @@
                 },
                 "draft": {
                   "description": "Whether it's marked as a draft.",
+                  "type": "boolean"
+                },
+                "has_conflicts": {
+                  "description": "Beta. Whether its changes clash with the branch it would merge into, so it can't be merged until someone sorts that out.",
                   "type": "boolean"
                 },
                 "id": {
@@ -1149,6 +1309,21 @@
                   },
                   "type": "array"
                 },
+                "reference": {
+                  "description": "Beta. Its number the way GitLab writes it, such as !42.",
+                  "type": "string"
+                },
+                "reviewers": {
+                  "description": "Beta. The names of the people asked to review it.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "reviewers_text": {
+                  "description": "Beta. The reviewers' names in one line, such as Ana Ruiz, Sam Lee. Blank when nobody has been asked to review it.",
+                  "type": "string"
+                },
                 "source_branch": {
                   "description": "The branch with the changes.",
                   "type": "string"
@@ -1163,6 +1338,10 @@
                 },
                 "title": {
                   "description": "Its title.",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "Beta. When it last changed: a comment, a new commit, an edit.",
                   "type": "string"
                 },
                 "web_url": {
@@ -1571,19 +1750,32 @@
       "method": "POST",
       "mock_response": {
         "merge_request": {
-          "author": "ann",
+          "assignees_text": "Ana Ruiz",
+          "author": "aruiz",
+          "author_name": "Ana Ruiz",
+          "author_username": "aruiz",
           "created_at": "2026-11-06T10:00:00.000Z",
+          "created_display": "Nov 6, 2026",
+          "days_open": 4,
           "description": "Adds the login page.",
           "draft": false,
+          "has_conflicts": false,
           "id": 555,
           "iid": 3,
           "labels": [
             "frontend"
           ],
+          "reference": "!3",
+          "reviewers": [
+            "Sam Lee",
+            "Priya Patel"
+          ],
+          "reviewers_text": "Sam Lee, Priya Patel",
           "source_branch": "feature/login",
           "state": "opened",
           "target_branch": "main",
           "title": "Add login page",
+          "updated_at": "2026-11-09T15:30:00.000Z",
           "web_url": "https://gitlab.com/user/project/-/merge_requests/3"
         }
       },
@@ -1681,13 +1873,33 @@
           "merge_request": {
             "description": "The merge request as it is now.",
             "properties": {
+              "assignees_text": {
+                "description": "Beta. The names of the people it's assigned to in one line, such as Ana Ruiz, Sam Lee. Blank when it's assigned to nobody.",
+                "type": "string"
+              },
               "author": {
                 "description": "Who opened it (their username).",
+                "type": "string"
+              },
+              "author_name": {
+                "description": "Beta. The name of the person who opened it, such as Ana Ruiz.",
+                "type": "string"
+              },
+              "author_username": {
+                "description": "Beta. The username of the person who opened it, such as aruiz.",
                 "type": "string"
               },
               "created_at": {
                 "description": "When it was opened.",
                 "type": "string"
+              },
+              "created_display": {
+                "description": "Beta. The day it was opened, ready to read, such as Nov 6, 2026.",
+                "type": "string"
+              },
+              "days_open": {
+                "description": "Beta. How many whole days ago it was opened, such as 4. 0 for one opened in the last day.",
+                "type": "number"
               },
               "description": {
                 "description": "Its main text.",
@@ -1695,6 +1907,10 @@
               },
               "draft": {
                 "description": "Whether it's marked as a draft.",
+                "type": "boolean"
+              },
+              "has_conflicts": {
+                "description": "Beta. Whether its changes clash with the branch it would merge into, so it can't be merged until someone sorts that out.",
                 "type": "boolean"
               },
               "id": {
@@ -1712,6 +1928,21 @@
                 },
                 "type": "array"
               },
+              "reference": {
+                "description": "Beta. Its number the way GitLab writes it, such as !42.",
+                "type": "string"
+              },
+              "reviewers": {
+                "description": "Beta. The names of the people asked to review it.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "reviewers_text": {
+                "description": "Beta. The reviewers' names in one line, such as Ana Ruiz, Sam Lee. Blank when nobody has been asked to review it.",
+                "type": "string"
+              },
               "source_branch": {
                 "description": "The branch with the changes.",
                 "type": "string"
@@ -1726,6 +1957,10 @@
               },
               "title": {
                 "description": "Its title.",
+                "type": "string"
+              },
+              "updated_at": {
+                "description": "Beta. When it last changed: a comment, a new commit, an edit.",
                 "type": "string"
               },
               "web_url": {
@@ -1784,19 +2019,29 @@
       "display_name": "Merge request merged",
       "id": "gitlab_merge_request_merged_trigger",
       "output": {
+        "assignees_text": "Beta. The names of the people it's assigned to in one line. Blank when it's assigned to nobody.",
         "author": "Who opened it (their username).",
+        "author_name": "Beta. The name of the person who opened it, such as Ana Ruiz.",
+        "author_username": "Beta. The username of the person who opened it, such as aruiz.",
         "created_at": "When it was opened.",
+        "created_display": "Beta. The day it was opened, ready to read, such as Nov 6, 2026.",
+        "days_open": "Beta. How many whole days ago it was opened, such as 4.",
         "description": "Its main text.",
         "draft": "Whether it was marked as a draft.",
+        "has_conflicts": "Beta. Whether its changes clash with the branch it merges into.",
         "id": "The merge request's ID across GitLab.",
         "iid": "Its number in the project (!3).",
         "labels": "Its labels.",
         "merged_at": "When it was merged.",
         "merged_by": "Who merged it (their username).",
+        "reference": "Beta. Its number the way GitLab writes it, such as !42.",
+        "reviewers": "Beta. The names of the people asked to review it.",
+        "reviewers_text": "Beta. The reviewers' names in one line, such as Ana Ruiz, Sam Lee. Blank when nobody has been asked to review it.",
         "source_branch": "The branch with the changes.",
         "state": "merged.",
         "target_branch": "The branch it merged into.",
         "title": "Its title.",
+        "updated_at": "Beta. When it last changed: a comment, a new commit, an edit.",
         "web_url": "Its page in GitLab."
       },
       "parameters": [
@@ -1894,17 +2139,27 @@
       "display_name": "New merge request",
       "id": "gitlab_new_merge_request_trigger",
       "output": {
+        "assignees_text": "Beta. The names of the people it's assigned to in one line. Blank when it's assigned to nobody.",
         "author": "Who opened it (their username).",
+        "author_name": "Beta. The name of the person who opened it, such as Ana Ruiz.",
+        "author_username": "Beta. The username of the person who opened it, such as aruiz.",
         "created_at": "When it was opened.",
+        "created_display": "Beta. The day it was opened, ready to read, such as Nov 6, 2026.",
+        "days_open": "Beta. How many whole days ago it was opened, such as 4.",
         "description": "Its main text.",
         "draft": "Whether it's marked as a draft.",
+        "has_conflicts": "Beta. Whether its changes clash with the branch it merges into.",
         "id": "The merge request's ID across GitLab.",
         "iid": "Its number in the project (!3).",
         "labels": "Its labels.",
+        "reference": "Beta. Its number the way GitLab writes it, such as !42.",
+        "reviewers": "Beta. The names of the people asked to review it.",
+        "reviewers_text": "Beta. The reviewers' names in one line, such as Ana Ruiz, Sam Lee. Blank when nobody has been asked to review it.",
         "source_branch": "The branch with the changes.",
         "state": "opened, merged or closed.",
         "target_branch": "The branch it would merge into.",
         "title": "Its title.",
+        "updated_at": "Beta. When it last changed: a comment, a new commit, an edit.",
         "web_url": "Its page in GitLab."
       },
       "parameters": [

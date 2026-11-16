@@ -579,6 +579,110 @@
         "write"
       ]
     },
+    "create_project_from_template": {
+      "description": "Beta. Create an Asana project by copying one of your project templates, with its sections and tasks, such as an onboarding project for each new customer. Prefer it to Create a project when the team keeps a template: the tasks are there with no Create a task steps. Waits for Asana to finish copying.",
+      "display_name": "Create a project from a template",
+      "display_str_template": "Create project '{2}' from a template.",
+      "handler": "actions.create_project_from_template",
+      "id": "asana_create_project_from_template",
+      "method": "POST",
+      "mock_response": {
+        "gid": "1209999999999",
+        "name": "Onboarding: Acme",
+        "permalink_url": "https://app.asana.com/0/1209999999999/list",
+        "ready": true,
+        "template": "Customer onboarding"
+      },
+      "name": "create_project_from_template",
+      "output_formatter": "actions.format_create_project_from_template_output",
+      "parameters": [
+        {
+          "description": "The workspace whose templates to choose from. When building a workflow, write this as an empty value so the person picks theirs.",
+          "display_name": "Workspace",
+          "dynamic_source": "workspaces",
+          "name": "workspace",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The project template to copy.",
+          "display_name": "Template",
+          "dynamic_source": "project_templates",
+          "dynamic_source_depends_on": [
+            "workspace"
+          ],
+          "name": "template",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The new project's name, for example, Onboarding: Acme.",
+          "display_name": "Project name",
+          "name": "name",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The team that owns the new project. Leave empty to use the template's own team.",
+          "display_name": "Team",
+          "dynamic_source": "teams",
+          "dynamic_source_depends_on": [
+            "workspace"
+          ],
+          "name": "team",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The day the project starts, in YYYY-MM-DD format. A template whose task dates count from a start date uses it; leave empty when the template has none.",
+          "display_name": "Start date",
+          "name": "start_on",
+          "required": false,
+          "type": "ParameterType.DATE"
+        },
+        {
+          "description": "The day the project is due, in YYYY-MM-DD format. A template whose task dates count back from a due date uses it; leave empty when the template has none.",
+          "display_name": "Due date",
+          "name": "due_on",
+          "required": false,
+          "type": "ParameterType.DATE"
+        }
+      ],
+      "path": "/actions/library/asana/create-project-from-template",
+      "result_str_template": "Project created from the template.",
+      "returns": {
+        "description": "The project made from the template.",
+        "properties": {
+          "gid": {
+            "description": "The new project's ID, for Create a task's Projects field.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The new project's name.",
+            "type": "string"
+          },
+          "permalink_url": {
+            "description": "A link that opens the new project in Asana.",
+            "type": "string"
+          },
+          "ready": {
+            "description": "True once Asana has copied every task across; false when it was still copying after half a minute (the project is there and fills in shortly).",
+            "type": "boolean"
+          },
+          "template": {
+            "description": "The name of the template it was made from.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
     "create_subtask": {
       "description": "Create a subtask under an existing Asana task.",
       "display_name": "Create a subtask",
@@ -790,7 +894,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The workspace member to assign the task to. Pick a workspace first to load its members. A person's email address works too, such as one read from a form or a sheet. When the assignee is the same person every run (the IT contact, the HR lead), leave this out so the person picks them by name in the step; don't add a setup question asking for their email.",
+          "description": "The workspace member to assign the task to. Pick a workspace first to load its members. A person's email address works too, such as one read from a form or a sheet. When the assignee is the same person every run (the IT contact, the HR lead), write it as \"\" in the workflow, so it is listed for the person to pick by name in the step, and say who it is in the step's title; don't add a setup question asking for their email. Left out altogether, the task is assigned to nobody.",
           "display_name": "Assignee",
           "dynamic_source": "workspace_users",
           "dynamic_source_depends_on": [
@@ -975,6 +1079,218 @@
       },
       "scopes": [
         "delete"
+      ]
+    },
+    "find_completed_tasks": {
+      "description": "Beta. List the tasks in an Asana project that were completed in the last few days, newest first, each with who completed it, when, and its link. Its by_person groups them by who completed them (their assignee when Asana doesn't say), with their tasks written as lines, ready for a weekly 'what got done' summary with no grouping step.",
+      "display_name": "Find completed tasks in a project",
+      "display_str_template": "Find completed tasks in Asana project '{1}'.",
+      "handler": "actions.find_completed_tasks",
+      "id": "asana_find_completed_tasks",
+      "method": "POST",
+      "mock_response": {
+        "by_person": [
+          {
+            "count": 1,
+            "email": "alex@example.com",
+            "name": "Alex Kim",
+            "task_lines": "\u2022 Publish the launch post: https://app.asana.com/0/0/1201234567890"
+          }
+        ],
+        "count": 1,
+        "tasks": [
+          {
+            "assignee": {
+              "email": "alex@example.com",
+              "gid": "1200000000001",
+              "name": "Alex Kim"
+            },
+            "completed": true,
+            "completed_at": "2024-06-06T15:00:00.000Z",
+            "completed_by": {
+              "email": "alex@example.com",
+              "gid": "1200000000001",
+              "name": "Alex Kim"
+            },
+            "gid": "1201234567890",
+            "name": "Publish the launch post",
+            "permalink_url": "https://app.asana.com/0/0/1201234567890"
+          }
+        ]
+      },
+      "name": "find_completed_tasks",
+      "output_formatter": "actions.format_find_tasks_output",
+      "parameters": [
+        {
+          "description": "The workspace the project is in; it only loads the project list.",
+          "display_name": "Workspace",
+          "dynamic_source": "workspaces",
+          "name": "workspace",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The project to look in. Pick a workspace first to load its projects.",
+          "display_name": "Project",
+          "dynamic_source": "projects",
+          "dynamic_source_depends_on": [
+            "workspace"
+          ],
+          "name": "project",
+          "required": true,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": 7,
+          "description": "Only tasks completed in the last this many days up to now: 7 for a weekly summary. Defaults to 7.",
+          "display_name": "Completed in the last days",
+          "minimum": 1,
+          "name": "completed_in_last_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
+      "path": "/actions/library/asana/find-completed-tasks",
+      "result_str_template": "Completed tasks found.",
+      "returns": {
+        "properties": {
+          "by_person": {
+            "description": "The tasks grouped by who completed them, for a summary per person.",
+            "items": {
+              "properties": {
+                "count": {
+                  "description": "How many of the tasks they completed",
+                  "type": "number"
+                },
+                "email": {
+                  "description": "Their email address",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The person's name",
+                  "type": "string"
+                },
+                "task_lines": {
+                  "description": "Their tasks, one per line with its link, ready to put in a message",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "description": "How many tasks were completed in the period.",
+            "type": "number"
+          },
+          "tasks": {
+            "items": {
+              "description": "Asana task object.",
+              "properties": {
+                "assignee": {
+                  "properties": {
+                    "email": {
+                      "type": "string"
+                    },
+                    "gid": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "completed": {
+                  "type": "boolean"
+                },
+                "completed_at": {
+                  "type": "string"
+                },
+                "completed_by": {
+                  "description": "Who completed it: gid, name and email; empty when Asana doesn't say.",
+                  "type": "object"
+                },
+                "created_at": {
+                  "type": "string"
+                },
+                "due_at": {
+                  "type": "string"
+                },
+                "due_on": {
+                  "type": "string"
+                },
+                "gid": {
+                  "description": "The task's unique ID.",
+                  "type": "string"
+                },
+                "modified_at": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "num_subtasks": {
+                  "type": "number"
+                },
+                "parent": {
+                  "properties": {
+                    "gid": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "permalink_url": {
+                  "type": "string"
+                },
+                "projects": {
+                  "items": {
+                    "properties": {
+                      "gid": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "resource_subtype": {
+                  "type": "string"
+                },
+                "start_on": {
+                  "type": "string"
+                },
+                "workspace": {
+                  "properties": {
+                    "gid": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
       ]
     },
     "find_my_tasks": {
@@ -1369,6 +1685,10 @@
           "name": "Alex Kim"
         },
         "completed": false,
+        "custom_fields": {
+          "Client email": "dana@example.com",
+          "Priority": ""
+        },
         "due_on": "2024-06-01",
         "gid": "1201234567890",
         "name": "Draft launch plan",
@@ -1413,6 +1733,13 @@
           },
           "created_at": {
             "type": "string"
+          },
+          "custom_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "(beta) The task's custom fields, each under its name as Asana shows it, with its value as text (\"\" when the field is empty). Read one as a field named the way Asana shows it, such as Client email.",
+            "type": "object"
           },
           "due_at": {
             "type": "string"
@@ -1672,6 +1999,7 @@
         "commented_by": "Who wrote it: name, email, gid.",
         "completed": "Whether it is complete.",
         "created_at": "When it was created.",
+        "custom_fields": "(beta) The task's custom fields, each under its name as Asana shows it, with its value as text (\"\" when empty). Read one as a field named the way Asana shows it, such as Client email.",
         "due_on": "The day it is due, empty if none.",
         "gid": "The task's ID.",
         "name": "The task's name.",
@@ -1704,6 +2032,7 @@
         "assignee": "Who it is assigned to: name, email, gid. Empty if nobody.",
         "completed": "Whether it is already complete.",
         "created_at": "When it was created.",
+        "custom_fields": "(beta) The task's custom fields, each under its name as Asana shows it, with its value as text (\"\" when empty). Read one as a field named the way Asana shows it, such as Client email.",
         "due_on": "The day it is due, empty if none.",
         "gid": "The task's ID.",
         "name": "The task's name.",
@@ -1736,7 +2065,10 @@
         "assignee": "Who it is assigned to: name, email, gid. Empty if nobody.",
         "completed": "Whether it is complete.",
         "completed_at": "When it was marked complete.",
+        "completed_date": "(beta) The day it was marked complete, such as 2026-11-14, for a sheet or a date field (the day in UTC).",
+        "completed_display": "(beta) The day it was marked complete, written for a message, such as November 14, 2026 (the day in UTC).",
         "created_at": "When it was created.",
+        "custom_fields": "(beta) The task's custom fields, each under its name as Asana shows it, with its value as text (\"\" when empty). Read one as a field named the way Asana shows it, such as Client email.",
         "due_on": "The day it is due, empty if none.",
         "gid": "The task's ID.",
         "name": "The task's name.",
@@ -1769,6 +2101,7 @@
         "assignee": "Who it is assigned to: name, email, gid. Empty if nobody.",
         "completed": "Whether it is complete.",
         "created_at": "When it was created.",
+        "custom_fields": "(beta) The task's custom fields, each under its name as Asana shows it, with its value as text (\"\" when empty). Read one as a field named the way Asana shows it, such as Client email.",
         "due_on": "The day it is due, empty if none.",
         "gid": "The task's ID.",
         "modified_at": "When it last changed.",

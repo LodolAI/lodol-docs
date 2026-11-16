@@ -1,13 +1,14 @@
 {
   "actions": {
     "request_approval": {
-      "description": "Pause the run until someone approves or rejects it (the default) or, set to ask for a written reply, answers a question that needs human input, like a PO number, a correction or which option to take. People get an email and an in-app notification with a link, and anyone outside the workspace can answer from the link without an account. The run waits without using any resources, then continues with the answer: add an If step on approved to act on a decision, or use reply. Chain several for multi-level approval, or put them in If branches to route by amount.",
-      "display_name": "Request approval",
-      "display_str_template": "Request approval: {title}",
+      "description": "Pause the run until a person answers: approves, picks an option or gives input only a human can. They get an email and a notification with a link, and can answer without an account.",
+      "display_name": "Ask a person",
+      "display_str_template": "Ask a person: {title}",
       "handler": "request_approval",
       "id": "skipflow_review_request_approval",
       "method": "POST",
       "mock_response": {
+        "answer": "Approve",
         "approval_id": "sample-approval",
         "approved": true,
         "comment": "Looks good.",
@@ -17,6 +18,7 @@
           "name": "Jordan Lee"
         },
         "decision": "approved",
+        "draft": "",
         "reply": "",
         "timed_out": false
       },
@@ -24,28 +26,10 @@
       "output_formatter": "_format_approval_output",
       "parameters": [
         {
-          "description": "One line people see first. For an approval, what needs approving, for example: Pay @bill.vendor $@bill.total for invoice @bill.number. For a written reply, the question, for example: Which PO number should the @bill.vendor invoice go against?",
+          "description": "The question people see first, in one line, for example: Post this thread? or Pay @bill.vendor $@bill.total for invoice @bill.number?",
           "display_name": "What to ask",
           "name": "title",
           "required": true,
-          "type": "ParameterType.STRING"
-        },
-        {
-          "default": "approval",
-          "description": "An approval, where people approve or reject (the default), or a written reply, which the next steps read as reply.",
-          "display_name": "What you need back",
-          "name": "response",
-          "options": [
-            {
-              "label": "Approve or reject",
-              "value": "approval"
-            },
-            {
-              "label": "A written reply",
-              "value": "reply"
-            }
-          ],
-          "required": false,
           "type": "ParameterType.STRING"
         },
         {
@@ -53,6 +37,57 @@
           "display_name": "Details",
           "multiline": true,
           "name": "details",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Something to check before it goes out, such as an email or a post. They can change it before they answer, and the next steps get it as they left it.",
+          "display_name": "Text they can edit",
+          "multiline": true,
+          "name": "draft",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "default": [
+            "Approve",
+            "Reject"
+          ],
+          "description": "What they press to answer, main one first: Approve and Reject, Post it and Skip, or just Submit. Up to 6.",
+          "display_name": "Buttons",
+          "item_by_item": true,
+          "name": "buttons",
+          "required": false,
+          "schema": {
+            "items": {
+              "maxLength": 60,
+              "type": "string"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "type": "array"
+          },
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "default": "optional",
+          "description": "Whether they write something too: a note, or an answer you need.",
+          "display_name": "A written answer",
+          "name": "written_answer",
+          "options": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Optional",
+              "value": "optional"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
           "required": false,
           "type": "ParameterType.STRING"
         },
@@ -66,6 +101,7 @@
         {
           "description": "Only the people asked, the people asked plus the workspace's owner and admins, or anyone in the workspace who can run workflows (not Viewers).",
           "display_name": "Who can answer",
+          "more_options": true,
           "name": "approver_group",
           "options": [
             {
@@ -89,47 +125,16 @@
           "display_name": "Time limit (hours)",
           "maximum": 720.0,
           "minimum": 0,
+          "more_options": true,
           "name": "time_limit_hours",
           "required": false,
           "type": "ParameterType.NUMBER"
         },
         {
-          "description": "What happens when the time limit runs out. Left unset, an approval is rejected and a written reply stops the run with an error. Continuing without a reply gives the next steps an empty reply with timed_out set.",
+          "description": "A button to press for them, such as Skip. Leave empty to stop the run.",
           "display_name": "If nobody answers in time",
-          "name": "on_timeout",
-          "options": [
-            {
-              "label": "Treat it as rejected",
-              "value": "reject",
-              "visible_when": {
-                "response": [
-                  "approval"
-                ]
-              }
-            },
-            {
-              "label": "Treat it as approved",
-              "value": "approve",
-              "visible_when": {
-                "response": [
-                  "approval"
-                ]
-              }
-            },
-            {
-              "label": "Stop with an error",
-              "value": "fail"
-            },
-            {
-              "label": "Continue without a reply",
-              "value": "continue",
-              "visible_when": {
-                "response": [
-                  "reply"
-                ]
-              }
-            }
-          ],
+          "more_options": true,
+          "name": "timeout_answer",
           "required": false,
           "type": "ParameterType.STRING"
         },
@@ -138,6 +143,7 @@
           "display_name": "Remind every (hours)",
           "maximum": 720.0,
           "minimum": 0,
+          "more_options": true,
           "name": "remind_every_hours",
           "required": false,
           "type": "ParameterType.NUMBER"
@@ -147,6 +153,7 @@
           "display_name": "Escalate after (hours)",
           "maximum": 720.0,
           "minimum": 0,
+          "more_options": true,
           "name": "escalate_after_hours",
           "required": false,
           "type": "ParameterType.NUMBER"
@@ -154,48 +161,47 @@
         {
           "description": "Email addresses to escalate to, separated by commas. Leave empty to escalate to the workspace's owner and admins.",
           "display_name": "Escalate to",
+          "more_options": true,
           "name": "escalate_to",
           "required": false,
           "type": "ParameterType.STRING"
         },
         {
           "default": false,
-          "description": "The person the run runs as can't approve it: whoever started it, or the workflow's owner for scheduled and triggered runs. Approvals only.",
-          "display_name": "Require a different approver",
+          "description": "The person the run runs as can't answer it: whoever started it, or the workflow's owner for scheduled and triggered runs.",
+          "display_name": "Someone else must answer",
+          "more_options": true,
           "name": "require_different_approver",
           "required": false,
-          "type": "ParameterType.BOOLEAN",
-          "visible_when": {
-            "response": [
-              "approval"
-            ]
-          }
+          "type": "ParameterType.BOOLEAN"
         },
         {
-          "description": "Email addresses of whoever prepared this item, for example the person who entered the bill. They can't approve it. Approvals only.",
+          "description": "Email addresses of whoever prepared this item, for example the person who entered the bill. They can't answer it.",
           "display_name": "Prepared by",
+          "more_options": true,
           "name": "prepared_by",
           "required": false,
-          "type": "ParameterType.STRING",
-          "visible_when": {
-            "response": [
-              "approval"
-            ]
-          }
+          "type": "ParameterType.STRING"
         },
         {
           "description": "A channel ID or #name to post the request to, with a link to answer. Uses this workspace's Slack connection; the Lodol app must be in the channel.",
           "display_name": "Also post to Slack channel",
+          "more_options": true,
           "name": "slack_channel",
           "required": false,
           "type": "ParameterType.STRING"
         }
       ],
       "path": "/actions/core/review/request-approval",
+      "retired_parameters": [
+        "response",
+        "on_timeout"
+      ],
       "returns": {
-        "description": "The answer: the decision or the written reply, who gave it and when, and any comment left with a decision.",
+        "description": "The answer: the button pressed, anything written, the text as they left it, and who answered and when.",
         "examples": [
           {
+            "answer": "Approve",
             "approval_id": "sample-approval",
             "approved": true,
             "comment": "Looks good.",
@@ -205,10 +211,12 @@
               "name": "Jordan Lee"
             },
             "decision": "approved",
+            "draft": "",
             "reply": "",
             "timed_out": false
           },
           {
+            "answer": "",
             "approval_id": "sample-approval",
             "approved": false,
             "comment": "",
@@ -218,20 +226,25 @@
               "name": "Jordan Lee"
             },
             "decision": "replied",
+            "draft": "",
             "reply": "PO-4471",
             "timed_out": false
           }
         ],
         "properties": {
+          "answer": {
+            "description": "The button pressed, exactly as the step labels it: Approve or Reject on an approval, one of the step's own buttons otherwise, or the one chosen for when time runs out. Empty for a written reply and when nobody answered.",
+            "type": "string"
+          },
           "approval_id": {
             "type": "string"
           },
           "approved": {
-            "description": "True when the request was approved. Always false for a written reply.",
+            "description": "True when the person pressed Approve.",
             "type": "boolean"
           },
           "comment": {
-            "description": "What the approver wrote with their decision, if anything.",
+            "description": "What the person wrote when they pressed Approve or Reject, if anything; reply holds it for any button.",
             "type": "string"
           },
           "decided_at": {
@@ -251,7 +264,11 @@
             "type": "object"
           },
           "decision": {
-            "description": "approved or rejected, or replied for a written reply.",
+            "description": "approved or rejected when the person pressed Approve or Reject, otherwise replied.",
+            "type": "string"
+          },
+          "draft": {
+            "description": "The text to edit, as left: changed by the person or as the step gave it. Empty when the step gave no text to edit, and for a written reply.",
             "type": "string"
           },
           "reply": {

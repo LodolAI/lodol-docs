@@ -1,5 +1,58 @@
 {
   "actions": {
+    "download_file": {
+      "description": "Save a file someone uploaded to a form (a CV, a photo, a document) so later steps can read it, attach it or have AI review it. Typeform keeps uploads private to your account, so this is how a workflow opens one.",
+      "display_name": "Download an uploaded file",
+      "display_str_template": "Download the file uploaded to Typeform.",
+      "handler": "actions.download_file",
+      "id": "typeform_download_file",
+      "method": "POST",
+      "mock_response": {
+        "content_type": "application/pdf",
+        "document_ref": "doc_typeform_upload",
+        "filename": "resume.pdf",
+        "size_bytes": 48213
+      },
+      "name": "download_file",
+      "parameters": [
+        {
+          "description": "The answer to a file-upload question, from the New response trigger: its file_urls[0], or the answer read by the question's wording.",
+          "display_name": "File link",
+          "name": "file_url",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/typeform/download-file",
+      "result_str_template": "Saved the uploaded file.",
+      "returns": {
+        "properties": {
+          "content_type": {
+            "description": "The kind of file, such as application/pdf",
+            "type": "string"
+          },
+          "document_ref": {
+            "description": "The saved file, for an AI step's files, an email attachment or an upload",
+            "type": "string"
+          },
+          "filename": {
+            "description": "The file's name, such as resume.pdf",
+            "type": "string"
+          },
+          "size_bytes": {
+            "description": "How big the file is, in bytes",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read",
+        "write",
+        "modify",
+        "delete"
+      ]
+    },
     "get_form": {
       "description": "Look up a form's title and field count.",
       "display_name": "Get form",
@@ -274,8 +327,10 @@
       "output": {
         "answers": "A list of answers, each with its question, field_id, ref and type. It is not keyed by question, so answers.Name is empty: to use an answer by its question, read fields['Name'].",
         "answers_text": "Beta. Every answer as a line of text, 'Question: answer', ready for an email, a message, an issue or an AI step to read when the request doesn't name particular questions.",
+        "comment": "Beta. The respondent's written comment: the answer to the form's first long text question, or, on a form without one, the short text answer to the question right after the rating (\"What's the main reason for your score?\"). Ready for a ticket or an email with no need to name the question. Empty when they wrote none.",
         "email": "The respondent's answer to the form's first email question, whatever its wording. Prefer it to fields[...] for an email.",
-        "fields": "The answers keyed by each question's exact wording, such as fields['What is your email?']. The wording is the form owner's, so read only the questions the request names (and say the form must have them); a whole record in a sheet cell or a message reads as code. Every answer is text: a Yes/No question reads 'Yes' or 'No', a multiple-choice question its chosen label (several joined with ', '). A file-upload question's answer is the link Typeform keeps the file at, which is private to the Typeform account: it works as a link in an email or a sheet, but an AI step or a download may not be able to open it, so a form whose answers must be read (a CV) should also ask for the text itself or a shareable link.",
+        "fields": "The answers keyed by each question's exact wording, such as fields['What is your email?']. The wording is the form owner's, so read only the questions the request names (and say the form must have them); a whole record in a sheet cell or a message reads as code. Every answer is text: a Yes/No question reads 'Yes' or 'No', a multiple-choice question its chosen label (several joined with ', '). A file-upload question's answer is the link Typeform keeps the file at, which is private to the Typeform account: it works as a link for someone signed in to Typeform, but an AI step can't open it: run Typeform \"Download an uploaded file\" on it (or on file_urls[0]) first.",
+        "file_urls": "Beta. The links of the files uploaded to the form's file-upload questions (a CV, a photo), in question order; empty when none. To have an AI step read one, pass @response.file_urls[0] to Typeform \"Download an uploaded file\" first and give the agent its document_ref.",
         "first_name": "Beta. The first word of the answer to the form's first text question that asks for a name (\"Full name\", \"Your name\"), ready for 'Hi Ada,' with no step to split the name. Empty when the form has no such question.",
         "full_name": "Beta. The whole answer to the form's first text question that asks for a name (\"Full name\", \"Your name\"), for a sheet column or a CRM contact with no step to put first and last names together. Empty when the form has no such question.",
         "hidden": "The form's hidden fields, as the link set them.",
