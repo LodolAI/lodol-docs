@@ -3008,7 +3008,7 @@
       ]
     },
     "list_invoices": {
-      "description": "List invoices by status, customer or date.",
+      "description": "List invoices by status, customer or date, one page at a time. To chase overdue invoices, use 'List overdue invoices' instead: it returns all of them with each customer's email and the days overdue.",
       "display_name": "List invoices",
       "display_str_template": "List invoices.",
       "handler": "actions.list_invoices",
@@ -3436,6 +3436,368 @@
           "per_page": {
             "description": "The page size.",
             "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
+    "list_overdue_invoices": {
+      "description": "List every overdue invoice, optionally only those overdue by at least or at most a number of days, ready for a reminder or a report with no other step: each invoice comes with its customer's name and email, due date, days overdue, amount owed and link, and the whole list comes as text ready to post. The invoices also come grouped by customer, with the email to write to and the lines to put in it, so emailing each customer one reminder is this step and a loop. Customers with no email in Zoho Books are listed apart, so they can be reported rather than missed. Every page is read, and the emails are looked up once for all the customers together, not once per invoice.",
+      "display_name": "List overdue invoices",
+      "display_str_template": "List overdue invoices.",
+      "handler": "actions.list_overdue_invoices",
+      "id": "zoho_books_list_overdue_invoices",
+      "method": "POST",
+      "mock_response": {
+        "count": 2,
+        "customers": [
+          {
+            "count": 1,
+            "customer_email": "billing@bowman.example",
+            "customer_id": "460000000026049",
+            "customer_name": "Bowman & Co",
+            "invoices": [
+              {
+                "amount_due": 240,
+                "amount_due_display": "$240.00",
+                "days_overdue": 28,
+                "due_date": "2026-10-15",
+                "due_date_display": "Oct 15, 2026",
+                "invoice_id": "460000000028192",
+                "invoice_number": "INV-000042",
+                "link": "https://books.zoho.com/app/10234695#/invoices/460000000028192"
+              }
+            ],
+            "invoices_html": "<ul><li>INV-000042: $240.00, due Oct 15, 2026 (28 days overdue)</li></ul>",
+            "invoices_text": "\u2022 INV-000042: $240.00, due Oct 15, 2026 (28 days overdue)",
+            "total_display": "$240.00"
+          }
+        ],
+        "customers_without_email": [
+          {
+            "count": 1,
+            "customer_email": "",
+            "customer_id": "460000000026114",
+            "customer_name": "Harbor Supply",
+            "invoices": [
+              {
+                "amount_due": 1240,
+                "amount_due_display": "$1,240.00",
+                "days_overdue": 10,
+                "due_date": "2026-11-02",
+                "due_date_display": "Nov 2, 2026",
+                "invoice_id": "460000000028377",
+                "invoice_number": "INV-000051",
+                "link": "https://books.zoho.com/app/10234695#/invoices/460000000028377"
+              }
+            ],
+            "invoices_html": "<ul><li>INV-000051: $1,240.00, due Nov 2, 2026 (10 days overdue)</li></ul>",
+            "invoices_text": "\u2022 INV-000051: $1,240.00, due Nov 2, 2026 (10 days overdue)",
+            "total_display": "$1,240.00"
+          }
+        ],
+        "incomplete": false,
+        "invoices": [
+          {
+            "amount_due": 240,
+            "amount_due_display": "$240.00",
+            "currency_code": "USD",
+            "customer_email": "billing@bowman.example",
+            "customer_id": "460000000026049",
+            "customer_name": "Bowman & Co",
+            "days_overdue": 28,
+            "due_date": "2026-10-15",
+            "due_date_display": "Oct 15, 2026",
+            "invoice_id": "460000000028192",
+            "invoice_number": "INV-000042",
+            "link": "https://books.zoho.com/app/10234695#/invoices/460000000028192"
+          },
+          {
+            "amount_due": 1240,
+            "amount_due_display": "$1,240.00",
+            "currency_code": "USD",
+            "customer_email": "",
+            "customer_id": "460000000026114",
+            "customer_name": "Harbor Supply",
+            "days_overdue": 10,
+            "due_date": "2026-11-02",
+            "due_date_display": "Nov 2, 2026",
+            "invoice_id": "460000000028377",
+            "invoice_number": "INV-000051",
+            "link": "https://books.zoho.com/app/10234695#/invoices/460000000028377"
+          }
+        ],
+        "text": "\u2022 Bowman & Co, INV-000042: $240.00, due Oct 15, 2026 (28 days overdue): https://books.zoho.com/app/10234695#/invoices/460000000028192\n\u2022 Harbor Supply, INV-000051: $1,240.00, due Nov 2, 2026 (10 days overdue): https://books.zoho.com/app/10234695#/invoices/460000000028377",
+        "total_display": "$1,480.00"
+      },
+      "name": "list_overdue_invoices",
+      "output_formatter": "actions.format_list_overdue_invoices_output",
+      "parameters": [
+        {
+          "description": "Optional. Only invoices whose due date was at least this many days ago: 61 for invoices more than 60 days overdue. Leave blank for every overdue invoice.",
+          "display_name": "Overdue by at least (days)",
+          "minimum": 0,
+          "name": "days_overdue_at_least",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. Only invoices whose due date was at most this many days ago: 60 for invoices up to 60 days overdue. Leave blank for no upper limit.",
+          "display_name": "Overdue by at most (days)",
+          "minimum": 0,
+          "name": "days_overdue_at_most",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Optional. The Zoho Books organization to use. Leave blank for your default organization.",
+          "display_name": "Organization",
+          "dynamic_source": "organizations",
+          "name": "organization_id",
+          "required": false,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/zoho-books/list-overdue-invoices",
+      "result_str_template": "Listed overdue Zoho Books invoices.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many invoices are listed. 0 when there are none, so 'send nothing when the list is empty' is one check.",
+            "type": "integer"
+          },
+          "customers": {
+            "description": "The same invoices grouped by customer, for the customers Zoho Books has an email for, in order of name. To email each customer one reminder, loop over these and send 'invoices_text' or 'invoices_html' to 'customer_email'.",
+            "items": {
+              "description": "One customer and their overdue invoices.",
+              "properties": {
+                "count": {
+                  "description": "How many of the overdue invoices are theirs.",
+                  "type": "integer"
+                },
+                "customer_email": {
+                  "description": "The address to write to: the customer's primary contact person's email in Zoho Books. Blank only in 'customers_without_email'.",
+                  "type": "string"
+                },
+                "customer_id": {
+                  "description": "The customer's ID in Zoho Books.",
+                  "type": "string"
+                },
+                "customer_name": {
+                  "description": "The customer's name, such as Bowman & Co.",
+                  "type": "string"
+                },
+                "invoices": {
+                  "description": "Their overdue invoices, the longest overdue first.",
+                  "items": {
+                    "description": "One of their overdue invoices.",
+                    "properties": {
+                      "amount_due": {
+                        "description": "The amount still owed on the invoice, as a number, such as 240. Blank when Zoho Books gives no amount.",
+                        "type": "number"
+                      },
+                      "amount_due_display": {
+                        "description": "The amount still owed the way a person reads it, with its currency, such as $240.00 or 240.00 CAD. Blank when Zoho Books gives no amount.",
+                        "type": "string"
+                      },
+                      "days_overdue": {
+                        "description": "How many days past its due date the invoice is today, such as 28. Always 1 or more.",
+                        "type": "integer"
+                      },
+                      "due_date": {
+                        "description": "The day the invoice was due, a date such as 2026-10-15.",
+                        "type": "string"
+                      },
+                      "due_date_display": {
+                        "description": "The due date the way a person reads it, such as Oct 15, 2026.",
+                        "type": "string"
+                      },
+                      "invoice_id": {
+                        "description": "The invoice's ID in Zoho Books, for a later step.",
+                        "type": "string"
+                      },
+                      "invoice_number": {
+                        "description": "The invoice number, such as INV-000042.",
+                        "type": "string"
+                      },
+                      "link": {
+                        "description": "The link that opens the invoice in Zoho Books, for your own team: it needs a Zoho Books sign-in, so don't send it to a customer.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "invoices_html": {
+                  "description": "The same lines as a bulleted list in HTML, for the body of an HTML email.",
+                  "type": "string"
+                },
+                "invoices_text": {
+                  "description": "Their invoices as text for the body of a plain email, one line per invoice with its number, amount owed, due date and days overdue, such as \u2022 INV-000042: $240.00, due Oct 15, 2026 (28 days overdue).",
+                  "type": "string"
+                },
+                "total_display": {
+                  "description": "What they owe across these invoices, such as $1,480.00 (each currency's total, joined with +, when there are several).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "customers_without_email": {
+            "description": "The customers with overdue invoices that Zoho Books has no email for, in the same shape as 'customers', so a workflow can report them instead of leaving them out. Empty when every customer has an email.",
+            "items": {
+              "description": "One customer and their overdue invoices.",
+              "properties": {
+                "count": {
+                  "description": "How many of the overdue invoices are theirs.",
+                  "type": "integer"
+                },
+                "customer_email": {
+                  "description": "The address to write to: the customer's primary contact person's email in Zoho Books. Blank only in 'customers_without_email'.",
+                  "type": "string"
+                },
+                "customer_id": {
+                  "description": "The customer's ID in Zoho Books.",
+                  "type": "string"
+                },
+                "customer_name": {
+                  "description": "The customer's name, such as Bowman & Co.",
+                  "type": "string"
+                },
+                "invoices": {
+                  "description": "Their overdue invoices, the longest overdue first.",
+                  "items": {
+                    "description": "One of their overdue invoices.",
+                    "properties": {
+                      "amount_due": {
+                        "description": "The amount still owed on the invoice, as a number, such as 240. Blank when Zoho Books gives no amount.",
+                        "type": "number"
+                      },
+                      "amount_due_display": {
+                        "description": "The amount still owed the way a person reads it, with its currency, such as $240.00 or 240.00 CAD. Blank when Zoho Books gives no amount.",
+                        "type": "string"
+                      },
+                      "days_overdue": {
+                        "description": "How many days past its due date the invoice is today, such as 28. Always 1 or more.",
+                        "type": "integer"
+                      },
+                      "due_date": {
+                        "description": "The day the invoice was due, a date such as 2026-10-15.",
+                        "type": "string"
+                      },
+                      "due_date_display": {
+                        "description": "The due date the way a person reads it, such as Oct 15, 2026.",
+                        "type": "string"
+                      },
+                      "invoice_id": {
+                        "description": "The invoice's ID in Zoho Books, for a later step.",
+                        "type": "string"
+                      },
+                      "invoice_number": {
+                        "description": "The invoice number, such as INV-000042.",
+                        "type": "string"
+                      },
+                      "link": {
+                        "description": "The link that opens the invoice in Zoho Books, for your own team: it needs a Zoho Books sign-in, so don't send it to a customer.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "invoices_html": {
+                  "description": "The same lines as a bulleted list in HTML, for the body of an HTML email.",
+                  "type": "string"
+                },
+                "invoices_text": {
+                  "description": "Their invoices as text for the body of a plain email, one line per invoice with its number, amount owed, due date and days overdue, such as \u2022 INV-000042: $240.00, due Oct 15, 2026 (28 days overdue).",
+                  "type": "string"
+                },
+                "total_display": {
+                  "description": "What they owe across these invoices, such as $1,480.00 (each currency's total, joined with +, when there are several).",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "incomplete": {
+            "description": "True only when there are more than 5,000 overdue invoices and the list stops at the 5,000 with the earliest due dates.",
+            "type": "boolean"
+          },
+          "invoices": {
+            "description": "Every overdue invoice that matches, the longest overdue first.",
+            "items": {
+              "description": "An overdue invoice.",
+              "properties": {
+                "amount_due": {
+                  "description": "The amount still owed on the invoice, as a number, such as 240. Blank when Zoho Books gives no amount.",
+                  "type": "number"
+                },
+                "amount_due_display": {
+                  "description": "The amount still owed the way a person reads it, with its currency, such as $240.00 or 240.00 CAD. Blank when Zoho Books gives no amount.",
+                  "type": "string"
+                },
+                "currency_code": {
+                  "description": "The invoice's currency, such as USD.",
+                  "type": "string"
+                },
+                "customer_email": {
+                  "description": "The customer's email address: the one of their primary contact person in Zoho Books. Blank when Zoho Books has no email for them.",
+                  "type": "string"
+                },
+                "customer_id": {
+                  "description": "The customer's ID in Zoho Books.",
+                  "type": "string"
+                },
+                "customer_name": {
+                  "description": "The customer's name, such as Bowman & Co.",
+                  "type": "string"
+                },
+                "days_overdue": {
+                  "description": "How many days past its due date the invoice is today, such as 28. Always 1 or more.",
+                  "type": "integer"
+                },
+                "due_date": {
+                  "description": "The day the invoice was due, a date such as 2026-10-15.",
+                  "type": "string"
+                },
+                "due_date_display": {
+                  "description": "The due date the way a person reads it, such as Oct 15, 2026.",
+                  "type": "string"
+                },
+                "invoice_id": {
+                  "description": "The invoice's ID in Zoho Books, for a later step.",
+                  "type": "string"
+                },
+                "invoice_number": {
+                  "description": "The invoice number, such as INV-000042.",
+                  "type": "string"
+                },
+                "link": {
+                  "description": "The link that opens the invoice in Zoho Books, for your own team: it needs a Zoho Books sign-in, so don't send it to a customer.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "text": {
+            "description": "The whole list as text ready to post or email to your own team as it is: one line per invoice with the customer, invoice number, amount owed, due date, days overdue and link, such as \u2022 Bowman & Co, INV-000042: $240.00, due Oct 15, 2026 (28 days overdue): https://books.zoho.com/app/10234695#/invoices/460000000028192. Empty when no invoices are listed, so check 'count' first.",
+            "type": "string"
+          },
+          "total_display": {
+            "description": "What these invoices add up to, such as $4,200.50 (each currency's total, joined with +, when there are several). Blank when no invoices are listed.",
+            "type": "string"
           }
         },
         "type": "object"

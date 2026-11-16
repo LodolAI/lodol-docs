@@ -133,11 +133,22 @@
             "tag": "InTransit"
           }
         ],
+        "courier": "UPS",
+        "customer_email": "jamie@example.com",
+        "customer_first_name": "Jamie",
+        "customer_name": "Jamie Rivera",
         "expected_delivery": "2026-02-01T10:00:00-05:00",
         "id": "5b7f1a2e4c3d2a0011f5f2a1",
+        "latest_update": "Departed from facility",
+        "order_number": "#1042",
         "slug": "ups",
+        "status": "In transit",
+        "status_detail": "Shipment on the way",
         "tag": "InTransit",
-        "tracking_number": "1Z999AA10123456784"
+        "tracking_link": "https://yourshop.aftership.com/1Z999AA10123456784",
+        "tracking_number": "1Z999AA10123456784",
+        "updated_at": "2026-11-03T09:12:00+00:00",
+        "updated_display": "Nov 3, 2026"
       },
       "name": "get_tracking",
       "parameters": [
@@ -178,6 +189,22 @@
             },
             "type": "array"
           },
+          "courier": {
+            "description": "Beta. The courier's name, such as UPS.",
+            "type": "string"
+          },
+          "customer_email": {
+            "description": "Beta. The customer's email address, blank when the shipment has none.",
+            "type": "string"
+          },
+          "customer_first_name": {
+            "description": "Beta. The first word of the customer's name, to greet them by; blank when the shipment has no name.",
+            "type": "string"
+          },
+          "customer_name": {
+            "description": "Beta. The customer's name, blank when the shipment has none.",
+            "type": "string"
+          },
           "expected_delivery": {
             "description": "Latest estimated delivery date/time, if known",
             "type": "string"
@@ -186,16 +213,44 @@
             "description": "AfterShip tracking ID",
             "type": "string"
           },
+          "latest_update": {
+            "description": "Beta. The courier's latest tracking update, such as 'Delivery attempted - no one home'.",
+            "type": "string"
+          },
+          "order_number": {
+            "description": "Beta. The order number the shipment belongs to, blank when none was saved.",
+            "type": "string"
+          },
           "slug": {
             "description": "Courier slug",
+            "type": "string"
+          },
+          "status": {
+            "description": "Beta. The shipment's status in plain words: Pending, Info received, In transit, Out for delivery, Failed attempt, Available for pickup, Exception, Expired or Delivered.",
+            "type": "string"
+          },
+          "status_detail": {
+            "description": "Beta. AfterShip's one-line reason for the status, such as 'Customer moved'.",
             "type": "string"
           },
           "tag": {
             "description": "Current status, for example 'InTransit' or 'Delivered'",
             "type": "string"
           },
+          "tracking_link": {
+            "description": "Beta. A link the customer can open to follow the shipment.",
+            "type": "string"
+          },
           "tracking_number": {
             "description": "Tracking number",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "Beta. When the shipment last changed in AfterShip.",
+            "type": "string"
+          },
+          "updated_display": {
+            "description": "Beta. When the shipment last changed, written out, such as Nov 3, 2026.",
             "type": "string"
           }
         },
@@ -206,46 +261,162 @@
       ]
     },
     "list_trackings": {
-      "description": "List the shipments currently being tracked in your AfterShip account.",
+      "description": "List the shipments tracked in your AfterShip account, optionally only those with certain statuses (such as Exception or Failed attempt) or updated recently. Each one comes with the customer's name and email, the order number, the status in plain words and a tracking link, ready for an email or a support ticket.",
       "display_name": "List trackings",
       "display_str_template": "List trackings.",
       "handler": "actions.list_trackings",
       "id": "aftership_list_trackings",
       "method": "POST",
       "mock_response": {
+        "count": 1,
         "trackings": [
           {
+            "courier": "UPS",
+            "customer_email": "jamie@example.com",
+            "customer_first_name": "Jamie",
+            "customer_name": "Jamie Rivera",
             "id": "5b7f1a2e4c3d2a0011f5f2a1",
+            "latest_update": "Delivery attempted - no one home",
+            "order_number": "#1042",
             "slug": "ups",
-            "tag": "InTransit",
-            "tracking_number": "1Z999AA10123456784"
+            "status": "Failed attempt",
+            "status_detail": "Customer not available at the address",
+            "tag": "AttemptFail",
+            "tracking_link": "https://yourshop.aftership.com/1Z999AA10123456784",
+            "tracking_number": "1Z999AA10123456784",
+            "updated_at": "2026-11-03T09:12:00+00:00",
+            "updated_display": "Nov 3, 2026"
           }
         ]
       },
       "name": "list_trackings",
-      "parameters": [],
+      "parameters": [
+        {
+          "description": "Beta. Only list shipments in any of these statuses. Leave empty for every status.",
+          "display_name": "Only these statuses",
+          "multi_select": true,
+          "name": "statuses",
+          "options": [
+            {
+              "label": "Pending",
+              "value": "Pending"
+            },
+            {
+              "label": "Info received",
+              "value": "InfoReceived"
+            },
+            {
+              "label": "In transit",
+              "value": "InTransit"
+            },
+            {
+              "label": "Out for delivery",
+              "value": "OutForDelivery"
+            },
+            {
+              "label": "Failed attempt",
+              "value": "AttemptFail"
+            },
+            {
+              "label": "Available for pickup",
+              "value": "AvailableForPickup"
+            },
+            {
+              "label": "Exception",
+              "value": "Exception"
+            },
+            {
+              "label": "Expired",
+              "value": "Expired"
+            },
+            {
+              "label": "Delivered",
+              "value": "Delivered"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.ARRAY"
+        },
+        {
+          "description": "Beta. Only list shipments that changed in this many hours, such as 24 for the last day. Leave empty for any time. A change is any courier update, so a shipment that stays in Exception is listed again each day a scan comes in: to act once when a shipment reaches a status, use the Shipment status changed trigger instead.",
+          "display_name": "Updated in the last (hours)",
+          "maximum": 2160,
+          "minimum": 1,
+          "name": "updated_within_hours",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        }
+      ],
       "path": "/actions/library/aftership/list-trackings",
       "result_str_template": "Fetched AfterShip trackings.",
       "returns": {
         "properties": {
+          "count": {
+            "description": "Beta. How many shipments were listed.",
+            "type": "integer"
+          },
           "trackings": {
-            "description": "List of tracked shipments",
+            "description": "The matching shipments, up to 2,000 (AfterShip's first ten pages).",
             "items": {
               "properties": {
+                "courier": {
+                  "description": "Beta. The courier's name, such as UPS.",
+                  "type": "string"
+                },
+                "customer_email": {
+                  "description": "Beta. The customer's email address, blank when the shipment has none.",
+                  "type": "string"
+                },
+                "customer_first_name": {
+                  "description": "Beta. The first word of the customer's name, to greet them by; blank when the shipment has no name.",
+                  "type": "string"
+                },
+                "customer_name": {
+                  "description": "Beta. The customer's name, blank when the shipment has none.",
+                  "type": "string"
+                },
                 "id": {
                   "description": "AfterShip tracking ID. Use with get_tracking.",
+                  "type": "string"
+                },
+                "latest_update": {
+                  "description": "Beta. The courier's latest tracking update, such as 'Delivery attempted - no one home'.",
+                  "type": "string"
+                },
+                "order_number": {
+                  "description": "Beta. The order number the shipment belongs to, blank when none was saved.",
                   "type": "string"
                 },
                 "slug": {
                   "description": "Courier slug",
                   "type": "string"
                 },
+                "status": {
+                  "description": "Beta. The shipment's status in plain words: Pending, Info received, In transit, Out for delivery, Failed attempt, Available for pickup, Exception, Expired or Delivered.",
+                  "type": "string"
+                },
+                "status_detail": {
+                  "description": "Beta. AfterShip's one-line reason for the status, such as 'Customer moved'.",
+                  "type": "string"
+                },
                 "tag": {
-                  "description": "Current tracking status",
+                  "description": "Current tracking status, as AfterShip codes it, such as AttemptFail",
+                  "type": "string"
+                },
+                "tracking_link": {
+                  "description": "Beta. A link the customer can open to follow the shipment.",
                   "type": "string"
                 },
                 "tracking_number": {
                   "description": "Tracking number",
+                  "type": "string"
+                },
+                "updated_at": {
+                  "description": "Beta. When the shipment last changed in AfterShip.",
+                  "type": "string"
+                },
+                "updated_display": {
+                  "description": "Beta. When the shipment last changed, written out, such as Nov 3, 2026.",
                   "type": "string"
                 }
               },
@@ -268,5 +439,38 @@
   "display_name": "AfterShip",
   "id": "aftership",
   "logo": "https://www.lodol.com/app-icons/aftership-icon.png",
-  "triggers": {}
+  "triggers": {
+    "aftership_shipment_status_changed_trigger": {
+      "description": "Runs once each time a shipment you track in AfterShip moves to a new status, or only to the statuses you choose, such as Exception or Failed attempt: the way to email a customer or open a ticket once per delivery problem. Shipments already there when the workflow is turned on don't start it. How often it checks follows your workspace plan.",
+      "display_name": "Shipment status changed",
+      "id": "aftership_shipment_status_changed_trigger",
+      "output": {
+        "courier": "Beta. The courier's name, such as UPS.",
+        "customer_email": "Beta. The customer's email address.",
+        "customer_first_name": "Beta. The first word of their name, to greet them by.",
+        "customer_name": "Beta. The customer's name.",
+        "id": "Beta. The shipment's AfterShip tracking ID. Use with Get tracking.",
+        "latest_update": "Beta. The courier's latest tracking update.",
+        "order_number": "Beta. The order number the shipment belongs to.",
+        "previous_status": "Beta. The status it was in before, in plain words, blank when AfterShip's history doesn't say.",
+        "slug": "Beta. The courier's AfterShip code, such as ups.",
+        "status": "Beta. The status it moved to, in plain words, such as Failed attempt or Exception.",
+        "status_detail": "Beta. AfterShip's one-line reason for the status, such as 'Customer moved'.",
+        "tag": "Beta. The status as AfterShip codes it, such as AttemptFail.",
+        "tracking_link": "Beta. A link the customer can open to follow the shipment.",
+        "tracking_number": "Beta. The courier's tracking number.",
+        "updated_at": "Beta. When the shipment last changed.",
+        "updated_display": "Beta. When the shipment last changed, written out, such as Nov 3, 2026."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Beta. Only run when a shipment moves to one of these statuses, separated by commas, such as Exception, Failed attempt. The statuses are: Pending, Info received, In transit, Out for delivery, Failed attempt, Available for pickup, Exception, Expired, Delivered. Leave blank to run for every status.",
+          "display_name": "Only these statuses",
+          "name": "statuses",
+          "required": false
+        }
+      ]
+    }
+  }
 }

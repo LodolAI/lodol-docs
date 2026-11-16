@@ -485,7 +485,7 @@
       ]
     },
     "list_customers": {
-      "description": "List your newest customers, most recent first, or find the customers with an email address.",
+      "description": "List your newest customers, most recent first, or find the customers with an email address. To count the customers added in a week or a month, use List new customers.",
       "display_name": "List customers",
       "display_str_template": "List customers.",
       "handler": "actions.list_customers",
@@ -830,6 +830,132 @@
         "read"
       ]
     },
+    "list_new_customers": {
+      "description": "Beta. List the customers added to Stripe in a period, newest first, with how many there were. Use it for a weekly or monthly report of new customers: count is the whole period's, with nothing to filter or count in a later step.",
+      "display_name": "List new customers",
+      "display_str_template": "List new customers.",
+      "handler": "actions.list_new_customers",
+      "id": "stripe_list_new_customers",
+      "method": "POST",
+      "mock_response": {
+        "count": 1,
+        "customers": [
+          {
+            "created": 1767225600,
+            "delinquent": false,
+            "description": "",
+            "email": "customer@example.com",
+            "id": "cus_123",
+            "metadata": {},
+            "name": "Example Customer",
+            "phone": "+15550100"
+          }
+        ],
+        "period": ""
+      },
+      "name": "list_new_customers",
+      "output_formatter": "actions.format_list_new_customers_output",
+      "parameters": [
+        {
+          "description": "Only customers added from the whole of last month or this month so far, for a monthly report that runs on the 1st. The month's name comes back as period (October 2026). Replaces the other dates when chosen.",
+          "display_name": "Calendar month",
+          "name": "calendar_month",
+          "options": [
+            {
+              "label": "Last month",
+              "value": "last"
+            },
+            {
+              "label": "This month so far",
+              "value": "this"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Only customers added from the last this many whole days up to now: 7 for a weekly report, with no dates to work out in an earlier step. On or after wins when given.",
+          "display_name": "In the last days",
+          "minimum": 1,
+          "name": "created_in_last_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "The start of the period. Needed unless you choose a calendar month or In the last days.",
+          "display_name": "On or after",
+          "name": "created_after",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        },
+        {
+          "description": "The end of the period. Leave empty to run the period up to now.",
+          "display_name": "Before",
+          "name": "created_before",
+          "required": false,
+          "type": "ParameterType.DATETIME"
+        }
+      ],
+      "path": "/actions/library/stripe/list-new-customers",
+      "result_str_template": "{stripe_list_new_customers,count} new customer(s) found.",
+      "returns": {
+        "properties": {
+          "count": {
+            "description": "How many customers were added in the period.",
+            "type": "number"
+          },
+          "customers": {
+            "description": "The customers added in the period, newest first.",
+            "items": {
+              "properties": {
+                "created": {
+                  "description": "When the customer was added to Stripe, as a Unix timestamp.",
+                  "type": "number"
+                },
+                "delinquent": {
+                  "description": "True when their latest invoice is overdue or its payment failed.",
+                  "type": "boolean"
+                },
+                "description": {
+                  "description": "The note your team saved on the customer; blank when there is none.",
+                  "type": "string"
+                },
+                "email": {
+                  "description": "Their email address; blank when Stripe has none.",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The customer's id in Stripe, which starts with cus_.",
+                  "type": "string"
+                },
+                "metadata": {
+                  "description": "Your own key-value data saved on the customer.",
+                  "type": "object"
+                },
+                "name": {
+                  "description": "Their full name or business name; blank when Stripe has none.",
+                  "type": "string"
+                },
+                "phone": {
+                  "description": "Their phone number; blank when Stripe has none.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "period": {
+            "description": "The calendar month reported, such as October 2026, when Calendar month is chosen; blank otherwise.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "read"
+      ]
+    },
     "list_payments": {
       "description": "List the payments made in a period, with how many there were, the total in dollars (or your currency) and who paid the most. Use it for a weekly or monthly sales summary.",
       "display_name": "List payments",
@@ -845,11 +971,14 @@
         "payments": [
           {
             "amount": 5000,
+            "amount_display": "$50.00",
             "created": 1767225600,
+            "created_display": "Jan 1, 2026",
             "currency": "usd",
             "customer_email": "customer@example.com",
             "customer_name": "Example Customer",
             "description": "",
+            "failure_reason": "",
             "payment_intent_id": "pi_123",
             "status": "succeeded"
           }
@@ -905,7 +1034,7 @@
         },
         {
           "default": "succeeded",
-          "description": "Only payments in this state. Succeeded payments are the ones that brought in money.",
+          "description": "Only payments in this state. Succeeded payments are the ones that brought in money. Beta: Failed gives every payment whose card was declined and that was never paid, one-off or subscription, each with failure_reason.",
           "display_name": "Payment status",
           "name": "status",
           "options": [
@@ -936,6 +1065,10 @@
             {
               "label": "Canceled",
               "value": "canceled"
+            },
+            {
+              "label": "Failed (card declined, not paid)",
+              "value": "failed"
             }
           ],
           "required": false,
@@ -963,8 +1096,54 @@
             "type": "string"
           },
           "payments": {
-            "description": "Each payment, with its id, status, amount in cents (5000 is $50.00), currency, when it was made, who paid (name and email) and its description.",
+            "description": "Each payment, with its id, status, amount in cents (5000 is $50.00), amount_display (Beta, $50.00, ready to show), currency, when it was made, who paid (name and email), its description and failure_reason (Beta: why the card was declined, blank for a payment that went through).",
             "items": {
+              "properties": {
+                "amount": {
+                  "description": "In cents.",
+                  "type": "number"
+                },
+                "amount_display": {
+                  "description": "Beta. The amount as a person writes it, such as $50.00.",
+                  "type": "string"
+                },
+                "created": {
+                  "description": "When it was made, as a Unix timestamp.",
+                  "type": "number"
+                },
+                "created_display": {
+                  "description": "Beta. The day it was made as a person writes it, such as Nov 3, 2026 (UTC), for a table or a message.",
+                  "type": "string"
+                },
+                "currency": {
+                  "description": "The three-letter currency code, such as usd.",
+                  "type": "string"
+                },
+                "customer_email": {
+                  "description": "Their email, or the receipt email; blank if neither is known.",
+                  "type": "string"
+                },
+                "customer_name": {
+                  "description": "Who paid; blank if Stripe has no name.",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "The payment's description.",
+                  "type": "string"
+                },
+                "failure_reason": {
+                  "description": "Beta. Why the card was declined; blank for a payment that went through.",
+                  "type": "string"
+                },
+                "payment_intent_id": {
+                  "description": "The payment's id (pi_...).",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "Its state, such as succeeded or requires_payment_method.",
+                  "type": "string"
+                }
+              },
               "type": "object"
             },
             "type": "array"
@@ -1001,41 +1180,72 @@
       ]
     },
     "list_payouts": {
-      "description": "List the money Stripe sent to your bank in a period, with the day each payout reaches the bank and its amount in dollars (or your currency), to check against your bank statement.",
+      "description": "List the money Stripe sent to your bank in a period, with the day each payout reaches the bank, its amount in dollars (or your currency) and the period's total, to check against your bank statement or add to a finance sheet.",
       "display_name": "List payouts",
-      "display_str_template": "List payouts since {arrived_after}.",
+      "display_str_template": "List payouts.",
       "handler": "actions.list_payouts",
       "id": "stripe_list_payouts",
       "method": "POST",
       "mock_response": {
         "count": 1,
+        "currency": "usd",
         "payouts": [
           {
             "amount": 1250.0,
+            "amount_display": "$1,250.00",
             "arrival_date": "2026-10-14",
+            "arrival_date_display": "Oct 14, 2026",
             "currency": "usd",
             "description": "STRIPE PAYOUT",
             "payout_id": "po_123",
             "status": "paid"
           }
-        ]
+        ],
+        "period": "October 2026",
+        "total": 1250.0,
+        "total_display": "$1,250.00"
       },
       "name": "list_payouts",
       "output_formatter": "actions.format_list_payouts_output",
       "parameters": [
         {
-          "description": "The start of the period, by the day money reaches the bank.",
+          "description": "Only payouts reaching the bank in the whole of last month or this month so far, for a monthly report that runs on the 1st. The month's name comes back as period (October 2026). Replaces the dates when chosen.",
+          "display_name": "Calendar month",
+          "name": "calendar_month",
+          "options": [
+            {
+              "label": "Last month",
+              "value": "last"
+            },
+            {
+              "label": "This month so far",
+              "value": "this"
+            }
+          ],
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "The start of the period, by the day money reaches the bank. Needed unless you choose a calendar month.",
           "display_name": "Arrives on or after",
           "name": "arrived_after",
-          "required": true,
+          "required": false,
           "type": "ParameterType.DATETIME"
         },
         {
-          "description": "The end of the period. Leave empty to include every payout from the start on.",
+          "description": "The end of the period: payouts arriving on this day are left out, so a run on the 1st that passes today covers last month exactly. Leave empty to include every payout from the start on.",
           "display_name": "Arrives before",
           "name": "arrived_before",
           "required": false,
           "type": "ParameterType.DATETIME"
+        },
+        {
+          "default": false,
+          "description": "Yes leaves out payouts still on their way, failed or cancelled, so the list and total are only money that arrived.",
+          "display_name": "Only payouts that reached the bank",
+          "name": "only_paid",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         }
       ],
       "path": "/actions/library/stripe/list-payouts",
@@ -1046,12 +1256,62 @@
             "description": "How many payouts.",
             "type": "number"
           },
+          "currency": {
+            "description": "The currency the total is in (the first payout's).",
+            "type": "string"
+          },
           "payouts": {
-            "description": "Each payout, with its id, amount in dollars (or your currency), currency, status, the day it reaches the bank (YYYY-MM-DD) and the text on your bank statement.",
+            "description": "Each payout, oldest last as Stripe lists them.",
             "items": {
+              "properties": {
+                "amount": {
+                  "description": "In dollars (or the currency's usual units).",
+                  "type": "number"
+                },
+                "amount_display": {
+                  "description": "The amount as a person writes it, such as $1,250.00.",
+                  "type": "string"
+                },
+                "arrival_date": {
+                  "description": "The day it reaches the bank (YYYY-MM-DD).",
+                  "type": "string"
+                },
+                "arrival_date_display": {
+                  "description": "The same day as a person reads it, such as Oct 14, 2026.",
+                  "type": "string"
+                },
+                "currency": {
+                  "description": "The three-letter currency code, such as usd.",
+                  "type": "string"
+                },
+                "description": {
+                  "description": "The text on your bank statement.",
+                  "type": "string"
+                },
+                "payout_id": {
+                  "description": "The payout's id (po_...).",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "paid, pending, in_transit, failed or canceled.",
+                  "type": "string"
+                }
+              },
               "type": "object"
             },
             "type": "array"
+          },
+          "period": {
+            "description": "The calendar month reported, such as October 2026, when Calendar month is chosen; blank otherwise.",
+            "type": "string"
+          },
+          "total": {
+            "description": "Total paid out in the currency's usual units, such as dollars.",
+            "type": "number"
+          },
+          "total_display": {
+            "description": "The total as a person writes it, such as $1,250.00. Use it in a message.",
+            "type": "string"
           }
         },
         "type": "object"
@@ -1074,7 +1334,9 @@
         "refunds": [
           {
             "amount": 2500,
+            "amount_display": "$25.00",
             "created": 1767225600,
+            "created_display": "Jan 1, 2026",
             "currency": "usd",
             "customer_email": "customer@example.com",
             "customer_name": "Example Customer",
@@ -1145,16 +1407,24 @@
             "type": "string"
           },
           "refunds": {
-            "description": "Each refund, with its id, amount in cents, currency, reason, when it was made and who it went to (name and email).",
+            "description": "Each refund, with its id, amount in cents (amount_display ready to show), currency, reason, when it was made and who it went to (name and email).",
             "items": {
               "properties": {
                 "amount": {
                   "description": "In cents.",
                   "type": "number"
                 },
+                "amount_display": {
+                  "description": "Beta. The amount as a person writes it, such as $25.00, ready for a table or a message with no step to convert cents.",
+                  "type": "string"
+                },
                 "created": {
                   "description": "When it was made, as a Unix timestamp.",
                   "type": "number"
+                },
+                "created_display": {
+                  "description": "Beta. The day it was made as a person writes it, such as Nov 3, 2026 (UTC), for a table or a message.",
+                  "type": "string"
                 },
                 "currency": {
                   "description": "The three-letter currency code, such as usd.",
@@ -1197,7 +1467,7 @@
       ]
     },
     "lookup_customer_billing": {
-      "description": "Beta. Find a customer by their email and get, in one step, the plan they are on and whether their last payment went through, with a summary ready to paste into a ticket note or a message. Use it to answer a billing question. Nobody with that email is an answer too (found is false), not a failure.",
+      "description": "Beta. Find a customer by their email and get, in one step, the plan they are on and whether their last payment went through, with a summary ready to paste into a ticket note or a message. Use it to answer a billing question. Nobody with that email is an answer too (found is false), not a failure. monthly_amount is what they pay per month as a number, to compare with an amount such as 1000.",
       "display_name": "Look up a customer's billing",
       "display_str_template": "Look up a customer's billing.",
       "handler": "actions.lookup_customer_billing",
@@ -1210,12 +1480,15 @@
         "email": "customer@example.com",
         "found": true,
         "has_active_subscription": true,
+        "last_payment_amount": 49.0,
         "last_payment_amount_display": "$49.00",
         "last_payment_date": "2026-11-03",
         "last_payment_date_display": "Nov 3, 2026",
         "last_payment_failed": false,
         "last_payment_failure_reason": "",
         "last_payment_status": "paid",
+        "monthly_amount": 49.0,
+        "monthly_amount_display": "$49.00",
         "name": "Example Customer",
         "plan_name": "Pro",
         "subscription_status": "active",
@@ -1270,6 +1543,10 @@
             "description": "True when their subscription is active or on a free trial.",
             "type": "boolean"
           },
+          "last_payment_amount": {
+            "description": "Beta. The amount of that payment as a plain number in the currency's main unit, such as 49.0 for $49.00, to compare with a number; 0 when there is none.",
+            "type": "number"
+          },
           "last_payment_amount_display": {
             "description": "The amount of that payment as a person writes it, such as $49.00; blank when there is none.",
             "type": "string"
@@ -1292,6 +1569,14 @@
           },
           "last_payment_status": {
             "description": "How their most recent payment went, one of: paid, failed (the card or bank refused it), pending (still going through, or waiting for the customer to confirm with their bank) or none (they have never been charged). It covers subscription renewals and one-off payments; a payment that was started and never tried doesn't count.",
+            "type": "string"
+          },
+          "monthly_amount": {
+            "description": "Beta. What the customer pays per month, as a plain number in the currency's main unit, such as 1200.0 for $1,200.00: their active subscriptions added up, quantities included, with a yearly price divided by 12 and a weekly one multiplied by 52 and divided by 12. Before discounts and tax. 0 when they have no active subscription. Compare it with a number, such as monthly_amount greater than 1000, to pick out customers who pay more than $1,000 a month.",
+            "type": "number"
+          },
+          "monthly_amount_display": {
+            "description": "Beta. The same monthly amount as a person writes it, such as $1,200.00, for a message; blank when they have no active subscription.",
             "type": "string"
           },
           "name": {
@@ -1378,6 +1663,7 @@
         "delinquent": false,
         "description": "",
         "email": "customer@example.com",
+        "has_payment_method": true,
         "id": "cus_123",
         "metadata": {},
         "name": "Example Customer",
@@ -1400,7 +1686,7 @@
       "path": "/actions/library/stripe/retrieve-customer",
       "result_str_template": "Customer retrieved.",
       "returns": {
-        "description": "The customer: their id, email, name and the rest of what Stripe keeps about them.",
+        "description": "The customer: their id, email, name, phone number and note, whether a payment of theirs is overdue, and whether they have a payment method on file.",
         "properties": {
           "created": {
             "description": "When the customer was added to Stripe, as a Unix timestamp.",
@@ -1417,6 +1703,10 @@
           "email": {
             "description": "Their email address; blank when Stripe has none.",
             "type": "string"
+          },
+          "has_payment_method": {
+            "description": "Beta. True when the customer has a default card or other payment method on file for Stripe to charge; false when they haven't added one.",
+            "type": "boolean"
           },
           "id": {
             "description": "The customer's id in Stripe, which starts with cus_.",
@@ -1887,6 +2177,7 @@
         "cancel_at_period_end": "Whether it is set to end when the period it is in ends.",
         "canceled_at": "When it was canceled, as a Unix timestamp, if it was.",
         "cancellation_details": "Why it ended: reason (cancellation_requested when the customer chose to leave, payment_failed when their payments kept failing, or payment_disputed), plus comment and feedback when the customer gave any. Read reason to tell a customer who left from one whose card failed.",
+        "change_type": "Beta. Which way the plan moved, in these words: upgrade (it now costs more a month), downgrade (less), plan change (a different plan at the same monthly amount) or no plan change (a renewal, a status change or anything else that left the plan and quantity alone).",
         "created": "When the subscription was created, as a Unix timestamp.",
         "customer": "The customer's id.",
         "customer_email": "The customer's email address, blank when Stripe has none.",
@@ -1897,12 +2188,54 @@
         "id": "The subscription's id (sub_...).",
         "items": "What is subscribed to: each item's price, product and quantity.",
         "metadata": "Your own key-value data saved on the subscription.",
+        "mrr": "Beta. What the subscription now brings in a month, in dollars (or its currency), not cents: a yearly price is divided by 12, and each item's price is times its quantity. 49.5 means $49.50.",
+        "mrr_display": "Beta. The monthly amount as a person writes it, such as $49.50.",
         "payer": "Who the customer is, ready to put in a message: their name, else their email, else 'a customer'.",
         "plan": "Beta. The plan's name, when its price has one.",
+        "plan_name": "Beta. The plan's name now: the product's name, else the price's nickname, such as Pro. Several items are listed with commas.",
         "previous_attributes": "What it was before, for the parts that changed only, such as status or items.",
+        "previous_mrr": "Beta. What it brought in a month before this change, the same way; the same as mrr when the plan didn't change.",
+        "previous_mrr_display": "Beta. The monthly amount before this change as a person writes it, such as $99.00.",
+        "previous_plan_name": "Beta. The plan's name before this change; the same as plan_name when the plan didn't change.",
         "previous_status": "Beta. The status before this change, such as trialing, when the status changed; blank when it didn't. Compare it with status to catch a trial becoming paid or a subscription falling past_due.",
         "reason_display": "Beta. Why it ended in words, such as The customer cancelled or Their payments kept failing; blank when Stripe gave no reason.",
-        "status": "The status, such as active, trialing or canceled."
+        "status": "The status, such as active, trialing or canceled.",
+        "subscription_url": "Beta. A link that opens the subscription in the Stripe dashboard."
+      },
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Beta. Enter yes to run only when the plan or the quantity changes (an upgrade, a downgrade or a switch), not for renewals, trials ending, payments falling past due or other changes. Leave empty to run for every change.",
+          "display_name": "Only plan changes",
+          "name": "only_plan_changes",
+          "required": false
+        }
+      ]
+    },
+    "stripe_trial_ending_trigger": {
+      "description": "Beta. Runs three days before a subscription's free trial ends in Stripe, or straight away for a trial shorter than three days. Says who the customer is, the day the trial ends and whether they have added a payment method.",
+      "display_name": "Trial ending soon",
+      "id": "stripe_trial_ending_trigger",
+      "output": {
+        "amount_display": "Beta. What it will bill each period once the trial ends, such as $29.00 a month.",
+        "cancel_at_period_end": "Whether it is set to end when the trial does, instead of becoming paid.",
+        "created": "When the subscription was created, as a Unix timestamp.",
+        "customer": "The customer's id.",
+        "customer_email": "The customer's email address, blank when Stripe has none.",
+        "customer_name": "The customer's name, blank when Stripe has none.",
+        "customer_url": "Beta. A link that opens the customer in the Stripe dashboard.",
+        "event_created": "When the event happened, as a Unix timestamp.",
+        "event_id": "The id of the Stripe event (evt_...).",
+        "has_payment_method": "Beta. True when Stripe has a card or other payment method to charge when the trial ends: one saved on the subscription, or the customer's default. False when they haven't added one, or when Stripe wouldn't let the customer be read.",
+        "id": "The subscription's id (sub_...).",
+        "items": "What is subscribed to: each item's price, product and quantity.",
+        "metadata": "Your own key-value data saved on the subscription.",
+        "payer": "Who the customer is, ready to put in a message: their name, else their email, else 'a customer'.",
+        "plan": "Beta. The plan's name, when its price has one.",
+        "status": "The status, usually trialing.",
+        "trial_end": "Beta. When the trial ends, as a date and time other steps can read, such as 2026-11-30T09:00:00Z (UTC). For an email or message use trial_end_display.",
+        "trial_end_display": "Beta. The day the trial ends as a person writes it, such as Nov 30, 2026, ready for an email or message with no date step.",
+        "what_happens_next": "Beta. One or two sentences written to the customer saying what the end of the trial brings for them, ready to put in a reminder email as it is: that they will be charged the payment method they saved, that their subscription ends, pauses or cannot start unless they add one (by how the Stripe account treats a trial with no payment method), or that it ends with the trial because they cancelled. With it a reminder needs no decision of its own."
       },
       "parameters": []
     }

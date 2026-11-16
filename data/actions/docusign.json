@@ -181,7 +181,7 @@
       ]
     },
     "get_envelope_recipients": {
-      "description": "See who an envelope went to and where each signer is: sent, delivered (opened), signed (completed) or declined, with when.",
+      "description": "See who an envelope went to and where each signer is: sent, delivered (opened), signed (completed) or declined, with when. A signer whose turn in the signing order has not come yet shows as created.",
       "display_name": "Get envelope signers",
       "display_str_template": "Get the signers of envelope {envelope_id}.",
       "handler": "actions.get_envelope_recipients",
@@ -277,7 +277,7 @@
                   "type": "string"
                 },
                 "status": {
-                  "description": "sent, delivered, completed (signed), declined or created.",
+                  "description": "sent (asked to sign, not opened yet), delivered (opened, not signed yet), completed (signed), declined, or created: a signer whose turn has not come yet, because someone earlier in the signing order has still to sign. DocuSign has not emailed them yet.",
                   "type": "string"
                 }
               },
@@ -464,7 +464,7 @@
       ]
     },
     "list_envelopes": {
-      "description": "List the documents you have sent for signature (DocuSign calls these envelopes), newest first. You can narrow the list by status or by when the envelope last changed.",
+      "description": "List the documents you have sent for signature (DocuSign calls these envelopes), newest first. You can narrow the list by status or by when the envelope last changed. Beta: it can also list only the envelopes still waiting to be signed that were sent at least so many days ago, and each envelope says how many days it has waited and who has still to sign.",
       "display_name": "List envelopes",
       "display_str_template": "List envelopes.",
       "handler": "actions.list_envelopes",
@@ -475,27 +475,34 @@
           {
             "completedDateTime": "",
             "createdDateTime": "2026-07-15T09:00:00Z",
+            "days_waiting": 4,
             "emailSubject": "Please sign this document",
             "envelopeId": "abc123-def456-ghi789",
             "sentDateTime": "2026-07-15T09:01:00Z",
+            "sent_display": "Jul 15, 2026",
             "status": "sent",
-            "statusChangedDateTime": "2026-07-15T09:01:00Z"
+            "statusChangedDateTime": "2026-07-15T09:01:00Z",
+            "waiting_on": "Ann Lee (ann@example.com)"
           }
         ]
       },
       "name": "list_envelopes",
       "parameters": [
         {
-          "description": "Only show envelopes with this status. Leave blank to include every status.",
+          "description": "Only show envelopes with this status. Leave blank to include every status. Beta: 'Waiting to be signed' (waiting) covers every envelope that is out for signature, whether or not a signer has opened it yet; Sent and Delivered each cover only half of them.",
           "display_name": "Status",
           "name": "status",
           "options": [
             {
-              "label": "Sent (waiting to be signed)",
+              "label": "Waiting to be signed: sent or opened (beta)",
+              "value": "waiting"
+            },
+            {
+              "label": "Sent (not opened yet)",
               "value": "sent"
             },
             {
-              "label": "Delivered (opened)",
+              "label": "Delivered (opened, not signed yet)",
               "value": "delivered"
             },
             {
@@ -531,7 +538,7 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "Only show envelopes whose status changed on or after this date. Leave blank to look back over the last 90 days.",
+          "description": "Only show envelopes whose status changed on or after this date. Leave blank to look back over the last 90 days, or far enough to cover 'Sent at least this many days ago' when that is filled in (at least a year).",
           "display_name": "Start date",
           "examples": [
             {
@@ -548,9 +555,22 @@
           "type": "ParameterType.STRING"
         },
         {
-          "description": "The maximum number of envelopes to return (up to 1000).",
+          "description": "The maximum number of envelopes to return (up to 1000). Leave blank for every matching envelope DocuSign gives in one answer; DocuSign sets that number, and it is never more than 1000.",
           "display_name": "Maximum results",
           "name": "count",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Beta. Only show envelopes that were sent this many days ago or longer, such as 3 for ones that have been out for three days or more. Use it with the status 'Waiting to be signed' to find the envelopes to chase. Drafts, which were never sent, are left out. Leave blank to include envelopes of any age.",
+          "display_name": "Sent at least this many days ago",
+          "examples": [
+            {
+              "label": "Three days or more",
+              "value": "3"
+            }
+          ],
+          "name": "sent_at_least_days_ago",
           "required": false,
           "type": "ParameterType.NUMBER"
         }
@@ -571,6 +591,10 @@
                   "description": "When the envelope was created.",
                   "type": "string"
                 },
+                "days_waiting": {
+                  "description": "Beta. How many whole days it has been out for signature: from when it was sent until now, or until it was completed. 0 for a draft.",
+                  "type": "number"
+                },
                 "emailSubject": {
                   "description": "The subject the signers were emailed, usually the contract's name.",
                   "type": "string"
@@ -583,12 +607,20 @@
                   "description": "When it was sent for signing.",
                   "type": "string"
                 },
+                "sent_display": {
+                  "description": "Beta. The day it was sent as a person writes it, such as Jul 15, 2026. Blank for a draft.",
+                  "type": "string"
+                },
                 "status": {
                   "description": "Where it is: sent, delivered, signed, completed, declined, voided or created.",
                   "type": "string"
                 },
                 "statusChangedDateTime": {
                   "description": "When its status last changed.",
+                  "type": "string"
+                },
+                "waiting_on": {
+                  "description": "Beta. Who has still to sign, as text ready for a message: each person's name and email with commas between them, such as Ann Lee (ann@example.com), Bo Chen (bo@example.com). Blank unless the envelope is waiting to be signed.",
                   "type": "string"
                 }
               },
@@ -763,6 +795,80 @@
         "write"
       ]
     },
+    "send_reminder": {
+      "description": "Email the signing request again to the people an envelope is still waiting on, with their own link to sign. Only the people whose turn it is are emailed: not those who already signed, and not those waiting for someone earlier in the signing order. If nobody is being asked to sign, such as on a finished envelope, nothing is sent and the step says so.",
+      "display_name": "Remind signers",
+      "display_str_template": "Remind the signers of envelope {envelope_id}.",
+      "handler": "actions.send_reminder",
+      "id": "docusign_send_reminder",
+      "method": "POST",
+      "mock_response": {
+        "envelope_id": "4b6a8e2c-1f3d-4c5e-9a7b-2d8f0e1c3b5a",
+        "reminded": true,
+        "reminded_count": 1,
+        "reminded_signers": [
+          {
+            "email": "ann@example.com",
+            "name": "Ann Lee"
+          }
+        ],
+        "reminded_text": "Ann Lee (ann@example.com)"
+      },
+      "name": "send_reminder",
+      "output_formatter": "actions.format_reminder_output",
+      "parameters": [
+        {
+          "description": "The ID of the envelope to send reminders for, such as the envelopeId of one that 'List envelopes' found.",
+          "display_name": "Envelope ID",
+          "name": "envelope_id",
+          "required": true,
+          "type": "ParameterType.STRING"
+        }
+      ],
+      "path": "/actions/library/docusign/send-reminder",
+      "result_str_template": "Reminded {reminded_count} signer(s).",
+      "returns": {
+        "properties": {
+          "envelope_id": {
+            "description": "The envelope the reminder was for.",
+            "type": "string"
+          },
+          "reminded": {
+            "description": "true when DocuSign emailed at least one signer again; false when nobody was being asked to sign, so nothing was sent.",
+            "type": "boolean"
+          },
+          "reminded_count": {
+            "description": "How many signers were reminded.",
+            "type": "number"
+          },
+          "reminded_signers": {
+            "description": "Each signer who was reminded.",
+            "items": {
+              "properties": {
+                "email": {
+                  "description": "The person's email address.",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The person's name.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "reminded_text": {
+            "description": "The same people as text ready for a message, such as Ann Lee (ann@example.com), Bo Chen (bo@example.com). Blank when nobody was reminded.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "scopes": [
+        "write"
+      ]
+    },
     "void_envelope": {
       "description": "Cancel an envelope that has already been sent so it can no longer be signed. You must give a reason. Only envelopes that are still in progress can be cancelled, not drafts, and not envelopes everyone has already signed.",
       "display_name": "Void envelope",
@@ -834,9 +940,19 @@
         "sender_email": "The sender's email address.",
         "sender_name": "Who sent it.",
         "sent_at": "When it was sent.",
+        "signers": "Beta. Everyone who was asked to sign, in signing order: a list where each person has name, email, signed_at (when they signed, such as 2026-11-20T15:04:05.0000000Z, or blank if they haven't) and role (the role they sign as in a template, such as Candidate, or blank if none).",
+        "signers_text": "Beta. Everyone who was asked to sign, one per line in signing order, such as 'Ada Lovelace <ada@example.com>', ready to put in a message or an AI prompt. Empty if there were none.",
         "status": "The envelope's status: completed."
       },
-      "parameters": []
+      "parameters": [
+        {
+          "arg_index": 0,
+          "description": "Beta. Only start for envelopes whose email subject contains these words, such as Offer letter. Capital letters do not matter. Leave blank to start for every envelope.",
+          "display_name": "Subject contains",
+          "name": "subject_contains",
+          "required": false
+        }
+      ]
     },
     "docusign_envelope_status_changed_trigger": {
       "description": "Runs when an envelope is sent, opened by a signer, completed, declined or voided: pick one, or leave it blank for all five. Changes made before the workflow is turned on don't start it. How often it checks follows your workspace plan.",
@@ -850,6 +966,8 @@
         "sender_email": "The sender's email address.",
         "sender_name": "Who sent it.",
         "sent_at": "When it was sent.",
+        "signers": "Beta. Everyone who was asked to sign, in signing order: a list where each person has name, email, signed_at (when they signed, such as 2026-11-20T15:04:05.0000000Z, or blank if they haven't) and role (the role they sign as in a template, such as Candidate, or blank if none).",
+        "signers_text": "Beta. Everyone who was asked to sign, one per line in signing order, such as 'Ada Lovelace <ada@example.com>', ready to put in a message or an AI prompt. Empty if there were none.",
         "status": "The status it reached: sent, delivered, completed, declined or voided.",
         "status_changed_at": "When its status last changed.",
         "voided_reason": "Why it was voided, if it was."
@@ -860,6 +978,13 @@
           "description": "Only start when an envelope reaches this status: sent, delivered (opened by a signer), completed, declined or voided. Leave blank to start for any of them.",
           "display_name": "Status",
           "name": "status",
+          "required": false
+        },
+        {
+          "arg_index": 1,
+          "description": "Beta. Only start for envelopes whose email subject contains these words, such as Offer letter. Capital letters do not matter. Leave blank to start for every envelope.",
+          "display_name": "Subject contains",
+          "name": "subject_contains",
           "required": false
         }
       ]

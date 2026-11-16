@@ -1939,10 +1939,13 @@
         "transaction": {
           "amount": 90.0,
           "amount_cents": 9000,
+          "amount_display": "$90.00",
           "card_id": "6bc41b14-f853-4862-bae5-4f122f123f6e",
+          "cardholder_first_name": "Patrick",
           "cardholder_name": "Patrick Robinson",
           "category": "Taxi and rideshare",
           "currency": "USD",
+          "date_display": "Oct 3, 2026",
           "department_name": "Executive",
           "entity_id": "24850cdb-1b3f-4eb9-bf20-967ca9f97605",
           "fully_approved": true,
@@ -1991,8 +1994,18 @@
                 "nullable": true,
                 "type": "number"
               },
+              "amount_display": {
+                "description": "Beta. The amount ready to read, with its currency, such as $612.40, so no step has to format it",
+                "nullable": true,
+                "type": "string"
+              },
               "card_id": {
                 "description": "The ID of the card used",
+                "nullable": true,
+                "type": "string"
+              },
+              "cardholder_first_name": {
+                "description": "Beta. The cardholder's first name, for a greeting such as Hi Patrick",
                 "nullable": true,
                 "type": "string"
               },
@@ -2007,6 +2020,11 @@
               },
               "currency": {
                 "description": "The currency code, such as USD",
+                "type": "string"
+              },
+              "date_display": {
+                "description": "Beta. The day of the purchase ready to read, such as Oct 3, 2026, so no step has to format the date",
+                "nullable": true,
                 "type": "string"
               },
               "department_name": {
@@ -3198,23 +3216,71 @@
       ]
     },
     "list_transactions": {
-      "description": "List card transactions, newest first, filtered by date, state, cardholder, department, location, category or amount.",
+      "description": "List card transactions, newest first, filtered by date, state, cardholder, department, location, category or amount. Beta: In the last (days), More than and Missing a receipt filter further; Every page returns them all at once; each transaction has its amount and date ready to read; Add cardholder emails adds each cardholder's email; and by_cardholder groups them per person, with a total and their transactions written as lines, ready for one message to each person.",
       "display_name": "List transactions",
       "display_str_template": "List transactions.",
       "handler": "actions.list_transactions",
       "id": "ramp_list_transactions",
       "method": "POST",
       "mock_response": {
+        "by_cardholder": [
+          {
+            "count": 1,
+            "email": "patrick@example.com",
+            "first_name": "Patrick",
+            "name": "Patrick Robinson",
+            "total": 90.0,
+            "total_display": "$90.00",
+            "transaction_lines": "\u2022 Oct 3, 2026, $90.00, Uber",
+            "transactions": [
+              {
+                "amount": 90.0,
+                "amount_cents": 9000,
+                "amount_display": "$90.00",
+                "card_id": "6bc41b14-f853-4862-bae5-4f122f123f6e",
+                "cardholder_email": "patrick@example.com",
+                "cardholder_first_name": "Patrick",
+                "cardholder_name": "Patrick Robinson",
+                "category": "Taxi and rideshare",
+                "currency": "USD",
+                "date_display": "Oct 3, 2026",
+                "department_name": "Executive",
+                "entity_id": "24850cdb-1b3f-4eb9-bf20-967ca9f97605",
+                "fully_approved": true,
+                "fund_id": "5e25f547-bd09-40ad-aab3-b8fefdf16885",
+                "id": "fd14cd6a-846e-4994-9315-5a59e6bb465f",
+                "location_name": "San Francisco",
+                "memo": "Ride to client office",
+                "merchant_id": "ba5d8e64-0f04-4d0c-9a0c-6c3f6a4d6f7e",
+                "merchant_name": "Uber",
+                "original_amount": 90.0,
+                "original_currency": "USD",
+                "receipt_count": 1,
+                "settled_at": "2026-10-04T00:00:00+00:00",
+                "spend_program_id": null,
+                "state": "CLEARED",
+                "sync_status": "SYNC_READY",
+                "transaction_time": "2026-10-03T14:20:00+00:00",
+                "user_id": "a26c82c9-6b7d-4022-bc4b-a55b4c4743c7"
+              }
+            ],
+            "user_id": "a26c82c9-6b7d-4022-bc4b-a55b4c4743c7"
+          }
+        ],
         "count": 1,
         "next_cursor": "",
         "transactions": [
           {
             "amount": 90.0,
             "amount_cents": 9000,
+            "amount_display": "$90.00",
             "card_id": "6bc41b14-f853-4862-bae5-4f122f123f6e",
+            "cardholder_email": "patrick@example.com",
+            "cardholder_first_name": "Patrick",
             "cardholder_name": "Patrick Robinson",
             "category": "Taxi and rideshare",
             "currency": "USD",
+            "date_display": "Oct 3, 2026",
             "department_name": "Executive",
             "entity_id": "24850cdb-1b3f-4eb9-bf20-967ca9f97605",
             "fully_approved": true,
@@ -3252,6 +3318,15 @@
           "name": "to_date",
           "required": false,
           "type": "ParameterType.DATE"
+        },
+        {
+          "description": "Beta. Only purchases from the last this many days up to now, such as 7 for the last week, so no earlier step has to work out the start date. Use it instead of From.",
+          "display_name": "In the last (days)",
+          "maximum": 730,
+          "minimum": 1,
+          "name": "in_last_days",
+          "required": false,
+          "type": "ParameterType.NUMBER"
         },
         {
           "description": "Leave empty for every transaction except declined ones.",
@@ -3495,12 +3570,28 @@
           "type": "ParameterType.NUMBER"
         },
         {
+          "description": "Beta. Only transactions of more than this many US dollars, so \"over $500\" is 500 (At least 500 would include $500.00 itself). Use it instead of At least.",
+          "display_name": "More than",
+          "minimum": 0,
+          "name": "more_than",
+          "required": false,
+          "type": "ParameterType.NUMBER"
+        },
+        {
           "description": "Only transactions of at most this many US dollars.",
           "display_name": "At most",
           "minimum": 0,
           "name": "max_amount",
           "required": false,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "default": false,
+          "description": "Beta. Only transactions with no receipt attached, so no Filter step on the receipt count is needed.",
+          "display_name": "Missing a receipt",
+          "name": "missing_receipt",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         },
         {
           "default": "newest",
@@ -3544,12 +3635,217 @@
           "name": "cursor",
           "required": false,
           "type": "ParameterType.STRING"
+        },
+        {
+          "default": false,
+          "description": "Beta. Return every matching transaction (up to 1,000) in one go, so no loop over Next page is needed. How many is then ignored.",
+          "display_name": "Every page",
+          "name": "all_pages",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
+        },
+        {
+          "default": false,
+          "description": "Beta. Look up each cardholder's email address (once per person) and add it to their transactions and to By cardholder, so no Get user step is needed to email them. Needs the users:read scope.",
+          "display_name": "Add cardholder emails",
+          "name": "cardholder_emails",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         }
       ],
       "path": "/actions/library/ramp/list-transactions",
       "result_str_template": "Transactions retrieved.",
       "returns": {
         "properties": {
+          "by_cardholder": {
+            "description": "Beta. The transactions grouped by cardholder, for one message to each person. Transactions with no cardholder are left out.",
+            "items": {
+              "properties": {
+                "count": {
+                  "description": "How many of the transactions are theirs",
+                  "nullable": true,
+                  "type": "number"
+                },
+                "email": {
+                  "description": "Their email address, filled in when Add cardholder emails is on; empty text (\"\") when it is off or Ramp has no address for them, so a step can skip them with email != \"\"",
+                  "type": "string"
+                },
+                "first_name": {
+                  "description": "Their first name, for a greeting such as Hi Patrick",
+                  "nullable": true,
+                  "type": "string"
+                },
+                "name": {
+                  "description": "The cardholder's name",
+                  "type": "string"
+                },
+                "total": {
+                  "description": "What their transactions add up to, in normal units",
+                  "nullable": true,
+                  "type": "number"
+                },
+                "total_display": {
+                  "description": "What their transactions add up to, ready to read, such as $1,224.80",
+                  "type": "string"
+                },
+                "transaction_lines": {
+                  "description": "Their transactions, one per line with the day, amount and merchant, ready to put in a message",
+                  "type": "string"
+                },
+                "transactions": {
+                  "description": "Their transactions",
+                  "items": {
+                    "properties": {
+                      "amount": {
+                        "description": "The amount in the currency's normal units, such as 90.5",
+                        "nullable": true,
+                        "type": "number"
+                      },
+                      "amount_cents": {
+                        "description": "The amount in the currency's smallest unit, such as cents",
+                        "nullable": true,
+                        "type": "number"
+                      },
+                      "amount_display": {
+                        "description": "Beta. The amount ready to read, with its currency, such as $612.40, so no step has to format it",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "card_id": {
+                        "description": "The ID of the card used",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "cardholder_email": {
+                        "description": "Beta. The cardholder's email address, filled in when Add cardholder emails is on, so no Get user step is needed to email them",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "cardholder_first_name": {
+                        "description": "Beta. The cardholder's first name, for a greeting such as Hi Patrick",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "cardholder_name": {
+                        "description": "The cardholder's name",
+                        "type": "string"
+                      },
+                      "category": {
+                        "description": "Ramp's spending category, such as Restaurants",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "currency": {
+                        "description": "The currency code, such as USD",
+                        "type": "string"
+                      },
+                      "date_display": {
+                        "description": "Beta. The day of the purchase ready to read, such as Oct 3, 2026, so no step has to format the date",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "department_name": {
+                        "description": "The cardholder's department",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "entity_id": {
+                        "description": "The ID of the business entity",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "fully_approved": {
+                        "description": "Whether it is approved and has everything required, such as a receipt",
+                        "type": "boolean"
+                      },
+                      "fund_id": {
+                        "description": "The ID of the fund it was spent from",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "id": {
+                        "description": "The transaction's ID",
+                        "type": "string"
+                      },
+                      "location_name": {
+                        "description": "The cardholder's location",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "memo": {
+                        "description": "The memo written on it",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "merchant_id": {
+                        "description": "The merchant's ID in Ramp",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "merchant_name": {
+                        "description": "The merchant, as Ramp names it",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "original_amount": {
+                        "description": "What the merchant charged, in its own currency",
+                        "nullable": true,
+                        "type": "number"
+                      },
+                      "original_currency": {
+                        "description": "The merchant's currency",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "receipt_count": {
+                        "description": "How many receipts are attached",
+                        "nullable": true,
+                        "type": "number"
+                      },
+                      "settled_at": {
+                        "description": "When the money moved, as an ISO 8601 time",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "spend_program_id": {
+                        "description": "The ID of the fund's spend program",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "state": {
+                        "description": "CLEARED, PENDING, DECLINED and so on",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "sync_status": {
+                        "description": "NOT_SYNC_READY, SYNC_READY or SYNCED to accounting",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "transaction_time": {
+                        "description": "When the purchase was made, as an ISO 8601 time",
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "user_id": {
+                        "description": "The cardholder's user ID",
+                        "nullable": true,
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "user_id": {
+                  "description": "The cardholder's user ID",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
           "count": {
             "description": "How many are on this page",
             "type": "number"
@@ -3572,8 +3868,23 @@
                   "nullable": true,
                   "type": "number"
                 },
+                "amount_display": {
+                  "description": "Beta. The amount ready to read, with its currency, such as $612.40, so no step has to format it",
+                  "nullable": true,
+                  "type": "string"
+                },
                 "card_id": {
                   "description": "The ID of the card used",
+                  "nullable": true,
+                  "type": "string"
+                },
+                "cardholder_email": {
+                  "description": "Beta. The cardholder's email address, filled in when Add cardholder emails is on, so no Get user step is needed to email them",
+                  "nullable": true,
+                  "type": "string"
+                },
+                "cardholder_first_name": {
+                  "description": "Beta. The cardholder's first name, for a greeting such as Hi Patrick",
                   "nullable": true,
                   "type": "string"
                 },
@@ -3588,6 +3899,11 @@
                 },
                 "currency": {
                   "description": "The currency code, such as USD",
+                  "type": "string"
+                },
+                "date_display": {
+                  "description": "Beta. The day of the purchase ready to read, such as Oct 3, 2026, so no step has to format the date",
+                  "nullable": true,
                   "type": "string"
                 },
                 "department_name": {

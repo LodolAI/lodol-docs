@@ -107,7 +107,7 @@
       ]
     },
     "get_client": {
-      "description": "Get client.",
+      "description": "Look up one client in Jobber and get their name, company, main email address and phone number, balance and a link to them in Jobber.",
       "display_name": "Get client",
       "display_str_template": "Get client.",
       "handler": "actions.get_client",
@@ -122,8 +122,8 @@
       "output_formatter": "catalog_rest.format_result",
       "parameters": [
         {
-          "description": "The encoded Jobber ID from a list action.",
-          "display_name": "Id",
+          "description": "The client to look up. Choose one from the list, or give the client's ID from an earlier step, such as a Jobber client trigger's record_id.",
+          "display_name": "Client",
           "dynamic_source": "clients",
           "dynamic_source_allows_custom": true,
           "name": "id",
@@ -137,7 +137,7 @@
         "description": "Result.",
         "properties": {
           "data": {
-            "description": "Complete service response.",
+            "description": "Everything Jobber returned. The client is under data.data.client, with name, firstName, lastName, companyName, email, phone, balance and jobberWebUri (the link to the client in Jobber).",
             "type": "object"
           },
           "has_more": {
@@ -209,23 +209,32 @@
       ]
     },
     "get_job": {
-      "description": "Get job.",
+      "description": "Look up one job in Jobber and get its number, title, total, whether and when it was completed, and a link to it in Jobber.",
       "display_name": "Get job",
       "display_str_template": "Get job.",
       "handler": "actions.get_job",
       "id": "jobber_get_job",
       "method": "POST",
       "mock_response": {
+        "completed": true,
+        "completed_at": "2026-11-10T18:02:11Z",
+        "completed_at_display": "Nov 10, 2026",
         "data": {},
         "has_more": false,
-        "next_cursor": null
+        "job_id": "Z2lkOi8vSm9iYmVyL0pvYi8xMDQy",
+        "job_link": "https://secure.getjobber.com/jobs/1042",
+        "job_number": 1042,
+        "next_cursor": null,
+        "status": "requires_invoicing",
+        "title": "Gutter cleaning",
+        "total": 1250
       },
       "name": "get_job",
       "output_formatter": "catalog_rest.format_result",
       "parameters": [
         {
-          "description": "The encoded Jobber ID from a list action.",
-          "display_name": "Id",
+          "description": "The job to look up: its ID from an earlier step, such as job_id from a Jobber job trigger. Not the job number people see in Jobber.",
+          "display_name": "Job",
           "name": "id",
           "required": true,
           "type": "ParameterType.STRING"
@@ -236,18 +245,60 @@
       "returns": {
         "description": "Result.",
         "properties": {
+          "completed": {
+            "description": "Beta. True when the job has been completed in Jobber, false while it is still open.",
+            "type": "boolean"
+          },
+          "completed_at": {
+            "description": "Beta. When the job was completed, as the date and time Jobber gives, such as 2026-11-10T18:02:11Z. Blank while the job is still open.",
+            "type": "string"
+          },
+          "completed_at_display": {
+            "description": "Beta. That day written for a message, such as Nov 10, 2026 (the date in UTC). Blank while the job is still open.",
+            "type": "string"
+          },
           "data": {
-            "description": "Complete service response.",
+            "description": "Everything Jobber returned, for workflows saved before the fields beside it existed. Prefer those. The job is under data.data.job.",
             "type": "object"
           },
           "has_more": {
             "description": "Whether another page is available.",
             "type": "boolean"
           },
+          "job_id": {
+            "description": "Beta. The job's ID in Jobber, a long code. Get job takes it. Not the number people know the job by: that is job_number.",
+            "type": "string"
+          },
+          "job_link": {
+            "description": "Beta. The link that opens the job in Jobber. Blank when Jobber gives none.",
+            "type": "string"
+          },
+          "job_number": {
+            "description": "Beta. The job's number as Jobber shows it, such as 1042. Empty when Jobber gives none.",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "next_cursor": {
             "description": "Continuation value for the next page.",
             "type": [
               "string",
+              "null"
+            ]
+          },
+          "status": {
+            "description": "Beta. Where the job stands, in Jobber's own word for it. To ask whether the job is completed, read 'completed' instead.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Beta. The job's title. Blank when the job has none.",
+            "type": "string"
+          },
+          "total": {
+            "description": "Beta. The job's total as a number, such as 1250 or 84.5, ready to compare with an amount. Empty when Jobber gives none.",
+            "type": [
+              "number",
               "null"
             ]
           }
@@ -989,6 +1040,33 @@
   "id": "jobber",
   "logo": "https://www.lodol.com/app-icons/jobber-icon.png",
   "triggers": {
+    "jobber_job_completed_trigger": {
+      "description": "Beta. Runs once for each job when it is completed in Jobber, with the job's number, title and total, the client's name, email and the phone number to text, the address of the work and a link to the job, all ready to use. Jobs already completed when the workflow is turned on don't start it, and a job reopened and completed again doesn't start it a second time. It can watch up to 4,000 jobs. How often it checks follows your workspace plan.",
+      "display_name": "Job completed",
+      "id": "jobber_job_completed_trigger",
+      "output": {
+        "address": "Beta. Where the work was done, on one line, such as 12 Main St, Unit 4, Springfield, IL 62704. Blank when the job's property has no address.",
+        "client_company_name": "Beta. The client's company name. Blank when the client has none.",
+        "client_email": "Beta. The client's email address: the one marked as main in Jobber, otherwise the first. Blank when the client has none.",
+        "client_first_name": "Beta. The client's first name, such as Ana. Blank when the client has none (a company): to greet them, use client_greeting_name.",
+        "client_greeting_name": "Beta. The name to greet the client by in a message, never blank: their first name, or the company's name when they have no first name, or the word there (Hi there) when Jobber gives neither.",
+        "client_id": "Beta. The client's ID in Jobber, for Get client or to tell one client from another. Blank when the job has no client.",
+        "client_name": "Beta. The client's name as Jobber shows it: the person's full name, or the company's when the client is a company. Blank when Jobber gives none.",
+        "client_phone": "Beta. The phone number to text the client on, written the way a text step takes it, such as +14155550123. It is the client's main number if Jobber has it marked as receiving text messages, otherwise another of their numbers that is, otherwise their main number. Blank when the client has no phone number, so check it is not empty before sending a text.",
+        "client_phone_can_text": "Beta. True when Jobber has client_phone marked as receiving text messages. False when no number of the client's is marked that way (it may be a landline) or the client has no phone number.",
+        "completed": "Beta. True when the job has been completed in Jobber, false while it is still open.",
+        "completed_at": "Beta. When the job was completed, as the date and time Jobber gives, such as 2026-11-10T18:02:11Z. Blank while the job is still open.",
+        "completed_at_display": "Beta. That day written for a message, such as Nov 10, 2026 (the date in UTC). Blank while the job is still open.",
+        "job_id": "Beta. The job's ID in Jobber, a long code. Get job takes it. Not the number people know the job by: that is job_number.",
+        "job_link": "Beta. The link that opens the job in Jobber. Blank when Jobber gives none.",
+        "job_number": "Beta. The job's number as Jobber shows it, such as 1042. Empty when Jobber gives none.",
+        "status": "Beta. Where the job stands, in Jobber's own word for it. To ask whether the job is completed, read 'completed' instead.",
+        "title": "Beta. The job's title. Blank when the job has none.",
+        "total": "Beta. The job's total as a number, such as 1250 or 84.5, ready to compare with an amount. Empty when Jobber gives none.",
+        "total_display": "Beta. The total written for a message, such as $1,250.00, with the sign of the Jobber account's country ($ or \u00a3; the number alone elsewhere). Blank when Jobber gives no total."
+      },
+      "parameters": []
+    },
     "jobber_new_client_trigger": {
       "description": "Runs for each new client in Jobber. Ones already there when the workflow is turned on don't start it. It can watch up to 4,000. How often it checks follows your workspace plan.",
       "display_name": "New client",
@@ -1014,8 +1092,17 @@
       "display_name": "New job",
       "id": "jobber_new_job_trigger",
       "output": {
-        "record": "object",
-        "record_id": "string"
+        "completed": "Beta. True when the job has been completed in Jobber, false while it is still open.",
+        "completed_at": "Beta. When the job was completed, as the date and time Jobber gives, such as 2026-11-10T18:02:11Z. Blank while the job is still open.",
+        "completed_at_display": "Beta. That day written for a message, such as Nov 10, 2026 (the date in UTC). Blank while the job is still open.",
+        "job_id": "Beta. The job's ID in Jobber, a long code. Get job takes it. Not the number people know the job by: that is job_number.",
+        "job_link": "Beta. The link that opens the job in Jobber. Blank when Jobber gives none.",
+        "job_number": "Beta. The job's number as Jobber shows it, such as 1042. Empty when Jobber gives none.",
+        "record": "The job exactly as Jobber sends it, for workflows saved before the fields beside it existed. Prefer those.",
+        "record_id": "The job's ID in Jobber, the same as job_id.",
+        "status": "Beta. Where the job stands, in Jobber's own word for it. To ask whether the job is completed, read 'completed' instead.",
+        "title": "Beta. The job's title. Blank when the job has none.",
+        "total": "Beta. The job's total as a number, such as 1250 or 84.5, ready to compare with an amount. Empty when Jobber gives none."
       },
       "parameters": []
     },
@@ -1044,8 +1131,17 @@
       "display_name": "New or updated job",
       "id": "jobber_new_or_updated_job_trigger",
       "output": {
-        "record": "object",
-        "record_id": "string"
+        "completed": "Beta. True when the job has been completed in Jobber, false while it is still open.",
+        "completed_at": "Beta. When the job was completed, as the date and time Jobber gives, such as 2026-11-10T18:02:11Z. Blank while the job is still open.",
+        "completed_at_display": "Beta. That day written for a message, such as Nov 10, 2026 (the date in UTC). Blank while the job is still open.",
+        "job_id": "Beta. The job's ID in Jobber, a long code. Get job takes it. Not the number people know the job by: that is job_number.",
+        "job_link": "Beta. The link that opens the job in Jobber. Blank when Jobber gives none.",
+        "job_number": "Beta. The job's number as Jobber shows it, such as 1042. Empty when Jobber gives none.",
+        "record": "The job exactly as Jobber sends it, for workflows saved before the fields beside it existed. Prefer those.",
+        "record_id": "The job's ID in Jobber, the same as job_id.",
+        "status": "Beta. Where the job stands, in Jobber's own word for it. To ask whether the job is completed, read 'completed' instead.",
+        "title": "Beta. The job's title. Blank when the job has none.",
+        "total": "Beta. The job's total as a number, such as 1250 or 84.5, ready to compare with an amount. Empty when Jobber gives none."
       },
       "parameters": []
     },
