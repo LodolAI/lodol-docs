@@ -7743,7 +7743,7 @@
       ]
     },
     "create_payment": {
-      "description": "Record a payment in QuickBooks Online, optionally linked to an invoice.",
+      "description": "Record a payment in QuickBooks Online, optionally linked to an invoice. To record money that has just come in, give the customer's email and turn on Pay the oldest open invoices: it finds the customer, pays their unpaid invoices oldest first and says which it paid, what they still owe and whether anything was left over.",
       "display_name": "Create a QuickBooks payment",
       "display_str_template": "Create QuickBooks payment of ${1} for customer '{0}'.",
       "handler": "actions.create_payment",
@@ -7776,18 +7776,34 @@
           "TxnDate": "2026-09-30",
           "UnappliedAmt": 0
         },
+        "amount_applied": 300.0,
+        "amount_unapplied": 0.0,
+        "amount_unapplied_display": "$0.00",
+        "customer_name": "Acme Corp",
+        "invoices_paid": [
+          {
+            "amount_applied": 300.0,
+            "amount_applied_display": "$300.00",
+            "balance_left": 0.0,
+            "balance_left_display": "$0.00",
+            "id": "130",
+            "number": "1042"
+          }
+        ],
+        "invoices_paid_count": 1,
+        "invoices_still_owing": 0,
         "time": "2026-09-30T10:15:00.000-07:00"
       },
       "name": "create_payment",
       "output_formatter": "actions.format_create_payment_output",
       "parameters": [
         {
-          "description": "The customer. Pick one, or use an Id from 'Create a QuickBooks customer' or 'List QuickBooks customers'.",
+          "description": "The customer this is for. Pick one, or use an Id from 'List QuickBooks customers'.",
           "display_name": "Customer",
           "dynamic_source": "customers",
           "dynamic_source_allows_custom": true,
           "name": "customer_id",
-          "required": true,
+          "required": false,
           "type": "ParameterType.STRING"
         },
         {
@@ -7797,6 +7813,20 @@
           "name": "total_amount",
           "required": true,
           "type": "ParameterType.NUMBER"
+        },
+        {
+          "description": "Beta. When Customer is blank: the email of the customer who paid, such as billing@acme.com, with no lookup step. The step stops, naming the address, when QuickBooks has no customer with it; nobody is added.",
+          "display_name": "Customer email",
+          "name": "customer_email",
+          "required": false,
+          "type": "ParameterType.STRING"
+        },
+        {
+          "description": "Beta. Pay the customer's unpaid invoices with this amount, the one due first first, each up to what it owes. Whatever is left stays on their account as credit. Use it instead of Invoice ID and Apply to. The result's invoices_paid, invoices_still_owing and amount_unapplied say what happened, so a short payment or an overpayment needs no steps to find out.",
+          "display_name": "Pay the oldest open invoices",
+          "name": "apply_to_open_invoices",
+          "required": false,
+          "type": "ParameterType.BOOLEAN"
         },
         {
           "description": "An invoice the whole amount pays.",
@@ -8084,6 +8114,57 @@
               }
             },
             "type": "object"
+          },
+          "amount_applied": {
+            "description": "Beta. How much of the payment went to invoices.",
+            "type": "number"
+          },
+          "amount_unapplied": {
+            "description": "Beta. How much of the payment no invoice took, so it is left on the customer's account as credit. More than 0 means the customer paid more than they owed, or owed nothing.",
+            "type": "number"
+          },
+          "amount_unapplied_display": {
+            "description": "Beta. The unapplied amount as a person writes it, such as $25.00.",
+            "type": "string"
+          },
+          "customer_name": {
+            "description": "Beta. With Customer email: the customer's name as QuickBooks shows it, for a message.",
+            "type": "string"
+          },
+          "invoices_paid": {
+            "description": "Beta. With Pay the oldest open invoices: each invoice the payment went to, with its number, what was applied (amount_applied_display) and what it still owes (balance_left_display).",
+            "items": {
+              "properties": {
+                "amount_applied": {
+                  "type": "number"
+                },
+                "amount_applied_display": {
+                  "type": "string"
+                },
+                "balance_left": {
+                  "type": "number"
+                },
+                "balance_left_display": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "invoices_paid_count": {
+            "description": "Beta. How many invoices the payment went to; 0 when the customer had none unpaid.",
+            "type": "number"
+          },
+          "invoices_still_owing": {
+            "description": "Beta. How many of those invoices still owe something because the payment was less than they were.",
+            "type": "number"
           },
           "time": {
             "type": "string"
