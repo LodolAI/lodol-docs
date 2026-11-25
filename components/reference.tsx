@@ -104,6 +104,8 @@ export function Example({
 const METHOD_STYLES: Record<string, string> = {
   GET: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
   POST: 'bg-brand-soft text-brand-strong dark:bg-brand/20 dark:text-brand-lilac',
+  PUT: 'bg-amber-500/12 text-amber-700 dark:text-amber-300',
+  PATCH: 'bg-amber-500/12 text-amber-700 dark:text-amber-300',
   DELETE: 'bg-red-500/12 text-red-700 dark:text-red-300',
 };
 

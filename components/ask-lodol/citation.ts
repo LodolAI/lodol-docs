@@ -26,10 +26,19 @@ export type ChatMessage =
       hasEnoughContext: boolean;
     };
 
+/**
+ * Mirrors the server's slugify_heading (skipflow/ask_lodol/indexer/urls.py),
+ * which produced heading_anchor: punctuation is dropped rather than turned
+ * into a hyphen, so "Node.js" is "nodejs" and "Sub_workflows" keeps its
+ * underscore.
+ */
 function slugify(text: string): string {
   return text
+    .replace(/[`*]/g, '')
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/[^\p{L}\p{N}\p{M}_\s-]/gu, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
 
