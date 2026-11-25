@@ -185,6 +185,9 @@ export function AskLodolWidget() {
       let citation: Citation | null = null;
       let hasEnoughContext = true;
       let failed = false;
+      // The server always ends a stream with a done event; without one the
+      // connection dropped mid-answer.
+      let finished = false;
 
       for (;;) {
         const { value, done } = await reader.read();
@@ -197,6 +200,7 @@ export function AskLodolWidget() {
           } else if (event.type === 'done') {
             hasEnoughContext = event.hasEnoughContext;
             citation = event.citation;
+            finished = true;
           } else {
             failed = true;
             fail(event.error);
@@ -210,6 +214,11 @@ export function AskLodolWidget() {
         // Every path streams at least the canned reply, so an empty stream
         // means something went wrong upstream.
         fail('Something went wrong. Please try again.');
+        return;
+      }
+      if (!finished) {
+        // Don't leave a truncated answer looking complete.
+        fail('The answer was cut off. Please try again.');
         return;
       }
       upsertAssistant({ content: answer, citation, hasEnoughContext });

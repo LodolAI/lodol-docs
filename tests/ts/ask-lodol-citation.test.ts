@@ -91,3 +91,23 @@ describe('stripCitationMarkers', () => {
     );
   });
 });
+
+describe('formatCitationLabel slugs like the server', () => {
+  it('drops punctuation instead of hyphenating it, as slugify_heading does', () => {
+    const citation = makeCitation({ page_title: 'Node.js', heading_anchor: 'nodejs' });
+    expect(formatCitationLabel(citation)).toBe('Node.js');
+  });
+
+  it('keeps underscores, as slugify_heading does', () => {
+    const citation = makeCitation({ page_title: 'snake_case', heading_anchor: 'snake_case' });
+    expect(formatCitationLabel(citation)).toBe('snake_case');
+  });
+
+  it('collapses "&" and the spaces around it into one hyphen', () => {
+    const citation = makeCitation({
+      page_title: 'Inputs & outputs',
+      heading_anchor: 'inputs-outputs',
+    });
+    expect(formatCitationLabel(citation)).toBe('Inputs & outputs');
+  });
+});
