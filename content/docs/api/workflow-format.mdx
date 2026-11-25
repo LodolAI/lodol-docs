@@ -17,7 +17,7 @@ icon: Braces
 }
 ```
 
-`body` is the list of statements, run in order. When the workflow starts from a trigger or a schedule, that's the first statement. `inputs` holds the inputs it declares, and `version` is the version of this format, currently `1`.
+`body` is the list of statements, run in order. When the workflow starts from a trigger or a schedule, that's the first statement; a workflow that starts from several has a `TriggersStmt` there instead. `inputs` holds the inputs it declares, and `version` is the version of this format, currently `1`.
 
 ## An example
 
@@ -93,17 +93,18 @@ Each step's result is bound to a name with a `LetStmt`: the trigger's event is `
 
 ## Statements
 
-There are 14 kinds of statement:
+There are 15 kinds of statement:
 
 | `kind` | Fields | In the editor |
 | --- | --- | --- |
+| `TriggersStmt` | `triggers` | A workflow that starts from more than one trigger; always the first statement. Each entry is a schedule or a `LetStmt`-bound app trigger. |
 | `LetStmt` | `name`, `init?` | A step whose result has a name, such as an action or a calculation |
 | `AssignStmt` | `name`, `value` | Changing a value declared earlier |
 | `ExprStmt` | `expr` | A step whose result isn't kept |
 | `BlockStmt` | `body` | A group of statements |
 | `IfStmt` | `cond`, `thenBranch`, `elseBranch?` | **If**, with **Otherwise** as `elseBranch`. An `elseBranch` that is itself an `IfStmt` makes a chain of cases. |
 | `ForOfStmt` | `name`, `iterable`, `body` | **Repeat for each item**. `name` is the current item. |
-| `RepeatStmt` | `count`, `body` | **Repeat N times** |
+| `RepeatStmt` | `count`, `body` | **Repeat a set number of times** |
 | `WhileStmt` | `cond`, `body` | **Repeat while** |
 | `BreakStmt`, `ContinueStmt` | | Leave a loop, or skip to its next pass |
 | `TryStmt` | `tryBranch`, `catchBranch`, `errorName?` | A try section; see [below](#try-sections) |
@@ -134,7 +135,7 @@ Expressions produce values:
 | `MemberExpr` | `obj`, `key` | A field of an object, such as `payment.amount` |
 | `IndexExpr` | `arr`, `idx` | An item of a list by position, from 0; `-1` is the last. A position past the end gives `null`. |
 | `UnaryExpr` | `op`, `right` | `-` (negate), `+`, or `!` (not) |
-| `BinaryExpr` | `op`, `left`, `right` | `+` `-` `*` `/` `%` `**`, comparisons `==` `!=` `<` `<=` `>` `>=`, and `&&` `\|\|`. `+` joins text when either side is text. |
+| `BinaryExpr` | `op`, `left`, `right` | `+` `-` `*` `/` `%` `**`, comparisons `==` `!=` `<` `<=` `>` `>=`, and `&&` `\|\|`. `+` adds when both sides read as numbers, even numbers held as text (`"12.50"` + 5 is 17.5); otherwise it joins text. A `+` chain that includes a fixed piece of non-numeric text (a message template) always joins as text. |
 | `NativeCallExpr` | `name`, `args` | An app action or a trigger; see [Calls](#calls) |
 | Built-in function | its own fields | See [Built-in functions](#built-in-functions) |
 
@@ -153,7 +154,7 @@ Lodol's own **Ask a person** and stored-value steps are calls too, to `/actions/
 A trigger is a `NativeCallExpr` named with the trigger's ID, such as `stripe_new_payment_trigger`, in the first statement. Its `args` are its filters, in order. The `LetStmt` around it names the event.
 
 <Callout title="human.* and web.* calls don't run">
-  Workflows written against older versions of this page may contain `human.*` or `web.*` calls. They do nothing when a workflow runs. To wait for a person, use the [Ask a person](/docs/guides/approvals) step.
+  Workflows written against older versions of this page may contain `human.*` or `web.*` calls. `web.*` calls and most `human.*` calls do nothing when a workflow runs. `human.awaitInput` is refused when you save, and a run that still has one stops with an error, even inside a try section. To wait for a person, use the [Ask a person](/docs/guides/approvals) step.
 </Callout>
 
 ## Built-in functions
@@ -194,7 +195,7 @@ A built-in function is a node whose `kind` ends in `BuiltIn`, with named fields 
     | `AppendBuiltIn` | `list`, `value` | Add item to end |
     | `InsertBuiltIn` | `list`, `index`, `value` | Insert item |
     | `RemoveAtBuiltIn` | `list`, `index` | Remove item by position |
-    | `MergeBuiltIn` | `first`, `second` | Combine two lists |
+    | `MergeBuiltIn` | `first`, `second?` | Combine two lists; without `second`, the lists inside `first` are flattened into one |
     | `RemoveDuplicatesBuiltIn` | `value` | Remove duplicates |
     | `ListContainsBuiltIn` | `list`, `value` | Check if list includes item |
     | `IndexOfBuiltIn` | `list`, `value` | Find item position |
@@ -222,7 +223,7 @@ A built-in function is a node whose `kind` ends in `BuiltIn`, with named fields 
     | `kind` | Fields | In the editor |
     | --- | --- | --- |
     | `NowBuiltIn` | | Current date and time |
-    | `UnixTimestampBuiltIn` | | Current Unix timestamp |
+    | `UnixTimestampBuiltIn` | `date?`, `unit?` | Unix timestamp. Without `date`, the current time; `unit` is `seconds` (the default) or `milliseconds` |
     | `TodayBuiltIn`, `TomorrowBuiltIn`, `YesterdayBuiltIn` | `timezone?` | Today's, Tomorrow's and Yesterday's date |
     | `WeekdayNameBuiltIn` | `date` | Day of week |
     | `DatePartBuiltIn` | `date`, `part` | Get date part |
